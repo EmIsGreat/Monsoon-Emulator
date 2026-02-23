@@ -13,7 +13,6 @@ use crate::frontend::egui::config::{
 };
 use crate::frontend::egui_frontend::EguiApp;
 use crate::frontend::messages::{AsyncFrontendMessage, LoadedRom, SavestateLoadContext};
-use crate::frontend::storage::StorageKey;
 use crate::frontend::util::SavestateLoadError;
 use crate::frontend::{storage, util};
 use crate::messages::{FrontendMessage, SaveType};
@@ -39,8 +38,9 @@ impl EguiApp {
     /// Handle a single async message.
     pub(crate) fn handle_single_async_message(&mut self, msg: AsyncFrontendMessage, ctx: &Context) {
         match msg {
-            AsyncFrontendMessage::PaletteLoaded(palette) => {
-                self.handle_palette_loaded(ctx, palette);
+            AsyncFrontendMessage::PaletteLoaded(loaded) => {
+                self.config.user_config.previous_palette_dir = Some(loaded.directory);
+                self.handle_palette_loaded(ctx, loaded.palette);
             }
             AsyncFrontendMessage::FileSaveCompleted(error) => {
                 if let Some(e) = error {
@@ -48,9 +48,7 @@ impl EguiApp {
                 }
             }
             AsyncFrontendMessage::SavestateLoaded(context) => {
-                self.config.pending_dialogs.rom_selection_dialog = Some(RomSelectionDialogState {
-                    context,
-                });
+                self.handle_savestate_loaded(context);
             }
             AsyncFrontendMessage::ShowMatchingRomDialog(context, matching_rom) => {
                 self.config.pending_dialogs.matching_rom_dialog = Some(MatchingRomDialogState {
@@ -111,7 +109,7 @@ impl EguiApp {
 
                     // Save directory for next file picker
                     self.config.user_config.previous_rom_dir =
-                        Some(StorageKey::from(rom.directory));
+                        Some(rom.directory);
 
                     self.load_rom(rom.data, rom.name);
                     let _ = self.to_emulator.send(FrontendMessage::Power);
@@ -198,13 +196,43 @@ impl EguiApp {
         }
     }
 
+    fn handle_savestate_loaded(&mut self, context: Box<SavestateLoadContext>) {
+        // On native, try to find a matching ROM in the savestate's directory
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(ref dir) = context.savestate_dir {
+            let sender = self.async_sender.clone();
+            let context_clone = context.clone();
+            let dir = dir.clone();
+            std::thread::spawn(move || {
+                if let Some(rom) = find_matching_rom_in_directory(&dir, &context_clone) {
+                    let _ = sender.send(AsyncFrontendMessage::ShowMatchingRomDialog(
+                        context_clone,
+                        rom,
+                    ));
+                } else {
+                    // No match found - show ROM selection dialog
+                    // Clear savestate_dir to prevent re-scanning
+                    let mut ctx = *context_clone;
+                    ctx.savestate_dir = None;
+                    let _ = sender.send(AsyncFrontendMessage::SavestateLoaded(Box::new(ctx)));
+                }
+            });
+            return;
+        }
+
+        // Fallback: show ROM selection dialog directly
+        self.config.pending_dialogs.rom_selection_dialog = Some(RomSelectionDialogState {
+            context,
+        });
+    }
+
     fn handle_rom_selected_for_savestate(
         &mut self,
         context: &SavestateLoadContext,
         rom: LoadedRom,
     ) {
         // Save directory for next file picker
-        self.config.user_config.previous_rom_dir = Some(StorageKey::from(rom.directory.clone()));
+        self.config.user_config.previous_rom_dir = Some(rom.directory.clone());
 
         let checksum = util::compute_data_checksum(&rom.data);
         if checksum == context.savestate.rom_file.data_checksum {
@@ -325,4 +353,72 @@ impl EguiApp {
             );
         }
     }
+}
+
+/// Try to find a ROM in the given directory whose checksum matches the savestate's expected ROM.
+///
+/// On native only: scans the directory for .nes files. If the savestate knows the ROM's filename,
+/// that file is checked first. Then all other .nes files are checked.
+#[cfg(not(target_arch = "wasm32"))]
+fn find_matching_rom_in_directory(
+    dir: &str,
+    context: &SavestateLoadContext,
+) -> Option<LoadedRom> {
+    use std::path::Path;
+    use crate::frontend::storage::{StorageCategory, StorageKey};
+
+    let dir_path = Path::new(dir);
+    if !dir_path.is_dir() {
+        return None;
+    }
+
+    let expected_checksum = &context.savestate.rom_file.data_checksum;
+
+    // If the savestate knows the ROM filename, try that first
+    if let Some(ref rom_name) = context.savestate.rom_file.name {
+        let rom_path = dir_path.join(rom_name);
+        if rom_path.is_file() {
+            if let Ok(data) = std::fs::read(&rom_path) {
+                let checksum = util::compute_data_checksum(&data);
+                if &checksum == expected_checksum {
+                    return Some(LoadedRom {
+                        data,
+                        name: rom_name.clone(),
+                        directory: StorageKey {
+                            category: StorageCategory::Root,
+                            sub_path: dir.to_string(),
+                        },
+                    });
+                }
+            }
+        }
+    }
+
+    // Scan directory for all .nes files
+    let entries = std::fs::read_dir(dir_path).ok()?;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_file() {
+            if let Some(ext) = path.extension() {
+                if ext.eq_ignore_ascii_case("nes") {
+                    if let Ok(data) = std::fs::read(&path) {
+                        let checksum = util::compute_data_checksum(&data);
+                        if &checksum == expected_checksum {
+                            let name = entry.file_name().to_string_lossy().to_string();
+                            return Some(LoadedRom {
+                                data,
+                                name,
+                                directory: StorageKey {
+                                    category: StorageCategory::Root,
+                                    sub_path: dir.to_string(),
+                                },
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    None
 }

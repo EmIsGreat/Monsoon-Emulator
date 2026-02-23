@@ -7,7 +7,7 @@ use ensemble_lockstep::util::ToBytes;
 use rfd::{AsyncFileDialog, FileHandle};
 use sha2::{Digest, Sha256};
 
-use crate::frontend::messages::{AsyncFrontendMessage, LoadedRom, SavestateLoadContext};
+use crate::frontend::messages::{AsyncFrontendMessage, LoadedPalette, LoadedRom, SavestateLoadContext};
 use crate::frontend::storage::{get_storage, Storage, StorageCategory, StorageKey};
 
 /// Enum to represent errors that can occur during savestate loading UI flow
@@ -169,7 +169,16 @@ pub fn spawn_palette_picker(sender: &Sender<AsyncFrontendMessage>, dir: Option<&
             // Read the file contents from the handle
             let data = handle.read().await;
             let palette = parse_palette_from_bytes(&data);
-            let _ = sender.send(AsyncFrontendMessage::PaletteLoaded(palette));
+            let directory = get_file_directory(&handle)
+                .map(|f| StorageKey::from(&f))
+                .unwrap_or(StorageKey {
+                    category: StorageCategory::Cache,
+                    sub_path: "upload_cache/palettes/".to_string(),
+                });
+            let _ = sender.send(AsyncFrontendMessage::PaletteLoaded(LoadedPalette {
+                palette,
+                directory,
+            }));
         }
     });
 }

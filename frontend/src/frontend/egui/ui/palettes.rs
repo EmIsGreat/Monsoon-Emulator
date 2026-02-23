@@ -6,7 +6,8 @@ use ensemble_lockstep::util::Hashable;
 use crate::frontend::egui::config::AppConfig;
 use crate::frontend::egui::textures::EmuTextures;
 use crate::frontend::egui::ui::widgets::{PainterGridConfig, color_cell_rgb};
-use crate::frontend::messages::AsyncFrontendMessage;
+use crate::frontend::messages::{AsyncFrontendMessage, LoadedPalette};
+use crate::frontend::storage::{StorageCategory, StorageKey};
 use crate::frontend::util::{FileType, spawn_palette_picker, spawn_save_dialog};
 
 pub fn render_palettes(
@@ -91,7 +92,13 @@ pub fn render_palettes(
                 std::thread::spawn(move || {
                     // Reset to default palette
                     let palette = parse_palette_from_bytes(&[]);
-                    let _ = sender.send(AsyncFrontendMessage::PaletteLoaded(palette));
+                    let _ = sender.send(AsyncFrontendMessage::PaletteLoaded(LoadedPalette {
+                        palette,
+                        directory: StorageKey {
+                            category: StorageCategory::Cache,
+                            sub_path: "default_palettes/".to_string(),
+                        },
+                    }));
                 });
             }
         })

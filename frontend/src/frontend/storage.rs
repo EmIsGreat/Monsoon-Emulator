@@ -423,7 +423,7 @@ mod wasm {
 
     #[async_trait(?Send)]
     impl Storage for WasmStorage {
-        async fn get(&self, _key: &str) -> StorageResult<Vec<u8>> {
+        async fn get(&self, _key: &StorageKey) -> StorageResult<Vec<u8>> {
             // TODO: Implement IndexedDB read
             // 1. Open database
             // 2. Create read transaction
@@ -432,7 +432,7 @@ mod wasm {
             Err(StorageError::NotAvailable)
         }
 
-        async fn set(&self, _key: &str, _data: Vec<u8>) -> StorageResult<()> {
+        async fn set(&self, _key: &StorageKey, _data: Vec<u8>) -> StorageResult<()> {
             // TODO: Implement IndexedDB write
             // 1. Open database
             // 2. Create readwrite transaction
@@ -440,24 +440,34 @@ mod wasm {
             Err(StorageError::NotAvailable)
         }
 
-        async fn delete(&self, _key: &str) -> StorageResult<()> {
+        async fn delete(&self, _key: &StorageKey) -> StorageResult<()> {
             // TODO: Implement IndexedDB delete
             Err(StorageError::NotAvailable)
         }
 
-        async fn exists(&self, _key: &str) -> StorageResult<bool> {
+        async fn exists(&self, _key: &StorageKey) -> StorageResult<bool> {
             // TODO: Implement IndexedDB exists check
             Err(StorageError::NotAvailable)
         }
 
-        async fn list(&self, _prefix: &str) -> StorageResult<Vec<StorageMetadata>> {
+        async fn list(&self, _prefix: &StorageKey) -> StorageResult<Vec<StorageMetadata>> {
             // TODO: Implement IndexedDB list
             // Use IDBKeyRange.bound(prefix, prefix + '\uffff') to get all keys with prefix
             Err(StorageError::NotAvailable)
         }
 
-        fn get_display_path(&self, key: &str) -> String {
+        fn get_display_path(&self, key: &StorageKey) -> String {
             format!("indexeddb://ensemble_emulator/{}", key)
+        }
+
+        fn key_to_path_opt(&self, _key: Option<&StorageKey>) -> Option<PathBuf> {
+            // WASM doesn't have filesystem paths
+            None
+        }
+
+        fn key_to_path(&self, _key: &StorageKey) -> Option<PathBuf> {
+            // WASM doesn't have filesystem paths
+            None
         }
     }
 }

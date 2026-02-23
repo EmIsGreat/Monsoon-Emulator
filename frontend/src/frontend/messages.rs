@@ -51,8 +51,8 @@ pub struct LoadedPalette {
 /// operations without directly sending FrontendMessages to the emulator.
 /// This consolidates all emulator communication logic in one place.
 pub enum AsyncFrontendMessage {
-    /// Palette file was loaded asynchronously - includes the parsed palette data
-    PaletteLoaded(RgbPalette),
+    /// Palette file was loaded asynchronously - includes the parsed palette data and directory
+    PaletteLoaded(LoadedPalette),
     /// User has selected a savestate file, now need to verify/select ROM
     SavestateLoaded(Box<SavestateLoadContext>),
     /// Show dialog asking if user wants to load the found matching ROM (native only - we found a ROM in same dir)
