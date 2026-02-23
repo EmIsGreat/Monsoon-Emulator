@@ -357,7 +357,7 @@ impl EguiApp {
 
 /// Try to find a ROM in the given directory whose checksum matches the savestate's expected ROM.
 ///
-/// On native only: scans the directory for .nes files. If the savestate knows the ROM's filename,
+/// Scans the directory for .nes files. If the savestate knows the ROM's filename,
 /// that file is checked first. Then all other .nes files are checked.
 #[cfg(not(target_arch = "wasm32"))]
 fn find_matching_rom_in_directory(
