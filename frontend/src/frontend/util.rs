@@ -438,7 +438,7 @@ pub fn short_hash_hex(hash: &[u8; 32]) -> String {
 }
 
 #[cfg(target_arch = "wasm32")]
-fn spawn_async<F: Future<Output = ()> + 'static>(f: F) { wasm_bindgen_futures::spawn_local(f); }
+pub fn spawn_async<F: Future<Output = ()> + 'static>(f: F) { wasm_bindgen_futures::spawn_local(f); }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn spawn_async<F: Future<Output = ()> + Send + 'static>(f: F) { tokio::spawn(f); }
+pub fn spawn_async<F: Future<Output = ()> + Send + 'static>(f: F) { tokio::spawn(f); }

@@ -15,7 +15,6 @@ use crate::frontend::egui::config::{
 };
 use crate::frontend::egui_frontend::EguiApp;
 use crate::frontend::messages::{AsyncFrontendMessage, LoadedRom, SavestateLoadContext};
-#[cfg(target_arch = "wasm32")]
 use crate::frontend::storage::Storage;
 use crate::frontend::util::SavestateLoadError;
 use crate::frontend::{storage, util};
@@ -231,22 +230,34 @@ impl EguiApp {
     }
 
     fn handle_savestate_loaded(&mut self, context: Box<SavestateLoadContext>) {
-        // On native, try to find a matching ROM in the last-used ROM directory.
+        // Try to find a matching ROM by scanning available ROM storage.
         // Only scan if savestate_dir is set (cleared after first scan attempt to prevent loops).
-        #[cfg(not(target_arch = "wasm32"))]
         if context.savestate_dir.is_some() {
-            if let Some(dir) = self
+            #[cfg(not(target_arch = "wasm32"))]
+            let dir = self
                 .config
                 .user_config
                 .previous_rom_dir
                 .as_ref()
                 .and_then(storage::get_path_for_key)
-            {
-                let dir = dir.to_string_lossy().to_string();
+                .map(|d| d.to_string_lossy().to_string());
+
+            // On native, only proceed if we have a directory to scan
+            #[cfg(not(target_arch = "wasm32"))]
+            let should_scan = dir.is_some();
+            #[cfg(target_arch = "wasm32")]
+            let should_scan = true;
+
+            if should_scan {
                 let sender = self.async_sender.clone();
                 let context_clone = context.clone();
-                std::thread::spawn(move || {
-                    if let Some(rom) = find_matching_rom_in_directory(&dir, &context_clone) {
+                util::spawn_async(async move {
+                    #[cfg(not(target_arch = "wasm32"))]
+                    let result = dir.and_then(|d| find_matching_rom_in_directory(&d, &context_clone));
+                    #[cfg(target_arch = "wasm32")]
+                    let result = find_matching_rom_in_storage(&context_clone).await;
+
+                    if let Some(rom) = result {
                         let _ = sender.send(AsyncFrontendMessage::ShowMatchingRomDialog(
                             context_clone,
                             rom,
@@ -261,29 +272,6 @@ impl EguiApp {
                 });
                 return;
             }
-        }
-
-        // On WASM, try to find a matching ROM in the IndexedDB ROM cache.
-        // Only scan if savestate_dir is set (cleared after first scan attempt to prevent loops).
-        #[cfg(target_arch = "wasm32")]
-        if context.savestate_dir.is_some() {
-            let sender = self.async_sender.clone();
-            let context_clone = context.clone();
-            wasm_bindgen_futures::spawn_local(async move {
-                if let Some(rom) = find_matching_rom_in_storage(&context_clone).await {
-                    let _ = sender.send(AsyncFrontendMessage::ShowMatchingRomDialog(
-                        context_clone,
-                        rom,
-                    ));
-                } else {
-                    // No match found - show ROM selection dialog
-                    // Clear savestate_dir to prevent re-scanning
-                    let mut context_clone = context_clone;
-                    context_clone.savestate_dir = None;
-                    let _ = sender.send(AsyncFrontendMessage::SavestateLoaded(context_clone));
-                }
-            });
-            return;
         }
 
         // Fallback: show ROM selection dialog directly
@@ -350,19 +338,47 @@ impl EguiApp {
     }
 
     fn handle_quickload(&mut self) {
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            if let Some(key) = self.get_current_quicksave_key() {
-                // Read the savestate using storage
-                let data = match storage::read_sync(&key) {
-                    Ok(data) => data,
+        let rom_info = self
+            .config
+            .user_config
+            .loaded_rom
+            .as_ref()
+            .map(|r| r.data_checksum);
+        let rom_name = self.config.user_config.previous_rom_name.clone();
+        let sender = self.async_sender.clone();
+        let to_emulator = self.to_emulator.clone();
+
+        if let (Some(checksum), Some(prev_name)) = (rom_info, rom_name) {
+            let display_name = util::rom_display_name(&prev_name, &checksum);
+            util::spawn_async(async move {
+                let prefix = storage::quicksaves_prefix(&display_name);
+                let storage_impl = storage::get_storage();
+
+                // List quicksaves
+                let entries = match storage_impl.list(&prefix).await {
+                    Ok(e) => e,
                     Err(e) => {
-                        eprintln!("Failed to read quicksave file: {}", e);
-                        let _ = self
-                            .async_sender
-                            .send(AsyncFrontendMessage::SavestateLoadFailed(
-                                SavestateLoadError::FailedToLoadSavestate,
-                            ));
+                        eprintln!("Failed to list quicksaves: {}", e);
+                        let _ = sender.send(AsyncFrontendMessage::SavestateLoadFailed(
+                            SavestateLoadError::FailedToLoadSavestate,
+                        ));
+                        return;
+                    }
+                };
+
+                let key = match EguiApp::find_newest_quicksave(entries) {
+                    Some(k) => k,
+                    None => return,
+                };
+
+                // Read the savestate
+                let data = match storage_impl.get(&key).await {
+                    Ok(d) => d,
+                    Err(e) => {
+                        eprintln!("Failed to read quicksave: {}", e);
+                        let _ = sender.send(AsyncFrontendMessage::SavestateLoadFailed(
+                            SavestateLoadError::FailedToLoadSavestate,
+                        ));
                         return;
                     }
                 };
@@ -370,110 +386,24 @@ impl EguiApp {
                 let savestate = match savestate::try_load_state_from_bytes(&data) {
                     Some(s) => s,
                     None => {
-                        let _ = self
-                            .async_sender
-                            .send(AsyncFrontendMessage::SavestateLoadFailed(
-                                SavestateLoadError::FailedToLoadSavestate,
-                            ));
-                        return;
-                    }
-                };
-
-                // Verify the currently loaded ROM matches the savestate's ROM checksum
-                if let Some(loaded_rom) = &self.config.user_config.loaded_rom {
-                    if loaded_rom.data_checksum != savestate.rom_file.data_checksum {
-                        self.config.pending_dialogs.error_dialog = Some(ErrorDialogState {
-                            title: "Quickload Error".to_string(),
-                            message: "The current ROM doesn't match the savestate's ROM. Please load the correct ROM first.".to_string(),
-                        });
-                        return;
-                    }
-                } else {
-                    self.config.pending_dialogs.error_dialog = Some(ErrorDialogState {
-                        title: "Quickload Error".to_string(),
-                        message: "No ROM is currently loaded. Please load a ROM first.".to_string(),
-                    });
-                    return;
-                }
-
-                // ROM verified - load the savestate
-                let _ = self
-                    .to_emulator
-                    .send(FrontendMessage::LoadSaveState(Box::new(savestate)));
-            }
-        }
-
-        #[cfg(target_arch = "wasm32")]
-        {
-            // On WASM, we need to do everything async
-            let rom_info = self
-                .config
-                .user_config
-                .loaded_rom
-                .as_ref()
-                .map(|r| r.data_checksum);
-            let rom_name = self.config.user_config.previous_rom_name.clone();
-            let sender = self.async_sender.clone();
-            let to_emulator = self.to_emulator.clone();
-
-            if let (Some(checksum), Some(prev_name)) = (rom_info, rom_name) {
-                let display_name = util::rom_display_name(&prev_name, &checksum);
-                wasm_bindgen_futures::spawn_local(async move {
-                    let prefix = storage::quicksaves_prefix(&display_name);
-                    let storage_impl = storage::get_storage();
-
-                    // List quicksaves
-                    let entries = match storage_impl.list(&prefix).await {
-                        Ok(e) => e,
-                        Err(e) => {
-                            eprintln!("Failed to list quicksaves: {}", e);
-                            let _ = sender.send(AsyncFrontendMessage::SavestateLoadFailed(
-                                SavestateLoadError::FailedToLoadSavestate,
-                            ));
-                            return;
-                        }
-                    };
-
-                    let key = match EguiApp::find_newest_quicksave(entries) {
-                        Some(k) => k,
-                        None => return,
-                    };
-
-                    // Read the savestate
-                    let data = match storage_impl.get(&key).await {
-                        Ok(d) => d,
-                        Err(e) => {
-                            eprintln!("Failed to read quicksave: {}", e);
-                            let _ = sender.send(AsyncFrontendMessage::SavestateLoadFailed(
-                                SavestateLoadError::FailedToLoadSavestate,
-                            ));
-                            return;
-                        }
-                    };
-
-                    let savestate = match savestate::try_load_state_from_bytes(&data) {
-                        Some(s) => s,
-                        None => {
-                            let _ = sender.send(AsyncFrontendMessage::SavestateLoadFailed(
-                                SavestateLoadError::FailedToLoadSavestate,
-                            ));
-                            return;
-                        }
-                    };
-
-                    // Verify checksum
-                    if checksum != savestate.rom_file.data_checksum {
-                        // Can't show dialog from async context, send error via channel
                         let _ = sender.send(AsyncFrontendMessage::SavestateLoadFailed(
                             SavestateLoadError::FailedToLoadSavestate,
                         ));
                         return;
                     }
+                };
 
-                    // ROM verified - load the savestate
-                    let _ = to_emulator.send(FrontendMessage::LoadSaveState(Box::new(savestate)));
-                });
-            }
+                // Verify checksum
+                if checksum != savestate.rom_file.data_checksum {
+                    let _ = sender.send(AsyncFrontendMessage::SavestateLoadFailed(
+                        SavestateLoadError::FailedToLoadSavestate,
+                    ));
+                    return;
+                }
+
+                // ROM verified - load the savestate
+                let _ = to_emulator.send(FrontendMessage::LoadSaveState(Box::new(savestate)));
+            });
         }
     }
 
@@ -513,20 +443,13 @@ impl EguiApp {
 
             // List saves asynchronously
             let sender = self.async_sender.clone();
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                std::thread::spawn(move || {
-                    let entries = list_save_entries(&display_name);
-                    let _ = sender.send(AsyncFrontendMessage::SaveBrowserLoaded(entries));
-                });
-            }
-            #[cfg(target_arch = "wasm32")]
-            {
-                wasm_bindgen_futures::spawn_local(async move {
-                    let entries = list_save_entries_async(&display_name).await;
-                    let _ = sender.send(AsyncFrontendMessage::SaveBrowserLoaded(entries));
-                });
-            }
+            util::spawn_async(async move {
+                #[cfg(not(target_arch = "wasm32"))]
+                let entries = list_save_entries(&display_name);
+                #[cfg(target_arch = "wasm32")]
+                let entries = list_save_entries_async(&display_name).await;
+                let _ = sender.send(AsyncFrontendMessage::SaveBrowserLoaded(entries));
+            });
         }
     }
 
@@ -542,76 +465,36 @@ impl EguiApp {
             .as_ref()
             .map(|r| r.data_checksum);
 
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            std::thread::spawn(move || {
-                match storage::read_sync(&key) {
-                    Ok(data) => {
-                        match savestate::try_load_state_from_bytes(&data) {
-                            Some(savestate) => {
-                                // Verify checksum
-                                if let Some(checksum) = loaded_rom_checksum {
-                                    if checksum != savestate.rom_file.data_checksum {
-                                        let _ =
-                                            sender.send(AsyncFrontendMessage::SavestateLoadFailed(
-                                                SavestateLoadError::FailedToLoadSavestate,
-                                            ));
-                                        return;
-                                    }
-                                }
-                                let _ = to_emulator
-                                    .send(FrontendMessage::LoadSaveState(Box::new(savestate)));
-                            }
-                            None => {
+        util::spawn_async(async move {
+            let storage_impl = storage::get_storage();
+            match storage_impl.get(&key).await {
+                Ok(data) => match savestate::try_load_state_from_bytes(&data) {
+                    Some(savestate) => {
+                        if let Some(checksum) = loaded_rom_checksum {
+                            if checksum != savestate.rom_file.data_checksum {
                                 let _ = sender.send(AsyncFrontendMessage::SavestateLoadFailed(
                                     SavestateLoadError::FailedToLoadSavestate,
                                 ));
+                                return;
                             }
                         }
+                        let _ = to_emulator
+                            .send(FrontendMessage::LoadSaveState(Box::new(savestate)));
                     }
-                    Err(e) => {
-                        eprintln!("Failed to read save: {}", e);
+                    None => {
                         let _ = sender.send(AsyncFrontendMessage::SavestateLoadFailed(
                             SavestateLoadError::FailedToLoadSavestate,
                         ));
                     }
+                },
+                Err(e) => {
+                    eprintln!("Failed to read save: {}", e);
+                    let _ = sender.send(AsyncFrontendMessage::SavestateLoadFailed(
+                        SavestateLoadError::FailedToLoadSavestate,
+                    ));
                 }
-            });
-        }
-
-        #[cfg(target_arch = "wasm32")]
-        {
-            wasm_bindgen_futures::spawn_local(async move {
-                let storage_impl = storage::get_storage();
-                match storage_impl.get(&key).await {
-                    Ok(data) => match savestate::try_load_state_from_bytes(&data) {
-                        Some(savestate) => {
-                            if let Some(checksum) = loaded_rom_checksum {
-                                if checksum != savestate.rom_file.data_checksum {
-                                    let _ = sender.send(AsyncFrontendMessage::SavestateLoadFailed(
-                                        SavestateLoadError::FailedToLoadSavestate,
-                                    ));
-                                    return;
-                                }
-                            }
-                            let _ = to_emulator
-                                .send(FrontendMessage::LoadSaveState(Box::new(savestate)));
-                        }
-                        None => {
-                            let _ = sender.send(AsyncFrontendMessage::SavestateLoadFailed(
-                                SavestateLoadError::FailedToLoadSavestate,
-                            ));
-                        }
-                    },
-                    Err(e) => {
-                        eprintln!("Failed to read save: {}", e);
-                        let _ = sender.send(AsyncFrontendMessage::SavestateLoadFailed(
-                            SavestateLoadError::FailedToLoadSavestate,
-                        ));
-                    }
-                }
-            });
-        }
+            }
+        });
     }
 
     /// Export a save from internal storage to a file on disk via save dialog.
@@ -619,12 +502,12 @@ impl EguiApp {
         let sender = self.async_sender.clone();
         let save_dir = self.config.user_config.previous_savestate_save_dir.clone();
 
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            // Read synchronously first (small .sav files, fast I/O), then call
-            // spawn_save_dialog on the current thread where the tokio runtime is available.
-            // Cannot wrap in std::thread::spawn because spawn_save_dialog uses tokio::spawn internally.
-            match storage::read_sync(&key) {
+        // Read from storage asynchronously, then open save dialog.
+        // On native, spawn_save_dialog internally uses tokio::spawn which requires
+        // the tokio runtime context, so we read via async Storage instead of sync wrappers.
+        util::spawn_async(async move {
+            let storage_impl = storage::get_storage();
+            match storage_impl.get(&key).await {
                 Ok(data) => {
                     let exportable = ExportableData(data);
                     util::spawn_save_dialog(
@@ -638,28 +521,7 @@ impl EguiApp {
                     eprintln!("Failed to read save for export: {}", e);
                 }
             }
-        }
-
-        #[cfg(target_arch = "wasm32")]
-        {
-            wasm_bindgen_futures::spawn_local(async move {
-                let storage_impl = storage::get_storage();
-                match storage_impl.get(&key).await {
-                    Ok(data) => {
-                        let exportable = ExportableData(data);
-                        util::spawn_save_dialog(
-                            Some(&sender),
-                            save_dir.as_ref(),
-                            util::FileType::Savestate,
-                            Box::new(exportable),
-                        );
-                    }
-                    Err(e) => {
-                        eprintln!("Failed to read save for export: {}", e);
-                    }
-                }
-            });
-        }
+        });
     }
 }
 

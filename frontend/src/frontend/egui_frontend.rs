@@ -46,7 +46,6 @@ use crate::frontend::messages::{AsyncFrontendMessage, FrontendEvent, SavestateLo
 #[cfg(not(target_arch = "wasm32"))]
 use crate::frontend::persistence::get_egui_storage_path;
 use crate::frontend::persistence::load_config;
-#[cfg(target_arch = "wasm32")]
 use crate::frontend::storage::Storage;
 use crate::frontend::storage::StorageKey;
 use crate::frontend::{storage, util};
@@ -265,12 +264,7 @@ impl EguiApp {
 
                 // Write savestate using storage
                 let data = savestate.to_bytes(None);
-                #[cfg(not(target_arch = "wasm32"))]
-                std::thread::spawn(move || {
-                    let _ = storage::write_sync(&key, &data);
-                });
-                #[cfg(target_arch = "wasm32")]
-                wasm_bindgen_futures::spawn_local(async move {
+                util::spawn_async(async move {
                     let storage = storage::get_storage();
                     let _ = storage.set(&key, data).await;
                 });
@@ -284,35 +278,7 @@ impl EguiApp {
     /// Remove the oldest autosaves if there are more than MAX_AUTOSAVES_PER_GAME.
     /// Runs asynchronously in a background thread (native) or spawn_local (WASM).
     fn cleanup_old_autosaves_async(display_name: String) {
-        #[cfg(not(target_arch = "wasm32"))]
-        std::thread::spawn(move || {
-            let prefix = storage::autosaves_prefix(&display_name);
-
-            if let Ok(entries) = storage::list_sync(&prefix) {
-                // Filter to only .sav files and collect with their modified times
-                let mut autosaves: Vec<_> = entries
-                    .into_iter()
-                    .filter(|e| e.key.sub_path.ends_with(".sav"))
-                    .filter_map(|e| Some(e.key))
-                    .collect();
-
-                // If we have at least the limit, delete oldest to make room
-                // (use >= to maintain exactly MAX_AUTOSAVES_PER_GAME after the new save)
-                if autosaves.len() >= MAX_AUTOSAVES_PER_GAME {
-                    // Sort by modification time (oldest first)
-                    autosaves.sort_by_key(|a| a.sub_path.clone());
-
-                    // Delete enough files to get back under the limit
-                    let to_delete = autosaves.len() - MAX_AUTOSAVES_PER_GAME + 1;
-                    for key in autosaves.into_iter().take(to_delete) {
-                        let _ = storage::delete_sync(&key);
-                    }
-                }
-            }
-        });
-
-        #[cfg(target_arch = "wasm32")]
-        wasm_bindgen_futures::spawn_local(async move {
+        util::spawn_async(async move {
             let prefix = storage::autosaves_prefix(&display_name);
             let storage = storage::get_storage();
 
@@ -333,24 +299,6 @@ impl EguiApp {
                 }
             }
         });
-    }
-
-    pub(crate) fn get_current_quicksave_key(&self) -> Option<StorageKey> {
-        #[cfg(not(target_arch = "wasm32"))]
-        if let Some(rom) = &self.config.user_config.loaded_rom
-            && let Some(prev_name) = &self.config.user_config.previous_rom_name
-        {
-            let rom_hash = &rom.data_checksum;
-            let display_name = util::rom_display_name(prev_name, rom_hash);
-            let prefix = storage::quicksaves_prefix(&display_name);
-
-            // List all quicksaves using storage
-            if let Ok(entries) = storage::list_sync(&prefix) {
-                return Self::find_newest_quicksave(entries);
-            }
-        }
-
-        None
     }
 
     /// Find the newest quicksave key from a list of storage entries.
