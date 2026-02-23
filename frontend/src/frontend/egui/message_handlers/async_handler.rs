@@ -234,10 +234,10 @@ impl EguiApp {
                     } else {
                         // No match found - show ROM selection dialog
                         // Clear savestate_dir to prevent re-scanning
-                        let mut ctx = *context_clone;
-                        ctx.savestate_dir = None;
+                        let mut context_clone = context_clone;
+                        context_clone.savestate_dir = None;
                         let _ =
-                            sender.send(AsyncFrontendMessage::SavestateLoaded(Box::new(ctx)));
+                            sender.send(AsyncFrontendMessage::SavestateLoaded(context_clone));
                     }
                 });
                 return;
@@ -259,9 +259,9 @@ impl EguiApp {
                 } else {
                     // No match found - show ROM selection dialog
                     // Clear savestate_dir to prevent re-scanning
-                    let mut ctx = *context_clone;
-                    ctx.savestate_dir = None;
-                    let _ = sender.send(AsyncFrontendMessage::SavestateLoaded(Box::new(ctx)));
+                    let mut context_clone = context_clone;
+                    context_clone.savestate_dir = None;
+                    let _ = sender.send(AsyncFrontendMessage::SavestateLoaded(context_clone));
                 }
             });
             return;
