@@ -607,23 +607,23 @@ impl EguiApp {
 
         #[cfg(not(target_arch = "wasm32"))]
         {
-            std::thread::spawn(move || {
-                match storage::read_sync(&key) {
-                    Ok(data) => {
-                        // Use an ExportableData wrapper to pass raw bytes to spawn_save_dialog
-                        let exportable = ExportableData(data);
-                        util::spawn_save_dialog(
-                            Some(&sender),
-                            save_dir.as_ref(),
-                            util::FileType::Savestate,
-                            Box::new(exportable),
-                        );
-                    }
-                    Err(e) => {
-                        eprintln!("Failed to read save for export: {}", e);
-                    }
+            // Read synchronously first (small .sav files, fast I/O), then call
+            // spawn_save_dialog on the current thread where the tokio runtime is available.
+            // Cannot wrap in std::thread::spawn because spawn_save_dialog uses tokio::spawn internally.
+            match storage::read_sync(&key) {
+                Ok(data) => {
+                    let exportable = ExportableData(data);
+                    util::spawn_save_dialog(
+                        Some(&sender),
+                        save_dir.as_ref(),
+                        util::FileType::Savestate,
+                        Box::new(exportable),
+                    );
                 }
-            });
+                Err(e) => {
+                    eprintln!("Failed to read save for export: {}", e);
+                }
+            }
         }
 
         #[cfg(target_arch = "wasm32")]
