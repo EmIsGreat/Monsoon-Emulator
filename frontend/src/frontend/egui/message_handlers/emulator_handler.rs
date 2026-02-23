@@ -9,6 +9,8 @@ use ensemble_lockstep::emulation::savestate::SaveState;
 use ensemble_lockstep::util::ToBytes;
 
 use crate::frontend::egui_frontend::EguiApp;
+#[cfg(target_arch = "wasm32")]
+use crate::frontend::storage::Storage;
 use crate::frontend::util::FileType;
 use crate::frontend::{storage, util};
 use crate::messages::{EmulatorMessage, SaveType};
@@ -147,8 +149,14 @@ impl EguiApp {
 
                 // Write savestate using storage
                 let data = savestate.to_bytes(None);
+                #[cfg(not(target_arch = "wasm32"))]
                 std::thread::spawn(move || {
                     let _ = storage::write_sync(&key, &data);
+                });
+                #[cfg(target_arch = "wasm32")]
+                wasm_bindgen_futures::spawn_local(async move {
+                    let storage = storage::get_storage();
+                    let _ = storage.set(&key, data).await;
                 });
             }
         }

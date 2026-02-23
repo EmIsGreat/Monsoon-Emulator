@@ -41,6 +41,8 @@ use crate::frontend::messages::{
     AsyncFrontendMessage, FrontendEvent, LoadedRom, SavestateLoadContext,
 };
 use crate::frontend::persistence::{get_egui_storage_path, load_config};
+#[cfg(target_arch = "wasm32")]
+use crate::frontend::storage::Storage;
 use crate::frontend::storage::StorageKey;
 use crate::frontend::{storage, util};
 use crate::messages::{EmulatorMessage, FrontendMessage, SaveType};
@@ -258,8 +260,14 @@ impl EguiApp {
 
                 // Write savestate using storage
                 let data = savestate.to_bytes(None);
+                #[cfg(not(target_arch = "wasm32"))]
                 std::thread::spawn(move || {
                     let _ = storage::write_sync(&key, &data);
+                });
+                #[cfg(target_arch = "wasm32")]
+                wasm_bindgen_futures::spawn_local(async move {
+                    let storage = storage::get_storage();
+                    let _ = storage.set(&key, data).await;
                 });
 
                 // Clean up old autosaves asynchronously to avoid blocking the UI
@@ -269,8 +277,9 @@ impl EguiApp {
     }
 
     /// Remove the oldest autosaves if there are more than MAX_AUTOSAVES_PER_GAME.
-    /// Runs asynchronously in a background thread to avoid blocking the UI.
+    /// Runs asynchronously in a background thread (native) or spawn_local (WASM).
     fn cleanup_old_autosaves_async(display_name: String) {
+        #[cfg(not(target_arch = "wasm32"))]
         std::thread::spawn(move || {
             let prefix = storage::autosaves_prefix(&display_name);
 
@@ -296,9 +305,33 @@ impl EguiApp {
                 }
             }
         });
+
+        #[cfg(target_arch = "wasm32")]
+        wasm_bindgen_futures::spawn_local(async move {
+            let prefix = storage::autosaves_prefix(&display_name);
+            let storage = storage::get_storage();
+
+            if let Ok(entries) = storage.list(&prefix).await {
+                let mut autosaves: Vec<_> = entries
+                    .into_iter()
+                    .filter(|e| e.key.sub_path.ends_with(".sav"))
+                    .map(|e| e.key)
+                    .collect();
+
+                if autosaves.len() >= MAX_AUTOSAVES_PER_GAME {
+                    autosaves.sort_by_key(|a| a.sub_path.clone());
+
+                    let to_delete = autosaves.len() - MAX_AUTOSAVES_PER_GAME + 1;
+                    for key in autosaves.into_iter().take(to_delete) {
+                        let _ = storage.delete(&key).await;
+                    }
+                }
+            }
+        });
     }
 
     pub(crate) fn get_current_quicksave_key(&self) -> Option<StorageKey> {
+        #[cfg(not(target_arch = "wasm32"))]
         if let Some(rom) = &self.config.user_config.loaded_rom
             && let Some(prev_name) = &self.config.user_config.previous_rom_name
         {
@@ -308,50 +341,58 @@ impl EguiApp {
 
             // List all quicksaves using storage
             if let Ok(entries) = storage::list_sync(&prefix) {
-                let mut quicksave_key: Option<(StorageKey, chrono::NaiveDateTime, u8)> = None;
-
-                for entry in entries {
-                    if !entry.key.sub_path.ends_with(".sav") {
-                        continue;
-                    }
-
-                    // Extract filename from the key
-                    let filename = entry.key.sub_path.rsplit('/').next()?;
-                    let stem = filename.strip_suffix(".sav")?;
-
-                    let time_version = stem.split_once('_')?.1;
-
-                    let (timestamp, version) =
-                        if time_version.chars().filter(|c| *c == '_').count() > 1 {
-                            time_version.rsplit_once('_')?
-                        } else {
-                            (time_version, "0")
-                        };
-
-                    let time =
-                        chrono::NaiveDateTime::parse_from_str(timestamp, "%Y-%m-%d_%H-%M-%S");
-
-                    let version = version.parse::<u8>().unwrap_or(0);
-
-                    if let Ok(time) = time {
-                        let should_update = match &quicksave_key {
-                            None => true,
-                            Some(current) => {
-                                current.1 < time || (current.1 == time && current.2 < version)
-                            }
-                        };
-
-                        if should_update {
-                            quicksave_key = Some((entry.key, time, version));
-                        }
-                    }
-                }
-
-                return quicksave_key.map(|p| p.0);
+                return Self::find_newest_quicksave(entries);
             }
         }
 
         None
+    }
+
+    /// Find the newest quicksave key from a list of storage entries.
+    /// Shared logic between native sync and WASM async paths.
+    fn find_newest_quicksave(
+        entries: Vec<storage::StorageMetadata>,
+    ) -> Option<StorageKey> {
+        let mut quicksave_key: Option<(StorageKey, chrono::NaiveDateTime, u8)> = None;
+
+        for entry in entries {
+            if !entry.key.sub_path.ends_with(".sav") {
+                continue;
+            }
+
+            // Extract filename from the key
+            let filename = entry.key.sub_path.rsplit('/').next()?;
+            let stem = filename.strip_suffix(".sav")?;
+
+            let time_version = stem.split_once('_')?.1;
+
+            let (timestamp, version) =
+                if time_version.chars().filter(|c| *c == '_').count() > 1 {
+                    time_version.rsplit_once('_')?
+                } else {
+                    (time_version, "0")
+                };
+
+            let time =
+                chrono::NaiveDateTime::parse_from_str(timestamp, "%Y-%m-%d_%H-%M-%S");
+
+            let version = version.parse::<u8>().unwrap_or(0);
+
+            if let Ok(time) = time {
+                let should_update = match &quicksave_key {
+                    None => true,
+                    Some(current) => {
+                        current.1 < time || (current.1 == time && current.2 < version)
+                    }
+                };
+
+                if should_update {
+                    quicksave_key = Some((entry.key, time, version));
+                }
+            }
+        }
+
+        quicksave_key.map(|p| p.0)
     }
 
     /// Check if the pattern tables pane is visible

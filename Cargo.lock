@@ -1352,6 +1352,7 @@ dependencies = [
  "egui_tiles",
  "ensemble-gown",
  "ensemble-lockstep",
+ "js-sys",
  "rexie",
  "rfd",
  "serde",

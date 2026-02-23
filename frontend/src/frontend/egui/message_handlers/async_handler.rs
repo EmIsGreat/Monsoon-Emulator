@@ -13,6 +13,8 @@ use crate::frontend::egui::config::{
 };
 use crate::frontend::egui_frontend::EguiApp;
 use crate::frontend::messages::{AsyncFrontendMessage, LoadedRom, SavestateLoadContext};
+#[cfg(target_arch = "wasm32")]
+use crate::frontend::storage::Storage;
 use crate::frontend::util::SavestateLoadError;
 use crate::frontend::{storage, util};
 use crate::messages::{FrontendMessage, SaveType};
@@ -242,6 +244,29 @@ impl EguiApp {
             }
         }
 
+        // On WASM, try to find a matching ROM in the IndexedDB ROM cache.
+        // Only scan if savestate_dir is set (cleared after first scan attempt to prevent loops).
+        #[cfg(target_arch = "wasm32")]
+        if context.savestate_dir.is_some() {
+            let sender = self.async_sender.clone();
+            let context_clone = context.clone();
+            wasm_bindgen_futures::spawn_local(async move {
+                if let Some(rom) = find_matching_rom_in_storage(&context_clone).await {
+                    let _ = sender.send(AsyncFrontendMessage::ShowMatchingRomDialog(
+                        context_clone,
+                        rom,
+                    ));
+                } else {
+                    // No match found - show ROM selection dialog
+                    // Clear savestate_dir to prevent re-scanning
+                    let mut ctx = *context_clone;
+                    ctx.savestate_dir = None;
+                    let _ = sender.send(AsyncFrontendMessage::SavestateLoaded(Box::new(ctx)));
+                }
+            });
+            return;
+        }
+
         // Fallback: show ROM selection dialog directly
         self.config.pending_dialogs.rom_selection_dialog = Some(RomSelectionDialogState {
             context,
@@ -306,56 +331,125 @@ impl EguiApp {
     }
 
     fn handle_quickload(&mut self) {
-        if let Some(key) = self.get_current_quicksave_key() {
-            // Read the savestate using storage
-            let data = match storage::read_sync(&key) {
-                Ok(data) => data,
-                Err(e) => {
-                    eprintln!("Failed to read quicksave file: {}", e);
-                    let _ = self
-                        .async_sender
-                        .send(AsyncFrontendMessage::SavestateLoadFailed(
-                            SavestateLoadError::FailedToLoadSavestate,
-                        ));
-                    return;
-                }
-            };
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            if let Some(key) = self.get_current_quicksave_key() {
+                // Read the savestate using storage
+                let data = match storage::read_sync(&key) {
+                    Ok(data) => data,
+                    Err(e) => {
+                        eprintln!("Failed to read quicksave file: {}", e);
+                        let _ = self
+                            .async_sender
+                            .send(AsyncFrontendMessage::SavestateLoadFailed(
+                                SavestateLoadError::FailedToLoadSavestate,
+                            ));
+                        return;
+                    }
+                };
 
-            let savestate = match savestate::try_load_state_from_bytes(&data) {
-                Some(s) => s,
-                None => {
-                    let _ = self
-                        .async_sender
-                        .send(AsyncFrontendMessage::SavestateLoadFailed(
-                            SavestateLoadError::FailedToLoadSavestate,
-                        ));
-                    return;
-                }
-            };
+                let savestate = match savestate::try_load_state_from_bytes(&data) {
+                    Some(s) => s,
+                    None => {
+                        let _ = self
+                            .async_sender
+                            .send(AsyncFrontendMessage::SavestateLoadFailed(
+                                SavestateLoadError::FailedToLoadSavestate,
+                            ));
+                        return;
+                    }
+                };
 
-            // Verify the currently loaded ROM matches the savestate's ROM checksum
-            if let Some(loaded_rom) = &self.config.user_config.loaded_rom {
-                if loaded_rom.data_checksum != savestate.rom_file.data_checksum {
-                    // Checksum mismatch - show error dialog
+                // Verify the currently loaded ROM matches the savestate's ROM checksum
+                if let Some(loaded_rom) = &self.config.user_config.loaded_rom {
+                    if loaded_rom.data_checksum != savestate.rom_file.data_checksum {
+                        self.config.pending_dialogs.error_dialog = Some(ErrorDialogState {
+                            title: "Quickload Error".to_string(),
+                            message: "The current ROM doesn't match the savestate's ROM. Please load the correct ROM first.".to_string(),
+                        });
+                        return;
+                    }
+                } else {
                     self.config.pending_dialogs.error_dialog = Some(ErrorDialogState {
                         title: "Quickload Error".to_string(),
-                        message: "The current ROM doesn't match the savestate's ROM. Please load the correct ROM first.".to_string(),
+                        message: "No ROM is currently loaded. Please load a ROM first.".to_string(),
                     });
                     return;
                 }
-            } else {
-                // No ROM loaded - show error dialog
-                self.config.pending_dialogs.error_dialog = Some(ErrorDialogState {
-                    title: "Quickload Error".to_string(),
-                    message: "No ROM is currently loaded. Please load a ROM first.".to_string(),
-                });
-                return;
-            }
 
-            // ROM verified - load the savestate
-            let _ = self
-                .to_emulator
-                .send(FrontendMessage::LoadSaveState(Box::new(savestate)));
+                // ROM verified - load the savestate
+                let _ = self
+                    .to_emulator
+                    .send(FrontendMessage::LoadSaveState(Box::new(savestate)));
+            }
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            // On WASM, we need to do everything async
+            let rom_info = self.config.user_config.loaded_rom.as_ref().map(|r| r.data_checksum);
+            let rom_name = self.config.user_config.previous_rom_name.clone();
+            let sender = self.async_sender.clone();
+            let to_emulator = self.to_emulator.clone();
+
+            if let (Some(checksum), Some(prev_name)) = (rom_info, rom_name) {
+                let display_name = util::rom_display_name(&prev_name, &checksum);
+                wasm_bindgen_futures::spawn_local(async move {
+                    let prefix = storage::quicksaves_prefix(&display_name);
+                    let storage_impl = storage::get_storage();
+
+                    // List quicksaves
+                    let entries = match storage_impl.list(&prefix).await {
+                        Ok(e) => e,
+                        Err(e) => {
+                            eprintln!("Failed to list quicksaves: {}", e);
+                            let _ = sender.send(AsyncFrontendMessage::SavestateLoadFailed(
+                                SavestateLoadError::FailedToLoadSavestate,
+                            ));
+                            return;
+                        }
+                    };
+
+                    let key = match EguiApp::find_newest_quicksave(entries) {
+                        Some(k) => k,
+                        None => return,
+                    };
+
+                    // Read the savestate
+                    let data = match storage_impl.get(&key).await {
+                        Ok(d) => d,
+                        Err(e) => {
+                            eprintln!("Failed to read quicksave: {}", e);
+                            let _ = sender.send(AsyncFrontendMessage::SavestateLoadFailed(
+                                SavestateLoadError::FailedToLoadSavestate,
+                            ));
+                            return;
+                        }
+                    };
+
+                    let savestate = match savestate::try_load_state_from_bytes(&data) {
+                        Some(s) => s,
+                        None => {
+                            let _ = sender.send(AsyncFrontendMessage::SavestateLoadFailed(
+                                SavestateLoadError::FailedToLoadSavestate,
+                            ));
+                            return;
+                        }
+                    };
+
+                    // Verify checksum
+                    if checksum != savestate.rom_file.data_checksum {
+                        // Can't show dialog from async context, send error via channel
+                        let _ = sender.send(AsyncFrontendMessage::SavestateLoadFailed(
+                            SavestateLoadError::FailedToLoadSavestate,
+                        ));
+                        return;
+                    }
+
+                    // ROM verified - load the savestate
+                    let _ = to_emulator.send(FrontendMessage::LoadSaveState(Box::new(savestate)));
+                });
+            }
         }
     }
 
@@ -437,6 +531,57 @@ fn find_matching_rom_in_directory(
                             });
                         }
                     }
+                }
+            }
+        }
+    }
+
+    None
+}
+
+/// Try to find a ROM in the IndexedDB cache whose checksum matches the savestate's expected ROM.
+///
+/// Scans all cached ROMs in IndexedDB. If the savestate knows the ROM's filename,
+/// that file is checked first for efficiency.
+#[cfg(target_arch = "wasm32")]
+async fn find_matching_rom_in_storage(
+    context: &SavestateLoadContext,
+) -> Option<LoadedRom> {
+    let expected_checksum = &context.savestate.rom_file.data_checksum;
+    let storage_impl = storage::get_storage();
+
+    // If the savestate knows the ROM filename, try a direct lookup first
+    if let Some(ref rom_name) = context.savestate.rom_file.name {
+        let direct_key = storage::rom_cache_key(rom_name);
+        if let Ok(data) = storage_impl.get(&direct_key).await {
+            let checksum = util::compute_data_checksum(&data);
+            if &checksum == expected_checksum {
+                return Some(LoadedRom {
+                    data,
+                    name: rom_name.clone(),
+                    directory: storage::roms_prefix(),
+                });
+            }
+        }
+    }
+
+    // Scan all cached ROMs
+    let rom_prefix = storage::roms_prefix();
+    if let Ok(entries) = storage_impl.list(&rom_prefix).await {
+        for entry in entries {
+            if let Ok(data) = storage_impl.get(&entry.key).await {
+                let checksum = util::compute_data_checksum(&data);
+                if &checksum == expected_checksum {
+                    let name = entry.key.sub_path
+                        .rsplit('/')
+                        .next()
+                        .unwrap_or("unknown.nes")
+                        .to_string();
+                    return Some(LoadedRom {
+                        data,
+                        name,
+                        directory: storage::roms_prefix(),
+                    });
                 }
             }
         }

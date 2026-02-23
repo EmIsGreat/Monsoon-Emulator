@@ -8,7 +8,7 @@ use rfd::{AsyncFileDialog, FileHandle};
 use sha2::{Digest, Sha256};
 
 use crate::frontend::messages::{AsyncFrontendMessage, LoadedPalette, LoadedRom, SavestateLoadContext};
-use crate::frontend::storage::{get_storage, Storage, StorageCategory, StorageKey};
+use crate::frontend::storage::{self, get_storage, Storage, StorageCategory, StorageKey};
 
 /// Enum to represent errors that can occur during savestate loading UI flow
 pub enum SavestateLoadError {
@@ -200,8 +200,13 @@ pub fn spawn_rom_picker(sender: &Sender<AsyncFrontendMessage>, dir: Option<&Stor
                 .map(|f| StorageKey::from(&f))
                 .unwrap_or(StorageKey {
                     category: StorageCategory::Cache,
-                    sub_path: "upload_cache/palettes/".to_string(),
+                    sub_path: "upload_cache/roms/".to_string(),
                 });
+
+            // Cache ROM in storage for later access (ROM matching, etc.)
+            let cache_key = storage::rom_cache_key(&name);
+            let _ = get_storage().set(&cache_key, data.clone()).await;
+
             let _ = sender.send(AsyncFrontendMessage::LoadRom(Some(LoadedRom {
                 data,
                 name,
@@ -320,6 +325,10 @@ pub fn spawn_savestate_picker(sender: &Sender<AsyncFrontendMessage>, dir: Option
             let savestate_name = handle.file_name();
             let savestate_dir = get_file_directory(&handle);
 
+            // Cache savestate in storage for later access
+            let cache_key = storage::uploaded_savestate_key(&savestate_name);
+            let _ = get_storage().set(&cache_key, data.clone()).await;
+
             // Try to parse the savestate from the data
             let savestate = match savestate::try_load_state_from_bytes(&data) {
                 Some(s) => s,
@@ -366,6 +375,10 @@ pub fn spawn_rom_picker_for_savestate(
                 category: StorageCategory::Cache,
                 sub_path: "upload_cache/roms/".to_string()
             });
+
+            // Cache ROM in storage for later access (ROM matching, etc.)
+            let cache_key = storage::rom_cache_key(&name);
+            let _ = get_storage().set(&cache_key, data.clone()).await;
 
             let _ = sender.send(AsyncFrontendMessage::RomSelectedForSavestate(
                 context,

@@ -2,7 +2,7 @@
 //!
 //! This module provides a unified interface for persistent storage that works across:
 //! - **Native**: Uses the file system via the `directories` crate for OS-appropriate paths
-//! - **WASM**: Uses IndexedDB via `indexed_db_futures` for structured data storage
+//! - **WASM**: Uses IndexedDB via `rexie` for structured data storage
 //!
 //! # Architecture
 //!
@@ -375,89 +375,134 @@ mod native {
 mod wasm {
     use super::*;
 
-    /// WASM storage implementation using IndexedDB
+    use rexie::{Rexie, TransactionMode, KeyRange};
+    use wasm_bindgen::JsValue;
+    use js_sys::Uint8Array;
+
+    const DB_NAME: &str = "ensemble_emulator";
+    const DB_VERSION: u32 = 1;
+    const STORE_NAME: &str = "storage";
+
+    /// WASM storage implementation using IndexedDB via rexie.
     ///
-    /// This provides persistent storage in the browser using IndexedDB,
+    /// Provides persistent storage in the browser using IndexedDB,
     /// which supports larger storage limits and binary data.
     ///
     /// # Database Structure
     ///
     /// - Database name: "ensemble_emulator"
-    /// - Object store: "storage" (key-value pairs where key is the storage path)
-    ///
-    /// # Dependencies Required
-    ///
-    /// Add to Cargo.toml:
-    /// ```toml
-    /// [target.'cfg(target_arch = "wasm32")'.dependencies]
-    /// indexed_db_futures = "0.4"
-    /// js-sys = "0.3"
-    /// ```
+    /// - Object store: "storage" (key-value pairs where key is the StorageKey path string)
+    /// - Values are stored as Uint8Array (raw bytes)
+    /// - Prefix queries use KeyRange::bound() on the primary key for efficient listing
     pub struct WasmStorage;
 
     impl WasmStorage {
         pub fn new() -> Self { WasmStorage }
+
+        /// Convert StorageKey to the string key used in IndexedDB
+        fn key_string(key: &StorageKey) -> String {
+            format!("{}/{}", key.category.prefix(), key.sub_path)
+        }
     }
 
-    // Note: The actual implementation requires the indexed_db_futures crate.
-    // For now, we provide a stub that returns NotAvailable errors.
-    //
-    // When implementing, use:
-    // - indexed_db_futures::IdbDatabase for database access
-    // - Store binary data directly as Uint8Array
-    // - Use key paths that match our storage key format
-    //
-    // Example implementation pattern:
-    // ```rust
-    // async fn open_db() -> Result<IdbDatabase, StorageError> {
-    //     let mut db_req = IdbDatabase::open("ensemble_emulator")?;
-    //     db_req.set_on_upgrade_needed(Some(|evt: &IdbVersionChangeEvent| {
-    //         if !evt.db().object_store_names().contains(&"storage") {
-    //             evt.db().create_object_store("storage")?;
-    //         }
-    //         Ok(())
-    //     }));
-    //     db_req.await.map_err(|e| StorageError::IndexedDbError(e.to_string()))
-    // }
-    // ```
+    /// Open the IndexedDB database, creating the object store if needed.
+    async fn open_db() -> Result<Rexie, StorageError> {
+        Rexie::builder(DB_NAME)
+            .version(DB_VERSION)
+            .add_object_store(rexie::ObjectStore::new(STORE_NAME))
+            .build()
+            .await
+            .map_err(|e| StorageError::IndexedDbError(e.to_string()))
+    }
 
     #[async_trait(?Send)]
     impl Storage for WasmStorage {
-        async fn get(&self, _key: &StorageKey) -> StorageResult<Vec<u8>> {
-            // TODO: Implement IndexedDB read
-            // 1. Open database
-            // 2. Create read transaction
-            // 3. Get value from object store
-            // 4. Convert Uint8Array to Vec<u8>
-            Err(StorageError::NotAvailable)
+        async fn get(&self, key: &StorageKey) -> StorageResult<Vec<u8>> {
+            let db = open_db().await?;
+            let tx = db.transaction(&[STORE_NAME], TransactionMode::ReadOnly)
+                .map_err(|e| StorageError::ReadError(e.to_string()))?;
+            let store = tx.store(STORE_NAME)
+                .map_err(|e| StorageError::ReadError(e.to_string()))?;
+
+            let key_js = JsValue::from_str(&Self::key_string(key));
+            match store.get(key_js).await
+                .map_err(|e| StorageError::ReadError(e.to_string()))? {
+                Some(val) => {
+                    let array = Uint8Array::new(&val);
+                    Ok(array.to_vec())
+                }
+                None => Err(StorageError::NotFound),
+            }
         }
 
-        async fn set(&self, _key: &StorageKey, _data: Vec<u8>) -> StorageResult<()> {
-            // TODO: Implement IndexedDB write
-            // 1. Open database
-            // 2. Create readwrite transaction
-            // 3. Put value in object store
-            Err(StorageError::NotAvailable)
+        async fn set(&self, key: &StorageKey, data: Vec<u8>) -> StorageResult<()> {
+            let db = open_db().await?;
+            let tx = db.transaction(&[STORE_NAME], TransactionMode::ReadWrite)
+                .map_err(|e| StorageError::WriteError(e.to_string()))?;
+            let store = tx.store(STORE_NAME)
+                .map_err(|e| StorageError::WriteError(e.to_string()))?;
+
+            let key_js = JsValue::from_str(&Self::key_string(key));
+            let value_js: JsValue = Uint8Array::from(data.as_slice()).into();
+            store.put(&value_js, Some(&key_js)).await
+                .map_err(|e| StorageError::WriteError(e.to_string()))?;
+            tx.done().await
+                .map_err(|e| StorageError::WriteError(e.to_string()))?;
+            Ok(())
         }
 
-        async fn delete(&self, _key: &StorageKey) -> StorageResult<()> {
-            // TODO: Implement IndexedDB delete
-            Err(StorageError::NotAvailable)
+        async fn delete(&self, key: &StorageKey) -> StorageResult<()> {
+            let db = open_db().await?;
+            let tx = db.transaction(&[STORE_NAME], TransactionMode::ReadWrite)
+                .map_err(|e| StorageError::DeleteError(e.to_string()))?;
+            let store = tx.store(STORE_NAME)
+                .map_err(|e| StorageError::DeleteError(e.to_string()))?;
+
+            let key_js = JsValue::from_str(&Self::key_string(key));
+            store.delete(key_js).await
+                .map_err(|e| StorageError::DeleteError(e.to_string()))?;
+            tx.done().await
+                .map_err(|e| StorageError::DeleteError(e.to_string()))?;
+            Ok(())
         }
 
-        async fn exists(&self, _key: &StorageKey) -> StorageResult<bool> {
-            // TODO: Implement IndexedDB exists check
-            Err(StorageError::NotAvailable)
+        async fn exists(&self, key: &StorageKey) -> StorageResult<bool> {
+            let db = open_db().await?;
+            let tx = db.transaction(&[STORE_NAME], TransactionMode::ReadOnly)
+                .map_err(|e| StorageError::ReadError(e.to_string()))?;
+            let store = tx.store(STORE_NAME)
+                .map_err(|e| StorageError::ReadError(e.to_string()))?;
+
+            let key_js = JsValue::from_str(&Self::key_string(key));
+            store.key_exists(key_js).await
+                .map_err(|e| StorageError::ReadError(e.to_string()))
         }
 
-        async fn list(&self, _prefix: &StorageKey) -> StorageResult<Vec<StorageMetadata>> {
-            // TODO: Implement IndexedDB list
-            // Use IDBKeyRange.bound(prefix, prefix + '\uffff') to get all keys with prefix
-            Err(StorageError::NotAvailable)
+        async fn list(&self, prefix: &StorageKey) -> StorageResult<Vec<StorageMetadata>> {
+            let db = open_db().await?;
+            let tx = db.transaction(&[STORE_NAME], TransactionMode::ReadOnly)
+                .map_err(|e| StorageError::ReadError(e.to_string()))?;
+            let store = tx.store(STORE_NAME)
+                .map_err(|e| StorageError::ReadError(e.to_string()))?;
+
+            let prefix_str = Self::key_string(prefix);
+            let lower = JsValue::from_str(&prefix_str);
+            let upper = JsValue::from_str(&format!("{}\u{ffff}", prefix_str));
+            let range = KeyRange::bound(&lower, &upper, Some(false), Some(false))
+                .map_err(|e| StorageError::ReadError(format!("{:?}", e)))?;
+
+            let keys = store.get_all_keys(Some(range), None).await
+                .map_err(|e| StorageError::ReadError(e.to_string()))?;
+
+            Ok(keys.into_iter()
+                .filter_map(|k| k.as_string().map(|s| StorageMetadata {
+                    key: StorageKey::from(&s),
+                }))
+                .collect())
         }
 
         fn get_display_path(&self, key: &StorageKey) -> String {
-            format!("indexeddb://ensemble_emulator/{}", key)
+            format!("indexeddb://ensemble_emulator/{}", Self::key_string(key))
         }
 
         fn key_to_path_opt(&self, _key: Option<&StorageKey>) -> Option<PathBuf> {
@@ -546,6 +591,30 @@ pub fn egui_state_key() -> StorageKey {
     StorageKey {
         category: StorageCategory::Config,
         sub_path: "egui_state".to_string(),
+    }
+}
+
+/// Generate a storage key for a cached ROM file
+pub fn rom_cache_key(filename: &str) -> StorageKey {
+    StorageKey {
+        category: StorageCategory::Data,
+        sub_path: format!("roms/{}", filename),
+    }
+}
+
+/// Generate the prefix for listing all cached ROMs
+pub fn roms_prefix() -> StorageKey {
+    StorageKey {
+        category: StorageCategory::Data,
+        sub_path: "roms/".to_string(),
+    }
+}
+
+/// Generate a storage key for a cached uploaded savestate
+pub fn uploaded_savestate_key(filename: &str) -> StorageKey {
+    StorageKey {
+        category: StorageCategory::Data,
+        sub_path: format!("uploads/savestates/{}", filename),
     }
 }
 
@@ -682,34 +751,3 @@ mod sync_wrappers {
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use sync_wrappers::*;
-// ============================================================================
-// Migration Notes
-// ============================================================================
-//
-// To migrate the existing code to use this storage abstraction:
-//
-// 1. **persistence.rs**: Replace direct file operations with Storage trait calls
-//    - `get_config_dir()` → Use `config_key()` with storage
-//    - `get_data_dir()` → Use `data/` prefix keys with storage
-//    - `load_config()` → `storage.get(config_key()).await`
-//    - `save_config()` → `storage.set(config_key(), data).await`
-//
-// 2. **util.rs**: Update file pickers to work with async storage
-//    - `spawn_palette_picker` → Use async/await with storage
-//    - `spawn_save_dialog` → Use storage.set() instead of File::create
-//
-// 3. **egui_frontend.rs**: Update quicksave/autosave handling
-//    - `get_current_quicksave_path()` → Use storage.list() with async
-//    - `create_auto_save()` → Use storage.set() with autosave_key()
-//    - `cleanup_old_autosaves_async()` → Use storage.list() and storage.delete()
-//
-// 4. **Dependencies**: Add to frontend/Cargo.toml:
-//    ```toml
-//    [target.'cfg(target_arch = "wasm32")'.dependencies]
-//    indexed_db_futures = "0.4"
-//    ```
-//
-// 5. **Thread Spawning**: Replace std::thread::spawn with:
-//    - Native: tokio::spawn
-//    - WASM: wasm_bindgen_futures::spawn_local
-//    (Already partially done with spawn_async in util.rs)
