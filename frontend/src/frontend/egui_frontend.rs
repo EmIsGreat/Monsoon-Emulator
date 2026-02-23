@@ -36,7 +36,7 @@ use crate::frontend::egui::textures::EmuTextures;
 use crate::frontend::egui::tiles::{
     compute_required_fetches_from_tree, create_tree, Pane, TreeBehavior,
 };
-use crate::frontend::egui::ui::{add_menu_bar, add_status_bar, render_savestate_dialogs};
+use crate::frontend::egui::ui::{add_menu_bar, add_status_bar, render_save_browser, render_savestate_dialogs};
 use crate::frontend::messages::{
     AsyncFrontendMessage, FrontendEvent, LoadedRom, SavestateLoadContext,
 };
@@ -554,6 +554,15 @@ impl EguiApp {
         );
     }
 
+    /// Render the save browser dialog if open
+    fn render_save_browser_impl(&mut self, ctx: &Context) {
+        render_save_browser(
+            ctx,
+            &mut self.config.pending_dialogs,
+            &self.async_sender,
+        );
+    }
+
     /// Check if a periodic autosave should be triggered based on elapsed time
     fn check_periodic_autosave(&mut self) {
         // Only autosave if a ROM is loaded and console is powered
@@ -642,6 +651,9 @@ impl eframe::App for EguiApp {
 
         // Render any pending savestate dialogs
         self.render_savestate_dialogs_impl(ctx);
+
+        // Render save browser dialog if open
+        self.render_save_browser_impl(ctx);
 
         // Request continuous repaint for animation
         ctx.request_repaint();

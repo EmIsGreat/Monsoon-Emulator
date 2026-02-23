@@ -10,6 +10,7 @@ use ensemble_lockstep::emulation::screen_renderer::RgbPalette;
 
 use crate::frontend::egui::config::{
     ChecksumMismatchDialogState, ErrorDialogState, MatchingRomDialogState, RomSelectionDialogState,
+    SaveBrowserState, SaveEntry, SaveEntryType,
 };
 use crate::frontend::egui_frontend::EguiApp;
 use crate::frontend::messages::{AsyncFrontendMessage, LoadedRom, SavestateLoadContext};
@@ -129,6 +130,21 @@ impl EguiApp {
                     let _ = self.to_emulator.send(FrontendMessage::Power);
                     self.config.console_config.is_powered = true;
                 }
+            }
+            AsyncFrontendMessage::OpenSaveBrowser => {
+                self.handle_open_save_browser();
+            }
+            AsyncFrontendMessage::SaveBrowserLoaded(entries) => {
+                if let Some(ref mut browser) = self.config.pending_dialogs.save_browser {
+                    browser.entries = entries;
+                    browser.loading = false;
+                }
+            }
+            AsyncFrontendMessage::LoadSaveFromBrowser(key) => {
+                self.handle_load_save_from_browser(key);
+            }
+            AsyncFrontendMessage::ExportSaveFromBrowser(key) => {
+                self.handle_export_save_from_browser(key);
             }
             AsyncFrontendMessage::PowerOn => {
                 let _ = self
@@ -469,6 +485,168 @@ impl EguiApp {
             );
         }
     }
+
+    /// Open the save browser dialog and start loading save entries.
+    fn handle_open_save_browser(&mut self) {
+        if let Some(rom) = &self.config.user_config.loaded_rom
+            && let Some(prev_name) = &self.config.user_config.previous_rom_name
+        {
+            let rom_hash = &rom.data_checksum;
+            let display_name = util::rom_display_name(prev_name, rom_hash);
+
+            // Show the dialog immediately with loading state
+            self.config.pending_dialogs.save_browser = Some(SaveBrowserState {
+                entries: Vec::new(),
+                game_name: display_name.clone(),
+                loading: true,
+                show_quicksaves: true,
+                show_autosaves: true,
+            });
+
+            // List saves asynchronously
+            let sender = self.async_sender.clone();
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                std::thread::spawn(move || {
+                    let entries = list_save_entries(&display_name);
+                    let _ = sender.send(AsyncFrontendMessage::SaveBrowserLoaded(entries));
+                });
+            }
+            #[cfg(target_arch = "wasm32")]
+            {
+                wasm_bindgen_futures::spawn_local(async move {
+                    let entries = list_save_entries_async(&display_name).await;
+                    let _ = sender.send(AsyncFrontendMessage::SaveBrowserLoaded(entries));
+                });
+            }
+        }
+    }
+
+    /// Load a save from the browser by reading it from storage.
+    fn handle_load_save_from_browser(&mut self, key: storage::StorageKey) {
+        // Verify a ROM is loaded and its checksum matches
+        let sender = self.async_sender.clone();
+        let to_emulator = self.to_emulator.clone();
+        let loaded_rom_checksum = self.config.user_config.loaded_rom.as_ref().map(|r| r.data_checksum);
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            std::thread::spawn(move || {
+                match storage::read_sync(&key) {
+                    Ok(data) => {
+                        match savestate::try_load_state_from_bytes(&data) {
+                            Some(savestate) => {
+                                // Verify checksum
+                                if let Some(checksum) = loaded_rom_checksum {
+                                    if checksum != savestate.rom_file.data_checksum {
+                                        let _ = sender.send(AsyncFrontendMessage::SavestateLoadFailed(
+                                            SavestateLoadError::FailedToLoadSavestate,
+                                        ));
+                                        return;
+                                    }
+                                }
+                                let _ = to_emulator.send(FrontendMessage::LoadSaveState(Box::new(savestate)));
+                            }
+                            None => {
+                                let _ = sender.send(AsyncFrontendMessage::SavestateLoadFailed(
+                                    SavestateLoadError::FailedToLoadSavestate,
+                                ));
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("Failed to read save: {}", e);
+                        let _ = sender.send(AsyncFrontendMessage::SavestateLoadFailed(
+                            SavestateLoadError::FailedToLoadSavestate,
+                        ));
+                    }
+                }
+            });
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            wasm_bindgen_futures::spawn_local(async move {
+                let storage_impl = storage::get_storage();
+                match storage_impl.get(&key).await {
+                    Ok(data) => {
+                        match savestate::try_load_state_from_bytes(&data) {
+                            Some(savestate) => {
+                                if let Some(checksum) = loaded_rom_checksum {
+                                    if checksum != savestate.rom_file.data_checksum {
+                                        let _ = sender.send(AsyncFrontendMessage::SavestateLoadFailed(
+                                            SavestateLoadError::FailedToLoadSavestate,
+                                        ));
+                                        return;
+                                    }
+                                }
+                                let _ = to_emulator.send(FrontendMessage::LoadSaveState(Box::new(savestate)));
+                            }
+                            None => {
+                                let _ = sender.send(AsyncFrontendMessage::SavestateLoadFailed(
+                                    SavestateLoadError::FailedToLoadSavestate,
+                                ));
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("Failed to read save: {}", e);
+                        let _ = sender.send(AsyncFrontendMessage::SavestateLoadFailed(
+                            SavestateLoadError::FailedToLoadSavestate,
+                        ));
+                    }
+                }
+            });
+        }
+    }
+
+    /// Export a save from internal storage to a file on disk via save dialog.
+    fn handle_export_save_from_browser(&self, key: storage::StorageKey) {
+        let sender = self.async_sender.clone();
+        let save_dir = self.config.user_config.previous_savestate_save_dir.clone();
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            std::thread::spawn(move || {
+                match storage::read_sync(&key) {
+                    Ok(data) => {
+                        // Use an ExportableData wrapper to pass raw bytes to spawn_save_dialog
+                        let exportable = ExportableData(data);
+                        util::spawn_save_dialog(
+                            Some(&sender),
+                            save_dir.as_ref(),
+                            util::FileType::Savestate,
+                            Box::new(exportable),
+                        );
+                    }
+                    Err(e) => {
+                        eprintln!("Failed to read save for export: {}", e);
+                    }
+                }
+            });
+        }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            wasm_bindgen_futures::spawn_local(async move {
+                let storage_impl = storage::get_storage();
+                match storage_impl.get(&key).await {
+                    Ok(data) => {
+                        let exportable = ExportableData(data);
+                        util::spawn_save_dialog(
+                            Some(&sender),
+                            save_dir.as_ref(),
+                            util::FileType::Savestate,
+                            Box::new(exportable),
+                        );
+                    }
+                    Err(e) => {
+                        eprintln!("Failed to read save for export: {}", e);
+                    }
+                }
+            });
+        }
+    }
 }
 
 /// Try to find a ROM in the given directory whose checksum matches the savestate's expected ROM.
@@ -588,4 +766,119 @@ async fn find_matching_rom_in_storage(
     }
 
     None
+}
+
+/// Wrapper for raw bytes that implements ToBytes for the save dialog export.
+struct ExportableData(Vec<u8>);
+
+impl ensemble_lockstep::util::ToBytes for ExportableData {
+    fn to_bytes(&self, _format: Option<String>) -> Vec<u8> {
+        self.0.clone()
+    }
+}
+
+/// List save entries for a game from storage (native, synchronous).
+#[cfg(not(target_arch = "wasm32"))]
+fn list_save_entries(game_name: &str) -> Vec<SaveEntry> {
+    let mut entries = Vec::new();
+
+    // List quicksaves
+    let qs_prefix = storage::quicksaves_prefix(game_name);
+    if let Ok(qs_entries) = storage::list_sync(&qs_prefix) {
+        for entry in qs_entries {
+            if entry.key.sub_path.ends_with(".sav") {
+                if let Some(save_entry) = parse_save_entry(entry.key, SaveEntryType::Quicksave) {
+                    entries.push(save_entry);
+                }
+            }
+        }
+    }
+
+    // List autosaves
+    let as_prefix = storage::autosaves_prefix(game_name);
+    if let Ok(as_entries) = storage::list_sync(&as_prefix) {
+        for entry in as_entries {
+            if entry.key.sub_path.ends_with(".sav") {
+                if let Some(save_entry) = parse_save_entry(entry.key, SaveEntryType::Autosave) {
+                    entries.push(save_entry);
+                }
+            }
+        }
+    }
+
+    // Sort by timestamp descending (newest first)
+    entries.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+    entries
+}
+
+/// List save entries for a game from storage (WASM, asynchronous).
+#[cfg(target_arch = "wasm32")]
+async fn list_save_entries_async(game_name: &str) -> Vec<SaveEntry> {
+    let mut entries = Vec::new();
+    let storage_impl = storage::get_storage();
+
+    // List quicksaves
+    let qs_prefix = storage::quicksaves_prefix(game_name);
+    if let Ok(qs_entries) = storage_impl.list(&qs_prefix).await {
+        for entry in qs_entries {
+            if entry.key.sub_path.ends_with(".sav") {
+                if let Some(save_entry) = parse_save_entry(entry.key, SaveEntryType::Quicksave) {
+                    entries.push(save_entry);
+                }
+            }
+        }
+    }
+
+    // List autosaves
+    let as_prefix = storage::autosaves_prefix(game_name);
+    if let Ok(as_entries) = storage_impl.list(&as_prefix).await {
+        for entry in as_entries {
+            if entry.key.sub_path.ends_with(".sav") {
+                if let Some(save_entry) = parse_save_entry(entry.key, SaveEntryType::Autosave) {
+                    entries.push(save_entry);
+                }
+            }
+        }
+    }
+
+    // Sort by timestamp descending (newest first)
+    entries.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+    entries
+}
+
+/// Parse a storage key into a SaveEntry, extracting display name and timestamp.
+fn parse_save_entry(key: storage::StorageKey, save_type: SaveEntryType) -> Option<SaveEntry> {
+    // Keys look like: saves/<game>/quicksaves/quicksave_2024-01-15_14-30-00.sav
+    // or: saves/<game>/autosaves/autosaves_2024-01-15_14-30-00.sav
+    let filename = key.sub_path.rsplit('/').next()?;
+    let stem = filename.strip_suffix(".sav")?;
+
+    // Split into prefix and timestamp: "quicksave_2024-01-15_14-30-00" or with version suffix
+    let (prefix, rest) = stem.split_once('_')?;
+
+    // Try to extract timestamp - handle optional version suffix
+    let (timestamp_str, _version) = if rest.chars().filter(|c| *c == '_').count() > 1 {
+        rest.rsplit_once('_')?
+    } else {
+        (rest, "0")
+    };
+
+    // Format display name
+    let display_name = match save_type {
+        SaveEntryType::Quicksave => format!("Quicksave ({})", prefix),
+        SaveEntryType::Autosave => format!("Autosave ({})", prefix),
+    };
+
+    // Format timestamp for display
+    let timestamp = timestamp_str
+        .replace('_', " ")
+        .replacen('-', "/", 2)
+        .replacen('-', ":", 2);
+
+    Some(SaveEntry {
+        key,
+        display_name,
+        timestamp,
+        save_type,
+    })
 }

@@ -83,6 +83,14 @@ pub enum AsyncFrontendMessage {
     Quicksave,
     /// Load a ROM - contains ROM data if provided, None triggers file picker
     LoadRom(Option<LoadedRom>),
+    /// Open the save browser dialog (triggers async listing of saves)
+    OpenSaveBrowser,
+    /// Save browser has finished loading entries
+    SaveBrowserLoaded(Vec<crate::frontend::egui::config::SaveEntry>),
+    /// Load a specific save from the browser by its storage key
+    LoadSaveFromBrowser(StorageKey),
+    /// Export a specific save from the browser to a file on disk
+    ExportSaveFromBrowser(StorageKey),
 
     // =========================================================================
     // Consolidated emulator operations

@@ -77,6 +77,8 @@ pub struct PendingDialogs {
     pub rom_selection_dialog: Option<RomSelectionDialogState>,
     /// Generic error dialog for displaying error messages
     pub error_dialog: Option<ErrorDialogState>,
+    /// Save browser dialog for listing and loading internal saves
+    pub save_browser: Option<SaveBrowserState>,
 }
 
 /// State for the matching ROM dialog
@@ -106,6 +108,50 @@ pub struct RomSelectionDialogState {
 pub struct ErrorDialogState {
     pub title: String,
     pub message: String,
+}
+
+/// A single save entry for display in the save browser
+#[derive(Clone)]
+pub struct SaveEntry {
+    /// Storage key to read this save
+    pub key: StorageKey,
+    /// Display name (extracted from filename)
+    pub display_name: String,
+    /// Timestamp string extracted from the filename
+    pub timestamp: String,
+    /// Whether this is a quicksave or autosave
+    pub save_type: SaveEntryType,
+}
+
+/// Type of save entry
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum SaveEntryType {
+    Quicksave,
+    Autosave,
+}
+
+impl std::fmt::Display for SaveEntryType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SaveEntryType::Quicksave => write!(f, "Quicksave"),
+            SaveEntryType::Autosave => write!(f, "Autosave"),
+        }
+    }
+}
+
+/// State for the save browser dialog
+#[derive(Clone)]
+pub struct SaveBrowserState {
+    /// All save entries loaded from storage
+    pub entries: Vec<SaveEntry>,
+    /// The ROM display name these saves belong to
+    pub game_name: String,
+    /// Whether entries are still being loaded
+    pub loading: bool,
+    /// Filter: show quicksaves
+    pub show_quicksaves: bool,
+    /// Filter: show autosaves
+    pub show_autosaves: bool,
 }
 
 /// User configuration - stores display names and directory hints for WASM compatibility

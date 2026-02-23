@@ -30,6 +30,14 @@ pub fn add_menu_bar(
                         // Use the new multistep savestate loading flow
                         spawn_savestate_picker(async_sender, config.user_config.previous_savestate_dir.as_ref());
                     }
+
+                    ui.separator();
+
+                    if config.user_config.loaded_rom.is_some() && ui.button("Browse Saves...").clicked()
+                    {
+                        let _ = async_sender.send(AsyncFrontendMessage::OpenSaveBrowser);
+                        ui.close();
+                    }
                 });
             });
             ui.menu_button("Console", |ui| {
