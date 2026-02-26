@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
-use crate::util::{compute_hash, Hashable, ToBytes};
+
+use crate::util::{Hashable, ToBytes, compute_hash};
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Serialize, Deserialize, Default)]
 pub struct RgbColor {

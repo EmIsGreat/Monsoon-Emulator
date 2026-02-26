@@ -1,4 +1,5 @@
 use std::fmt::{Debug, Formatter};
+
 use ensemble_core::emulation::palette_util::{RgbColor, RgbPalette};
 use ensemble_core::emulation::ppu::{TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH};
 use ensemble_core::emulation::screen_renderer::ScreenRenderer;
@@ -78,9 +79,10 @@ impl LookupPaletteRenderer {
 }
 
 impl Debug for LookupPaletteRenderer {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result { f.write_str(self.get_display_name()) }
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.get_display_name())
+    }
 }
-
 
 impl ScreenRenderer for LookupPaletteRenderer {
     fn buffer_to_image(&mut self, buffer: &[u16]) -> &[RgbColor] {
