@@ -660,18 +660,6 @@ struct SetupResponse {
 
 /// Native: common setup with PathBuf for command-line ROM loading
 fn common_setup(rom: Option<PathBuf>) -> SetupResponse {
-    // On WASM, the inventory crate's linker-based collection doesn't work.
-    // Manually register all renderer implementations before anything uses them.
-    #[cfg(target_arch = "wasm32")]
-    {
-        let mut registrations = Vec::new();
-        #[cfg(feature = "default_renderers")]
-        {
-            registrations.extend(ensemble_default_renderers::get_renderer_registrations());
-        }
-        ensemble_core::emulation::screen_renderer::register_renderers(registrations);
-    }
-
     // Create the emulator instance
     let console = Nes::default();
 
