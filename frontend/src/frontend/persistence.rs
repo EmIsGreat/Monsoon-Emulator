@@ -17,7 +17,7 @@ use crossbeam_channel::{Receiver, bounded};
 use directories::ProjectDirs;
 use monsoon_core::emulation::palette_util::RgbPalette;
 use monsoon_core::emulation::ppu::EmulatorFetchable;
-use monsoon_core::emulation::screen_renderer::create_renderer;
+use monsoon_core::emulation::screen_renderer::{create_renderer, NoneRenderer, ScreenRenderer};
 use serde::{Deserialize, Serialize};
 
 use crate::frontend::egui::config::{
@@ -340,7 +340,7 @@ impl Default for PersistentViewConfig {
             show_nametable: false,
             required_debug_fetches: HashSet::new(),
             debug_active_palette: 0,
-            renderer: "NoneRenderer".to_string(),
+            renderer: NoneRenderer::new().get_id().to_string(),
         }
     }
 }
@@ -357,7 +357,7 @@ impl From<&ViewConfig> for PersistentViewConfig {
                 .map(|f| f.into())
                 .collect(),
             debug_active_palette: config.debug_active_palette,
-            renderer: config.renderer.get_display_name().to_string(),
+            renderer: config.renderer.get_id().to_string(),
         }
     }
 }
