@@ -14,8 +14,8 @@ use std::io::{Read, Write};
 use std::path::PathBuf;
 
 use monsoon_core::emulation::nes::{MASTER_CYCLES_PER_FRAME, Nes};
-use monsoon_core::emulation::palette_util::RgbColor;
-use monsoon_core::emulation::savestate::{SaveState, try_load_state};
+use monsoon_core::emulation::savestate::{SaveState, try_load_state_from_bytes};
+use monsoon_core::util::ToBytes;
 
 use crate::cli::args::parse_hex_u8;
 // =============================================================================
@@ -545,8 +545,8 @@ pub struct ExecutionEngine {
     pub config: ExecutionConfig,
     /// Savestate configuration
     pub savestate_config: SavestateConfig,
-    /// Collected frames (used in buffered mode)
-    pub frames: Vec<Vec<RgbColor>>,
+    /// Collected frames (used in buffered mode) - raw palette indices
+    pub frames: Vec<Vec<u16>>,
     /// Track current frame count
     frame_count: u64,
     /// Whether to collect frames (set to false for streaming mode)
@@ -592,7 +592,8 @@ impl ExecutionEngine {
 
     /// Load ROM from path
     pub fn load_rom(&mut self, path: &PathBuf) -> Result<(), String> {
-        self.emu.load_rom(path);
+        let path_str = path.to_string_lossy().to_string();
+        self.emu.load_rom(&path_str);
         Ok(())
     }
 
@@ -609,8 +610,12 @@ impl ExecutionEngine {
     pub fn load_savestate(&mut self) -> Result<(), String> {
         if let Some(ref source) = self.savestate_config.load_from {
             let state = match source {
-                SavestateSource::File(path) => try_load_state(path)
-                    .ok_or_else(|| format!("Failed to load savestate from {}", path.display()))?,
+                SavestateSource::File(path) => {
+                    let data = std::fs::read(path)
+                        .map_err(|e| format!("Failed to read savestate from {}: {}", path.display(), e))?;
+                    try_load_state_from_bytes(&data)
+                        .ok_or_else(|| format!("Failed to load savestate from {}", path.display()))?
+                }
                 SavestateSource::Stdin => {
                     let mut buffer = Vec::new();
                     std::io::stdin()
@@ -628,7 +633,8 @@ impl ExecutionEngine {
     /// Save savestate based on configuration
     pub fn save_savestate(&self) -> Result<(), String> {
         if let Some(ref dest) = self.savestate_config.save_to {
-            let state = self.emu.save_state();
+            let state = self.emu.save_state()
+                .ok_or_else(|| "No ROM loaded, cannot save state".to_string())?;
             let encoded = encode_savestate(&state, self.savestate_config.format)?;
 
             match dest {
@@ -650,8 +656,8 @@ impl ExecutionEngine {
     /// Run execution until a stop condition is met
     pub fn run(&mut self) -> Result<ExecutionResult, String> {
         // Set up trace if configured
-        if let Some(ref path) = self.config.trace_path {
-            self.emu.set_trace_log_path(Some(path.clone()));
+        if self.config.trace_path.is_some() {
+            self.emu.enable_trace();
         }
 
         let max_cycles = self.config.max_cycles();
@@ -734,8 +740,8 @@ impl ExecutionEngine {
         self.collect_frames = false;
 
         // Set up trace if configured
-        if let Some(ref path) = self.config.trace_path {
-            self.emu.set_trace_log_path(Some(path.clone()));
+        if self.config.trace_path.is_some() {
+            self.emu.enable_trace();
         }
 
         let max_cycles = self.config.max_cycles();
@@ -789,8 +795,9 @@ impl ExecutionEngine {
                 // Write frame directly to encoder (with upscaling if configured)
                 // This captures the current pixel buffer state, which may be mid-render
                 let frame = self.emu.get_pixel_buffer();
+                let rgb_frame = super::headless::palette_indices_to_rgb(&frame);
                 encoder
-                    .write_frame(&frame)
+                    .write_frame(&rgb_frame)
                     .map_err(|e| format!("Video encoding error: {}", e))?;
 
                 // Only increment frame_count at the end of a full PPU frame
@@ -852,26 +859,15 @@ impl Default for ExecutionEngine {
 /// This is more robust than checking for `{` which could fail with
 /// whitespace-prefixed JSON or misidentify binary data.
 fn decode_savestate(bytes: &[u8]) -> Result<SaveState, String> {
-    // Try JSON first (handles both compact and pretty-printed JSON)
-    if let Ok(state) = serde_json::from_slice::<SaveState>(bytes) {
-        return Ok(state);
-    }
-
-    // Fall back to binary format
-    bincode::serde::decode_from_slice(bytes, bincode::config::standard())
-        .map(|(state, _)| state)
-        .map_err(|e| format!("Failed to decode savestate (tried JSON and binary): {}", e))
+    try_load_state_from_bytes(bytes)
+        .ok_or_else(|| "Failed to decode savestate (tried all supported formats)".to_string())
 }
 
 /// Encode a savestate to bytes in the specified format
 fn encode_savestate(state: &SaveState, format: SavestateFormat) -> Result<Vec<u8>, String> {
     match format {
-        SavestateFormat::Binary => {
-            bincode::serde::encode_to_vec(state, bincode::config::standard())
-                .map_err(|e| format!("Failed to encode binary savestate: {}", e))
-        }
-        SavestateFormat::Json => serde_json::to_vec_pretty(state)
-            .map_err(|e| format!("Failed to encode JSON savestate: {}", e)),
+        SavestateFormat::Binary => Ok(state.to_bytes(None)),
+        SavestateFormat::Json => Ok(state.to_bytes(Some("json".to_string()))),
     }
 }
 

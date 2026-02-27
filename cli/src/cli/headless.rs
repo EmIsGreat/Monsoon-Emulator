@@ -11,7 +11,7 @@ use std::path::Path;
 use std::time::Instant;
 
 use monsoon_core::emulation::nes::Nes;
-use monsoon_core::emulation::palette_util::RgbColor;
+use monsoon_core::emulation::palette_util::{RgbColor, RgbPalette};
 use monsoon_core::emulation::ppu::{TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH};
 use monsoon_core::emulation::rom::RomFile;
 
@@ -33,6 +33,21 @@ pub const NES_WIDTH: u32 = TOTAL_OUTPUT_WIDTH as u32;
 /// NES output height in pixels (240). Re-exported from core as u32 for image library APIs
 /// which require u32 dimensions rather than usize.
 pub const NES_HEIGHT: u32 = TOTAL_OUTPUT_HEIGHT as u32;
+
+/// Convert palette indices (u16) to RGB colors using the default NES palette.
+///
+/// Each u16 value encodes: bits 0-5 = color index (0-63), bits 6-8 = emphasis bits.
+pub fn palette_indices_to_rgb(indices: &[u16]) -> Vec<RgbColor> {
+    let palette = RgbPalette::default();
+    indices
+        .iter()
+        .map(|&idx| {
+            let color = (idx as usize) & 0x3F;
+            let emphasis = ((idx as usize) >> 6) & 0x07;
+            palette.colors[emphasis][color]
+        })
+        .collect()
+}
 
 // =============================================================================
 // Main Headless Entry Point
@@ -139,7 +154,9 @@ fn handle_rom_info(args: &CliArgs) -> Result<(), String> {
 /// Print ROM information to stdout.
 pub fn print_rom_info(rom_path: &Path) -> Result<(), String> {
     let path_str = rom_path.to_string_lossy().to_string();
-    let rom = RomFile::load(&path_str);
+    let data = std::fs::read(rom_path)
+        .map_err(|e| format!("Failed to read ROM file: {}", e))?;
+    let rom = RomFile::load(&data, Some(path_str));
 
     println!("ROM Information:");
     println!("  File: {}", rom_path.display());
@@ -306,7 +323,8 @@ fn run_with_streaming_video(
     // Handle screenshot in streaming mode (save last frame)
     if args.video.screenshot.is_some() {
         let last_frame = engine.emulator().get_pixel_buffer();
-        save_single_screenshot(&last_frame, args)?;
+        let rgb_frame = palette_indices_to_rgb(&last_frame);
+        save_single_screenshot(&rgb_frame, args)?;
     }
 
     Ok(result)
@@ -391,8 +409,8 @@ fn print_video_info(
 fn save_single_screenshot(frame: &[RgbColor], args: &CliArgs) -> Result<(), String> {
     if let Some(ref screenshot_path) = args.video.screenshot {
         let img: image::RgbaImage = image::ImageBuffer::from_fn(NES_WIDTH, NES_HEIGHT, |x, y| {
-            let (r, g, b) = frame[(y * NES_WIDTH + x) as usize];
-            image::Rgba([r, g, b, 255])
+            let color = frame[(y * NES_WIDTH + x) as usize];
+            image::Rgba([color.r, color.g, color.b, 255])
         });
 
         img.save(screenshot_path)
@@ -406,7 +424,7 @@ fn save_single_screenshot(frame: &[RgbColor], args: &CliArgs) -> Result<(), Stri
 }
 
 /// Save screenshot to file from buffered frames
-pub fn save_screenshot(frames: &[Vec<RgbColor>], args: &CliArgs) -> Result<(), String> {
+pub fn save_screenshot(frames: &[Vec<u16>], args: &CliArgs) -> Result<(), String> {
     if let Some(ref screenshot_path) = args.video.screenshot {
         if frames.is_empty() {
             eprintln!("Warning: No frames to screenshot");
@@ -415,13 +433,14 @@ pub fn save_screenshot(frames: &[Vec<RgbColor>], args: &CliArgs) -> Result<(), S
 
         // Use the last frame for screenshot
         let frame = frames.last().unwrap();
+        let rgb_frame = palette_indices_to_rgb(frame);
 
         if !args.quiet {
             eprintln!("Saving screenshot to {}...", screenshot_path.display());
         }
 
         // Convert RgbColor to RGB bytes for PNG
-        let rgb_data: Vec<u8> = frame.iter().flat_map(|&(r, g, b)| [r, g, b]).collect();
+        let rgb_data: Vec<u8> = rgb_frame.iter().flat_map(|c| [c.r, c.g, c.b]).collect();
 
         // Create PNG using image crate
         let img: image::ImageBuffer<image::Rgb<u8>, Vec<u8>> =
@@ -444,7 +463,7 @@ pub fn save_screenshot(frames: &[Vec<RgbColor>], args: &CliArgs) -> Result<(), S
 // =============================================================================
 
 /// Save recorded frames to video file
-pub fn save_video(frames: &[Vec<RgbColor>], args: &CliArgs) -> Result<(), String> {
+pub fn save_video(frames: &[Vec<u16>], args: &CliArgs) -> Result<(), String> {
     if let Some(ref video_path) = args.video.video_path {
         // Check if format requires FFmpeg and warn if not available
         if args.video.video_format == VideoFormat::Mp4 && !is_ffmpeg_available() {
@@ -498,7 +517,8 @@ pub fn save_video(frames: &[Vec<RgbColor>], args: &CliArgs) -> Result<(), String
         .map_err(|e| format!("Failed to create video encoder: {}", e))?;
 
         for frame in frames {
-            encoder.write_frame(frame).map_err(|e| e.to_string())?;
+            let rgb_frame = palette_indices_to_rgb(frame);
+            encoder.write_frame(&rgb_frame).map_err(|e| e.to_string())?;
         }
 
         encoder.finish().map_err(|e| e.to_string())?;

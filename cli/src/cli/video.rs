@@ -466,8 +466,8 @@ impl VideoEncoder for PngSequenceEncoder {
         }
 
         let img: RgbaImage = ImageBuffer::from_fn(self.width, self.height, |x, y| {
-            let (r, g, b) = pixel_buffer[(y * self.width + x) as usize];
-            Rgba([r, g, b, 255])
+            let color = pixel_buffer[(y * self.width + x) as usize];
+            Rgba([color.r, color.g, color.b, 255])
         });
 
         let path = self.frame_path(self.frame_count);
@@ -544,7 +544,7 @@ impl VideoEncoder for PpmSequenceEncoder {
         writeln!(writer, "{} {}", self.width, self.height)?;
         writeln!(writer, "255")?;
 
-        for &(r, g, b) in pixel_buffer {
+        for &RgbColor { r, g, b } in pixel_buffer {
             writer.write_all(&[r, g, b])?;
         }
 
@@ -705,7 +705,7 @@ impl VideoEncoder for FfmpegMp4Encoder {
 
         // Convert RGB to BGRA
         let mut bgra_buffer = Vec::with_capacity(pixel_buffer.len() * 4);
-        for &(r, g, b) in pixel_buffer {
+        for &RgbColor { r, g, b } in pixel_buffer {
             bgra_buffer.extend_from_slice(&[b, g, r, 255]);
         }
 
@@ -821,7 +821,7 @@ impl VideoEncoder for RawEncoder {
         }
 
         // Convert RGB to BGRA and write to stdout
-        for &(r, g, b) in pixel_buffer {
+        for &RgbColor { r, g, b } in pixel_buffer {
             self.stdout.write_all(&[b, g, r, 255])?;
         }
 
