@@ -65,7 +65,9 @@ jobs:
           path: artifacts/
 
   release:
-    needs: build
+    needs:
+      - build
+      - publish-crates
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
