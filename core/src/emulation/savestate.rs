@@ -313,9 +313,6 @@ pub struct SaveState {
     pub version: u16,
     /// Total master clock cycles at the time of capture.
     pub total_cycles: u128,
-    /// CPU clock divider counter at the time of capture.
-    pub cycle: u8,
-    /// PPU clock divider counter at the time of capture.
     pub ppu_cycle_counter: u8,
     /// CPU clock divider counter at the time of capture.
     pub cpu_cycle_counter: u8,
