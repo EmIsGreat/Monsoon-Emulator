@@ -188,7 +188,7 @@ pub use execution::{
     ExecutionConfig, ExecutionEngine, ExecutionResult, MemoryAccessType, SavestateConfig,
     SavestateDestination, SavestateSource, StopCondition, StopReason,
 };
-pub use headless::run_headless;
+pub use headless::{create_renderer_from_args, list_renderers, run_headless};
 pub use memory_init::{MemoryInit, MemoryInitConfig, apply_memory_init, apply_memory_init_config};
 pub use output::{
     InterpretedNametable, InterpretedNametables, InterpretedOam, MemoryDump, MemoryFormatter,

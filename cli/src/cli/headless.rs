@@ -11,9 +11,10 @@ use std::path::Path;
 use std::time::Instant;
 
 use monsoon_core::emulation::nes::Nes;
-use monsoon_core::emulation::palette_util::{RgbColor, RgbPalette};
+use monsoon_core::emulation::palette_util::RgbColor;
 use monsoon_core::emulation::ppu::{TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH};
 use monsoon_core::emulation::rom::RomFile;
+use monsoon_core::emulation::screen_renderer::{ScreenRenderer, create_renderer};
 
 use crate::cli::{
     CliArgs, ExecutionConfig, ExecutionEngine, ExecutionResult, FpsConfig, MemoryDump, MemoryInit,
@@ -34,26 +35,23 @@ pub const NES_WIDTH: u32 = TOTAL_OUTPUT_WIDTH as u32;
 /// which require u32 dimensions rather than usize.
 pub const NES_HEIGHT: u32 = TOTAL_OUTPUT_HEIGHT as u32;
 
-/// Bitmask for extracting the 6-bit color index from a palette index
-const COLOR_INDEX_MASK: usize = 0x3F;
-/// Number of bits to shift right to extract emphasis bits
-const EMPHASIS_SHIFT: usize = 6;
-/// Bitmask for extracting the 3-bit emphasis value
-const EMPHASIS_MASK: usize = 0x07;
-
-/// Convert palette indices (u16) to RGB colors using the default NES palette.
+/// Create a screen renderer based on CLI arguments.
 ///
-/// Each u16 value encodes: bits 0-5 = color index (0-63), bits 6-8 = emphasis bits.
-pub fn palette_indices_to_rgb(indices: &[u16]) -> Vec<RgbColor> {
-    let palette = RgbPalette::default();
-    indices
-        .iter()
-        .map(|&idx| {
-            let color = (idx as usize) & COLOR_INDEX_MASK;
-            let emphasis = ((idx as usize) >> EMPHASIS_SHIFT) & EMPHASIS_MASK;
-            palette.colors[emphasis][color]
-        })
-        .collect()
+/// Uses the `--renderer` argument to select a renderer by ID.
+/// Falls back to "PaletteLookup" if no renderer is specified.
+pub fn create_renderer_from_args(args: &CliArgs) -> Box<dyn ScreenRenderer> {
+    let renderer_name = args.video.renderer.as_deref().unwrap_or("PaletteLookup");
+    let renderers = crate::get_all_renderers();
+    create_renderer(Some(renderer_name), renderers)
+}
+
+/// List all available renderers and print them to stdout.
+pub fn list_renderers() {
+    let renderers = crate::get_all_renderers();
+    println!("Available renderers:");
+    for reg in &renderers {
+        println!("  {} - {}", reg.key, reg.display_name);
+    }
 }
 
 // =============================================================================
@@ -64,12 +62,25 @@ pub fn palette_indices_to_rgb(indices: &[u16]) -> Vec<RgbColor> {
 ///
 /// This is the main entry point for headless CLI execution.
 pub fn run_headless(args: &CliArgs) -> Result<(), String> {
+    // Handle renderer listing (exits early)
+    if args.video.list_renderers {
+        list_renderers();
+        return Ok(());
+    }
+
     // Handle ROM info display (exits early)
     if args.rom.rom_info {
         return handle_rom_info(args);
     }
 
     let start = Instant::now();
+
+    // Create the screen renderer based on CLI args
+    let mut renderer = create_renderer_from_args(args);
+
+    if args.verbose {
+        eprintln!("Using renderer: {}", renderer.get_display_name());
+    }
 
     // Build execution and savestate configs from CLI args
     let exec_config = ExecutionConfig::from_cli_args(args);
@@ -107,7 +118,7 @@ pub fn run_headless(args: &CliArgs) -> Result<(), String> {
     let use_streaming = args.video.video_path.is_some();
 
     let result = if use_streaming {
-        run_with_streaming_video(&mut engine, args)?
+        run_with_streaming_video(&mut engine, &mut renderer, args)?
     } else {
         // Standard buffered mode
         engine.run()?
@@ -129,12 +140,12 @@ pub fn run_headless(args: &CliArgs) -> Result<(), String> {
 
     // Save screenshot (only if we have frames - in buffered mode)
     if !use_streaming {
-        save_screenshot(&engine.frames, args)?;
+        save_screenshot(&engine.frames, &mut renderer, args)?;
     }
 
     // Video was already saved in streaming mode, skip in buffered mode if already done
     if !use_streaming {
-        save_video(&engine.frames, args)?;
+        save_video(&engine.frames, &mut renderer, args)?;
     }
 
     // Check for error stop reason
@@ -268,6 +279,7 @@ pub fn apply_memory_initialization(emu: &mut Nes, args: &CliArgs) -> Result<(), 
 /// memory usage for long recordings.
 fn run_with_streaming_video(
     engine: &mut ExecutionEngine,
+    renderer: &mut Box<dyn ScreenRenderer>,
     args: &CliArgs,
 ) -> Result<ExecutionResult, String> {
     let video_path = args.video.video_path.as_ref().unwrap();
@@ -316,7 +328,7 @@ fn run_with_streaming_video(
     .map_err(|e| format!("Failed to create video encoder: {}", e))?;
 
     // Run with streaming video export
-    let result = engine.run_with_video_encoder(&mut encoder)?;
+    let result = engine.run_with_video_encoder(&mut encoder, renderer)?;
 
     // Finalize encoder
     encoder
@@ -330,8 +342,8 @@ fn run_with_streaming_video(
     // Handle screenshot in streaming mode (save last frame)
     if args.video.screenshot.is_some() {
         let last_frame = engine.emulator().get_pixel_buffer();
-        let rgb_frame = palette_indices_to_rgb(&last_frame);
-        save_single_screenshot(&rgb_frame, args)?;
+        let rgb_frame = renderer.buffer_to_image(&last_frame);
+        save_single_screenshot(rgb_frame, args)?;
     }
 
     Ok(result)
@@ -431,7 +443,7 @@ fn save_single_screenshot(frame: &[RgbColor], args: &CliArgs) -> Result<(), Stri
 }
 
 /// Save screenshot to file from buffered frames
-pub fn save_screenshot(frames: &[Vec<u16>], args: &CliArgs) -> Result<(), String> {
+pub fn save_screenshot(frames: &[Vec<u16>], renderer: &mut Box<dyn ScreenRenderer>, args: &CliArgs) -> Result<(), String> {
     if let Some(ref screenshot_path) = args.video.screenshot {
         if frames.is_empty() {
             eprintln!("Warning: No frames to screenshot");
@@ -440,7 +452,7 @@ pub fn save_screenshot(frames: &[Vec<u16>], args: &CliArgs) -> Result<(), String
 
         // Use the last frame for screenshot
         let frame = frames.last().unwrap();
-        let rgb_frame = palette_indices_to_rgb(frame);
+        let rgb_frame = renderer.buffer_to_image(frame);
 
         if !args.quiet {
             eprintln!("Saving screenshot to {}...", screenshot_path.display());
@@ -470,7 +482,7 @@ pub fn save_screenshot(frames: &[Vec<u16>], args: &CliArgs) -> Result<(), String
 // =============================================================================
 
 /// Save recorded frames to video file
-pub fn save_video(frames: &[Vec<u16>], args: &CliArgs) -> Result<(), String> {
+pub fn save_video(frames: &[Vec<u16>], renderer: &mut Box<dyn ScreenRenderer>, args: &CliArgs) -> Result<(), String> {
     if let Some(ref video_path) = args.video.video_path {
         // Check if format requires FFmpeg and warn if not available
         if args.video.video_format == VideoFormat::Mp4 && !is_ffmpeg_available() {
@@ -524,8 +536,8 @@ pub fn save_video(frames: &[Vec<u16>], args: &CliArgs) -> Result<(), String> {
         .map_err(|e| format!("Failed to create video encoder: {}", e))?;
 
         for frame in frames {
-            let rgb_frame = palette_indices_to_rgb(frame);
-            encoder.write_frame(&rgb_frame).map_err(|e| e.to_string())?;
+            let rgb_frame = renderer.buffer_to_image(frame);
+            encoder.write_frame(rgb_frame).map_err(|e| e.to_string())?;
         }
 
         encoder.finish().map_err(|e| e.to_string())?;

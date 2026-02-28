@@ -20,4 +20,5 @@ toml = {version = "1.0.2", features = ["fast_hash"]}
 image = {version = "0.25.9"}
 
 monsoon-core = { path = "../core" }
+monsoon-default-renderers = { path = "../renderer" }
 

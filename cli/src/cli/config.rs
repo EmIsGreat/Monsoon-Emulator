@@ -129,6 +129,8 @@ pub struct VideoConfig {
     /// Video export mode: "accurate" or "smooth"
     pub video_mode: Option<String>,
     pub video_scale: Option<String>,
+    /// Screen renderer ID (e.g., "PaletteLookup")
+    pub renderer: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -316,6 +318,10 @@ impl ConfigFile {
         {
             cli.video.video_mode =
                 VideoExportMode::from_str(mode).unwrap_or(VideoExportMode::Accurate);
+        }
+        // Renderer option
+        if cli.video.renderer.is_none() {
+            cli.video.renderer = self.video.renderer.clone();
         }
 
         // Execution options

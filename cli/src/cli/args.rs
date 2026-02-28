@@ -211,8 +211,14 @@ pub struct VideoArgs {
     #[arg(long)]
     pub video_scale: Option<String>,
 
+    /// Screen renderer to use for palette-to-RGB conversion.
+    /// Use --list-renderers to see available options.
     #[arg(long)]
     pub renderer: Option<String>,
+
+    /// List available screen renderers and exit
+    #[arg(long, default_value_t = false)]
+    pub list_renderers: bool,
 }
 
 /// Video export mode options

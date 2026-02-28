@@ -740,6 +740,7 @@ impl ExecutionEngine {
     pub fn run_with_video_encoder(
         &mut self,
         encoder: &mut super::video::StreamingVideoEncoder,
+        renderer: &mut Box<dyn monsoon_core::emulation::screen_renderer::ScreenRenderer>,
     ) -> Result<ExecutionResult, String> {
         // Disable frame collection for streaming mode
         self.collect_frames = false;
@@ -800,9 +801,9 @@ impl ExecutionEngine {
                 // Write frame directly to encoder (with upscaling if configured)
                 // This captures the current pixel buffer state, which may be mid-render
                 let frame = self.emu.get_pixel_buffer();
-                let rgb_frame = super::headless::palette_indices_to_rgb(&frame);
+                let rgb_frame = renderer.buffer_to_image(&frame);
                 encoder
-                    .write_frame(&rgb_frame)
+                    .write_frame(rgb_frame)
                     .map_err(|e| format!("Video encoding error: {}", e))?;
 
                 // Only increment frame_count at the end of a full PPU frame

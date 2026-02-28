@@ -33,6 +33,12 @@ fn main() -> ExitCode {
         }
     };
 
+    // Skip full validation for list-renderers (it doesn't need ROM etc.)
+    if args.video.list_renderers {
+        let _ = run_headless(&args);
+        return ExitCode::from(EXIT_SUCCESS);
+    }
+
     if let Err(e) = validate_args(&args) {
         eprintln!("Invalid arguments: {}", e);
         return ExitCode::from(EXIT_INVALID_ARGS);
