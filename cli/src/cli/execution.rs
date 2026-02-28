@@ -116,6 +116,7 @@ impl StopCondition {
         for s in vec {
             let cond = Self::parse_single_condition(s);
 
+            #[allow(clippy::question_mark)]
             if let Ok(cond) = cond {
                 res.push(cond)
             } else if let Err(cond) = cond {
