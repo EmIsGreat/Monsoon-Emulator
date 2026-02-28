@@ -6,12 +6,12 @@ A cycle-accurate NES (Nintendo Entertainment System) emulator written in Rust. M
 
 Monsoon is organized as a Cargo workspace with four crates:
 
-| Crate | Package Name | Description |
-|-------|-------------|-------------|
-| [`core`](./core) | `monsoon-core` | Core emulation library — CPU, PPU, memory, ROM parsing, save states |
+| Crate                    | Package Name                | Description                                                                   |
+|--------------------------|-----------------------------|-------------------------------------------------------------------------------|
+| [`core`](./core)         | `monsoon-core`              | Core emulation library — CPU, PPU, memory, ROM parsing, save states           |
 | [`renderer`](./renderer) | `monsoon-default-renderers` | Default screen renderer implementations (lookup table-based palette renderer) |
-| [`cli`](./cli) | `monsoon-cli` | Headless command-line interface for scripted/batch emulation |
-| [`frontend`](./frontend) | `monsoon-frontend` | Native GUI application built with [egui](https://github.com/emilk/egui) |
+| [`cli`](./cli)           | `monsoon-cli`               | Headless command-line interface for scripted/batch emulation                  |
+| [`frontend`](./frontend) | `monsoon-frontend`          | GUI application built with [egui](https://github.com/emilk/egui)              |
 
 ### `monsoon-core`
 

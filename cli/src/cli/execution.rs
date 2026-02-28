@@ -611,10 +611,12 @@ impl ExecutionEngine {
         if let Some(ref source) = self.savestate_config.load_from {
             let state = match source {
                 SavestateSource::File(path) => {
-                    let data = std::fs::read(path)
-                        .map_err(|e| format!("Failed to read savestate from {}: {}", path.display(), e))?;
-                    try_load_state_from_bytes(&data)
-                        .ok_or_else(|| format!("Failed to load savestate from {}", path.display()))?
+                    let data = std::fs::read(path).map_err(|e| {
+                        format!("Failed to read savestate from {}: {}", path.display(), e)
+                    })?;
+                    try_load_state_from_bytes(&data).ok_or_else(|| {
+                        format!("Failed to load savestate from {}", path.display())
+                    })?
                 }
                 SavestateSource::Stdin => {
                     let mut buffer = Vec::new();
@@ -633,7 +635,9 @@ impl ExecutionEngine {
     /// Save savestate based on configuration
     pub fn save_savestate(&self) -> Result<(), String> {
         if let Some(ref dest) = self.savestate_config.save_to {
-            let state = self.emu.save_state()
+            let state = self
+                .emu
+                .save_state()
                 .ok_or_else(|| "No ROM loaded, cannot save state".to_string())?;
             let encoded = encode_savestate(&state, self.savestate_config.format)?;
 
@@ -856,8 +860,9 @@ impl ExecutionEngine {
     fn write_trace_log(&self) -> Result<(), String> {
         if let Some(ref path) = self.config.trace_path {
             if let Some(ref trace) = self.emu.trace_log {
-                std::fs::write(path, &trace.log)
-                    .map_err(|e| format!("Failed to write trace log to {}: {}", path.display(), e))?;
+                std::fs::write(path, &trace.log).map_err(|e| {
+                    format!("Failed to write trace log to {}: {}", path.display(), e)
+                })?;
             }
         }
         Ok(())

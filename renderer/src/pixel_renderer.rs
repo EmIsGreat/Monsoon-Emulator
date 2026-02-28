@@ -54,9 +54,9 @@ impl From<RgbPalette> for FlatPalette {
 /// # Example
 ///
 /// ```rust,no_run
-/// use monsoon_default_renderers::LookupPaletteRenderer;
-/// use monsoon_core::emulation::screen_renderer::ScreenRenderer;
 /// use monsoon_core::emulation::palette_util::RgbPalette;
+/// use monsoon_core::emulation::screen_renderer::ScreenRenderer;
+/// use monsoon_default_renderers::LookupPaletteRenderer;
 ///
 /// let mut renderer = LookupPaletteRenderer::default();
 ///

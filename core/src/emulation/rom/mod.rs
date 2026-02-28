@@ -75,8 +75,7 @@ pub trait RomParser: Debug {
 /// use monsoon_core::emulation::rom::RomFile;
 ///
 /// # let raw_bytes: &[u8] = &[];
-/// let rom = RomFile::load(raw_bytes, Some("my_game.nes".to_string()))
-///     .expect("invalid ROM");
+/// let rom = RomFile::load(raw_bytes, Some("my_game.nes".to_string())).expect("invalid ROM");
 /// println!("Mapper: {}", rom.mapper_number);
 /// ```
 ///

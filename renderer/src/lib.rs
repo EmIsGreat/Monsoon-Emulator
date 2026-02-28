@@ -7,8 +7,8 @@
 //! # Example
 //!
 //! ```rust,no_run
-//! use monsoon_default_renderers::LookupPaletteRenderer;
 //! use monsoon_core::emulation::screen_renderer::ScreenRenderer;
+//! use monsoon_default_renderers::LookupPaletteRenderer;
 //!
 //! let mut renderer = LookupPaletteRenderer::new();
 //!

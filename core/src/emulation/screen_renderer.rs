@@ -12,15 +12,14 @@
 //!
 //! ```rust,no_run
 //! use std::fmt::{Debug, Formatter};
+//!
 //! use monsoon_core::emulation::palette_util::{RgbColor, RgbPalette};
 //! use monsoon_core::emulation::screen_renderer::ScreenRenderer;
 //!
-//! struct MyRenderer { /* ... */ }
+//! struct MyRenderer {/* ... */}
 //!
 //! impl Debug for MyRenderer {
-//!     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-//!         f.write_str("MyRenderer")
-//!     }
+//!     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result { f.write_str("MyRenderer") }
 //! }
 //!
 //! impl ScreenRenderer for MyRenderer {
@@ -28,10 +27,16 @@
 //!         // Convert palette indices to RGB colors
 //!         todo!()
 //!     }
-//!     fn set_palette(&mut self, palette: RgbPalette) { /* ... */ }
+//!
+//!     fn set_palette(&mut self, palette: RgbPalette) { /* ... */
+//!     }
+//!
 //!     fn get_width(&self) -> usize { 256 }
+//!
 //!     fn get_height(&self) -> usize { 240 }
+//!
 //!     fn get_id(&self) -> &'static str { "my_renderer" }
+//!
 //!     fn get_display_name(&self) -> &'static str { "My Custom Renderer" }
 //! }
 //! ```

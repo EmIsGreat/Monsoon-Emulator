@@ -94,7 +94,7 @@ static DEFAULT_PALETTE: &[u8] = include_bytes!("../../../core/assets/2C02G_wiki.
 /// # Example
 ///
 /// ```rust
-/// use monsoon_core::emulation::palette_util::{parse_palette_from_bytes, RgbPalette};
+/// use monsoon_core::emulation::palette_util::{RgbPalette, parse_palette_from_bytes};
 ///
 /// // Load the default palette explicitly
 /// let palette = RgbPalette::default();

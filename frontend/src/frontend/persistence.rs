@@ -17,7 +17,7 @@ use crossbeam_channel::{Receiver, bounded};
 use directories::ProjectDirs;
 use monsoon_core::emulation::palette_util::RgbPalette;
 use monsoon_core::emulation::ppu::EmulatorFetchable;
-use monsoon_core::emulation::screen_renderer::{create_renderer, NoneRenderer, ScreenRenderer};
+use monsoon_core::emulation::screen_renderer::{NoneRenderer, ScreenRenderer, create_renderer};
 use serde::{Deserialize, Serialize};
 
 use crate::frontend::egui::config::{
