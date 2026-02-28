@@ -51,11 +51,11 @@ jobs:
         run: |
           mkdir -p artifacts
           if [ "${{ runner.os }}" = "Windows" ]; then
-            cp target/release/cli.exe "artifacts/monsoon-cli-${{ matrix.target }}.exe"
-            cp target/release/frontend.exe "artifacts/monsoon-frontend-${{ matrix.target }}.exe"
+            cp target/full_release/cli.exe "artifacts/monsoon-cli-${{ matrix.target }}.exe"
+            cp target/full_release/frontend.exe "artifacts/monsoon-frontend-${{ matrix.target }}.exe"
           else
-            cp target/release/cli "artifacts/monsoon-cli-${{ matrix.target }}"
-            cp target/release/frontend "artifacts/monsoon-frontend-${{ matrix.target }}"
+            cp target/full_release/cli "artifacts/monsoon-cli-${{ matrix.target }}"
+            cp target/full_release/frontend "artifacts/monsoon-frontend-${{ matrix.target }}"
           fi
 
       - name: Upload artifacts
