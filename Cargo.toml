@@ -10,7 +10,7 @@ version = "0.1.0"
 edition = "2024"
 license = "MIT"
 repository = "https://github.com/TimMayr/Monsoon-Emulator"
-keywords = ["nes", "emulator", "nintendo", "6502"]
+keywords = ["nes", "emulator", "nintendo"]
 categories = ["emulators", "game-development"]
 
 [workspace.dependencies]
