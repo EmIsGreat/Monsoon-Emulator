@@ -13,24 +13,94 @@ use crate::emulation::rom::RomFile;
 use crate::emulation::savestate::{CpuState, PpuState, SaveState};
 use crate::trace::TraceLog;
 
+/// Number of CPU cycles executed in a single NTSC frame (~29,780).
 pub const CPU_CYCLES_PER_FRAME: u16 = 29780;
+
+/// Duration of a single NTSC frame (~16.67 ms, targeting ~60 FPS).
 pub const FRAME_DURATION: Duration = Duration::from_nanos(16_666_667);
+
+/// Number of master clock cycles per NTSC frame (357,366).
+///
+/// The NES master clock runs at ~21.477 MHz. The CPU divides this by 12 and
+/// the PPU divides it by 4, so one master cycle is the finest timing granularity.
 pub const MASTER_CYCLES_PER_FRAME: u32 = 357366;
 
+/// The top-level NES emulator.
+///
+/// `Nes` orchestrates the CPU, PPU, and memory subsystems to provide
+/// cycle-accurate emulation of the Nintendo Entertainment System. It is the
+/// primary entry point for consumers of this library.
+///
+/// # Lifecycle
+///
+/// 1. Create an instance with [`Nes::default()`] or [`Nes::new()`].
+/// 2. Load a ROM with [`load_rom()`](Nes::load_rom).
+/// 3. Power on with [`power()`](Nes::power).
+/// 4. Advance emulation with [`step_frame()`](Nes::step_frame), [`step()`](Nes::step),
+///    or [`run()`](Nes::run).
+/// 5. Read the rendered output with [`get_pixel_buffer()`](Nes::get_pixel_buffer).
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use monsoon_core::emulation::nes::Nes;
+///
+/// let mut nes = Nes::default();
+/// # let rom_bytes: &[u8] = &[];
+/// nes.load_rom(&rom_bytes);
+/// nes.power();
+///
+/// // Run one frame
+/// nes.step_frame().expect("emulation error");
+///
+/// // Read the pixel buffer (palette indices, not RGB)
+/// let pixels = nes.get_pixel_buffer();
+/// ```
 pub struct Nes {
+    /// The MOS 6502 CPU instance.
+    #[doc(hidden)]
     pub cpu: Cpu,
+    /// The 2C02 PPU instance, wrapped in `Rc<RefCell<_>>` because the CPU
+    /// and PPU share access (e.g., through memory-mapped PPU registers).
+    #[doc(hidden)]
     pub ppu: Rc<RefCell<Ppu>>,
+    /// Total master clock cycles elapsed since power-on.
     pub total_cycles: u128,
+    /// The currently loaded ROM, or `None` if no ROM has been loaded.
     pub rom_file: Option<RomFile>,
+    /// Optional CPU instruction trace logger for debugging.
+    #[doc(hidden)]
     pub trace_log: Option<TraceLog>,
+    /// Internal CPU clock divider counter (0–12).
+    #[doc(hidden)]
     pub cpu_cycle_counter: u8,
+    /// Internal PPU clock divider counter (0–4).
+    #[doc(hidden)]
     pub ppu_cycle_counter: u8,
 }
 
 impl Nes {
+    /// Returns the current pixel buffer as a vector of 16-bit palette indices.
+    ///
+    /// Each value encodes:
+    /// - **Bits 0–5**: NES color index (0–63 from the system palette).
+    /// - **Bits 6–8**: Emphasis bits (R, G, B emphasis from the PPU mask register).
+    ///
+    /// The buffer has dimensions [`TOTAL_OUTPUT_WIDTH`](crate::emulation::ppu::TOTAL_OUTPUT_WIDTH)
+    /// × [`TOTAL_OUTPUT_HEIGHT`](crate::emulation::ppu::TOTAL_OUTPUT_HEIGHT) (256 × 240) pixels,
+    /// stored in row-major order.
+    ///
+    /// To convert these indices to RGB colors, use a
+    /// [`ScreenRenderer`](crate::emulation::screen_renderer::ScreenRenderer) implementation.
     #[inline]
     pub fn get_pixel_buffer(&self) -> Vec<u16> { self.ppu.borrow().pixel_buffer.clone() }
 
+    /// Powers on the emulator, initializing the CPU–PPU connection.
+    ///
+    /// This sets up memory-mapped PPU registers in the CPU address space
+    /// (addresses `$2000`–`$3FFF`) and performs the CPU reset sequence.
+    /// Must be called after [`load_rom()`](Nes::load_rom) and before any
+    /// execution methods.
     pub fn power(&mut self) {
         self.cpu.ppu = Some(self.ppu.clone());
 
@@ -45,6 +115,10 @@ impl Nes {
         self.cpu.reset();
     }
 
+    /// Powers off the emulator, resetting all state to defaults.
+    ///
+    /// After calling this, you must call [`load_rom()`](Nes::load_rom) and
+    /// [`power()`](Nes::power) again before resuming emulation.
     pub fn power_off(&mut self) {
         self.cpu = Cpu::default();
         self.ppu = Rc::new(RefCell::new(Ppu::default()));
@@ -53,10 +127,39 @@ impl Nes {
         self.ppu_cycle_counter = 0;
     }
 
+    /// Runs the emulator indefinitely until a halt instruction (`HLT`) is encountered.
+    ///
+    /// # Returns
+    ///
+    /// - `Ok(ExecutionFinishedType::ReachedHlt)` when the CPU executes a halt instruction.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal emulation error occurs during execution.
     pub fn run(&mut self) -> Result<ExecutionFinishedType, String> {
         self.run_until(u128::MAX, false)
     }
 
+    /// Runs the emulator until a specific cycle count is reached, or until a frame
+    /// boundary if `stop_at_frame` is `true`.
+    ///
+    /// # Arguments
+    ///
+    /// * `last_cycle` — The master clock cycle count at which to stop execution.
+    ///   Use `u128::MAX` to run without a cycle limit.
+    /// * `stop_at_frame` — If `true`, execution also stops at the end of the
+    ///   current video frame (after scanline 240).
+    ///
+    /// # Returns
+    ///
+    /// - `Ok(ExecutionFinishedType::ReachedLastCycle)` when `last_cycle` is exceeded.
+    /// - `Ok(ExecutionFinishedType::FrameDone)` when a frame boundary is reached
+    ///   (only if `stop_at_frame` is `true`).
+    /// - `Ok(ExecutionFinishedType::ReachedHlt)` when the CPU halts.
+    ///
+    /// # Panics
+    ///
+    /// Panics if an internal emulation error occurs during execution.
     pub fn run_until(
         &mut self,
         last_cycle: u128,
@@ -78,6 +181,17 @@ impl Nes {
         }
     }
 
+    /// Returns a debug snapshot of memory contents.
+    ///
+    /// Returns a vector containing two memory dumps:
+    /// - Index 0: CPU memory (the full 64 KB address space, or the requested range).
+    /// - Index 1: PPU memory (VRAM, or the requested range).
+    ///
+    /// # Arguments
+    ///
+    /// * `range` — An optional address range to read. If `None`, dumps all mapped memory.
+    ///
+    /// This is a side-effect-free read intended for debugger UIs.
     pub fn get_memory_debug(&self, range: Option<RangeInclusive<u16>>) -> Vec<Vec<u8>> {
         vec![
             self.cpu.get_memory_debug(range.clone()),
@@ -85,6 +199,15 @@ impl Nes {
         ]
     }
 
+    /// Runs the emulator for exactly one video frame (until the PPU completes
+    /// scanline 240 and enters vertical blanking).
+    ///
+    /// This is the recommended method for frame-based emulation loops.
+    ///
+    /// # Returns
+    ///
+    /// - `Ok(ExecutionFinishedType::FrameDone)` on success.
+    /// - `Ok(ExecutionFinishedType::ReachedHlt)` if the CPU halts mid-frame.
     #[inline]
     pub fn step_frame(&mut self) -> Result<ExecutionFinishedType, String> {
         self.run_until(u128::MAX, true)
@@ -92,6 +215,11 @@ impl Nes {
 }
 
 impl Nes {
+    /// Creates a new `Nes` instance with the given CPU and PPU.
+    ///
+    /// For most use cases, prefer [`Nes::default()`] which creates a standard
+    /// NES configuration. Use this constructor when you need to supply a
+    /// pre-configured CPU or PPU (e.g., for testing).
     pub fn new(cpu: Cpu, ppu: Rc<RefCell<Ppu>>) -> Self {
         Self {
             cpu,
@@ -104,11 +232,33 @@ impl Nes {
         }
     }
 
+    /// Performs a soft reset of the CPU and PPU.
+    ///
+    /// This is equivalent to pressing the reset button on the NES console.
+    /// The ROM remains loaded, but the CPU program counter is reloaded from
+    /// the reset vector (`$FFFC`).
     pub fn reset(&mut self) {
         self.cpu.reset();
         self.ppu.borrow_mut().reset();
     }
 
+    /// Loads a ROM into the emulator.
+    ///
+    /// The argument can be anything that converts to a [`RomFile`] by reference.
+    /// Common conversions include:
+    ///
+    /// - `&[u8]` — raw ROM bytes (name is set to `None`).
+    /// - `&(&[u8], String)` — raw ROM bytes with a name.
+    /// - `&String` — a file path (native only, not available on WASM).
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// # use monsoon_core::emulation::nes::Nes;
+    /// let mut nes = Nes::default();
+    /// # let rom_bytes: &[u8] = &[];
+    /// nes.load_rom(&rom_bytes);
+    /// ```
     pub fn load_rom<T>(&mut self, rom_get: &T)
     where
         for<'a> &'a T: Into<RomFile>,
@@ -119,6 +269,11 @@ impl Nes {
         self.rom_file = Some(rom_file);
     }
 
+    /// Captures the current emulator state as a [`SaveState`].
+    ///
+    /// Returns `None` if no ROM is currently loaded. The returned state can
+    /// be serialized with [`ToBytes::to_bytes()`](crate::util::ToBytes::to_bytes)
+    /// and later restored with [`load_state()`](Nes::load_state).
     pub fn save_state(&self) -> Option<SaveState> {
         let ppu_state = {
             let ppu_ref = self.ppu.borrow();
@@ -137,6 +292,11 @@ impl Nes {
         })
     }
 
+    /// Restores the emulator to a previously captured [`SaveState`].
+    ///
+    /// If a ROM is currently loaded, its data is preserved (the save state's ROM
+    /// metadata is used only when no ROM is loaded). After loading, execution can
+    /// resume from the exact point where the state was saved.
     pub fn load_state(&mut self, state: SaveState) {
         // Use the already loaded ROM file if available (it has the actual ROM data),
         // otherwise fall back to the savestate's ROM (which may have empty data due to Skip)
@@ -166,6 +326,13 @@ impl Nes {
         self.ppu_cycle_counter = state.ppu_cycle_counter;
     }
 
+    /// Advances the emulator by exactly one master clock cycle.
+    ///
+    /// This is the finest-grained execution method. During each master cycle,
+    /// either the CPU, the PPU, or both may perform work depending on their
+    /// respective clock dividers.
+    ///
+    /// For most use cases, prefer [`step_frame()`](Nes::step_frame).
     #[inline(always)]
     pub fn step(&mut self) -> Result<ExecutionFinishedType, String> {
         self.step_internal(u128::MAX, false)
@@ -245,6 +412,11 @@ impl Nes {
         res
     }
 
+    /// Enables CPU instruction tracing for debugging purposes.
+    ///
+    /// When enabled, every executed instruction is logged to an internal
+    /// trace buffer in a nestest-compatible format. This is primarily useful
+    /// for verifying CPU accuracy against reference logs.
     pub fn enable_trace(&mut self) { self.trace_log = Some(TraceLog::default()) }
 }
 
@@ -256,10 +428,22 @@ impl Default for Nes {
     }
 }
 
+/// Describes why an emulation run finished.
+///
+/// Returned by [`Nes::run()`], [`Nes::run_until()`], [`Nes::step()`], and
+/// [`Nes::step_frame()`] to indicate the reason execution stopped.
 #[derive(Debug)]
 pub enum ExecutionFinishedType {
+    /// The total cycle count exceeded the `last_cycle` limit passed to
+    /// [`Nes::run_until()`].
     ReachedLastCycle,
+    /// The CPU executed a halt (`HLT` / `KIL`) instruction and cannot
+    /// continue without a reset.
     ReachedHlt,
+    /// A single master clock cycle completed. This is only returned by
+    /// [`Nes::step()`] when the cycle did not trigger any other stop condition.
     CycleCompleted,
+    /// A complete video frame has been rendered. The pixel buffer is now
+    /// ready to be read via [`Nes::get_pixel_buffer()`].
     FrameDone,
 }
