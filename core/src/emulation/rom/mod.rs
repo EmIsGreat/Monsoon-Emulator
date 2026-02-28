@@ -244,6 +244,7 @@ impl RomFile {
     ///
     /// This is used internally to populate the CPU memory map at addresses
     /// `$8000`-`$FFFF`.
+    #[doc(hidden)]
     pub fn get_prg_rom(&self) -> Memory {
         let mut rom = Rom::new(self.prg_memory.prg_rom_size as usize);
 
@@ -265,6 +266,7 @@ impl RomFile {
     ///
     /// Returns `None` when the ROM uses CHR RAM instead of CHR ROM
     /// (i.e., `chr_rom_size == 0`).
+    #[doc(hidden)]
     pub fn get_chr_rom(&self) -> Option<Memory> {
         if self.chr_memory.chr_rom_size == 0 {
             return None;
@@ -293,6 +295,7 @@ impl RomFile {
     ///
     /// This is mapped at CPU addresses `$6000`-`$7FFF` and may be
     /// battery-backed for save data.
+    #[doc(hidden)]
     pub fn get_prg_ram(&self) -> Memory {
         let mut ram = Ram::new(self.prg_memory.prg_ram_size as usize);
 
@@ -315,6 +318,7 @@ impl RomFile {
     ///
     /// Returns a [`Memory`] device configured for either horizontal or vertical
     /// nametable mirroring, as specified by the ROM header.
+    #[doc(hidden)]
     pub fn get_nametable_memory(&self) -> Memory {
         let mirroring = match self.hardwired_nametable_layout {
             true => NametableArrangement::Vertical,
