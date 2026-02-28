@@ -24,6 +24,7 @@ use std::process::{Child, Command, Stdio};
 
 use image::{ImageBuffer, Rgba, RgbaImage};
 use monsoon_core::emulation::palette_util::RgbColor;
+
 use crate::cli::args::VideoFormat;
 
 // =============================================================================
@@ -544,7 +545,12 @@ impl VideoEncoder for PpmSequenceEncoder {
         writeln!(writer, "{} {}", self.width, self.height)?;
         writeln!(writer, "255")?;
 
-        for &RgbColor { r, g, b } in pixel_buffer {
+        for &RgbColor {
+            r,
+            g,
+            b,
+        } in pixel_buffer
+        {
             writer.write_all(&[r, g, b])?;
         }
 
@@ -705,7 +711,12 @@ impl VideoEncoder for FfmpegMp4Encoder {
 
         // Convert RGB to BGRA
         let mut bgra_buffer = Vec::with_capacity(pixel_buffer.len() * 4);
-        for &RgbColor { r, g, b } in pixel_buffer {
+        for &RgbColor {
+            r,
+            g,
+            b,
+        } in pixel_buffer
+        {
             bgra_buffer.extend_from_slice(&[b, g, r, 255]);
         }
 
@@ -821,7 +832,12 @@ impl VideoEncoder for RawEncoder {
         }
 
         // Convert RGB to BGRA and write to stdout
-        for &RgbColor { r, g, b } in pixel_buffer {
+        for &RgbColor {
+            r,
+            g,
+            b,
+        } in pixel_buffer
+        {
             self.stdout.write_all(&[b, g, r, 255])?;
         }
 
@@ -1136,7 +1152,7 @@ mod tests {
         let mut encoder =
             PpmSequenceEncoder::new(Path::new("/tmp/test_invalid"), 256, 240).unwrap();
 
-        let bad_frame: Vec<RgbColor> = vec![(0, 0, 0); 100];
+        let bad_frame: Vec<RgbColor> = vec![RgbColor::new(0, 0, 0); 100];
         let result = encoder.write_frame(&bad_frame);
 
         assert!(result.is_err());

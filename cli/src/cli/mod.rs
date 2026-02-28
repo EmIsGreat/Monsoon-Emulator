@@ -381,7 +381,7 @@ fn validate_memory_condition_syntax(cond: &Vec<String>) -> Result<(), CliError> 
 /// # Examples
 ///
 /// ```
-/// use lockstep::cli::parse_memory_range;
+/// use monsoon_cli::cli::parse_memory_range;
 ///
 /// assert_eq!(
 ///     parse_memory_range("0x0000-0x07FF").unwrap(),

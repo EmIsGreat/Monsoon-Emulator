@@ -7,9 +7,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
-
 use serde::Deserialize;
-
 use crate::cli::args::BuiltinPalette;
 use crate::cli::{CliArgs, OutputFormat, SavestateFormat, VideoExportMode, VideoFormat};
 

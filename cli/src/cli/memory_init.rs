@@ -35,7 +35,7 @@ impl MemoryInit {
     /// # Examples
     ///
     /// ```
-    /// use lockstep::cli::memory_init::MemoryInit;
+    /// use monsoon_cli::cli::memory_init::MemoryInit;
     ///
     /// let init = MemoryInit::parse("0x0050=0xFF").unwrap();
     /// assert_eq!(init.address, 0x0050);

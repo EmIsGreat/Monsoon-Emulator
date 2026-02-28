@@ -2,7 +2,7 @@ cargo-features = ["profile-rustflags"]
 
 [workspace]
 members = ["core", "frontend", "cli", "renderer"]
-default-members = ["core", "frontend"]
+default-members = ["frontend"]
 resolver = "3"
 
 [profile.release]
