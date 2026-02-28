@@ -1,7 +1,12 @@
 [package]
 name = "monsoon-default-renderers"
-version = "0.1.0"
-edition = "2024"
+description = "Default screen renderer implementations for the Monsoon NES emulator"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 [lib]
 name = "monsoon_default_renderers"

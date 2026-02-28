@@ -1,7 +1,12 @@
 [package]
 name = "monsoon-core"
-version = "0.1.0"
-edition = "2024"
+description = "Core NES emulation library — cycle-accurate MOS 6502 CPU, 2C02 PPU, memory subsystem, ROM parsing, and save states"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
 
 [lib]
 name = "monsoon_core"
