@@ -195,7 +195,6 @@ pub struct SaveState {
     pub rom_file: RomFile,
     pub version: u16,
     pub total_cycles: u128,
-    pub cycle: u8,
     pub ppu_cycle_counter: u8,
     pub cpu_cycle_counter: u8,
 }

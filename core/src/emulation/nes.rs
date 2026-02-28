@@ -128,7 +128,6 @@ impl Nes {
         self.rom_file.as_ref().map(|rom| SaveState {
             cpu: CpuState::from(&self.cpu),
             ppu: ppu_state,
-            cycle: self.cpu_cycle_counter,
             total_cycles: self.total_cycles,
             rom_file: rom.clone(),
             version: 1,
@@ -161,7 +160,6 @@ impl Nes {
             self.rom_file = Some(state.rom_file);
         }
 
-        self.cpu_cycle_counter = state.cycle;
         self.cpu_cycle_counter = state.cpu_cycle_counter;
         self.ppu_cycle_counter = state.ppu_cycle_counter;
     }
@@ -222,7 +220,6 @@ impl Nes {
                 let state = SaveState {
                     cpu: CpuState::from(&self.cpu),
                     ppu: ppu_state,
-                    cycle: self.cpu_cycle_counter,
                     ppu_cycle_counter: self.ppu_cycle_counter,
                     cpu_cycle_counter: self.cpu_cycle_counter,
                     total_cycles: self.total_cycles,
