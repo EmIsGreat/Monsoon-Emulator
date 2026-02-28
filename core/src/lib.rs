@@ -40,11 +40,12 @@
 //!   custom pixel renderers, plus a built-in [`NoneRenderer`].
 //! - [`emulation::palette_util`] — NES color palette types ([`RgbColor`], [`RgbPalette`])
 //!   and palette file parsing.
+//! - [`emulation::ppu`] — PPU constants and debug data types (e.g., output dimensions,
+//!   [`EmulatorFetchable`](emulation::ppu::EmulatorFetchable) for debug views).
 //! - [`util`] — Serialization helpers ([`ToBytes`]) and hash utilities.
 //!
-//! Internal implementation modules (`cpu`, `ppu`, `mem`, `opcode`) are exposed for
-//! advanced use cases and workspace-internal access, but most users should interact
-//! with the emulator exclusively through [`Nes`] and the types listed above.
+//! Internal implementation modules (`cpu`, `mem`, `opcode`) are `pub(crate)` and not
+//! accessible to downstream consumers.
 //!
 //! ## Pixel Buffer Format
 //!

@@ -19,19 +19,15 @@ The core emulation library. This is the primary crate for anyone wanting to embe
 
 **Public API modules:**
 
-- **`emulation::nes`** — The top-level [`Nes`] struct that orchestrates all emulation. Provides methods to load ROMs, step individual cycles or full frames, save/load state, and read the pixel buffer.
+- **`emulation::nes`** — The top-level [`Nes`] struct that orchestrates all emulation. Provides methods to load ROMs, step individual cycles or full frames, save/load state, read the pixel buffer, and access CPU/PPU debug information.
 - **`emulation::rom`** — ROM file parsing for iNES, NES 2.0, and archaic iNES formats. Includes [`RomFile`] for loading ROMs from bytes and [`RomBuilder`] for programmatic construction.
 - **`emulation::savestate`** — Serializable emulator state snapshots. Save states can be encoded in binary (postcard) or JSON format.
 - **`emulation::screen_renderer`** — The [`ScreenRenderer`] trait for implementing custom pixel renderers, plus [`NoneRenderer`] (a no-op fallback) and the [`declare_renderers!`] macro for registering renderers.
 - **`emulation::palette_util`** — NES color palette types ([`RgbColor`], [`RgbPalette`]) and `.pal` file parsing.
+- **`emulation::ppu`** — PPU constants (output dimensions, tile counts) and debug data types (`EmulatorFetchable`, `TileData`, `PaletteData`, `NametableData`).
 - **`util`** — Serialization helpers ([`ToBytes`]) and hashing utilities ([`Hashable`]).
 
-**Internal modules** (public but `#[doc(hidden)]` — for advanced use only):
-
-- `emulation::cpu` — MOS 6502 CPU emulation
-- `emulation::ppu` — 2C02 PPU (Picture Processing Unit) emulation
-- `emulation::mem` — Memory subsystem (RAM, ROM, memory maps, I/O)
-- `emulation::opcode` — 6502 opcode definitions and lookup tables
+Internal implementation modules (`cpu`, `mem`, `opcode`) are `pub(crate)` and not accessible to downstream consumers. PPU struct fields and most constants are also `pub(crate)`.
 
 ### `monsoon-default-renderers`
 
@@ -281,4 +277,4 @@ cargo test -p monsoon-core --doc
 
 ## License
 
-See the repository for license information.
+This project is licensed under the [MIT License](LICENSE).
