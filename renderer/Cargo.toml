@@ -8,6 +8,6 @@ name = "monsoon_default_renderers"
 path = "src/lib.rs"
 
 [dependencies]
-monsoon-core = { path = "../core" }
+monsoon-core = { workspace = true }
 serde = { version = "1.0.228", features = ["derive"] }
 serde-big-array = {version = "0.5.1"}

@@ -5,6 +5,10 @@ members = ["core", "frontend", "cli", "renderer"]
 default-members = ["frontend"]
 resolver = "3"
 
+[workspace.dependencies]
+monsoon-core = { version = "0.1.0", path = "core" }
+monsoon-default-renderers = { version = "0.1.0", path = "renderer" }
+
 [profile.release]
 strip = true
 panic = "abort"

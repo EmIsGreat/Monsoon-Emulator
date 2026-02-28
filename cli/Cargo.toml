@@ -19,6 +19,5 @@ clap = { version = "4.5.54", features = ["derive", "cargo", "env", "string", "un
 toml = {version = "1.0.2", features = ["fast_hash"]}
 image = {version = "0.25.9"}
 
-monsoon-core = { path = "../core" }
-monsoon-default-renderers = { path = "../renderer" }
-
+monsoon-core = { workspace = true }
+monsoon-default-renderers = { workspace = true }
