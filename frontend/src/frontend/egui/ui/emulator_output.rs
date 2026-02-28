@@ -1,6 +1,6 @@
 //! Emulator output pane rendering
 
-use monsoon_core::emulation::ppu::{TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH};
+use monsoon_core::emulation::ppu_util::{TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH};
 
 use crate::frontend::egui::textures::EmuTextures;
 

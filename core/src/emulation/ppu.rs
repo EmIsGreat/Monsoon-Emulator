@@ -9,118 +9,117 @@ use crate::emulation::mem::{Memory, OpenBus, Ram};
 use crate::emulation::rom::RomFile;
 use crate::emulation::savestate::PpuState;
 
-pub(crate) const PATTERN_TABLE_WIDTH: usize = 256 + 16; // 16*8*2 + 16px gap
-pub(crate) const PATTERN_TABLE_HEIGHT: usize = 128; // 16*8
+// Re-import public constants/types from ppu_util so internal code can use them
+// with short names.
+pub use crate::emulation::ppu_util::{
+    EmulatorFetchable, NametableData, PaletteData, TileData,
+    NAMETABLE_COLS, NAMETABLE_COUNT, NAMETABLE_ROWS, PALETTE_COUNT,
+    PALETTE_RAM_START_ADDRESS, TILE_COUNT, TILE_SIZE, TOTAL_OUTPUT_HEIGHT,
+    TOTAL_OUTPUT_WIDTH,
+};
+
+pub const PATTERN_TABLE_WIDTH: usize = 256 + 16; // 16*8*2 + 16px gap
+pub const PATTERN_TABLE_HEIGHT: usize = 128; // 16*8
 
 // Nametable display: 4 nametables of 32x30 tiles (8px each) arranged 2x2
-pub(crate) const NAMETABLE_WIDTH: usize = 512; // 32*8*2
-pub(crate) const NAMETABLE_HEIGHT: usize = 480; // 30*8*2
+pub const NAMETABLE_WIDTH: usize = 512; // 32*8*2
+pub const NAMETABLE_HEIGHT: usize = 480; // 30*8*2
 
-pub(crate) const SPRITE_COUNT: usize = 64;
-pub(crate) const SPRITE_WIDTH: usize = 8;
+pub const SPRITE_COUNT: usize = 64;
+pub const SPRITE_WIDTH: usize = 8;
 
-pub const TOTAL_OUTPUT_WIDTH: usize = 256;
-pub const TOTAL_OUTPUT_HEIGHT: usize = 240;
+pub const PATTERN_TABLE_SIZE: usize = 256;
 
-pub const TILE_COUNT: usize = 512;
-pub const PALETTE_COUNT: usize = 8;
-pub(crate) const NAMETABLE_COUNT: usize = 4;
-pub(crate) const NAMETABLE_ROWS: usize = 30;
-pub(crate) const NAMETABLE_COLS: usize = 32;
-pub(crate) const PATTERN_TABLE_SIZE: usize = 256;
-
-pub(crate) const VBLANK_NMI_BIT: u8 = 0x80;
-pub(crate) const VRAM_ADDR_INC_BIT: u8 = 0x4;
-pub(crate) const UPPER_BYTE: u16 = 0xFF00;
-pub(crate) const LOWER_BYTE: u16 = 0x00FF;
-pub(crate) const BIT_14: u16 = 0x2000;
-pub(crate) const BACKGROUND_RENDER_BIT: u8 = 0x8;
-pub(crate) const SPRITE_RENDER_BIT: u8 = 0x10;
-pub(crate) const VRAM_ADDR_COARSE_X_SCROLL_MASK: u16 = 0x1F;
-pub(crate) const VRAM_ADDR_COARSE_Y_SCROLL_MASK: u16 = 0x3E0;
-pub(crate) const VRAM_ADDR_FINE_Y_SCROLL_MASK: u16 = 0x7000;
-pub(crate) const VRAM_ADDR_NAMETABLE_X_BIT: u16 = 0x400;
-pub(crate) const VRAM_ADDR_NAMETABLE_Y_BIT: u16 = 0x800;
-pub(crate) const FINE_Y_SCROLL_WIDTH: u8 = 0x7;
-pub(crate) const COARSE_SCROLL_WIDTH: u8 = 0x1F;
-pub(crate) const DOTS_PER_FRAME: u128 = 89342;
-pub const PALETTE_RAM_START_ADDRESS: u16 = 0x3F00;
-pub(crate) const PALETTE_RAM_END_INDEX: u16 = 0x3FFF;
-pub(crate) const PALETTE_RAM_SIZE: u16 = 0x20;
-pub(crate) const VRAM_SIZE: usize = 0x800;
-pub(crate) const DOTS_PER_SCANLINE: u16 = 340;
+pub const VBLANK_NMI_BIT: u8 = 0x80;
+pub const VRAM_ADDR_INC_BIT: u8 = 0x4;
+pub const UPPER_BYTE: u16 = 0xFF00;
+pub const LOWER_BYTE: u16 = 0x00FF;
+pub const BIT_14: u16 = 0x2000;
+pub const BACKGROUND_RENDER_BIT: u8 = 0x8;
+pub const SPRITE_RENDER_BIT: u8 = 0x10;
+pub const VRAM_ADDR_COARSE_X_SCROLL_MASK: u16 = 0x1F;
+pub const VRAM_ADDR_COARSE_Y_SCROLL_MASK: u16 = 0x3E0;
+pub const VRAM_ADDR_FINE_Y_SCROLL_MASK: u16 = 0x7000;
+pub const VRAM_ADDR_NAMETABLE_X_BIT: u16 = 0x400;
+pub const VRAM_ADDR_NAMETABLE_Y_BIT: u16 = 0x800;
+pub const FINE_Y_SCROLL_WIDTH: u8 = 0x7;
+pub const COARSE_SCROLL_WIDTH: u8 = 0x1F;
+pub const DOTS_PER_FRAME: u128 = 89342;
+pub const PALETTE_RAM_END_INDEX: u16 = 0x3FFF;
+pub const PALETTE_RAM_SIZE: u16 = 0x20;
+pub const VRAM_SIZE: usize = 0x800;
+pub const DOTS_PER_SCANLINE: u16 = 340;
 /// Number of dots in one scanline including dot 0 (341 total: dots 0-340)
-pub(crate) const DOTS_IN_SCANLINE: u16 = DOTS_PER_SCANLINE + 1;
-pub(crate) const SCANLINES_PER_FRAME: u16 = 261;
-pub(crate) const OPEN_BUS_DECAY_DELAY: u32 = 420_000;
-pub(crate) const SPRITE_OVERFLOW_FLAG: u8 = 0b0010_0000;
+pub const DOTS_IN_SCANLINE: u16 = DOTS_PER_SCANLINE + 1;
+pub const SCANLINES_PER_FRAME: u16 = 261;
+pub const OPEN_BUS_DECAY_DELAY: u32 = 420_000;
+pub const SPRITE_OVERFLOW_FLAG: u8 = 0b0010_0000;
 
-pub(crate) const TILES_PER_ROW: usize = 16;
-pub const TILE_SIZE: usize = 8;
-pub(crate) const BYTES_PER_TILE: usize = 16; // 8 low plane + 8 high plane
-pub(crate) const TABLE_BYTES: usize = 0x1000; // 256 tiles * 16 bytes
+pub const TILES_PER_ROW: usize = 16;
+pub const BYTES_PER_TILE: usize = 16; // 8 low plane + 8 high plane
+pub const TABLE_BYTES: usize = 0x1000; // 256 tiles * 16 bytes
 
 // Optional: space 2 tiles (16px) between the two pattern tables for
 // readability.
-pub(crate) const TABLE_GAP_TILES: usize = 2;
-pub(crate) const TABLE_GAP_PX: usize = TABLE_GAP_TILES * TILE_SIZE;
-pub(crate) const VBL_START_SCANLINE: u16 = 241;
-pub(crate) const VISIBLE_SCANLINES: u16 = 239;
-pub(crate) const PRE_RENDER_SCANLINE: u16 = 261;
-pub(crate) const OAM_SIZE: usize = 0x100;
-pub(crate) const NAMETABLE_TILE_AREA_SIZE: u16 = 0x3C0;
-pub(crate) const NAMETABLE_SIZE: u16 = 0x400;
-pub(crate) const ATTRIBUTE_TABLE_BASE_ADDRESS: u16 = 0x23C0;
+pub const TABLE_GAP_TILES: usize = 2;
+pub const TABLE_GAP_PX: usize = TABLE_GAP_TILES * TILE_SIZE;
+pub const VBL_START_SCANLINE: u16 = 241;
+pub const VISIBLE_SCANLINES: u16 = 239;
+pub const PRE_RENDER_SCANLINE: u16 = 261;
+pub const OAM_SIZE: usize = 0x100;
+pub const NAMETABLE_TILE_AREA_SIZE: u16 = 0x3C0;
+pub const NAMETABLE_SIZE: u16 = 0x400;
+pub const ATTRIBUTE_TABLE_BASE_ADDRESS: u16 = 0x23C0;
 
-pub(crate) const SCREEN_RENDER_WIDTH: usize = 256;
-pub(crate) const SCREEN_RENDER_HEIGHT: usize = 220;
+pub const SCREEN_RENDER_WIDTH: usize = 256;
+pub const SCREEN_RENDER_HEIGHT: usize = 220;
 
 pub struct Ppu {
-    pub(crate) dot_counter: u128,
-    pub(crate) ctrl_register: u8,
-    pub(crate) mask_register: u8,
-    pub(crate) status_register: Cell<u8>,
-    pub(crate) oam_addr_register: u8,
-    pub(crate) v_register: u16,
-    pub(crate) ppu_data_buffer: u8,
-    pub(crate) nmi_requested: Cell<bool>,
-    pub(crate) memory: MemoryMap,
-    pub(crate) palette_ram: MemoryMap,
-    pub(crate) oam: MemoryMap,
-    pub(crate) write_latch: Cell<bool>,
-    pub(crate) t_register: u16,
-    pub(crate) fine_x_scroll: u8,
-    pub(crate) even_frame: bool,
-    pub(crate) reset_signal: bool,
-    pub(crate) pixel_buffer: Vec<u16>,
-    pub(crate) vbl_reset_counter: Cell<u8>,
-    pub(crate) vbl_clear_scheduled: Cell<Option<u8>>,
-    pub(crate) scanline: u16,
-    pub(crate) dot: u16,
-    pub(crate) prev_vbl: u8,
-    pub(crate) open_bus: Cell<OpenBus>,
-    pub(crate) address_bus: u16,
-    pub(crate) address_latch: u8,
-    pub(crate) shift_pattern_lo: u16,
-    pub(crate) shift_pattern_hi: u16,
-    pub(crate) shift_attr_lo: u8,
-    pub(crate) shift_attr_hi: u8,
-    pub(crate) shift_in_attr_lo: bool,
-    pub(crate) shift_in_attr_hi: bool,
-    pub(crate) bg_next_tile_id: u8,
-    pub(crate) bg_next_tile_attribute: u8,
-    pub(crate) bg_next_tile_lsb: u8,
-    pub(crate) is_soam_clear_active: bool,
-    pub(crate) oam_index: u8,
-    pub(crate) soam_index: u8,
-    pub(crate) soam_disable: bool,
-    pub(crate) oam_increment: u8,
-    pub(crate) soam_write_counter: u8,
-    pub(crate) current_sprite_y: u8,
-    pub(crate) sprite_fifo: [SpriteFifo; 8],
-    pub(crate) current_sprite_tile_id: u8,
-    pub(crate) oam_fetch: u8,
-    pub(crate) log: String,
+    pub dot_counter: u128,
+    pub ctrl_register: u8,
+    pub mask_register: u8,
+    pub status_register: Cell<u8>,
+    pub oam_addr_register: u8,
+    pub v_register: u16,
+    pub ppu_data_buffer: u8,
+    pub nmi_requested: Cell<bool>,
+    pub memory: MemoryMap,
+    pub palette_ram: MemoryMap,
+    pub oam: MemoryMap,
+    pub write_latch: Cell<bool>,
+    pub t_register: u16,
+    pub fine_x_scroll: u8,
+    pub even_frame: bool,
+    pub reset_signal: bool,
+    pub pixel_buffer: Vec<u16>,
+    pub vbl_reset_counter: Cell<u8>,
+    pub vbl_clear_scheduled: Cell<Option<u8>>,
+    pub scanline: u16,
+    pub dot: u16,
+    pub prev_vbl: u8,
+    pub open_bus: Cell<OpenBus>,
+    pub address_bus: u16,
+    pub address_latch: u8,
+    pub shift_pattern_lo: u16,
+    pub shift_pattern_hi: u16,
+    pub shift_attr_lo: u8,
+    pub shift_attr_hi: u8,
+    pub shift_in_attr_lo: bool,
+    pub shift_in_attr_hi: bool,
+    pub bg_next_tile_id: u8,
+    pub bg_next_tile_attribute: u8,
+    pub bg_next_tile_lsb: u8,
+    pub is_soam_clear_active: bool,
+    pub oam_index: u8,
+    pub soam_index: u8,
+    pub soam_disable: bool,
+    pub oam_increment: u8,
+    pub soam_write_counter: u8,
+    pub current_sprite_y: u8,
+    pub sprite_fifo: [SpriteFifo; 8],
+    pub current_sprite_tile_id: u8,
+    pub oam_fetch: u8,
+    pub log: String,
 }
 
 impl Default for Ppu {
@@ -1290,48 +1289,6 @@ impl Display for SpriteFifo {
 //     fn default() -> Self { parse_palette_from_file(None, None) }
 // }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
-pub enum EmulatorFetchable {
-    Palettes(Option<Box<PaletteData>>),
-    Tiles(Option<Box<[TileData; TILE_COUNT]>>),
-    Nametables(Option<Box<NametableData>>),
-}
-
-impl EmulatorFetchable {
-    #[inline]
-    pub fn get_empty(emulator_fetchable: &EmulatorFetchable) -> EmulatorFetchable {
-        match emulator_fetchable {
-            EmulatorFetchable::Palettes(_) => EmulatorFetchable::Palettes(None),
-            EmulatorFetchable::Tiles(_) => EmulatorFetchable::Tiles(None),
-            EmulatorFetchable::Nametables(_) => EmulatorFetchable::Nametables(None),
-        }
-    }
-
-    /// Returns true if this fetchable should only be fetched when the emulator
-    /// notifies that the data has changed (passive), rather than on a regular
-    /// interval (active).
-    ///
-    /// Passive fetches reduce CPU overhead for data that rarely changes.
-    #[inline]
-    pub fn is_passive(&self) -> bool {
-        matches!(
-            self,
-            EmulatorFetchable::Palettes(_) | EmulatorFetchable::Tiles(_)
-        )
-    }
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub struct PaletteData {
-    pub colors: [[u8; 4]; 8],
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-pub struct NametableData {
-    pub tiles: [[u16; NAMETABLE_ROWS * NAMETABLE_COLS]; NAMETABLE_COUNT],
-    pub palettes: [[u8; 64]; NAMETABLE_COUNT],
-}
-
 // #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 // pub struct SpriteViewerData {
 //     pub sprites: [SpriteData; 64],
@@ -1355,10 +1312,3 @@ pub struct NametableData {
 //     pub flip_x: bool,
 //     pub flip_y: bool,
 // }
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
-pub struct TileData {
-    pub address: u16,
-    pub plane_0: u64,
-    pub plane_1: u64,
-}

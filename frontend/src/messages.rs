@@ -1,4 +1,4 @@
-use monsoon_core::emulation::ppu::EmulatorFetchable;
+use monsoon_core::emulation::ppu_util::EmulatorFetchable;
 use monsoon_core::emulation::rom::RomFile;
 use monsoon_core::emulation::savestate::SaveState;
 

@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use crossbeam_channel::Sender;
 use egui::WidgetText;
 use egui_tiles::{Behavior, SimplificationOptions, TileId, Tiles, UiResponse};
-use monsoon_core::emulation::ppu::EmulatorFetchable;
+use monsoon_core::emulation::ppu_util::EmulatorFetchable;
 use serde::{Deserialize, Serialize};
 
 use crate::channel_emu::{ChannelEmulator, FETCH_DEPS};

@@ -24,10 +24,10 @@ The core emulation library. This is the primary crate for anyone wanting to embe
 - **`emulation::savestate`** — Serializable emulator state snapshots. Save states can be encoded in binary (postcard) or JSON format.
 - **`emulation::screen_renderer`** — The [`ScreenRenderer`] trait for implementing custom pixel renderers, plus [`NoneRenderer`] (a no-op fallback) and the [`declare_renderers!`] macro for registering renderers.
 - **`emulation::palette_util`** — NES color palette types ([`RgbColor`], [`RgbPalette`]) and `.pal` file parsing.
-- **`emulation::ppu`** — PPU constants (output dimensions, tile counts) and debug data types (`EmulatorFetchable`, `TileData`, `PaletteData`, `NametableData`).
+- **`emulation::ppu_util`** — PPU constants (output dimensions, tile counts) and debug data types (`EmulatorFetchable`, `TileData`, `PaletteData`, `NametableData`).
 - **`util`** — Serialization helpers ([`ToBytes`]) and hashing utilities ([`Hashable`]).
 
-Internal implementation modules (`cpu`, `mem`, `opcode`) are `pub(crate)` and not accessible to downstream consumers. PPU struct fields and most constants are also `pub(crate)`.
+Internal implementation modules (`cpu`, `ppu`, `mem`, `opcode`) are `pub(crate)` and not accessible to downstream consumers.
 
 ### `monsoon-default-renderers`
 

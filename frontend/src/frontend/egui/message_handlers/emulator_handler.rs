@@ -4,7 +4,7 @@
 //! frame updates, debug data, and savestate operations.
 
 use egui::{Context, ViewportCommand};
-use monsoon_core::emulation::ppu::{EmulatorFetchable, PaletteData, TILE_COUNT, TileData};
+use monsoon_core::emulation::ppu_util::{EmulatorFetchable, PaletteData, TILE_COUNT, TileData};
 use monsoon_core::emulation::savestate::SaveState;
 use monsoon_core::util::ToBytes;
 

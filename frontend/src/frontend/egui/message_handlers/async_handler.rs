@@ -5,7 +5,7 @@
 
 use egui::Context;
 use monsoon_core::emulation::palette_util::RgbPalette;
-use monsoon_core::emulation::ppu::EmulatorFetchable;
+use monsoon_core::emulation::ppu_util::EmulatorFetchable;
 use monsoon_core::emulation::savestate;
 use monsoon_core::util::ToBytes;
 

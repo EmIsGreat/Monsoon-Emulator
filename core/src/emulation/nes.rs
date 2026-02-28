@@ -455,17 +455,17 @@ impl Nes {
     pub fn is_rendering(&self) -> bool { self.ppu.borrow().is_rendering() }
 
     /// Returns debug palette data from the PPU.
-    pub fn get_palettes_debug(&self) -> crate::emulation::ppu::EmulatorFetchable {
+    pub fn get_palettes_debug(&self) -> crate::emulation::ppu_util::EmulatorFetchable {
         self.ppu.borrow().get_palettes_debug()
     }
 
     /// Returns debug tile data from the PPU.
-    pub fn get_tiles_debug(&self) -> crate::emulation::ppu::EmulatorFetchable {
+    pub fn get_tiles_debug(&self) -> crate::emulation::ppu_util::EmulatorFetchable {
         self.ppu.borrow().get_tiles_debug()
     }
 
     /// Returns debug nametable data from the PPU.
-    pub fn get_nametable_debug(&self) -> crate::emulation::ppu::EmulatorFetchable {
+    pub fn get_nametable_debug(&self) -> crate::emulation::ppu_util::EmulatorFetchable {
         self.ppu.borrow().get_nametable_debug()
     }
 

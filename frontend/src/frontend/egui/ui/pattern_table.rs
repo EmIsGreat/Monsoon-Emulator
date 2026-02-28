@@ -2,7 +2,7 @@ use crossbeam_channel::Sender;
 use eframe::epaint::TextureHandle;
 use egui::Ui;
 use monsoon_core::emulation::palette_util::RgbColor;
-use monsoon_core::emulation::ppu::TileData;
+use monsoon_core::emulation::ppu_util::TileData;
 
 use crate::frontend::egui::config::AppConfig;
 use crate::frontend::egui::ui::widgets::{PainterGridConfig, image_cell};

@@ -9,7 +9,7 @@
 //! - [`savestate`] — Serializable emulator state snapshots.
 //! - [`screen_renderer`] — Trait and types for custom pixel rendering.
 //! - [`palette_util`] — NES color palette types and parsing.
-//! - [`ppu`] — PPU constants and debug data types used by frontends.
+//! - [`ppu_util`] — PPU constants and debug data types used by frontends.
 //!
 //! # Internal Modules
 //!
@@ -17,6 +17,7 @@
 //! `pub(crate)` and not accessible to downstream consumers:
 //!
 //! - `cpu` — MOS 6502 CPU emulation internals.
+//! - `ppu` — 2C02 PPU emulation internals.
 //! - `mem` — Memory subsystem (RAM, ROM, memory maps, I/O registers).
 //! - `opcode` — 6502 opcode definitions and lookup tables.
 
@@ -25,7 +26,8 @@ pub(crate) mod mem;
 pub mod nes;
 pub(crate) mod opcode;
 pub mod palette_util;
-pub mod ppu;
+pub(crate) mod ppu;
+pub mod ppu_util;
 pub mod rom;
 pub mod savestate;
 pub mod screen_renderer;

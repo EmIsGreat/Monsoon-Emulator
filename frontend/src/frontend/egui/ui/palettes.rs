@@ -1,6 +1,6 @@
 use crossbeam_channel::Sender;
 use monsoon_core::emulation::palette_util::{RgbColor, parse_palette_from_bytes};
-use monsoon_core::emulation::ppu::PALETTE_RAM_START_ADDRESS;
+use monsoon_core::emulation::ppu_util::PALETTE_RAM_START_ADDRESS;
 use monsoon_core::util::Hashable;
 
 use crate::frontend::egui::config::AppConfig;

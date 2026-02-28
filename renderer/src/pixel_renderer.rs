@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Formatter};
 
 use monsoon_core::emulation::palette_util::{RgbColor, RgbPalette};
-use monsoon_core::emulation::ppu::{TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH};
+use monsoon_core::emulation::ppu_util::{TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH};
 use monsoon_core::emulation::screen_renderer::ScreenRenderer;
 use serde::{Deserialize, Serialize};
 use serde_big_array::BigArray;

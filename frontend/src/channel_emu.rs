@@ -3,7 +3,7 @@ use std::sync::OnceLock;
 
 use crossbeam_channel::{Receiver, Sender};
 use monsoon_core::emulation::nes::{ExecutionFinishedType, Nes};
-use monsoon_core::emulation::ppu::{EmulatorFetchable, PaletteData};
+use monsoon_core::emulation::ppu_util::{EmulatorFetchable, PaletteData};
 use monsoon_core::util::Hashable;
 
 use crate::messages::{ControllerEvent, EmulatorMessage, FrontendMessage, SaveType};

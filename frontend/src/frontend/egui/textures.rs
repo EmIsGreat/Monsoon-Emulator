@@ -1,6 +1,6 @@
 use egui::{ColorImage, Context, TextureHandle, TextureOptions};
 use monsoon_core::emulation::palette_util::{RgbColor, RgbPalette};
-use monsoon_core::emulation::ppu::{
+use monsoon_core::emulation::ppu_util::{
     NametableData, PALETTE_COUNT, PaletteData, TILE_COUNT, TILE_SIZE, TileData,
 };
 use monsoon_core::emulation::screen_renderer::ScreenRenderer;

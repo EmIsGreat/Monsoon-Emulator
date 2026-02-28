@@ -23,7 +23,7 @@ use eframe::glow;
 use egui::{Context, Style, ViewportCommand, Visuals};
 use monsoon_core::declare_renderers;
 use monsoon_core::emulation::nes::Nes;
-use monsoon_core::emulation::ppu::{EmulatorFetchable, PaletteData, TILE_COUNT, TileData};
+use monsoon_core::emulation::ppu_util::{EmulatorFetchable, PaletteData, TILE_COUNT, TileData};
 use monsoon_core::emulation::savestate::SaveState;
 use monsoon_core::emulation::screen_renderer::{
     NoneRenderer, RendererRegistration, ScreenRenderer,

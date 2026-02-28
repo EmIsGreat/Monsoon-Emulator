@@ -12,7 +12,7 @@ use std::time::Instant;
 
 use monsoon_core::emulation::nes::Nes;
 use monsoon_core::emulation::palette_util::RgbColor;
-use monsoon_core::emulation::ppu::{TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH};
+use monsoon_core::emulation::ppu_util::{TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH};
 use monsoon_core::emulation::rom::RomFile;
 use monsoon_core::emulation::screen_renderer::{ScreenRenderer, create_renderer};
 
