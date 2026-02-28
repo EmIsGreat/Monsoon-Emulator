@@ -1,6 +1,7 @@
 [package]
 name = "monsoon-cli"
 description = "Headless command-line interface for the Monsoon NES emulator"
+readme = "README.md"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

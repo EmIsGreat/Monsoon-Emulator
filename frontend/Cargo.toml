@@ -1,6 +1,7 @@
 [package]
 name = "monsoon-frontend"
 description = "Native GUI frontend for the Monsoon NES emulator, built with egui"
+readme = "README.md"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
