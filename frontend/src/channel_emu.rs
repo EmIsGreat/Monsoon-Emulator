@@ -121,24 +121,24 @@ impl ChannelEmulator {
                 FrontendMessage::RequestDebugData(fetchable) => match fetchable {
                     EmulatorFetchable::Palettes(_) => {
                         let _ = self.to_frontend.send(EmulatorMessage::DebugData(
-                            self.nes.ppu.borrow().get_palettes_debug(),
+                            self.nes.get_palettes_debug(),
                         ));
                     }
                     EmulatorFetchable::Tiles(_) => {
                         let _ = self.to_frontend.send(EmulatorMessage::DebugData(
-                            self.nes.ppu.borrow().get_tiles_debug(),
+                            self.nes.get_tiles_debug(),
                         ));
                     }
                     EmulatorFetchable::Nametables(_) => {
                         let _ = self.to_frontend.send(EmulatorMessage::DebugData(
-                            self.nes.ppu.borrow().get_nametable_debug(),
+                            self.nes.get_nametable_debug(),
                         ));
                     }
                 },
                 FrontendMessage::WritePpu(address, data) => {
-                    self.nes.ppu.borrow_mut().mem_init(address, data)
+                    self.nes.ppu_mem_init(address, data)
                 }
-                FrontendMessage::WriteCpu(address, data) => self.nes.cpu.memory.init(address, data),
+                FrontendMessage::WriteCpu(address, data) => self.nes.cpu_mem_init(address, data),
                 FrontendMessage::LoadRom((data, name)) => {
                     let loadable = (&data[..], name);
                     self.nes.load_rom(&loadable);
@@ -202,7 +202,7 @@ impl ChannelEmulator {
     fn check_debug_data_changed(&mut self) {
         // Check palette data (32 bytes, cheap comparison)
         if let EmulatorFetchable::Palettes(Some(current_palette)) =
-            self.nes.ppu.borrow().get_palettes_debug()
+            self.nes.get_palettes_debug()
         {
             let current = *current_palette; // Copy the PaletteData (it's 32 bytes)
             let palette_changed = match &self.last_palette_data {
@@ -224,9 +224,7 @@ impl ChannelEmulator {
         // Pattern tables occupy 0x0000-0x1FFF (8KB) in PPU address space
         let pattern_table_memory = self
             .nes
-            .ppu
-            .borrow()
-            .get_memory_debug(Some(0x0000..=0x1FFF));
+            .get_memory_debug(Some(0x0000..=0x1FFF))[1].to_vec();
         let current_hash = &pattern_table_memory.hash();
 
         let tiles_changed = match self.last_pattern_table_hash {
@@ -238,7 +236,7 @@ impl ChannelEmulator {
             self.last_pattern_table_hash = Some(*current_hash);
             // Send the actual tile data directly to avoid a round-trip request
             let _ = self.to_frontend.send(EmulatorMessage::DebugData(
-                self.nes.ppu.borrow().get_tiles_debug(),
+                self.nes.get_tiles_debug(),
             ));
         }
     }

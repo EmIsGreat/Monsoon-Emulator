@@ -619,27 +619,19 @@ fn create_ppu_dump(emu: &Nes, range: &str) -> Result<MemoryDump, String> {
 
 /// Create an OAM memory dump from the emulator
 fn create_oam_dump(emu: &Nes) -> MemoryDump {
-    let mem = emu.ppu.borrow().oam.get_memory_debug(None);
+    let mem = emu.get_oam_debug();
     MemoryDump::oam(mem)
 }
 
 /// Create a nametables memory dump from the emulator
 fn create_nametables_dump(emu: &Nes) -> MemoryDump {
-    let mem = emu
-        .ppu
-        .borrow()
-        .memory
-        .get_memory_debug(Some(0x2000..=0x2FFF));
+    let mem = emu.get_memory_debug(Some(0x2000..=0x2FFF))[1].to_vec();
     MemoryDump::nametables(mem)
 }
 
 /// Create a palette RAM memory dump from the emulator
 fn create_palette_dump(emu: &Nes) -> MemoryDump {
     // Palette RAM is at PPU addresses $3F00-$3F1F (32 bytes)
-    let mem = emu
-        .ppu
-        .borrow()
-        .memory
-        .get_memory_debug(Some(0x3F00..=0x3F1F));
+    let mem = emu.get_memory_debug(Some(0x3F00..=0x3F1F))[1].to_vec();
     MemoryDump::palette_ram(mem)
 }

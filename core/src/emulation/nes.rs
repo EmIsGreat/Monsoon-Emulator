@@ -60,25 +60,20 @@ pub const MASTER_CYCLES_PER_FRAME: u32 = 357366;
 /// ```
 pub struct Nes {
     /// The MOS 6502 CPU instance.
-    #[doc(hidden)]
-    pub cpu: Cpu,
+    pub(crate) cpu: Cpu,
     /// The 2C02 PPU instance, wrapped in `Rc<RefCell<_>>` because the CPU
     /// and PPU share access (e.g., through memory-mapped PPU registers).
-    #[doc(hidden)]
-    pub ppu: Rc<RefCell<Ppu>>,
+    pub(crate) ppu: Rc<RefCell<Ppu>>,
     /// Total master clock cycles elapsed since power-on.
     pub total_cycles: u128,
     /// The currently loaded ROM, or `None` if no ROM has been loaded.
     pub rom_file: Option<RomFile>,
     /// Optional CPU instruction trace logger for debugging.
-    #[doc(hidden)]
-    pub trace_log: Option<TraceLog>,
+    pub(crate) trace_log: Option<TraceLog>,
     /// Internal CPU clock divider counter (0-12).
-    #[doc(hidden)]
-    pub cpu_cycle_counter: u8,
+    pub(crate) cpu_cycle_counter: u8,
     /// Internal PPU clock divider counter (0-4).
-    #[doc(hidden)]
-    pub ppu_cycle_counter: u8,
+    pub(crate) ppu_cycle_counter: u8,
 }
 
 impl Nes {
@@ -431,6 +426,84 @@ impl Default for Nes {
         let cpu = Cpu::new();
         let ppu = Rc::new(RefCell::new(Ppu::default()));
         Nes::new(cpu, ppu)
+    }
+}
+
+impl Nes {
+    // --- CPU debug accessors ---
+
+    /// Returns the current program counter value.
+    pub fn program_counter(&self) -> u16 { self.cpu.program_counter }
+
+    /// Returns the opcode byte of the instruction currently being executed.
+    pub fn current_opcode_byte(&self) -> Option<u8> {
+        self.cpu.current_opcode.map(|c| c.opcode)
+    }
+
+    /// Returns `true` if the CPU has executed a halt (KIL) instruction.
+    pub fn is_halted(&self) -> bool { self.cpu.is_halted }
+
+    /// Returns the last memory access (address, was_read), or `None` if no access occurred.
+    pub fn last_memory_access(&self) -> Option<(u16, bool)> { self.cpu.last_memory_access }
+
+    // --- PPU debug accessors ---
+
+    /// Returns `true` if the current frame is an even frame.
+    pub fn is_even_frame(&self) -> bool { self.ppu.borrow().even_frame }
+
+    /// Returns `true` if the PPU is currently rendering (background or sprites enabled).
+    pub fn is_rendering(&self) -> bool { self.ppu.borrow().is_rendering() }
+
+    /// Returns debug palette data from the PPU.
+    pub fn get_palettes_debug(&self) -> crate::emulation::ppu::EmulatorFetchable {
+        self.ppu.borrow().get_palettes_debug()
+    }
+
+    /// Returns debug tile data from the PPU.
+    pub fn get_tiles_debug(&self) -> crate::emulation::ppu::EmulatorFetchable {
+        self.ppu.borrow().get_tiles_debug()
+    }
+
+    /// Returns debug nametable data from the PPU.
+    pub fn get_nametable_debug(&self) -> crate::emulation::ppu::EmulatorFetchable {
+        self.ppu.borrow().get_nametable_debug()
+    }
+
+    /// Returns OAM (sprite memory) contents for debugging.
+    pub fn get_oam_debug(&self) -> Vec<u8> {
+        self.ppu.borrow().oam.get_memory_debug(None)
+    }
+
+    // --- Memory write methods ---
+
+    /// Writes a value to CPU memory at the given address (for initialization/debugging).
+    pub fn cpu_mem_write(&mut self, addr: u16, value: u8) {
+        self.cpu.memory.mem_write(addr, value);
+    }
+
+    /// Initializes CPU memory at the given address (for initialization/debugging).
+    pub fn cpu_mem_init(&mut self, addr: u16, data: u8) {
+        self.cpu.memory.init(addr, data);
+    }
+
+    /// Writes a value to PPU memory at the given address (for initialization/debugging).
+    pub fn ppu_mem_write(&self, addr: u16, value: u8) {
+        self.ppu.borrow_mut().memory.mem_write(addr, value);
+    }
+
+    /// Initializes PPU memory at the given address (for initialization/debugging).
+    pub fn ppu_mem_init(&self, addr: u16, data: u8) {
+        self.ppu.borrow_mut().mem_init(addr, data);
+    }
+
+    /// Writes a value to OAM (sprite memory) at the given address (for initialization/debugging).
+    pub fn oam_write(&self, addr: u16, value: u8) {
+        self.ppu.borrow_mut().oam.mem_write(addr, value);
+    }
+
+    /// Returns a reference to the trace log, if tracing is enabled.
+    pub fn trace_log(&self) -> Option<&TraceLog> {
+        self.trace_log.as_ref()
     }
 }
 

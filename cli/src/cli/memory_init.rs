@@ -308,7 +308,7 @@ pub fn apply_memory_init(
     for init in cpu_inits {
         for (offset, &value) in init.values.iter().enumerate() {
             let addr = init.address.wrapping_add(offset as u16);
-            emu.cpu.memory.mem_write(addr, value);
+            emu.cpu_mem_write(addr, value);
         }
     }
 
@@ -316,7 +316,7 @@ pub fn apply_memory_init(
     for init in ppu_inits {
         for (offset, &value) in init.values.iter().enumerate() {
             let addr = init.address.wrapping_add(offset as u16);
-            emu.ppu.borrow_mut().memory.mem_write(addr, value);
+            emu.ppu_mem_write(addr, value);
         }
     }
 
@@ -325,7 +325,7 @@ pub fn apply_memory_init(
         for (offset, &value) in init.values.iter().enumerate() {
             // OAM is limited to 256 bytes (addresses 0x00-0xFF)
             let addr = (init.address.wrapping_add(offset as u16)) & 0xFF;
-            emu.ppu.borrow_mut().oam.mem_write(addr, value);
+            emu.oam_write(addr, value);
         }
     }
 }
@@ -336,7 +336,7 @@ pub fn apply_memory_init_config(emu: &mut Nes, config: &MemoryInitConfig) {
     for (&addr, values) in &config.cpu {
         for (offset, &value) in values.iter().enumerate() {
             let target_addr = addr.wrapping_add(offset as u16);
-            emu.cpu.memory.mem_write(target_addr, value);
+            emu.cpu_mem_write(target_addr, value);
         }
     }
 
@@ -344,7 +344,7 @@ pub fn apply_memory_init_config(emu: &mut Nes, config: &MemoryInitConfig) {
     for (&addr, values) in &config.ppu {
         for (offset, &value) in values.iter().enumerate() {
             let target_addr = addr.wrapping_add(offset as u16);
-            emu.ppu.borrow_mut().memory.mem_write(target_addr, value);
+            emu.ppu_mem_write(target_addr, value);
         }
     }
 
@@ -352,7 +352,7 @@ pub fn apply_memory_init_config(emu: &mut Nes, config: &MemoryInitConfig) {
     for (&addr, values) in &config.oam {
         for (offset, &value) in values.iter().enumerate() {
             let target_addr = (addr.wrapping_add(offset as u16)) & 0xFF;
-            emu.ppu.borrow_mut().oam.mem_write(target_addr, value);
+            emu.oam_write(target_addr, value);
         }
     }
 }
