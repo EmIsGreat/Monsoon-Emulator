@@ -1,8 +1,7 @@
 //! Utility traits and functions.
 //!
-//! This module provides serialization helpers ([`ToBytes`]), hash utilities
-//! ([`Hashable`], [`compute_hash`]), and low-level address arithmetic used
-//! internally by the CPU emulation.
+//! This module provides serialization helpers ([`ToBytes`]) and hash utilities
+//! ([`Hashable`]) for use by the emulator and consumers of this library.
 
 use crate::emulation::cpu::UPPER_BYTE;
 use crate::emulation::mem::{Memory, MemoryDevice};
@@ -13,7 +12,7 @@ use crate::emulation::savestate::{BINARY_FORMAT_VERSION, JSON_FORMAT_VERSION, MA
 /// This is used by the 6502 CPU to detect page crossings for addressing
 /// modes that add an unsigned offset.
 #[inline(always)]
-pub fn crosses_page_boundary_u8(base: u16, offset: u8) -> bool {
+pub(crate) fn crosses_page_boundary_u8(base: u16, offset: u8) -> bool {
     (base & UPPER_BYTE) != ((base + offset as u16) & UPPER_BYTE)
 }
 
@@ -21,7 +20,7 @@ pub fn crosses_page_boundary_u8(base: u16, offset: u8) -> bool {
 ///
 /// This is used by the 6502 CPU for relative branch offset calculations.
 #[inline(always)]
-pub fn crosses_page_boundary_i8(base: u16, offset: i8) -> bool {
+pub(crate) fn crosses_page_boundary_i8(base: u16, offset: i8) -> bool {
     let target = base.wrapping_add(offset as i16 as u16);
     (base & UPPER_BYTE) != (target & UPPER_BYTE)
 }
@@ -31,7 +30,7 @@ pub fn crosses_page_boundary_i8(base: u16, offset: i8) -> bool {
 /// This emulates the 6502 bug where some addressing modes wrap within
 /// a page instead of crossing into the next page.
 #[inline(always)]
-pub fn add_to_low_byte(val: u16, add: u8) -> u16 {
+pub(crate) fn add_to_low_byte(val: u16, add: u8) -> u16 {
     let high = val & 0xFF00; // preserve high byte
     let low = ((val & 0x00FF) as u8).wrapping_add(add); // add with wrapping
     high | low as u16
@@ -90,7 +89,7 @@ impl Hashable for Vec<u8> {
 /// Compute a fast hash of the given data for change detection.
 /// Uses FNV-1a algorithm which is fast and has good distribution.
 #[inline]
-pub fn compute_hash(data: &[u8]) -> u64 {
+pub(crate) fn compute_hash(data: &[u8]) -> u64 {
     const FNV_OFFSET_BASIS: u64 = 0xCBF29CE484222325;
     const FNV_PRIME: u64 = 0x100000001B3;
 

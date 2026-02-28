@@ -54,70 +54,49 @@ pub struct CpuState {
     #[serde(skip)]
     pub memory: Vec<u8>,
     /// Low byte of the current address being assembled.
-    #[doc(hidden)]
-    pub lo: u8,
+    pub(crate) lo: u8,
     /// High byte of the current address being assembled.
-    #[doc(hidden)]
-    pub hi: u8,
+    pub(crate) hi: u8,
     /// Current micro-operation being executed.
-    #[doc(hidden)]
-    pub current_op: MicroOp,
+    pub(crate) current_op: MicroOp,
     /// Queue of pending micro-operations.
-    #[doc(hidden)]
-    pub op_queue: VecDeque<MicroOp>,
+    pub(crate) op_queue: VecDeque<MicroOp>,
     /// Opcode byte of the instruction currently being executed.
-    #[doc(hidden)]
-    pub current_opcode: Option<u8>,
+    pub(crate) current_opcode: Option<u8>,
     /// Temporary register for intermediate calculations.
-    #[doc(hidden)]
-    pub temp: u8,
+    pub(crate) temp: u8,
     /// Constant used by the ANE (XAA) illegal opcode.
-    #[doc(hidden)]
-    pub ane_constant: u8,
+    pub(crate) ane_constant: u8,
     /// Whether the CPU has executed a halt (KIL) instruction.
     pub is_halted: bool,
     /// Whether the current cycle is a read cycle.
-    #[doc(hidden)]
-    pub read_cycle: bool,
+    pub(crate) read_cycle: bool,
     /// IRQ detection flag.
-    #[doc(hidden)]
-    pub irq_detected: bool,
+    pub(crate) irq_detected: bool,
     /// IRQ pending flag.
-    #[doc(hidden)]
-    pub irq_pending: bool,
+    pub(crate) irq_pending: bool,
     /// External IRQ line state.
-    #[doc(hidden)]
-    pub irq_provider: bool,
+    pub(crate) irq_provider: bool,
     /// Whether the CPU is currently in an IRQ handler.
-    #[doc(hidden)]
-    pub is_in_irq: bool,
+    pub(crate) is_in_irq: bool,
     /// Current interrupt vector address.
-    #[doc(hidden)]
-    pub current_irq_vec: u16,
+    pub(crate) current_irq_vec: u16,
     /// Locked interrupt vector address.
-    #[doc(hidden)]
-    pub locked_irq_vec: u16,
+    pub(crate) locked_irq_vec: u16,
     /// DMA source page register.
-    #[doc(hidden)]
-    pub dma_page: u8,
+    pub(crate) dma_page: u8,
     /// DMA read/write toggle.
-    #[doc(hidden)]
-    pub dma_read: bool,
+    pub(crate) dma_read: bool,
     /// DMA temporary data register.
-    #[doc(hidden)]
-    pub dma_temp: u8,
+    pub(crate) dma_temp: u8,
     /// Whether a DMA transfer has been triggered.
-    #[doc(hidden)]
-    pub dma_triggered: bool,
+    pub(crate) dma_triggered: bool,
     /// NMI detection flag.
-    #[doc(hidden)]
-    pub nmi_detected: bool,
+    pub(crate) nmi_detected: bool,
     /// NMI pending flag.
-    #[doc(hidden)]
-    pub nmi_pending: bool,
+    pub(crate) nmi_pending: bool,
     /// Previous NMI line state (for edge detection).
-    #[doc(hidden)]
-    pub prev_nmi: bool,
+    pub(crate) prev_nmi: bool,
 }
 
 impl From<&Cpu> for CpuState {
@@ -173,8 +152,7 @@ pub struct PpuState {
     /// Total dot cycles elapsed.
     pub cycle_counter: u128,
     /// Counter for VBL clear scheduling.
-    #[doc(hidden)]
-    pub vbl_reset_counter: u8,
+    pub(crate) vbl_reset_counter: u8,
     /// PPU status register (`$2002`).
     pub status_register: u8,
     /// PPU control register (`$2000`).
@@ -190,88 +168,63 @@ pub struct PpuState {
     /// OAM address register (`$2003`).
     pub oam_addr_register: u8,
     /// Write latch state (first/second write toggle).
-    #[doc(hidden)]
-    pub write_latch: bool,
+    pub(crate) write_latch: bool,
     /// PPU data read buffer.
-    #[doc(hidden)]
-    pub ppu_data_buffer: u8,
+    pub(crate) ppu_data_buffer: u8,
     /// Temporary VRAM address register (t).
-    #[doc(hidden)]
-    pub t_register: u16,
+    pub(crate) t_register: u16,
     /// Next background tile attribute byte.
-    #[doc(hidden)]
-    pub bg_next_tile_attribute: u8,
+    pub(crate) bg_next_tile_attribute: u8,
     /// Fine X scroll (0-7).
     pub fine_x_scroll: u8,
     /// Whether the current frame is an even frame.
     pub even_frame: bool,
     /// Reset signal state.
-    #[doc(hidden)]
-    pub reset_signal: bool,
+    pub(crate) reset_signal: bool,
     /// Current dot position within the scanline (0-340).
     pub dot: u16,
     /// Current scanline (0-261).
     pub scanline: u16,
     /// Next background tile ID.
-    #[doc(hidden)]
-    pub bg_next_tile_id: u8,
+    pub(crate) bg_next_tile_id: u8,
     /// Next background tile pattern low byte.
-    #[doc(hidden)]
-    pub bg_next_tile_lsb: u8,
+    pub(crate) bg_next_tile_lsb: u8,
     /// Scheduled VBL clear timing.
-    #[doc(hidden)]
-    pub vbl_clear_scheduled: Option<u8>,
+    pub(crate) vbl_clear_scheduled: Option<u8>,
     /// Previous VBL state for edge detection.
-    #[doc(hidden)]
-    pub prev_vbl: u8,
+    pub(crate) prev_vbl: u8,
     /// Open bus state.
-    #[doc(hidden)]
-    pub open_bus: OpenBus,
+    pub(crate) open_bus: OpenBus,
     /// Current address on the PPU address bus.
-    #[doc(hidden)]
-    pub address_bus: u16,
+    pub(crate) address_bus: u16,
     /// Address latch value.
-    #[doc(hidden)]
-    pub address_latch: u8,
+    pub(crate) address_latch: u8,
     /// Background shift register (pattern low).
-    #[doc(hidden)]
-    pub shift_pattern_lo: u16,
+    pub(crate) shift_pattern_lo: u16,
     /// Background shift register (pattern high).
-    #[doc(hidden)]
-    pub shift_pattern_hi: u16,
+    pub(crate) shift_pattern_hi: u16,
     /// Background shift register (attribute low).
-    #[doc(hidden)]
-    pub shift_attr_lo: u8,
+    pub(crate) shift_attr_lo: u8,
     /// Background shift register (attribute high).
-    #[doc(hidden)]
-    pub shift_attr_hi: u8,
+    pub(crate) shift_attr_hi: u8,
     /// Attribute shift-in latch (low).
-    #[doc(hidden)]
-    pub shift_in_attr_lo: bool,
+    pub(crate) shift_in_attr_lo: bool,
     /// Attribute shift-in latch (high).
-    #[doc(hidden)]
-    pub shift_in_attr_hi: bool,
+    pub(crate) shift_in_attr_hi: bool,
     /// Whether secondary OAM clear is active.
-    #[doc(hidden)]
-    pub is_soam_clear_active: bool,
+    pub(crate) is_soam_clear_active: bool,
     /// Primary OAM evaluation index.
-    #[doc(hidden)]
-    pub oam_index: u8,
+    pub(crate) oam_index: u8,
     /// Secondary OAM write index.
-    #[doc(hidden)]
-    pub soam_index: u8,
+    pub(crate) soam_index: u8,
     /// Secondary OAM write disable flag.
-    #[doc(hidden)]
-    pub soam_disable: bool,
+    pub(crate) soam_disable: bool,
     /// OAM byte increment counter.
-    #[doc(hidden)]
-    pub oam_increment: u8,
+    pub(crate) oam_increment: u8,
     /// Secondary OAM write counter.
-    #[doc(hidden)]
-    pub soam_write_counter: u8,
+    pub(crate) soam_write_counter: u8,
     /// OAM fetch data register.
-    #[doc(hidden)]
-    pub oam_fetch: u8,
+    pub(crate) oam_fetch: u8,
     /// OAM (sprite) memory snapshot (256 bytes).
     pub oam_mem: Vec<u8>,
     /// Palette RAM snapshot (32 bytes).
