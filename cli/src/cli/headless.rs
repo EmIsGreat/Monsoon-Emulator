@@ -174,7 +174,8 @@ pub fn print_rom_info(rom_path: &Path) -> Result<(), String> {
     let path_str = rom_path.to_string_lossy().to_string();
     let data = std::fs::read(rom_path)
         .map_err(|e| format!("Failed to read ROM file: {}", e))?;
-    let rom = RomFile::load(&data, Some(path_str));
+    let rom = RomFile::load(&data, Some(path_str))
+        .map_err(|e| format!("Failed to parse ROM: {}", e))?;
 
     println!("ROM Information:");
     println!("  File: {}", rom_path.display());

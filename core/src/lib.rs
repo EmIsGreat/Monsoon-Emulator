@@ -11,12 +11,14 @@
 //!
 //! ```rust,no_run
 //! use monsoon_core::emulation::nes::Nes;
+//! use monsoon_core::emulation::rom::RomFile;
 //!
 //! let mut nes = Nes::default();
 //!
 //! // Load a ROM from raw bytes
-//! let rom_data: &[u8] = &[/* ROM bytes */];
-//! nes.load_rom(&rom_data);
+//! let rom_data = std::fs::read("game.nes").unwrap();
+//! let rom = RomFile::load(&rom_data, None).unwrap();
+//! nes.load_rom(&rom);
 //!
 //! // Power on and run a single frame
 //! nes.power();

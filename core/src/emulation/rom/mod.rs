@@ -26,6 +26,10 @@ use crate::emulation::rom::formats::ines2::Ines2;
 pub enum ParseError {
     /// The sizes declared in the ROM header exceed the actual file length.
     SizeBiggerThanFile,
+    /// The ROM data is too short to contain a valid header (minimum 16 bytes).
+    InvalidHeader,
+    /// The ROM format is not recognized (missing `NES\x1A` magic bytes).
+    UnsupportedFormat,
 }
 
 impl Display for ParseError {
@@ -36,6 +40,12 @@ impl Display for ParseError {
                     f,
                     "Rom sizes specified in header are larger than total rom size"
                 )
+            }
+            ParseError::InvalidHeader => {
+                write!(f, "Rom data is too short to contain a valid header")
+            }
+            ParseError::UnsupportedFormat => {
+                write!(f, "Rom format is not recognized")
             }
         }
     }
@@ -65,7 +75,8 @@ pub trait RomParser: Debug {
 /// use monsoon_core::emulation::rom::RomFile;
 ///
 /// # let raw_bytes: &[u8] = &[];
-/// let rom = RomFile::load(raw_bytes, Some("my_game.nes".to_string()));
+/// let rom = RomFile::load(raw_bytes, Some("my_game.nes".to_string()))
+///     .expect("invalid ROM");
 /// println!("Mapper: {}", rom.mapper_number);
 /// ```
 ///
@@ -164,7 +175,12 @@ impl RomFile {
         arr[start..end].iter().all(|&x| x == 0)
     }
 
-    fn get_rom_type(rom: &[u8]) -> Box<dyn RomParser> {
+    fn get_rom_type(rom: &[u8]) -> Result<Box<dyn RomParser>, ParseError> {
+        // iNES and NES 2.0 headers are 16 bytes minimum
+        if rom.len() < 16 {
+            return Err(ParseError::InvalidHeader);
+        }
+
         if rom.starts_with(&[0x4E, 0x45, 0x53, 0x1A]) {
             let prg_rom_size_lsb = rom[4] as u16;
             let prg_rom_size_msb = (rom[9] & 0xF) as u16;
@@ -179,21 +195,21 @@ impl RomFile {
             if rom[7] & 0b00001100 == 8
                 && (prg_rom_size as usize + chr_rom_size as usize) < rom.len()
             {
-                return Box::new(Ines2);
+                return Ok(Box::new(Ines2));
             }
 
             if rom[7] & 0b00001100 == 4 {
-                return Box::new(ArchaicInes);
+                return Ok(Box::new(ArchaicInes));
             }
 
             if rom[7] & 0b00001100 == 0 && Self::range_all_zeros(rom, 12, 16) {
-                return Box::new(Ines);
+                return Ok(Box::new(Ines));
             }
 
-            return Box::new(Ines07);
+            return Ok(Box::new(Ines07));
         }
 
-        panic!("Romtype not yet implemented")
+        Err(ParseError::UnsupportedFormat)
     }
 
     /// Parses a ROM file from raw bytes.
@@ -207,20 +223,22 @@ impl RomFile {
     /// * `data` — The complete ROM file as a byte slice.
     /// * `name` — An optional human-readable name (e.g., the file name).
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if the ROM header is not recognized. All standard iNES variants
-    /// (with the `NES\x1A` magic bytes) are supported.
-    pub fn load(data: &[u8], name: Option<String>) -> RomFile {
+    /// Returns a [`ParseError`] if:
+    /// - The data is too short to contain a valid header ([`ParseError::InvalidHeader`]).
+    /// - The ROM format is not recognized ([`ParseError::UnsupportedFormat`]).
+    /// - The header declares sizes larger than the file ([`ParseError::SizeBiggerThanFile`]).
+    pub fn load(data: &[u8], name: Option<String>) -> Result<RomFile, ParseError> {
         let mut hasher = Sha256::new();
         hasher.update(data);
         let hash: [u8; 32] = hasher.finalize().into();
 
-        let rom_type = RomFile::get_rom_type(data);
-        let mut rom_file = rom_type.parse(data, name).expect("Error loading Rom");
+        let rom_type = RomFile::get_rom_type(data)?;
+        let mut rom_file = rom_type.parse(data, name)?;
         rom_file.data = data.to_vec();
         rom_file.data_checksum = hash;
-        rom_file
+        Ok(rom_file)
     }
 
     /// Extracts the PRG ROM region as a read-only [`Memory`] device.
@@ -312,11 +330,13 @@ impl From<&RomFile> for RomFile {
 }
 
 impl From<&[u8]> for RomFile {
-    fn from(data: &[u8]) -> Self { RomFile::load(data, None) }
+    fn from(data: &[u8]) -> Self { RomFile::load(data, None).expect("Failed to parse ROM data") }
 }
 
 impl From<&(&[u8], String)> for RomFile {
-    fn from((data, name): &(&[u8], String)) -> Self { RomFile::load(data, Some(name.clone())) }
+    fn from((data, name): &(&[u8], String)) -> Self {
+        RomFile::load(data, Some(name.clone())).expect("Failed to parse ROM data")
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -326,9 +346,12 @@ impl From<&String> for RomFile {
         use std::io::Read;
 
         let mut data = Vec::new();
-        File::open(path).unwrap().read_to_end(&mut data).unwrap();
+        File::open(path)
+            .unwrap_or_else(|e| panic!("Failed to open ROM file '{}': {}", path, e))
+            .read_to_end(&mut data)
+            .unwrap_or_else(|e| panic!("Failed to read ROM file '{}': {}", path, e));
 
-        RomFile::load(&data, Some(path.clone()))
+        RomFile::load(&data, Some(path.clone())).expect("Failed to parse ROM data")
     }
 }
 

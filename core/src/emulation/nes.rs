@@ -44,10 +44,12 @@ pub const MASTER_CYCLES_PER_FRAME: u32 = 357366;
 ///
 /// ```rust,no_run
 /// use monsoon_core::emulation::nes::Nes;
+/// use monsoon_core::emulation::rom::RomFile;
 ///
 /// let mut nes = Nes::default();
-/// # let rom_bytes: &[u8] = &[];
-/// nes.load_rom(&rom_bytes);
+/// let rom_bytes = std::fs::read("game.nes").unwrap();
+/// let rom = RomFile::load(&rom_bytes, None).unwrap();
+/// nes.load_rom(&rom);
 /// nes.power();
 ///
 /// // Run one frame
@@ -247,6 +249,7 @@ impl Nes {
     /// The argument can be anything that converts to a [`RomFile`] by reference.
     /// Common conversions include:
     ///
+    /// - `&RomFile` — a pre-parsed ROM file.
     /// - `&[u8]` — raw ROM bytes (name is set to `None`).
     /// - `&(&[u8], String)` — raw ROM bytes with a name.
     /// - `&String` — a file path (native only, not available on WASM).
@@ -254,10 +257,13 @@ impl Nes {
     /// # Example
     ///
     /// ```rust,no_run
-    /// # use monsoon_core::emulation::nes::Nes;
+    /// use monsoon_core::emulation::nes::Nes;
+    /// use monsoon_core::emulation::rom::RomFile;
+    ///
     /// let mut nes = Nes::default();
-    /// # let rom_bytes: &[u8] = &[];
-    /// nes.load_rom(&rom_bytes);
+    /// let data = std::fs::read("game.nes").unwrap();
+    /// let rom = RomFile::load(&data, None).unwrap();
+    /// nes.load_rom(&rom);
     /// ```
     pub fn load_rom<T>(&mut self, rom_get: &T)
     where

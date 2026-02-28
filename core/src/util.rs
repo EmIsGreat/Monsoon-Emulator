@@ -69,10 +69,10 @@ impl ToBytes for SaveState {
 
         if format == "json" {
             res.push(JSON_FORMAT_VERSION);
-            res.extend(serde_json::to_vec_pretty(self).expect("Error deserializing Savestate"));
+            res.extend(serde_json::to_vec_pretty(self).expect("Error serializing SaveState"));
         } else {
             res.push(BINARY_FORMAT_VERSION);
-            res.extend(postcard::to_stdvec(self).expect("Error deserializing Savestate"));
+            res.extend(postcard::to_stdvec(self).expect("Error serializing SaveState"));
         }
 
         res
