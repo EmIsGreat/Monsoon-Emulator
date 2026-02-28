@@ -41,10 +41,10 @@ jobs:
             ${{ runner.os }}-cargo-
 
       - name: Build CLI
-        run: cargo build --release -p monsoon-cli
+        run: cargo build --profile full_release -p monsoon-cli
 
       - name: Build Frontend
-        run: cargo build --release -p monsoon-frontend
+        run: cargo build --profile full_release -p monsoon-frontend
 
       - name: Prepare artifacts
         shell: bash
@@ -175,7 +175,7 @@ jobs:
 
       - name: Build frontend with trunk
         working-directory: frontend
-        run: trunk build --release
+        run: trunk build --profile full_release
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
