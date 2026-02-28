@@ -30,6 +30,7 @@ jobs:
           commit_message: "style: auto-format with cargo fmt --all"
 
   clippy:
+    needs: format
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
