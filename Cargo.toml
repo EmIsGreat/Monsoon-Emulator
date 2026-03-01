@@ -6,7 +6,7 @@ default-members = ["frontend"]
 resolver = "3"
 
 [workspace.package]
-version = "0.1.3"
+version = "0.1.4"
 edition = "2024"
 license = "Apache-2.0"
 repository = "https://github.com/EmIsGreat/Monsoon-Emulator"
@@ -14,8 +14,8 @@ keywords = ["nes", "emulator", "nintendo"]
 categories = ["emulators", "game-development"]
 
 [workspace.dependencies]
-monsoon-core = { version = "0.1.3", path = "core" }
-monsoon-default-renderers = { version = "0.1.3", path = "renderer" }
+monsoon-core = { version = "0.1.4", path = "core" }
+monsoon-default-renderers = { version = "0.1.4", path = "renderer" }
 
 [profile.release]
 strip = true
