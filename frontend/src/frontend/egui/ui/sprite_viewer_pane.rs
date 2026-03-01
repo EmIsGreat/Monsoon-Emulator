@@ -69,16 +69,16 @@ pub fn render_sprite_viewer(ui: &mut egui::Ui, emu_textures: &EmuTextures) {
                 resp.on_hover_ui(|ui| {
                     ui.label(format!(
                         "Tile: {}x{} (Pattern Table {})",
-                        (sprite.tile & 0xFF) / 8,
-                        (sprite.tile & 0xFF) % 8,
+                        (sprite.tile & 0xFF) % 16,
+                        (sprite.tile & 0xFF) / 16,
                         sprite.tile >> 8
                     ));
 
                     if sprite_mode == SpriteMode::TALL {
                         ui.label(format!(
                             "Bottom Tile: {}x{} (Pattern Table {})",
-                            (sprite.bottom_tile & 0xFF) / 8,
-                            (sprite.bottom_tile & 0xFF) % 8,
+                            (sprite.bottom_tile & 0xFF) % 16,
+                            (sprite.bottom_tile & 0xFF) / 16,
                             sprite.tile >> 8
                         ));
                     }

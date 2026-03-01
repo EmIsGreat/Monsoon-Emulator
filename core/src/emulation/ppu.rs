@@ -262,58 +262,16 @@ impl Ppu {
 
                     for s in self.sprite_fifo.iter_mut() {
                         if s.down_counter == 0 {
-                            // if self.dot_counter > 207856807 - DOTS_PER_FRAME {
-                            //     self.log += format!(
-                            //         "Rendering sprite {i} @ {}x{}\n",
-                            //         self.dot, self.scanline
-                            //     )
-                            //     .as_str();
-                            // }
-
                             sprite_pixel_priority = s.attribute & 0b0010_0000;
                             sprite_pixel_palette = s.attribute & 3;
 
                             let shift_out_lo = (s.shifter_pattern_lo & 0x80 != 0) as u8;
                             let shift_out_hi = (s.shifter_pattern_hi & 0x80 != 0) as u8;
 
-                            // if self.dot_counter > 207856807 - DOTS_PER_FRAME {
-                            //     self.log += format!(
-                            //         "Before shift lo: {:08b} @ {}x{}\n",
-                            //         s.shifter_pattern_lo, self.dot, self.scanline
-                            //     )
-                            //     .as_str();
-                            //     self.log += format!(
-                            //         "Before shift hi: {:08b} @ {}x{}\n",
-                            //         s.shifter_pattern_hi, self.dot, self.scanline
-                            //     )
-                            //     .as_str();
-                            // }
-
                             s.shifter_pattern_lo <<= 1;
                             s.shifter_pattern_hi <<= 1;
 
-                            // if self.dot_counter > 207856807 - DOTS_PER_FRAME {
-                            //     self.log += format!(
-                            //         "After shift lo: {:08b} @ {}x{}\n",
-                            //         s.shifter_pattern_lo, self.dot, self.scanline
-                            //     )
-                            //     .as_str();
-                            //     self.log += format!(
-                            //         "After shift hi: {:08b} @ {}x{}\n",
-                            //         s.shifter_pattern_hi, self.dot, self.scanline
-                            //     )
-                            //     .as_str();
-                            // }
-
                             sprite_pixel_pattern = (shift_out_hi << 1) | shift_out_lo;
-
-                            // if self.dot_counter > 207856807 - DOTS_PER_FRAME {
-                            //     self.log += format!(
-                            //         "Sprite Pixel: {sprite_pixel_pattern:08b} @ {}x{}\n",
-                            //         self.dot, self.scanline
-                            //     )
-                            //     .as_str();
-                            // }
                         }
                     }
 
@@ -337,7 +295,7 @@ impl Ppu {
                         && sprite_color_address == 0x3F10
                     {
                         bg_color_address
-                    } else if sprite_pixel_priority == 1 {
+                    } else if sprite_pixel_priority == 0 {
                         sprite_color_address
                     } else {
                         bg_color_address
@@ -571,29 +529,6 @@ impl Ppu {
 
     pub fn set_soam_disable(&mut self, disable: bool) { self.soam_disable = disable; }
 
-    pub fn print_oam(&mut self) {
-        self.log += "================ OAM STATE ========================\n";
-        self.log += "Row | Y |T |A |X |Y |T |A |X  |          | OAM2[8]\n";
-        self.log += "----+------------------------------------+---------\n";
-
-        for row in 0..32 {
-            let base = row * 9;
-            let row_bytes = (0..8)
-                .map(|i| self.oam.mem_read((base + i) as u16))
-                .collect::<Vec<_>>();
-            let oam2_byte = self.oam.mem_read((base + 8) as u16);
-
-            // Print row
-            self.log += format!("{:02X}  | ", row).as_str();
-            for b in &row_bytes {
-                self.log += format!("{:02X} ", b).as_str();
-            }
-            self.log += format!("| {:02X}\n", oam2_byte).as_str();
-        }
-
-        self.log += "==========================================\n";
-    }
-
     #[inline]
     pub fn init_soam(&mut self) {
         match (self.dot - 1) % 2 {
@@ -703,7 +638,7 @@ impl Ppu {
 
     #[inline]
     pub fn get_sprite_height(&self) -> u8 {
-        if self.ctrl_register & 0x20 != 0 {
+        if self.ctrl_register & 0x20 == 0 {
             8
         } else {
             16
@@ -1248,7 +1183,7 @@ impl Ppu {
             SpriteMode::TALL
         };
 
-        let base_pattern_table = ((self.ctrl_register & 0b1000) as u16)<<5;
+        let base_pattern_table = ((self.ctrl_register & 0b1000) as u16) << 5;
 
         let mut sprites = SpriteData {
             sprites: [Sprite::default(); 64],
@@ -1264,17 +1199,17 @@ impl Ppu {
             let tile = if sprite_mode == SpriteMode::SMALL {
                 (tile_byte as u16) | base_pattern_table
             } else {
-                ((tile_byte >> 1) as u16) | (((tile_byte << 7) as u16) << 1)
+                ((tile_byte & !1) as u16) | (((tile_byte & 1) as u16) << 8)
             };
 
             let bottom_tile = if sprite_mode == SpriteMode::SMALL {
                 0
             } else {
-                ((tile_byte >> 1) as u16 + 1) | (((tile_byte << 7) as u16) << 1)
+                ((tile_byte & !1) as u16 + 1) | (((tile_byte & 1) as u16) << 8)
             };
 
             let attribute_byte = self.oam_snapshot((sprite_base_address + 2) as u8);
-            let priority = (attribute_byte << 2) >> 7 == 1;
+            let priority = (attribute_byte << 2) >> 7 == 0;
             let h_flip = (attribute_byte << 1) >> 7 == 1;
             let v_flip = attribute_byte >> 7 == 1;
 
