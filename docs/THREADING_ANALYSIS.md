@@ -1,6 +1,9 @@
 # Threading Analysis: Emulator Backend in a Separate Thread
 
-This document analyzes what would be required to run the emulator backend
+> **Status: IMPLEMENTED.** The changes described below have been applied.
+> See the implementation commits for details.
+
+This document describes the architecture for running the emulator backend
 (`ChannelEmulator` + `Nes`) in a dedicated thread, fully decoupled from the
 egui frontend via crossbeam channels.
 
