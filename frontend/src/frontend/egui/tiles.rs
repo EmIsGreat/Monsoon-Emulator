@@ -217,6 +217,8 @@ pub fn compute_required_fetches_from_tree(
 
     if find_pane(&tree.tiles, &Pane::Sprites).is_some() {
         explicit_fetches.insert(EmulatorFetchable::Sprites(None));
+        explicit_fetches.insert(EmulatorFetchable::Tiles(None));
+        explicit_fetches.insert(EmulatorFetchable::Palettes(None));
     }
 
     if !explicit_fetches.is_empty() {
