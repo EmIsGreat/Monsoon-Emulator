@@ -99,7 +99,7 @@ pub fn image_cell_dual_vert(
 ) -> egui::Response {
     let response = ui.interact(rect, ui.id().with(id_source), sense);
     let painter = ui.painter();
-    let middle = (rect.max - rect.min).y / 2.0;
+    let middle = rect.min.y + (rect.max.y - rect.min.y) / 2.0;
 
     painter.image(
         texture_id_1,
