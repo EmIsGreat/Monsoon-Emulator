@@ -18,12 +18,13 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::time::Duration;
 
+
 use crossbeam_channel::{Receiver, Sender};
 use eframe::glow;
 use egui::{Context, Style, ViewportCommand, Visuals};
 use monsoon_core::declare_renderers;
 use monsoon_core::emulation::nes::Nes;
-use monsoon_core::emulation::ppu_util::{EmulatorFetchable, PaletteData, TILE_COUNT, TileData};
+use monsoon_core::emulation::ppu_util::{EmulatorFetchable, PaletteData, TileData, TILE_COUNT};
 use monsoon_core::emulation::savestate::SaveState;
 use monsoon_core::emulation::screen_renderer::{
     NoneRenderer, RendererRegistration, ScreenRenderer,
@@ -39,7 +40,7 @@ use crate::frontend::egui::input::handle_keyboard_input;
 use crate::frontend::egui::message_handlers::{AsyncMessageHandler, EmulatorMessageHandler};
 use crate::frontend::egui::textures::EmuTextures;
 use crate::frontend::egui::tiles::{
-    Pane, TreeBehavior, compute_required_fetches_from_tree, create_tree,
+    compute_required_fetches_from_tree, create_tree, find_pane, Pane, TreeBehavior,
 };
 use crate::frontend::egui::ui::{
     add_menu_bar, add_status_bar, render_save_browser, render_savestate_dialogs,
@@ -47,7 +48,7 @@ use crate::frontend::egui::ui::{
 use crate::frontend::messages::{
     AsyncFrontendMessage, FrontendEvent, LoadedRom, SavestateLoadContext,
 };
-use crate::frontend::persistence::{PersistentConfig, get_egui_storage_path, load_config};
+use crate::frontend::persistence::{get_egui_storage_path, load_config, PersistentConfig};
 use crate::frontend::storage::{Storage, StorageKey};
 use crate::frontend::{storage, util};
 use crate::messages::{EmulatorMessage, FrontendMessage, SaveType};
@@ -347,19 +348,23 @@ impl EguiApp {
 
     /// Check if the pattern tables pane is visible
     fn is_pattern_tables_visible(&self) -> bool {
-        use crate::frontend::egui::tiles::{Pane, find_pane};
         find_pane(&self.tree.tiles, &Pane::PatternTables).is_some()
     }
 
     /// Check if the nametables pane is visible
     fn is_nametables_visible(&self) -> bool {
-        use crate::frontend::egui::tiles::{Pane, find_pane};
         find_pane(&self.tree.tiles, &Pane::Nametables).is_some()
+    }
+
+    fn is_sprite_viewer_visible(&self) -> bool {
+        find_pane(&self.tree.tiles, &Pane::Sprites).is_some()
     }
 
     /// Check if any viewer that needs tile textures is visible
     pub(crate) fn is_tile_viewer_visible(&self) -> bool {
-        self.is_pattern_tables_visible() || self.is_nametables_visible()
+        self.is_pattern_tables_visible()
+            || self.is_nametables_visible()
+            || self.is_sprite_viewer_visible()
     }
 
     /// Check if pattern tables or nametables viewer just became visible and force rebuild if so

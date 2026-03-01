@@ -337,7 +337,7 @@ impl Ppu {
                         && sprite_color_address == 0x3F10
                     {
                         bg_color_address
-                    } else if sprite_pixel_priority == 0 {
+                    } else if sprite_pixel_priority == 1 {
                         sprite_color_address
                     } else {
                         bg_color_address
@@ -703,7 +703,7 @@ impl Ppu {
 
     #[inline]
     pub fn get_sprite_height(&self) -> u8 {
-        if self.ctrl_register & 0x20 == 0 {
+        if self.ctrl_register & 0x20 != 0 {
             8
         } else {
             16
@@ -1247,7 +1247,8 @@ impl Ppu {
         } else {
             SpriteMode::TALL
         };
-        let base_pattern_table = ((self.ctrl_register & 0b1_0000) as u16) << 4;
+
+        let base_pattern_table = ((self.ctrl_register & 0b1_0000) as u16)<<4;
 
         let mut sprites = SpriteData {
             sprites: [Sprite::default(); 64],
@@ -1277,7 +1278,7 @@ impl Ppu {
             let h_flip = (attribute_byte << 1) >> 7 == 1;
             let v_flip = attribute_byte >> 7 == 1;
 
-            let palette = (attribute_byte << 6) >> 6;
+            let palette = (attribute_byte & 0b11) + 4;
 
             sprites.sprites[sprite] = Sprite {
                 y_pos: y_pos as u16,

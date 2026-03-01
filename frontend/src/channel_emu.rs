@@ -57,7 +57,6 @@ pub struct ChannelEmulator {
 pub static FETCH_DEPS: OnceLock<HashMap<EmulatorFetchable, Vec<EmulatorFetchable>>> =
     OnceLock::new();
 
-#[allow(irrefutable_let_patterns)]
 impl ChannelEmulator {
     fn setup_fetch_deps() {
         let mut deps = HashMap::new();
