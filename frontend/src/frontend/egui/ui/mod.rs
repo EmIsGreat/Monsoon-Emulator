@@ -12,7 +12,9 @@ pub mod save_browser;
 pub mod savestate_dialogs;
 mod status_bar;
 pub mod widgets;
+mod sprite_viewer_pane;
 
+pub use sprite_viewer_pane::render_sprite_viewer;
 pub use emulator_output::render_emulator_output;
 pub use keybindings_pane::render_keybindings;
 pub use menu_bar::add_menu_bar;

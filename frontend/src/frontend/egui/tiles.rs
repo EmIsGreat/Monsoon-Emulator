@@ -11,7 +11,7 @@ use crate::frontend::egui::config::AppConfig;
 use crate::frontend::egui::textures::EmuTextures;
 use crate::frontend::egui::ui::{
     render_emulator_output, render_keybindings, render_nametable, render_options, render_palettes,
-    render_pattern_table,
+    render_pattern_table, render_sprite_viewer,
 };
 use crate::frontend::messages::AsyncFrontendMessage;
 
@@ -27,6 +27,7 @@ pub enum Pane {
     /// Nametables viewer (all 4 nametables in a grid) - closeable debug viewer
     Nametables,
     Palettes,
+    Sprites,
     /// Keybindings configuration - closeable, can be reopened via menu
     Keybindings,
 }
@@ -40,7 +41,8 @@ impl Pane {
             | Pane::PatternTables
             | Pane::Nametables
             | Pane::Palettes
-            | Pane::Keybindings => true,
+            | Pane::Keybindings
+            | Pane::Sprites => true,
         }
     }
 
@@ -53,6 +55,7 @@ impl Pane {
             Pane::Nametables => "Nametables",
             Pane::Palettes => "Palettes",
             Pane::Keybindings => "Keybindings",
+            Pane::Sprites => "Sprites",
         }
     }
 }
@@ -99,6 +102,7 @@ impl Behavior<Pane> for TreeBehavior<'_> {
             Pane::Keybindings => {
                 render_keybindings(ui, self.config);
             }
+            Pane::Sprites => render_sprite_viewer(ui, self.emu_textures),
         }
         UiResponse::None
     }
@@ -209,6 +213,10 @@ pub fn compute_required_fetches_from_tree(
 
     if find_pane(&tree.tiles, &Pane::Palettes).is_some() {
         explicit_fetches.insert(EmulatorFetchable::Palettes(None));
+    }
+
+    if find_pane(&tree.tiles, &Pane::Sprites).is_some() {
+        explicit_fetches.insert(EmulatorFetchable::Sprites(None));
     }
 
     if !explicit_fetches.is_empty() {

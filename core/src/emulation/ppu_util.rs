@@ -25,6 +25,8 @@ pub const NAMETABLE_COUNT: usize = 4;
 pub const NAMETABLE_ROWS: usize = 30;
 /// Number of tile columns per nametable (32).
 pub const NAMETABLE_COLS: usize = 32;
+/// Max number of sprites possible
+pub const SPRITE_COUNT: usize = 64;
 
 /// Describes a category of debug data that can be fetched from the emulator.
 ///
@@ -38,6 +40,7 @@ pub enum EmulatorFetchable {
     Tiles(Option<Box<[TileData; TILE_COUNT]>>),
     /// Nametable layout data for all 4 nametables.
     Nametables(Option<Box<NametableData>>),
+    Sprites(Option<Box<SpriteData>>),
 }
 
 impl EmulatorFetchable {
@@ -48,6 +51,7 @@ impl EmulatorFetchable {
             EmulatorFetchable::Palettes(_) => EmulatorFetchable::Palettes(None),
             EmulatorFetchable::Tiles(_) => EmulatorFetchable::Tiles(None),
             EmulatorFetchable::Nametables(_) => EmulatorFetchable::Nametables(None),
+            EmulatorFetchable::Sprites(_) => EmulatorFetchable::Sprites(None),
         }
     }
 
@@ -68,7 +72,7 @@ impl EmulatorFetchable {
 /// Snapshot of all 8 NES palettes (4 background + 4 sprite).
 ///
 /// Each palette contains 4 color indices into the system palette.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
 pub struct PaletteData {
     /// 8 palettes of 4 color indices each.
     pub colors: [[u8; 4]; 8],
@@ -98,4 +102,38 @@ pub struct TileData {
     pub plane_0: u64,
     /// High bit plane (8 rows × 8 bits packed into a `u64`).
     pub plane_1: u64,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub struct SpriteData {
+    pub sprites: [Sprite; SPRITE_COUNT],
+    pub mode: SpriteMode,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
+pub struct Sprite {
+    pub y_pos: u16,
+    pub x_pos: u16,
+    pub tile: u16,
+    pub bottom_tile: u16,
+    pub palette: u8,
+    pub priority: bool,
+    pub h_flip: bool,
+    pub v_flip: bool,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
+pub enum SpriteMode {
+    #[default]
+    SMALL,
+    TALL,
+}
+
+impl SpriteMode {
+    pub fn get_height_mult(&self) -> u8 {
+        match self {
+            SpriteMode::SMALL => 1,
+            SpriteMode::TALL => 2,
+        }
+    }
 }

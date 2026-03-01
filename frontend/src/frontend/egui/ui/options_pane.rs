@@ -8,10 +8,8 @@ use crate::frontend::egui_frontend::get_all_renderers;
 /// Render the options panel
 pub fn render_options(ui: &mut egui::Ui, config: &mut AppConfig) {
     egui::ScrollArea::vertical().show(ui, |ui| {
-        if !get_all_renderers().is_empty() {
-            render_renderer_settings(ui, config);
-        }
         render_speed_settings(ui, config);
+        render_renderer_settings(ui, config);
     });
 }
 

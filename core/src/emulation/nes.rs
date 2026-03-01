@@ -5,10 +5,10 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use crate::emulation::cpu::{Cpu, MicroOp};
-use crate::emulation::mem::Memory;
 use crate::emulation::mem::mirror_memory::MirrorMemory;
 use crate::emulation::mem::ppu_registers::PpuRegisters;
-use crate::emulation::ppu::Ppu;
+use crate::emulation::mem::Memory;
+use crate::emulation::ppu::{EmulatorFetchable, Ppu};
 use crate::emulation::rom::RomFile;
 use crate::emulation::savestate::{CpuState, PpuState, SaveState};
 use crate::trace::TraceLog;
@@ -450,19 +450,21 @@ impl Nes {
     pub fn is_rendering(&self) -> bool { self.ppu.borrow().is_rendering() }
 
     /// Returns debug palette data from the PPU.
-    pub fn get_palettes_debug(&self) -> crate::emulation::ppu_util::EmulatorFetchable {
+    pub fn get_palettes_debug(&self) -> EmulatorFetchable {
         self.ppu.borrow().get_palettes_debug()
     }
 
     /// Returns debug tile data from the PPU.
-    pub fn get_tiles_debug(&self) -> crate::emulation::ppu_util::EmulatorFetchable {
+    pub fn get_tiles_debug(&self) -> EmulatorFetchable {
         self.ppu.borrow().get_tiles_debug()
     }
 
     /// Returns debug nametable data from the PPU.
-    pub fn get_nametable_debug(&self) -> crate::emulation::ppu_util::EmulatorFetchable {
+    pub fn get_nametable_debug(&self) -> EmulatorFetchable {
         self.ppu.borrow().get_nametable_debug()
     }
+
+    pub fn get_sprites_debug(&self) -> EmulatorFetchable { self.ppu.borrow().get_sprites_debug() }
 
     /// Returns OAM (sprite memory) contents for debugging.
     pub fn get_oam_debug(&self) -> Vec<u8> { self.ppu.borrow().oam.get_memory_debug(None) }

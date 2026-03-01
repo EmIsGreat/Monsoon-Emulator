@@ -37,6 +37,6 @@ fn test_oam_stress() {
         0x73, 0x73, 0x0A, 0x0A, 0x50, 0x61, 0x73, 0x73, 0x65, 0x64, 0x0A, 0x00,
     ];
 
-    // assert_eq!(cpu_mem[0], 0);
-    // assert_eq!(&cpu_mem[..expected.len()], &expected);
+    assert_eq!(cpu_mem[0], 0);
+    assert_eq!(&cpu_mem[..expected.len()], &expected);
 }

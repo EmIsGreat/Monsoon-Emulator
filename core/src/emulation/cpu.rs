@@ -12,7 +12,7 @@ use crate::emulation::mem::{Memory, Ram};
 use crate::emulation::nes::ExecutionFinishedType;
 use crate::emulation::nes::ExecutionFinishedType::CycleCompleted;
 use crate::emulation::opcode;
-use crate::emulation::opcode::{OPCODES_MAP, OPCODES_TABLE, OpCode, get_opcode};
+use crate::emulation::opcode::{get_opcode, OpCode, OPCODES_MAP, OPCODES_TABLE};
 use crate::emulation::ppu::Ppu;
 use crate::emulation::rom::RomFile;
 use crate::emulation::savestate::CpuState;
@@ -125,6 +125,7 @@ impl Cpu {
     pub fn mem_read(&mut self, addr: u16) -> u8 {
         self.cpu_read_cycle = true;
         self.last_memory_access = Some((addr, true));
+
         self.memory.mem_read(addr)
     }
 

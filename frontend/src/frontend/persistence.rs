@@ -13,11 +13,11 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::{fs, thread};
 
-use crossbeam_channel::{Receiver, bounded};
+use crossbeam_channel::{bounded, Receiver};
 use directories::ProjectDirs;
 use monsoon_core::emulation::palette_util::RgbPalette;
 use monsoon_core::emulation::ppu_util::EmulatorFetchable;
-use monsoon_core::emulation::screen_renderer::{NoneRenderer, ScreenRenderer, create_renderer};
+use monsoon_core::emulation::screen_renderer::{create_renderer, NoneRenderer, ScreenRenderer};
 use serde::{Deserialize, Serialize};
 
 use crate::frontend::egui::config::{
@@ -383,6 +383,7 @@ pub enum PersistentEmulatorFetchable {
     Palettes,
     Tiles,
     Nametables,
+    Sprites,
 }
 
 impl From<&EmulatorFetchable> for PersistentEmulatorFetchable {
@@ -391,6 +392,7 @@ impl From<&EmulatorFetchable> for PersistentEmulatorFetchable {
             EmulatorFetchable::Palettes(_) => PersistentEmulatorFetchable::Palettes,
             EmulatorFetchable::Tiles(_) => PersistentEmulatorFetchable::Tiles,
             EmulatorFetchable::Nametables(_) => PersistentEmulatorFetchable::Nametables,
+            EmulatorFetchable::Sprites(_) => PersistentEmulatorFetchable::Sprites,
         }
     }
 }
@@ -401,6 +403,7 @@ impl From<PersistentEmulatorFetchable> for EmulatorFetchable {
             PersistentEmulatorFetchable::Palettes => EmulatorFetchable::Palettes(None),
             PersistentEmulatorFetchable::Tiles => EmulatorFetchable::Tiles(None),
             PersistentEmulatorFetchable::Nametables => EmulatorFetchable::Nametables(None),
+            PersistentEmulatorFetchable::Sprites => EmulatorFetchable::Sprites(None),
         }
     }
 }

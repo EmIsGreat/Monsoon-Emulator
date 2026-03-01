@@ -89,6 +89,44 @@ pub fn image_cell(
     response
 }
 
+pub fn image_cell_dual_vert(
+    ui: &mut egui::Ui,
+    rect: egui::Rect,
+    texture_id_1: egui::TextureId,
+    texture_id_2: egui::TextureId,
+    sense: egui::Sense,
+    id_source: impl std::hash::Hash,
+) -> egui::Response {
+    let response = ui.interact(rect, ui.id().with(id_source), sense);
+    let painter = ui.painter();
+    let middle = (rect.max - rect.min).y / 2.0;
+
+    painter.image(
+        texture_id_1,
+        rect.with_max_y(middle),
+        egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
+        egui::Color32::WHITE,
+    );
+
+    painter.image(
+        texture_id_2,
+        rect.with_min_y(middle),
+        egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
+        egui::Color32::WHITE,
+    );
+
+    if response.hovered() {
+        painter.rect_stroke(
+            rect,
+            0.0,
+            egui::Stroke::new(3.0, egui::Color32::WHITE),
+            egui::StrokeKind::Inside,
+        );
+    }
+
+    response
+}
+
 /// Configuration for a grid layout drawn with the painter.
 pub struct PainterGridConfig {
     /// Total width of the grid

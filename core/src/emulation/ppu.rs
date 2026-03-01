@@ -9,10 +9,11 @@ use crate::emulation::mem::{Memory, OpenBus, Ram};
 // Re-import public constants/types from ppu_util so internal code can use them
 // with short names.
 pub use crate::emulation::ppu_util::{
-    EmulatorFetchable, NAMETABLE_COLS, NAMETABLE_COUNT, NAMETABLE_ROWS, NametableData,
-    PALETTE_RAM_START_ADDRESS, PaletteData, TILE_SIZE, TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH,
-    TileData,
+    EmulatorFetchable, NametableData, PaletteData, TileData, NAMETABLE_COLS,
+    NAMETABLE_COUNT, NAMETABLE_ROWS, PALETTE_RAM_START_ADDRESS, TILE_SIZE, TOTAL_OUTPUT_HEIGHT,
+    TOTAL_OUTPUT_WIDTH,
 };
+use crate::emulation::ppu_util::{Sprite, SpriteData, SpriteMode, SPRITE_COUNT};
 use crate::emulation::rom::RomFile;
 use crate::emulation::savestate::PpuState;
 
@@ -449,20 +450,17 @@ impl Ppu {
                 };
 
                 let row_offset =
-                    // if self.sprite_fifo[(self.soam_index / 4) as usize].attribute & 80 == 0 {
-                    self
-                        .current_sprite_y
-                        .wrapping_sub(self.scanline.wrapping_add(1) as u8)
-                        % self.get_sprite_height()
-                    ;
-                // }
-                // else {
-                //     (self
-                //         .current_sprite_y
-                //         .wrapping_sub((self.scanline as u8).wrapping_add(1))
-                //         .wrapping_add(self.get_sprite_height()))
-                //         % self.get_sprite_height()
-                // };
+                    if self.sprite_fifo[(self.soam_index / 4) as usize].attribute & 80 == 0 {
+                        self.current_sprite_y
+                            .wrapping_sub(self.scanline.wrapping_add(1) as u8)
+                            % self.get_sprite_height()
+                    } else {
+                        (self
+                            .current_sprite_y
+                            .wrapping_sub((self.scanline as u8).wrapping_add(1))
+                            .wrapping_add(self.get_sprite_height()))
+                            % self.get_sprite_height()
+                    };
 
                 self.address_bus =
                     table_base + ((self.current_sprite_tile_id as u16) * 16) + row_offset as u16;
@@ -705,7 +703,7 @@ impl Ppu {
 
     #[inline]
     pub fn get_sprite_height(&self) -> u8 {
-        if self.ctrl_register & 0x20 != 0 {
+        if self.ctrl_register & 0x20 == 0 {
             8
         } else {
             16
@@ -832,7 +830,7 @@ impl Ppu {
         if !(self.scanline < VISIBLE_SCANLINES + 1 || self.scanline == PRE_RENDER_SCANLINE)
             || !self.is_rendering()
         {
-            self.oam.mem_write(self.oam_addr_register as u16, data);
+            self.oam_write(self.oam_addr_register, data);
             self.oam_addr_register = self.oam_addr_register.wrapping_add(1);
         }
     }
@@ -979,8 +977,8 @@ impl Ppu {
 
     #[inline(always)]
     pub fn oam_read(&mut self, addr: u8) -> u8 {
-        let row = addr >> 3;
-        let byte = addr & 0x7;
+        let row = addr / 8;
+        let byte = addr % 8;
         let mut res = self.oam.mem_read((row as u16 * 9) + byte as u16);
 
         if self.is_soam_clear_active {
@@ -991,9 +989,22 @@ impl Ppu {
     }
 
     #[inline(always)]
+    pub fn oam_snapshot(&self, addr: u8) -> u8 {
+        let row = addr / 8;
+        let byte = addr % 8;
+        let mut res = self.oam.mem_read_debug((row as u16 * 9) + byte as u16);
+
+        if self.is_soam_clear_active {
+            res = 0xFF;
+        }
+
+        res
+    }
+
+    #[inline(always)]
     pub fn oam_write(&mut self, addr: u8, data: u8) {
-        let row = addr >> 3;
-        let byte = addr & 0x7;
+        let row = addr / 8;
+        let byte = addr % 8;
         self.oam.mem_write((row as u16 * 9) + byte as u16, data)
     }
 
@@ -1229,6 +1240,59 @@ impl Ppu {
             palettes: attributes,
         })))
     }
+
+    pub fn get_sprites_debug(&self) -> EmulatorFetchable {
+        let sprite_mode = if self.get_sprite_height() == 8 {
+            SpriteMode::SMALL
+        } else {
+            SpriteMode::TALL
+        };
+        let base_pattern_table = ((self.ctrl_register & 0b1_0000) as u16) << 4;
+
+        let mut sprites = SpriteData {
+            sprites: [Sprite::default(); 64],
+            mode: sprite_mode,
+        };
+
+        for sprite in 0..SPRITE_COUNT {
+            let sprite_base_address = sprite * 4;
+            let y_pos = self.oam_snapshot(sprite_base_address as u8);
+            let x_pos = self.oam_snapshot((sprite_base_address + 3) as u8);
+            let tile_byte = self.oam_snapshot((sprite_base_address + 1) as u8);
+
+            let tile = if sprite_mode == SpriteMode::SMALL {
+                (tile_byte as u16) | base_pattern_table
+            } else {
+                ((tile_byte >> 1) as u16) | (((tile_byte << 7) as u16) << 1)
+            };
+
+            let bottom_tile = if sprite_mode == SpriteMode::SMALL {
+                0
+            } else {
+                ((tile_byte >> 1) as u16 + 1) | (((tile_byte << 7) as u16) << 1)
+            };
+
+            let attribute_byte = self.oam_snapshot((sprite_base_address + 2) as u8);
+            let priority = (attribute_byte << 2) >> 7 == 1;
+            let h_flip = (attribute_byte << 1) >> 7 == 1;
+            let v_flip = attribute_byte >> 7 == 1;
+
+            let palette = (attribute_byte << 6) >> 6;
+
+            sprites.sprites[sprite] = Sprite {
+                y_pos: y_pos as u16,
+                x_pos: x_pos as u16,
+                tile,
+                bottom_tile,
+                palette,
+                priority,
+                h_flip,
+                v_flip,
+            }
+        }
+
+        EmulatorFetchable::Sprites(Some(Box::new(sprites)))
+    }
 }
 
 #[derive(Debug, Copy, Clone, Default)]
@@ -1249,36 +1313,3 @@ impl Display for SpriteFifo {
         f.write_str(res.as_str())
     }
 }
-
-// #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
-// pub struct RgbPalette {
-//     pub colors: [[RgbColor; 64]; 8],
-// }
-//
-// impl Default for RgbPalette {
-//     fn default() -> Self { parse_palette_from_file(None, None) }
-// }
-
-// #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-// pub struct SpriteViewerData {
-//     pub sprites: [SpriteData; 64],
-//     pub sprite_height: u8,
-//     pub palette: PaletteData,
-// }
-
-// #[derive(Copy, Clone, PartialEq, Eq, Hash)]
-// pub struct SpriteData {
-//     pub tile: u16,
-//     pub tile_2: Option<u16>,
-//     pub y_pos: usize,
-//     pub x_pos: usize,
-//     pub attributes: SpriteAttributes,
-// }
-//
-// #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-// pub struct SpriteAttributes {
-//     pub palette_index: u8,
-//     pub priority: bool,
-//     pub flip_x: bool,
-//     pub flip_y: bool,
-// }

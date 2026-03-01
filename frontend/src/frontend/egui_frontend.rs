@@ -149,7 +149,7 @@ impl EguiApp {
             return Duration::from_secs(5);
         }
 
-        Duration::from_nanos(1_000_000_000 / speed as u64)
+        Duration::from_nanos((1_000_000_000.0 / speed as f64) as u64)
     }
 
     /// Calculate the debug viewers frame budget based on current speed settings

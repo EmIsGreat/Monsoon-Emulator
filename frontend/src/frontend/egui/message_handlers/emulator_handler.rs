@@ -4,7 +4,7 @@
 //! frame updates, debug data, and savestate operations.
 
 use egui::{Context, ViewportCommand};
-use monsoon_core::emulation::ppu_util::{EmulatorFetchable, PaletteData, TILE_COUNT, TileData};
+use monsoon_core::emulation::ppu_util::{EmulatorFetchable, PaletteData, TileData, TILE_COUNT};
 use monsoon_core::emulation::savestate::SaveState;
 use monsoon_core::util::ToBytes;
 
@@ -66,6 +66,9 @@ impl EguiApp {
             }
             EmulatorFetchable::Nametables(n) => {
                 self.emu_textures.nametable_data = n;
+            }
+            EmulatorFetchable::Sprites(s) => {
+                self.emu_textures.sprite_data = s;
             }
         }
     }
