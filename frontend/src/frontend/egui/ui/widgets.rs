@@ -67,15 +67,24 @@ pub fn image_cell(
     sense: egui::Sense,
     id_source: impl std::hash::Hash,
 ) -> egui::Response {
+    image_cell_flipped(ui, rect, texture_id, false, false, sense, id_source)
+}
+
+/// Draw an image cell (texture) with optional horizontal/vertical flip.
+pub fn image_cell_flipped(
+    ui: &mut egui::Ui,
+    rect: egui::Rect,
+    texture_id: egui::TextureId,
+    h_flip: bool,
+    v_flip: bool,
+    sense: egui::Sense,
+    id_source: impl std::hash::Hash,
+) -> egui::Response {
     let response = ui.interact(rect, ui.id().with(id_source), sense);
     let painter = ui.painter();
 
-    painter.image(
-        texture_id,
-        rect,
-        egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
-        egui::Color32::WHITE,
-    );
+    let uv = flip_uv(h_flip, v_flip);
+    painter.image(texture_id, rect, uv, egui::Color32::WHITE);
 
     if response.hovered() {
         painter.rect_stroke(
@@ -89,11 +98,16 @@ pub fn image_cell(
     response
 }
 
-pub fn image_cell_dual_vert(
+/// Draw two vertically stacked image cells with optional horizontal/vertical flip.
+///
+/// When v_flip is set, each tile is flipped vertically and the top and bottom tiles are swapped.
+pub fn image_cell_dual_vert_flipped(
     ui: &mut egui::Ui,
     rect: egui::Rect,
     texture_id_1: egui::TextureId,
     texture_id_2: egui::TextureId,
+    h_flip: bool,
+    v_flip: bool,
     sense: egui::Sense,
     id_source: impl std::hash::Hash,
 ) -> egui::Response {
@@ -101,19 +115,17 @@ pub fn image_cell_dual_vert(
     let painter = ui.painter();
     let middle = rect.min.y + (rect.max.y - rect.min.y) / 2.0;
 
-    painter.image(
-        texture_id_1,
-        rect.with_max_y(middle),
-        egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
-        egui::Color32::WHITE,
-    );
+    let uv = flip_uv(h_flip, v_flip);
 
-    painter.image(
-        texture_id_2,
-        rect.with_min_y(middle),
-        egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
-        egui::Color32::WHITE,
-    );
+    // When vertically flipping, swap top and bottom tiles
+    let (top_id, bottom_id) = if v_flip {
+        (texture_id_2, texture_id_1)
+    } else {
+        (texture_id_1, texture_id_2)
+    };
+
+    painter.image(top_id, rect.with_max_y(middle), uv, egui::Color32::WHITE);
+    painter.image(bottom_id, rect.with_min_y(middle), uv, egui::Color32::WHITE);
 
     if response.hovered() {
         painter.rect_stroke(
@@ -182,4 +194,13 @@ impl PainterGridConfig {
 
     /// Total size of the grid
     pub fn total_size(&self) -> egui::Vec2 { egui::vec2(self.width, self.get_height()) }
+}
+
+/// Compute UV rect for a texture with optional horizontal/vertical flip.
+fn flip_uv(h_flip: bool, v_flip: bool) -> egui::Rect {
+    let u_min = if h_flip { 1.0 } else { 0.0 };
+    let u_max = if h_flip { 0.0 } else { 1.0 };
+    let v_min = if v_flip { 1.0 } else { 0.0 };
+    let v_max = if v_flip { 0.0 } else { 1.0 };
+    egui::Rect::from_min_max(egui::pos2(u_min, v_min), egui::pos2(u_max, v_max))
 }
