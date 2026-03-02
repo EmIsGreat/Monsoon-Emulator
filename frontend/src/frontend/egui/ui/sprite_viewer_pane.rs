@@ -19,6 +19,7 @@ pub fn render_sprite_viewer(ui: &mut egui::Ui, config: &AppConfig, emu_textures:
 
             let sprite_base_width = 64.0;
             let sprite_base_height = 64.0 * (sprite_mode.get_height_mult() as f32);
+            let soam_base_width = 32.0;
 
             // Check if SOAM data is available for balanced layout
             let soam_available = config.speed_config.is_paused
@@ -30,7 +31,6 @@ pub fn render_sprite_viewer(ui: &mut egui::Ui, config: &AppConfig, emu_textures:
             // Calculate shared scale balancing space between sprites and SOAM,
             // similar to how the pattern table viewer balances its two tables
             let logical_width = if soam_available {
-                let soam_base_width = 32.0;
                 sprite_base_width + soam_base_width + spacing * 3.0
             } else {
                 sprite_base_width + spacing
@@ -120,7 +120,6 @@ pub fn render_sprite_viewer(ui: &mut egui::Ui, config: &AppConfig, emu_textures:
                 let soam_mode = soam_data.mode;
                 let soam_sprites = soam_data.sprites;
 
-                let soam_base_width = 32.0;
                 let soam_base_height = 16.0 * (soam_mode.get_height_mult() as f32);
                 let soam_table_width = soam_base_width * scale;
                 let soam_table_height = soam_base_height * scale;
