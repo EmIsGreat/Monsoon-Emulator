@@ -359,11 +359,16 @@ impl EguiApp {
         find_pane(&self.tree.tiles, &Pane::Sprites).is_some()
     }
 
+    fn is_soam_viewer_visible(&self) -> bool {
+        self.is_sprite_viewer_visible() && self.config.speed_config.is_paused
+    }
+
     /// Check if any viewer that needs tile textures is visible
     pub(crate) fn is_tile_viewer_visible(&self) -> bool {
         self.is_pattern_tables_visible()
             || self.is_nametables_visible()
             || self.is_sprite_viewer_visible()
+            || self.is_soam_viewer_visible()
     }
 
     /// Check if pattern tables or nametables viewer just became visible and force rebuild if so
@@ -459,9 +464,9 @@ impl EguiApp {
                     }
                 }
             }
-
-            self.request_debug_views(now);
         }
+
+        self.request_debug_views(now);
     }
 
     /// Request debug data from the emulator based on timing and visibility.
@@ -574,7 +579,7 @@ impl eframe::App for EguiApp {
 
         // Update required debug fetches based on visible panes
         self.config.view_config.required_debug_fetches =
-            compute_required_fetches_from_tree(&self.tree);
+            compute_required_fetches_from_tree(&self.tree, &self.config);
 
         // Check for periodic autosave (every 5 minutes)
         self.check_periodic_autosave();

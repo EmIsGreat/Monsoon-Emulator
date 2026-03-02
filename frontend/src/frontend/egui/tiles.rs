@@ -102,7 +102,7 @@ impl Behavior<Pane> for TreeBehavior<'_> {
             Pane::Keybindings => {
                 render_keybindings(ui, self.config);
             }
-            Pane::Sprites => render_sprite_viewer(ui, self.emu_textures),
+            Pane::Sprites => render_sprite_viewer(ui, self.config, self.emu_textures),
         }
         UiResponse::None
     }
@@ -194,21 +194,18 @@ pub fn add_pane_if_missing(tree: &mut egui_tiles::Tree<Pane>, pane_type: Pane) {
 /// Compute required debug fetches based on which panes are visible
 pub fn compute_required_fetches_from_tree(
     tree: &egui_tiles::Tree<Pane>,
+    config: &AppConfig,
 ) -> HashSet<EmulatorFetchable> {
     let mut explicit_fetches = HashSet::new();
 
     // Check if pattern tables pane is visible
     if find_pane(&tree.tiles, &Pane::PatternTables).is_some() {
         explicit_fetches.insert(EmulatorFetchable::Tiles(None));
-        explicit_fetches.insert(EmulatorFetchable::Palettes(None));
     }
 
     // Check if nametables pane is visible
-    // Nametables need tile textures to render, so also fetch tiles and palettes
     if find_pane(&tree.tiles, &Pane::Nametables).is_some() {
         explicit_fetches.insert(EmulatorFetchable::Nametables(None));
-        explicit_fetches.insert(EmulatorFetchable::Tiles(None));
-        explicit_fetches.insert(EmulatorFetchable::Palettes(None));
     }
 
     if find_pane(&tree.tiles, &Pane::Palettes).is_some() {
@@ -217,8 +214,10 @@ pub fn compute_required_fetches_from_tree(
 
     if find_pane(&tree.tiles, &Pane::Sprites).is_some() {
         explicit_fetches.insert(EmulatorFetchable::Sprites(None));
-        explicit_fetches.insert(EmulatorFetchable::Tiles(None));
-        explicit_fetches.insert(EmulatorFetchable::Palettes(None));
+
+        if config.speed_config.is_paused {
+            explicit_fetches.insert(EmulatorFetchable::SoamSprites(None));
+        }
     }
 
     if !explicit_fetches.is_empty() {

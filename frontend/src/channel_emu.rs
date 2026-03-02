@@ -74,6 +74,11 @@ impl ChannelEmulator {
             vec![EmulatorFetchable::Tiles(None)],
         );
 
+        deps.insert(
+            EmulatorFetchable::SoamSprites(None),
+            vec![EmulatorFetchable::Tiles(None)],
+        );
+
         FETCH_DEPS.get_or_init(|| deps);
     }
 
@@ -141,6 +146,11 @@ impl ChannelEmulator {
                         let _ = self
                             .to_frontend
                             .send(EmulatorMessage::DebugData(self.nes.get_sprites_debug()));
+                    }
+                    EmulatorFetchable::SoamSprites(_) => {
+                        let _ = self.to_frontend.send(EmulatorMessage::DebugData(
+                            self.nes.get_soam_sprites_debug(),
+                        ));
                     }
                 },
                 FrontendMessage::WritePpu(address, data) => self.nes.ppu_mem_init(address, data),

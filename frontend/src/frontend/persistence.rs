@@ -384,6 +384,7 @@ pub enum PersistentEmulatorFetchable {
     Tiles,
     Nametables,
     Sprites,
+    SoamSprites,
 }
 
 impl From<&EmulatorFetchable> for PersistentEmulatorFetchable {
@@ -393,6 +394,7 @@ impl From<&EmulatorFetchable> for PersistentEmulatorFetchable {
             EmulatorFetchable::Tiles(_) => PersistentEmulatorFetchable::Tiles,
             EmulatorFetchable::Nametables(_) => PersistentEmulatorFetchable::Nametables,
             EmulatorFetchable::Sprites(_) => PersistentEmulatorFetchable::Sprites,
+            EmulatorFetchable::SoamSprites(_) => PersistentEmulatorFetchable::SoamSprites,
         }
     }
 }
@@ -404,6 +406,7 @@ impl From<PersistentEmulatorFetchable> for EmulatorFetchable {
             PersistentEmulatorFetchable::Tiles => EmulatorFetchable::Tiles(None),
             PersistentEmulatorFetchable::Nametables => EmulatorFetchable::Nametables(None),
             PersistentEmulatorFetchable::Sprites => EmulatorFetchable::Sprites(None),
+            PersistentEmulatorFetchable::SoamSprites => EmulatorFetchable::SoamSprites(None),
         }
     }
 }

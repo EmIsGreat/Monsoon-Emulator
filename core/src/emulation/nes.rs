@@ -5,9 +5,9 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use crate::emulation::cpu::{Cpu, MicroOp};
+use crate::emulation::mem::Memory;
 use crate::emulation::mem::mirror_memory::MirrorMemory;
 use crate::emulation::mem::ppu_registers::PpuRegisters;
-use crate::emulation::mem::Memory;
 use crate::emulation::ppu::{EmulatorFetchable, Ppu};
 use crate::emulation::rom::RomFile;
 use crate::emulation::savestate::{CpuState, PpuState, SaveState};
@@ -518,6 +518,10 @@ impl Nes {
     }
 
     pub fn get_sprites_debug(&self) -> EmulatorFetchable { self.ppu.borrow().get_sprites_debug() }
+
+    pub fn get_soam_sprites_debug(&self) -> EmulatorFetchable {
+        self.ppu.borrow().get_soam_sprites_debug()
+    }
 
     /// Returns OAM (sprite memory) contents for debugging.
     pub fn get_oam_debug(&self) -> Vec<u8> { self.ppu.borrow().oam.get_memory_debug(None) }

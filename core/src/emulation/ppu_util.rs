@@ -41,6 +41,7 @@ pub enum EmulatorFetchable {
     /// Nametable layout data for all 4 nametables.
     Nametables(Option<Box<NametableData>>),
     Sprites(Option<Box<SpriteData>>),
+    SoamSprites(Option<Box<SoamData>>),
 }
 
 impl EmulatorFetchable {
@@ -52,6 +53,7 @@ impl EmulatorFetchable {
             EmulatorFetchable::Tiles(_) => EmulatorFetchable::Tiles(None),
             EmulatorFetchable::Nametables(_) => EmulatorFetchable::Nametables(None),
             EmulatorFetchable::Sprites(_) => EmulatorFetchable::Sprites(None),
+            EmulatorFetchable::SoamSprites(_) => EmulatorFetchable::SoamSprites(None),
         }
     }
 
@@ -107,6 +109,12 @@ pub struct TileData {
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct SpriteData {
     pub sprites: [Sprite; SPRITE_COUNT],
+    pub mode: SpriteMode,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub struct SoamData {
+    pub sprites: [Sprite; 8],
     pub mode: SpriteMode,
 }
 

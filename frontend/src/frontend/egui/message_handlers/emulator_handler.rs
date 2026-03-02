@@ -70,6 +70,9 @@ impl EguiApp {
             EmulatorFetchable::Sprites(s) => {
                 self.emu_textures.sprite_data = s;
             }
+            EmulatorFetchable::SoamSprites(s) => {
+                self.emu_textures.soam_data = s;
+            }
         }
     }
 

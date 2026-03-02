@@ -14,7 +14,7 @@ pub use crate::emulation::ppu_util::{
     PALETTE_RAM_START_ADDRESS, PaletteData, TILE_SIZE, TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH,
     TileData,
 };
-use crate::emulation::ppu_util::{SPRITE_COUNT, Sprite, SpriteData, SpriteMode};
+use crate::emulation::ppu_util::{SPRITE_COUNT, SoamData, Sprite, SpriteData, SpriteMode};
 use crate::emulation::rom::RomFile;
 use crate::emulation::savestate::PpuState;
 
@@ -960,6 +960,14 @@ impl Ppu {
     }
 
     #[inline(always)]
+    pub fn secondary_oam_snapshot(&self, addr: u8) -> u8 {
+        let row = addr & 0x1F;
+        let byte = 8u8;
+
+        self.oam.mem_read_debug((row as u16 * 9) + byte as u16)
+    }
+
+    #[inline(always)]
     pub fn secondary_oam_write(&mut self, addr: u8, data: u8) {
         let row = addr & 0x1F;
         let byte = 8u8;
@@ -1236,6 +1244,60 @@ impl Ppu {
         }
 
         EmulatorFetchable::Sprites(Some(Box::new(sprites)))
+    }
+
+    pub fn get_soam_sprites_debug(&self) -> EmulatorFetchable {
+        let sprite_mode = if self.get_sprite_height() == 8 {
+            SpriteMode::SMALL
+        } else {
+            SpriteMode::TALL
+        };
+
+        let base_pattern_table = ((self.ctrl_register & 0b1000) as u16) << 5;
+
+        let mut sprites = SoamData {
+            sprites: [Sprite::default(); 8],
+            mode: sprite_mode,
+        };
+
+        for sprite in 0..8 {
+            let sprite_base_address = sprite * 4;
+            let y_pos = self.secondary_oam_snapshot(sprite_base_address as u8);
+            let x_pos = self.secondary_oam_snapshot((sprite_base_address + 3) as u8);
+            let tile_byte = self.secondary_oam_snapshot((sprite_base_address + 1) as u8);
+
+            let tile = if sprite_mode == SpriteMode::SMALL {
+                (tile_byte as u16) | base_pattern_table
+            } else {
+                ((tile_byte & !1) as u16) | (((tile_byte & 1) as u16) << 8)
+            };
+
+            let bottom_tile = if sprite_mode == SpriteMode::SMALL {
+                0
+            } else {
+                ((tile_byte & !1) as u16 + 1) | (((tile_byte & 1) as u16) << 8)
+            };
+
+            let attribute_byte = self.oam_snapshot((sprite_base_address + 2) as u8);
+            let priority = (attribute_byte << 2) >> 7 == 0;
+            let h_flip = (attribute_byte << 1) >> 7 == 1;
+            let v_flip = attribute_byte >> 7 == 1;
+
+            let palette = (attribute_byte & 0b11) + 4;
+
+            sprites.sprites[sprite] = Sprite {
+                y_pos: y_pos as u16,
+                x_pos: x_pos as u16,
+                tile,
+                bottom_tile,
+                palette,
+                priority,
+                h_flip,
+                v_flip,
+            }
+        }
+
+        EmulatorFetchable::SoamSprites(Some(Box::new(sprites)))
     }
 }
 
