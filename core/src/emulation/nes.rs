@@ -5,9 +5,9 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use crate::emulation::cpu::{Cpu, MicroOp};
-use crate::emulation::mem::Memory;
 use crate::emulation::mem::mirror_memory::MirrorMemory;
 use crate::emulation::mem::ppu_registers::PpuRegisters;
+use crate::emulation::mem::Memory;
 use crate::emulation::ppu::{EmulatorFetchable, Ppu};
 use crate::emulation::rom::RomFile;
 use crate::emulation::savestate::{CpuState, PpuState, SaveState};
