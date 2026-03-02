@@ -3,7 +3,7 @@
 use monsoon_core::emulation::ppu_util::SpriteMode;
 
 use crate::frontend::egui::textures::EmuTextures;
-use crate::frontend::egui::ui::widgets::{PainterGridConfig, image_cell, image_cell_dual_vert};
+use crate::frontend::egui::ui::widgets::{PainterGridConfig, image_cell_flipped, image_cell_dual_vert_flipped};
 
 /// Render both pattern tables side by side
 pub fn render_sprite_viewer(ui: &mut egui::Ui, emu_textures: &EmuTextures) {
@@ -46,21 +46,25 @@ pub fn render_sprite_viewer(ui: &mut egui::Ui, emu_textures: &EmuTextures) {
                 let rect = grid_config.cell_rect(parent.min, i);
 
                 let resp = if sprite_mode == SpriteMode::SMALL {
-                    image_cell(
+                    image_cell_flipped(
                         ui,
                         rect,
                         sprite_tile.id(),
+                        sprite.h_flip,
+                        sprite.v_flip,
                         egui::Sense::all(),
                         ("sprite", i),
                     )
                 } else {
                     let lower_tile =
                         &tile_textures[sprite.palette as usize][sprite.bottom_tile as usize];
-                    image_cell_dual_vert(
+                    image_cell_dual_vert_flipped(
                         ui,
                         rect,
                         sprite_tile.id(),
                         lower_tile.id(),
+                        sprite.h_flip,
+                        sprite.v_flip,
                         egui::Sense::all(),
                         ("sprite_bottom", i),
                     )
