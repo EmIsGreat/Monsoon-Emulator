@@ -5,7 +5,7 @@ use monsoon_core::emulation::ppu_util::SpriteMode;
 use crate::frontend::egui::config::AppConfig;
 use crate::frontend::egui::textures::EmuTextures;
 use crate::frontend::egui::ui::widgets::{
-    PainterGridConfig, image_cell_dual_vert_flipped, image_cell_flipped,
+    image_cell_dual_vert_flipped, image_cell_flipped, PainterGridConfig,
 };
 
 /// Render both pattern tables side by side
@@ -17,13 +17,12 @@ pub fn render_sprite_viewer(ui: &mut egui::Ui, config: &AppConfig, emu_textures:
             let sprite_mode = sprite_data.mode;
             let sprite_data = sprite_data.sprites;
 
-            let sprite_base_width = 64.0;
-            let sprite_base_height = 64.0 * (sprite_mode.get_height_mult() as f32);
-            let soam_base_width = 32.0;
+            let sprite_base_width = 64.0 * (sprite_mode.get_height_mult() as f32);
+            let sprite_base_height = 64.0;
+            let soam_base_width = 16.0;
 
             // Check if SOAM data is available for balanced layout
-            let soam_available = config.speed_config.is_paused
-                && emu_textures.soam_data.is_some();
+            let soam_available = config.speed_config.is_paused && emu_textures.soam_data.is_some();
 
             let available = ui.available_size();
             let spacing = ui.spacing().item_spacing.x;
@@ -49,8 +48,15 @@ pub fn render_sprite_viewer(ui: &mut egui::Ui, config: &AppConfig, emu_textures:
                     scale
                 ));
 
+                let (cols, rows) = if sprite_mode == SpriteMode::SMALL {
+                    (8, 8)
+                } else {
+                    (16, 4)
+                };
+
                 ui.horizontal_top(|ui| {
-                    let grid_config = PainterGridConfig::rect(table_width, table_height, 8, 8);
+                    let grid_config =
+                        PainterGridConfig::rect(table_width, table_height, cols, rows);
                     let (parent, _) =
                         ui.allocate_exact_size(grid_config.total_size(), egui::Sense::hover());
 
@@ -120,7 +126,7 @@ pub fn render_sprite_viewer(ui: &mut egui::Ui, config: &AppConfig, emu_textures:
                 let soam_mode = soam_data.mode;
                 let soam_sprites = soam_data.sprites;
 
-                let soam_base_height = 16.0 * (soam_mode.get_height_mult() as f32);
+                let soam_base_height = 32.0 * (soam_mode.get_height_mult() as f32);
                 let soam_table_width = soam_base_width * scale;
                 let soam_table_height = soam_base_height * scale;
 
@@ -132,7 +138,7 @@ pub fn render_sprite_viewer(ui: &mut egui::Ui, config: &AppConfig, emu_textures:
                     ));
                     ui.horizontal_top(|ui| {
                         let grid_config =
-                            PainterGridConfig::rect(soam_table_width, soam_table_height, 4, 2);
+                            PainterGridConfig::rect(soam_table_width, soam_table_height, 2, 4);
                         let (parent, _) =
                             ui.allocate_exact_size(grid_config.total_size(), egui::Sense::hover());
 
