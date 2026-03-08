@@ -200,7 +200,7 @@ impl EguiApp {
 
     pub(crate) fn load_rom(&mut self, data: LoadedRom) {
         let name = data.name.clone();
-        
+
         let _ = self
             .to_emulator
             .send(FrontendMessage::CreateSaveState(SaveType::Autosave));

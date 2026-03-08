@@ -48,7 +48,9 @@ pub fn add_menu_bar(
                 }
                 if ui.button("Power cycle").clicked() {
                     let _ = async_sender.send(AsyncFrontendMessage::PowerOff);
-                    let _ = async_sender.send(AsyncFrontendMessage::LoadRom(config.user_config.loaded_rom.clone().map(|r| r.1)));
+                    let _ = async_sender.send(AsyncFrontendMessage::LoadRom(
+                        config.user_config.loaded_rom.clone().map(|r| r.1),
+                    ));
                     let _ = async_sender.send(AsyncFrontendMessage::PowerOn);
                 }
                 if !config.console_config.is_powered {

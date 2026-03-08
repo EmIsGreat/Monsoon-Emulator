@@ -1,6 +1,7 @@
 use monsoon_core::emulation::ppu_util::EmulatorFetchable;
 use monsoon_core::emulation::rom::RomFile;
 use monsoon_core::emulation::savestate::SaveState;
+
 use crate::frontend::messages::LoadedRom;
 
 /// Message types for communication between the frontend and emulator.
