@@ -5,7 +5,7 @@ use monsoon_core::emulation::ppu_util::SpriteMode;
 use crate::frontend::egui::config::AppConfig;
 use crate::frontend::egui::textures::EmuTextures;
 use crate::frontend::egui::ui::widgets::{
-    image_cell_dual_vert_flipped, image_cell_flipped, PainterGridConfig,
+    PainterGridConfig, image_cell_dual_vert_flipped, image_cell_flipped,
 };
 
 /// Render both pattern tables side by side

@@ -182,6 +182,10 @@ impl Nes {
                         return Ok(res);
                     }
 
+                    if res.last_cycle_reached || res.hlt_reached {
+                        return Ok(res);
+                    }
+
                     if res.cycle_completed {
                         continue;
                     }
