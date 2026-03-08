@@ -32,6 +32,7 @@ pub const VRAM_SIZE: usize = 0x800;
 pub const DOTS_PER_SCANLINE: u16 = 340;
 pub const OPEN_BUS_DECAY_DELAY: u32 = 420_000;
 pub const SPRITE_OVERFLOW_FLAG: u8 = 0b0010_0000;
+pub const SPRITE_ZERO_FLAG: u8 = 0b0100_0000;
 pub const BYTES_PER_TILE: usize = 16; // 8 low plane + 8 high plane
 pub const TABLE_BYTES: usize = 0x1000; // 256 tiles * 16 bytes
 pub const VBL_START_SCANLINE: u16 = 241;
@@ -206,6 +207,7 @@ impl Ppu {
             if self.scanline == PRE_RENDER_SCANLINE {
                 self.set_soam_disable(true);
                 self.clear_sprite_overflow();
+                self.clear_sprite_zero()
             }
 
             if (1..=64).contains(&self.dot) {
@@ -295,6 +297,10 @@ impl Ppu {
                     };
 
                     let pixel_color = self.mem_read(pixel_color_address);
+
+                    if sprite_color_address != 0x3F10 && bg_color_address != PALETTE_RAM_START_ADDRESS {
+                        self.set_sprite_zero();
+                    }
 
                     self.pixel_buffer
                         [self.scanline as usize * SCREEN_RENDER_WIDTH + (self.dot - 1) as usize] =
@@ -504,6 +510,10 @@ impl Ppu {
                     if self.scanline == PRE_RENDER_SCANLINE {
                         self.soam_write_counter = 0;
                     }
+
+                    if self.soam_index > 32 {
+                        self.set_sprite_overflow();
+                    }
                 } else {
                     self.soam_write_counter = 0;
                     self.oam_increment = 4;
@@ -650,8 +660,21 @@ impl Ppu {
     #[inline]
     pub fn clear_sprite_overflow(&self) {
         self.status_register
-            .set(self.status_register.get() & !0b0010_0000);
+            .set(self.status_register.get() & !SPRITE_OVERFLOW_FLAG);
     }
+
+    #[inline]
+    pub fn set_sprite_zero(&self) {
+        self.status_register
+            .set(self.status_register.get() | SPRITE_ZERO_FLAG);
+    }
+
+    #[inline]
+    pub fn clear_sprite_zero(&self) {
+        self.status_register
+            .set(self.status_register.get() & !SPRITE_ZERO_FLAG);
+    }
+
 
     #[inline]
     pub fn get_vram_addr_step(&self) -> u8 {
