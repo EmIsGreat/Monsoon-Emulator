@@ -10,11 +10,11 @@ use crate::emulation::nes::ExecutionFinished;
 // Re-import public constants/types from ppu_util so internal code can use them
 // with short names.
 pub use crate::emulation::ppu_util::{
-    EmulatorFetchable, NametableData, PaletteData, TileData, NAMETABLE_COLS,
-    NAMETABLE_COUNT, NAMETABLE_ROWS, PALETTE_RAM_START_ADDRESS, TILE_SIZE, TOTAL_OUTPUT_HEIGHT,
-    TOTAL_OUTPUT_WIDTH,
+    EmulatorFetchable, NAMETABLE_COLS, NAMETABLE_COUNT, NAMETABLE_ROWS, NametableData,
+    PALETTE_RAM_START_ADDRESS, PaletteData, TILE_SIZE, TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH,
+    TileData,
 };
-use crate::emulation::ppu_util::{SoamData, Sprite, SpriteData, SpriteMode, SPRITE_COUNT};
+use crate::emulation::ppu_util::{SPRITE_COUNT, SoamData, Sprite, SpriteData, SpriteMode};
 use crate::emulation::rom::RomFile;
 use crate::emulation::savestate::PpuState;
 
