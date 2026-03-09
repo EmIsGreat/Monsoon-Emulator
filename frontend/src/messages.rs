@@ -9,7 +9,6 @@ use crate::frontend::messages::LoadedRom;
 /// This module defines the message protocol for bidirectional communication:
 /// - `FrontendMessage`: Commands sent from the frontend to the emulator
 /// - `EmulatorMessage`: Notifications sent from the emulator to the frontend
-/// - `ControllerEvent`: Input events for the emulated console
 ///
 /// The message-based architecture provides clean separation between the frontend
 /// and emulation logic, enabling future threading and remote control features.
@@ -19,8 +18,6 @@ use crate::frontend::messages::LoadedRom;
 pub enum FrontendMessage {
     /// Request to quit the emulator
     Quit,
-    /// Controller input events
-    ControllerInput(ControllerEvent),
     /// Request to reset the console
     Reset,
     Power,
@@ -45,19 +42,6 @@ pub enum SaveType {
     Manual,
     Quicksave,
     Autosave,
-}
-
-/// Controller input events
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum ControllerEvent {
-    Left,
-    Right,
-    Up,
-    Down,
-    Start,
-    Select,
-    A,
-    B,
 }
 
 /// Messages sent from the emulator to the frontend

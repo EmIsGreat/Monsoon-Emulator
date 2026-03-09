@@ -123,10 +123,6 @@ impl ChannelEmulator {
                     // Execute one frame regardless of pause state
                     self.execute_frame()?;
                 }
-                FrontendMessage::ControllerInput(_) => {
-                    // Legacy path - controller state is now set directly via
-                    // set_controller_state() before message processing.
-                }
                 FrontendMessage::RequestDebugData(fetchable) => match fetchable {
                     EmulatorFetchable::Palettes(_) => {
                         let _ = self
