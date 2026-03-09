@@ -1,9 +1,9 @@
 use crossbeam_channel::Sender;
-use egui::Context;
+use egui::{Context, FocusDirection};
 use web_time::Instant;
 
 use crate::frontend::egui::config::AppConfig;
-use crate::frontend::egui::keybindings::Binding;
+use crate::frontend::egui::keybindings::{Binding, BindVariant, hotkey_expecting_id};
 use crate::frontend::messages::AsyncFrontendMessage;
 use crate::messages::ControllerEvent;
 
@@ -41,7 +41,20 @@ pub fn handle_keyboard_input(
     config: &mut AppConfig,
     last_frame_request: &mut Instant,
 ) {
-    ctx.input(|i| {
+    // Check whether a Hotkey widget is currently waiting for the user to
+    // press a key (set during the *previous* frame's widget rendering).
+    // When true we must let the raw key events through so the Hotkey
+    // widget can capture them.
+    let hotkey_is_expecting = ctx.data_mut(|d| {
+        let val = d
+            .get_temp::<bool>(hotkey_expecting_id())
+            .unwrap_or(false);
+        // Reset so the flag doesn't persist when no widget sets it.
+        d.insert_temp(hotkey_expecting_id(), false);
+        val
+    });
+
+    ctx.input_mut(|i| {
         // Debug controls
         if is_binding_pressed(i, &config.keybindings.debug.cycle_palette) {
             config.view_config.debug_active_palette += 1;
@@ -88,7 +101,23 @@ pub fn handle_keyboard_input(
 
         // NES controller input
         handle_controller_input(i, async_sender, config);
+
+        // Consume key events for all active keybindings so that egui
+        // widgets do not act on them (e.g. Space clicking a focused
+        // button).  Skip this when the Hotkey rebinding widget is
+        // waiting for a key press – it needs to see the raw events.
+        if !hotkey_is_expecting {
+            consume_bound_keys(i, &config.keybindings);
+        }
     });
+
+    // Prevent egui's built-in focus-navigation from moving focus when
+    // the user presses Tab or arrow keys that are bound to emulator
+    // controls.  `Focus::begin_pass` has already set `focus_direction`
+    // from those key events, so we reset it before any widgets run.
+    if !hotkey_is_expecting {
+        ctx.memory_mut(|m| m.move_focus(FocusDirection::None));
+    }
 }
 
 /// Handle NES controller input mapping from keyboard
@@ -130,5 +159,51 @@ fn handle_controller_input(
     }
     if is_binding_down(input, &config.keybindings.controller.b) {
         let _ = async_sender.send(AsyncFrontendMessage::ControllerInput(ControllerEvent::B));
+    }
+}
+
+/// Consume key-press events for every active keybinding.
+///
+/// After the emulator's input handler has read the key state, we remove the
+/// corresponding `Event::Key` entries from [`egui::InputState`] so that egui
+/// widgets rendered later in the frame do not also react to them (e.g. Space
+/// clicking a focused button, or Tab advancing widget focus).
+fn consume_bound_keys(
+    input: &mut egui::InputState,
+    keybindings: &crate::frontend::egui::keybindings::KeybindingsConfig,
+) {
+    // Controller
+    consume_binding(input, &keybindings.controller.up);
+    consume_binding(input, &keybindings.controller.down);
+    consume_binding(input, &keybindings.controller.left);
+    consume_binding(input, &keybindings.controller.right);
+    consume_binding(input, &keybindings.controller.a);
+    consume_binding(input, &keybindings.controller.b);
+    consume_binding(input, &keybindings.controller.start);
+    consume_binding(input, &keybindings.controller.select);
+
+    // Emulation
+    consume_binding(input, &keybindings.emulation.pause);
+    consume_binding(input, &keybindings.emulation.step_frame);
+    consume_binding(input, &keybindings.emulation.step_scanline);
+    consume_binding(input, &keybindings.emulation.step_master_cycle);
+    consume_binding(input, &keybindings.emulation.step_cpu_cycle);
+    consume_binding(input, &keybindings.emulation.step_ppu_cycle);
+    consume_binding(input, &keybindings.emulation.reset);
+    consume_binding(input, &keybindings.emulation.quicksave);
+    consume_binding(input, &keybindings.emulation.quickload);
+
+    // Debug
+    consume_binding(input, &keybindings.debug.cycle_palette);
+}
+
+/// Consume the key-press event for a single binding, if it is a keyboard
+/// binding.  Mouse bindings are not consumed because they do not interfere
+/// with egui's focus system.
+fn consume_binding(input: &mut egui::InputState, binding: &Option<Binding>) {
+    if let Some(b) = binding
+        && let BindVariant::Keyboard(key) = b.variant
+    {
+        input.consume_key(b.modifiers, key);
     }
 }

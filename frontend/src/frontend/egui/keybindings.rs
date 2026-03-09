@@ -17,6 +17,12 @@ use egui::{
 };
 use serde::{Deserialize, Serialize};
 
+/// Well-known egui data ID used to signal that a [`Hotkey`] widget is
+/// currently waiting for the user to press a key.  The input handler
+/// checks this flag so it can skip consuming key events while the
+/// keybinding UI is active.
+pub(crate) fn hotkey_expecting_id() -> Id { Id::new("hotkey_expecting_input") }
+
 // ============================================================================
 // Binding types (ported from egui_hotkey)
 // ============================================================================
@@ -314,6 +320,13 @@ where
                 egui::FontId::default(),
                 visuals.text_color(),
             );
+        }
+
+        // Signal the input handler that a hotkey widget is waiting for
+        // a key press so it should not consume key events this frame.
+        if expecting {
+            ui.ctx()
+                .data_mut(|d| d.insert_temp(hotkey_expecting_id(), true));
         }
 
         set_expecting(ui, self.id, expecting);
