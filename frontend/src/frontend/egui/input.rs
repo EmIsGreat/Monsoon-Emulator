@@ -3,7 +3,7 @@ use egui::{Context, FocusDirection};
 use web_time::Instant;
 
 use crate::frontend::egui::config::AppConfig;
-use crate::frontend::egui::keybindings::{Binding, BindVariant, hotkey_expecting_id};
+use crate::frontend::egui::keybindings::{BindVariant, Binding, hotkey_expecting_id};
 use crate::frontend::messages::AsyncFrontendMessage;
 use crate::messages::ControllerEvent;
 
@@ -46,9 +46,7 @@ pub fn handle_keyboard_input(
     // When true we must let the raw key events through so the Hotkey
     // widget can capture them.
     let hotkey_is_expecting = ctx.data_mut(|d| {
-        let val = d
-            .get_temp::<bool>(hotkey_expecting_id())
-            .unwrap_or(false);
+        let val = d.get_temp::<bool>(hotkey_expecting_id()).unwrap_or(false);
         // Reset so the flag doesn't persist when no widget sets it.
         d.insert_temp(hotkey_expecting_id(), false);
         val

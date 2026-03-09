@@ -430,12 +430,11 @@ impl Ppu {
 
                 let raw_row = (self.scanline as u8).wrapping_sub(self.current_sprite_y);
 
-                let row_offset =
-                    if self.get_sprite_fifo_for_soam_index().attribute & 0x80 == 0 {
-                        raw_row
-                    } else {
-                        (self.get_sprite_height() - 1) - raw_row
-                    };
+                let row_offset = if self.get_sprite_fifo_for_soam_index().attribute & 0x80 == 0 {
+                    raw_row
+                } else {
+                    (self.get_sprite_height() - 1) - raw_row
+                };
 
                 let tile_id = if sprite_height == 8 {
                     self.current_sprite_tile_id as u16
@@ -482,7 +481,7 @@ impl Ppu {
                 }
             }
             4..8 => {
-               self.get_sprite_fifo_for_soam_index().down_counter =
+                self.get_sprite_fifo_for_soam_index().down_counter =
                     self.secondary_oam_read(self.soam_index + 3);
                 if (self.dot - 1) % 8 == 7 {
                     self.soam_index += 4;

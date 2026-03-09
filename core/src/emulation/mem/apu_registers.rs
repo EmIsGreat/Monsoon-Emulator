@@ -68,11 +68,8 @@ impl MemoryDevice for ApuRegisters {
     fn write(&mut self, addr: u16, data: u8) {
         self.strobe();
 
-        match addr {
-            0x16 => {
-                self.strobe = (data & 1) == 1;
-            }
-            _ => {}
+        if addr == 0x16 {
+            self.strobe = (data & 1) == 1;
         }
     }
 
