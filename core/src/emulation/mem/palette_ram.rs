@@ -37,8 +37,10 @@ impl MemoryDevice for PaletteRam {
         }
     }
 
+    #[inline]
     fn init(&mut self, addr: u16, data: u8) { self.write(addr, data) }
 
+    #[inline]
     fn load(&mut self, data: Box<[u8]>) {
         for (i, value) in data.iter().enumerate() {
             match i {
@@ -48,6 +50,7 @@ impl MemoryDevice for PaletteRam {
         }
     }
 
+    #[inline]
     fn snapshot_all(&self) -> Vec<u8> {
         let mut out = self.palettes.snapshot_all();
         out.extend(self.zero_bits);

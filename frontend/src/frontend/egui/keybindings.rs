@@ -362,7 +362,7 @@ impl Default for ControllerKeybindings {
             left: Some(Binding::key(Key::ArrowLeft)),
             right: Some(Binding::key(Key::ArrowRight)),
             a: Some(Binding::key(Key::Space)),
-            b: Some(Binding::with_modifiers(Key::Space, Modifiers::SHIFT)),
+            b: Some(Binding::key(Key::Delete)),
             start: Some(Binding::key(Key::S)),
             select: Some(Binding::key(Key::Tab)),
         }
