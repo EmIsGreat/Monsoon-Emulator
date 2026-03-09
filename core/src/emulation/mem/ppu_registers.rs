@@ -103,10 +103,13 @@ impl MemoryDevice for PpuRegisters {
         ppu.open_bus.set(bus);
     }
 
+    #[inline]
     fn init(&mut self, _: u16, _: u8) {}
 
+    #[inline]
     fn load(&mut self, _: Box<[u8]>) {}
 
+    #[inline]
     fn snapshot(&self, addr: u16, _: u8) -> u8 {
         match addr {
             0x0 => {
@@ -129,6 +132,7 @@ impl MemoryDevice for PpuRegisters {
         }
     }
 
+    #[inline]
     fn snapshot_all(&self) -> Vec<u8> {
         vec![
             self.snapshot(0, 0),

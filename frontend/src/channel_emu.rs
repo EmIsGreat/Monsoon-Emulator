@@ -188,6 +188,9 @@ impl ChannelEmulator {
     }
 
     pub fn execute_master_cycle(&mut self) -> Result<(), String> {
+        self.nes.cpu_mem_init(0x4016, self.input);
+        self.input = 0;
+
         match self.nes.step() {
             Ok(_) => {
                 // Frame completed, send it to frontend
@@ -212,6 +215,9 @@ impl ChannelEmulator {
     }
 
     pub fn execute_ppu_cycle(&mut self) -> Result<(), String> {
+        self.nes.cpu_mem_init(0x4016, self.input);
+        self.input = 0;
+
         match self.nes.step_ppu_cycle() {
             Ok(_) => {
                 // Frame completed, send it to frontend
@@ -236,6 +242,9 @@ impl ChannelEmulator {
     }
 
     pub fn execute_cpu_cycle(&mut self) -> Result<(), String> {
+        self.nes.cpu_mem_init(0x4016, self.input);
+        self.input = 0;
+
         match self.nes.step_cpu_cycle() {
             Ok(_) => {
                 // Frame completed, send it to frontend
@@ -260,6 +269,9 @@ impl ChannelEmulator {
     }
 
     pub fn execute_scanline(&mut self) -> Result<(), String> {
+        self.nes.cpu_mem_init(0x4016, self.input);
+        self.input = 0;
+
         match self.nes.step_scanline() {
             Ok(_) => {
                 // Frame completed, send it to frontend
@@ -284,6 +296,9 @@ impl ChannelEmulator {
     }
 
     pub fn execute_frame(&mut self) -> Result<(), String> {
+        self.nes.cpu_mem_init(0x4016, self.input);
+        self.input = 0;
+
         match self.nes.step_frame() {
             Ok(_) => {
                 // Frame completed, send it to frontend
@@ -350,14 +365,14 @@ impl ChannelEmulator {
 
     fn handle_controller_event(&mut self, event: ControllerEvent) {
         match event {
-            ControllerEvent::Left => self.input |= 64,
-            ControllerEvent::Right => self.input |= 128,
-            ControllerEvent::Up => self.input |= 16,
-            ControllerEvent::Down => self.input |= 32,
-            ControllerEvent::Start => self.input |= 8,
-            ControllerEvent::Select => self.input |= 4,
-            ControllerEvent::A => self.input |= 1,
-            ControllerEvent::B => self.input |= 2,
+            ControllerEvent::A => self.input |= 0x1,
+            ControllerEvent::B => self.input |= 0x2,
+            ControllerEvent::Select => self.input |= 0x4,
+            ControllerEvent::Start => self.input |= 0x8,
+            ControllerEvent::Up => self.input |= 0x10,
+            ControllerEvent::Down => self.input |= 0x20,
+            ControllerEvent::Left => self.input |= 0x40,
+            ControllerEvent::Right => self.input |= 0x80,
         }
     }
 

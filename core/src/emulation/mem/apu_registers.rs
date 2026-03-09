@@ -1,14 +1,14 @@
-use std::cell::RefCell;
-use std::ops::{Add, BitAnd};
+use std::cell::Cell;
 
 use crate::emulation::mem::MemoryDevice;
 
 #[derive(Debug, Clone)]
 pub struct ApuRegisters {
-    status: RefCell<u8>,
     input_a: u8,
     input_b: u8,
-    read_counter: RefCell<u8>,
+    shift_a: Cell<u8>,
+    shift_b: Cell<u8>,
+    strobe: bool,
 }
 
 impl Default for ApuRegisters {
@@ -18,10 +18,35 @@ impl Default for ApuRegisters {
 impl ApuRegisters {
     pub fn new() -> Self {
         Self {
-            status: RefCell::new(0xFF),
-            input_a: 0b1110_0000,
-            input_b: 0b1110_0000,
-            read_counter: 0.into(),
+            input_a: 0,
+            input_b: 0,
+            shift_a: 0.into(),
+            shift_b: 0.into(),
+            strobe: false,
+        }
+    }
+
+    #[inline(always)]
+    fn poll_a(&self, open_bus: u8) -> u8 {
+        let val = self.shift_a.get();
+        let res = (open_bus & !0b111) | (val & 1);
+        self.shift_a.replace((val >> 1) | 0x80);
+        res
+    }
+
+    #[inline(always)]
+    fn poll_b(&self, open_bus: u8) -> u8 {
+        let val = self.shift_b.get();
+        let res = (open_bus & !0b111) | (val & 1);
+        self.shift_b.replace((val >> 1) | 0x80);
+        res
+    }
+
+    #[inline(always)]
+    fn strobe(&self) {
+        if self.strobe {
+            self.shift_a.replace(self.input_a);
+            self.shift_b.replace(self.input_b);
         }
     }
 }
@@ -29,51 +54,29 @@ impl ApuRegisters {
 impl MemoryDevice for ApuRegisters {
     #[inline(always)]
     fn read(&self, addr: u16, open_bus: u8) -> u8 {
+        self.strobe();
+
         match addr {
-            0x00..=0x14 => open_bus,
-            0x15 => {
-                let status = self.status.borrow_mut();
-                let new = status.bitand(0b1011111);
-                drop(status);
-
-                self.status.replace(new);
-                new
-            }
-            0x16 => {
-                let mut counter = self.read_counter.borrow().add(0);
-                let res = open_bus & self.input_a.wrapping_shr(counter as u32);
-
-                counter += 1;
-
-                if counter > 8 {
-                    counter = 0;
-                }
-
-                self.read_counter.replace(counter);
-
-                res
-            }
-            0x17 => {
-                let mut counter = self.read_counter.borrow().add(0);
-                let res = open_bus & self.input_b.wrapping_shr(counter as u32);
-
-                counter += 1;
-
-                if counter > 8 {
-                    counter = 0;
-                }
-
-                self.read_counter.replace(counter);
-
-                res
-            }
+            0x00..=0x15 => open_bus,
+            0x16 => self.poll_a(open_bus),
+            0x17 => self.poll_b(open_bus),
             _ => 0,
         }
     }
 
     #[inline(always)]
-    fn write(&mut self, _: u16, _: u8) {}
+    fn write(&mut self, addr: u16, data: u8) {
+        self.strobe();
 
+        match addr {
+            0x16 => {
+                self.strobe = (data & 1) == 1;
+            }
+            _ => {}
+        }
+    }
+
+    #[inline(always)]
     fn init(&mut self, addr: u16, val: u8) {
         match addr {
             0x16 => self.input_a = val,
@@ -82,17 +85,22 @@ impl MemoryDevice for ApuRegisters {
         }
     }
 
+    #[inline]
     fn load(&mut self, _: Box<[u8]>) {}
 
+    #[inline]
     fn is_internal(&self) -> bool { true }
 
+    #[inline]
     fn snapshot(&self, addr: u16, open_bus: u8) -> u8 {
         match addr {
-            0x00..=0x14 => open_bus,
-            0x15 => self.status.clone().take(),
+            0x00..=0x15 => open_bus,
+            0x16 => self.poll_a(open_bus),
+            0x17 => self.poll_b(open_bus),
             _ => 0,
         }
     }
 
+    #[inline]
     fn snapshot_all(&self) -> Vec<u8> { vec![self.snapshot(0, 0)] }
 }
