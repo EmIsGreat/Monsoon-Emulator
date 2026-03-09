@@ -415,7 +415,7 @@ impl Ppu {
                 self.current_sprite_y = self.secondary_oam_read(self.soam_index);
             }
             1 => {
-                self.sprite_fifos[(self.soam_index / 4) as usize].attribute =
+                self.get_sprite_fifo_for_soam_index().attribute =
                     self.secondary_oam_read(self.soam_index + 2);
             }
             2 => {
@@ -431,7 +431,7 @@ impl Ppu {
                 let raw_row = (self.scanline as u8).wrapping_sub(self.current_sprite_y);
 
                 let row_offset =
-                    if self.sprite_fifos[(self.soam_index / 4) as usize].attribute & 0x80 == 0 {
+                    if self.get_sprite_fifo_for_soam_index().attribute & 0x80 == 0 {
                         raw_row
                     } else {
                         (self.get_sprite_height() - 1) - raw_row
@@ -455,34 +455,34 @@ impl Ppu {
 
                 let mut pattern = self.mem_read(self.address_bus);
 
-                if self.sprite_fifos[(self.soam_index / 4) as usize].attribute & 0b0100_0000 != 0 {
+                if self.get_sprite_fifo_for_soam_index().attribute & 0b0100_0000 != 0 {
                     pattern = pattern.reverse_bits();
                 }
 
-                self.sprite_fifos[(self.soam_index / 4) as usize].shifter_pattern_lo = pattern;
+                self.get_sprite_fifo_for_soam_index().shifter_pattern_lo = pattern;
 
                 if !self.is_sprite_in_range() {
-                    self.sprite_fifos[(self.soam_index / 4) as usize].shifter_pattern_lo = 0;
+                    self.get_sprite_fifo_for_soam_index().shifter_pattern_lo = 0;
                 }
             }
             3 => {
-                self.sprite_fifos[(self.soam_index / 4) as usize].down_counter =
+                self.get_sprite_fifo_for_soam_index().down_counter =
                     self.secondary_oam_read(self.soam_index + 3);
 
                 let mut pattern = self.mem_read(self.address_bus + 8);
 
-                if self.sprite_fifos[(self.soam_index / 4) as usize].attribute & 0b0100_0000 != 0 {
+                if self.get_sprite_fifo_for_soam_index().attribute & 0b0100_0000 != 0 {
                     pattern = pattern.reverse_bits();
                 }
 
-                self.sprite_fifos[(self.soam_index / 4) as usize].shifter_pattern_hi = pattern;
+                self.get_sprite_fifo_for_soam_index().shifter_pattern_hi = pattern;
 
                 if !self.is_sprite_in_range() {
-                    self.sprite_fifos[(self.soam_index / 4) as usize].shifter_pattern_hi = 0;
+                    self.get_sprite_fifo_for_soam_index().shifter_pattern_hi = 0;
                 }
             }
             4..8 => {
-                self.sprite_fifos[(self.soam_index / 4) as usize].down_counter =
+               self.get_sprite_fifo_for_soam_index().down_counter =
                     self.secondary_oam_read(self.soam_index + 3);
                 if (self.dot - 1) % 8 == 7 {
                     self.soam_index += 4;
@@ -490,6 +490,10 @@ impl Ppu {
             }
             _ => unreachable!(),
         }
+    }
+
+    fn get_sprite_fifo_for_soam_index(&mut self) -> &mut SpriteFifo {
+        &mut self.sprite_fifos[(self.soam_index as usize / 4) % 8]
     }
 
     #[inline]
