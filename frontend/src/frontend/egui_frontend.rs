@@ -556,13 +556,14 @@ impl EguiApp {
 
 impl eframe::App for EguiApp {
     fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
-        // Handle keyboard input
-        handle_keyboard_input(
+        // Handle keyboard input and get current controller state
+        let controller_state = handle_keyboard_input(
             ctx,
             &self.async_sender,
             &mut self.config,
             &mut self.emu_textures.last_frame_request,
         );
+        self.channel_emu.set_controller_state(controller_state);
 
         if let Err(e) = self.channel_emu.process_messages() {
             eprintln!("Emulator error: {}", e);

@@ -6,7 +6,7 @@ use monsoon_core::emulation::nes::Nes;
 use monsoon_core::emulation::ppu_util::{EmulatorFetchable, PaletteData};
 use monsoon_core::util::Hashable;
 
-use crate::messages::{ControllerEvent, EmulatorMessage, FrontendMessage, SaveType};
+use crate::messages::{EmulatorMessage, FrontendMessage, SaveType};
 
 /// Channel-based emulator wrapper for clean frontend/emulator separation.
 ///
@@ -123,8 +123,9 @@ impl ChannelEmulator {
                     // Execute one frame regardless of pause state
                     self.execute_frame()?;
                 }
-                FrontendMessage::ControllerInput(event) => {
-                    self.handle_controller_event(event);
+                FrontendMessage::ControllerInput(_) => {
+                    // Legacy path - controller state is now set directly via
+                    // set_controller_state() before message processing.
                 }
                 FrontendMessage::RequestDebugData(fetchable) => match fetchable {
                     EmulatorFetchable::Palettes(_) => {
@@ -348,17 +349,13 @@ impl ChannelEmulator {
         }
     }
 
-    fn handle_controller_event(&mut self, event: ControllerEvent) {
-        match event {
-            ControllerEvent::Left => self.input |= 64,
-            ControllerEvent::Right => self.input |= 128,
-            ControllerEvent::Up => self.input |= 16,
-            ControllerEvent::Down => self.input |= 32,
-            ControllerEvent::Start => self.input |= 8,
-            ControllerEvent::Select => self.input |= 4,
-            ControllerEvent::A => self.input |= 1,
-            ControllerEvent::B => self.input |= 2,
-        }
+    /// Set the full controller state and propagate it to the NES.
+    ///
+    /// The state is an 8-bit value where each bit represents a button:
+    /// A(0), B(1), Select(2), Start(3), Up(4), Down(5), Left(6), Right(7).
+    pub fn set_controller_state(&mut self, state: u8) {
+        self.input = state;
+        self.nes.cpu_mem_init(0x4016, self.input);
     }
 
     pub fn compute_required_fetches(

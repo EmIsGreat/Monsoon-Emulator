@@ -3,7 +3,6 @@ use monsoon_core::emulation::savestate::SaveState;
 
 use crate::frontend::storage::StorageKey;
 use crate::frontend::util::{FileType, SavestateLoadError};
-use crate::messages::ControllerEvent;
 
 /// Visual/frontend-only events that are processed synchronously via a deque.
 ///
@@ -119,8 +118,6 @@ pub enum AsyncFrontendMessage {
         addr_1: u16,
         value_1: u8,
     },
-    /// Send controller input to the emulator
-    ControllerInput(ControllerEvent),
     StepPpuCycle,
     StepCpuCycle,
     StepMasterCycle,

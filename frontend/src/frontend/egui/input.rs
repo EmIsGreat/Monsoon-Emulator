@@ -5,7 +5,6 @@ use web_time::Instant;
 use crate::frontend::egui::config::AppConfig;
 use crate::frontend::egui::keybindings::Binding;
 use crate::frontend::messages::AsyncFrontendMessage;
-use crate::messages::ControllerEvent;
 
 /// Check if a keybind is pressed in the given input state.
 fn is_binding_pressed(input: &egui::InputState, binding: &Option<Binding>) -> bool {
@@ -15,7 +14,20 @@ fn is_binding_pressed(input: &egui::InputState, binding: &Option<Binding>) -> bo
     }
 }
 
+/// Check if a keybind is currently held down.
+fn is_binding_down(input: &egui::InputState, binding: &Option<Binding>) -> bool {
+    match binding {
+        Some(b) => b.down(input),
+        None => false,
+    }
+}
+
 /// Handle keyboard input from the user.
+///
+/// Returns the current NES controller state as an 8-bit value where each bit
+/// represents a button: A(0), B(1), Select(2), Start(3), Up(4), Down(5),
+/// Left(6), Right(7). The state is rebuilt each frame using key-down checks,
+/// so buttons are active while held and released when the key is lifted.
 ///
 /// # Arguments
 /// * `ctx` - The egui context
@@ -27,7 +39,7 @@ pub fn handle_keyboard_input(
     async_sender: &Sender<AsyncFrontendMessage>,
     config: &mut AppConfig,
     last_frame_request: &mut Instant,
-) {
+) -> u8 {
     ctx.input(|i| {
         // Debug controls
         if is_binding_pressed(i, &config.keybindings.debug.cycle_palette) {
@@ -73,48 +85,44 @@ pub fn handle_keyboard_input(
             let _ = async_sender.send(AsyncFrontendMessage::Quickload);
         }
 
-        // NES controller input
-        handle_controller_input(i, async_sender, config);
-    });
+        // NES controller input - compute full state from currently held keys
+        compute_controller_state(i, config)
+    })
 }
 
-/// Handle NES controller input mapping from keyboard
-fn handle_controller_input(
-    input: &egui::InputState,
-    async_sender: &Sender<AsyncFrontendMessage>,
-    config: &AppConfig,
-) {
-    // D-pad
-    if is_binding_pressed(input, &config.keybindings.controller.left) {
-        let _ = async_sender.send(AsyncFrontendMessage::ControllerInput(ControllerEvent::Left));
+/// Compute the NES controller state from currently held keys.
+///
+/// Uses `down()` (key-held) checks instead of `pressed()` (key-event) checks,
+/// so the controller state accurately reflects which buttons are currently held.
+/// The state is rebuilt from scratch each frame, ensuring buttons are released
+/// when keys are lifted.
+fn compute_controller_state(input: &egui::InputState, config: &AppConfig) -> u8 {
+    let mut state = 0u8;
+
+    if is_binding_down(input, &config.keybindings.controller.a) {
+        state |= 1;
     }
-    if is_binding_pressed(input, &config.keybindings.controller.right) {
-        let _ = async_sender.send(AsyncFrontendMessage::ControllerInput(
-            ControllerEvent::Right,
-        ));
+    if is_binding_down(input, &config.keybindings.controller.b) {
+        state |= 2;
     }
-    if is_binding_pressed(input, &config.keybindings.controller.up) {
-        let _ = async_sender.send(AsyncFrontendMessage::ControllerInput(ControllerEvent::Up));
+    if is_binding_down(input, &config.keybindings.controller.select) {
+        state |= 4;
     }
-    if is_binding_pressed(input, &config.keybindings.controller.down) {
-        let _ = async_sender.send(AsyncFrontendMessage::ControllerInput(ControllerEvent::Down));
+    if is_binding_down(input, &config.keybindings.controller.start) {
+        state |= 8;
+    }
+    if is_binding_down(input, &config.keybindings.controller.up) {
+        state |= 16;
+    }
+    if is_binding_down(input, &config.keybindings.controller.down) {
+        state |= 32;
+    }
+    if is_binding_down(input, &config.keybindings.controller.left) {
+        state |= 64;
+    }
+    if is_binding_down(input, &config.keybindings.controller.right) {
+        state |= 128;
     }
 
-    // Buttons
-    if is_binding_pressed(input, &config.keybindings.controller.start) {
-        let _ = async_sender.send(AsyncFrontendMessage::ControllerInput(
-            ControllerEvent::Start,
-        ));
-    }
-    if is_binding_pressed(input, &config.keybindings.controller.select) {
-        let _ = async_sender.send(AsyncFrontendMessage::ControllerInput(
-            ControllerEvent::Select,
-        ));
-    }
-    if is_binding_pressed(input, &config.keybindings.controller.a) {
-        let _ = async_sender.send(AsyncFrontendMessage::ControllerInput(ControllerEvent::A));
-    }
-    if is_binding_pressed(input, &config.keybindings.controller.b) {
-        let _ = async_sender.send(AsyncFrontendMessage::ControllerInput(ControllerEvent::B));
-    }
+    state
 }
