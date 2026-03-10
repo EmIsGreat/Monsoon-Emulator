@@ -391,7 +391,7 @@ impl Nes {
     /// respective clock dividers.
     ///
     /// For most use cases, prefer [`step_frame()`](Nes::step_frame).
-    #[inline(always)]
+    #[inline]
     pub fn step(&mut self) -> Result<ExecutionFinished, String> { self.step_internal(u128::MAX) }
 
     #[inline]

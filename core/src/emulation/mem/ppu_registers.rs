@@ -30,7 +30,7 @@ impl Debug for PpuRegisters {
 }
 
 impl MemoryDevice for PpuRegisters {
-    #[inline(always)]
+    #[inline]
     fn read(&self, addr: u16, _: u8) -> u8 {
         match addr {
             0x2 => {
@@ -70,7 +70,7 @@ impl MemoryDevice for PpuRegisters {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn write(&mut self, addr: u16, data: u8) {
         let mut ppu = self.ppu.borrow_mut();
         let mut bus = ppu.open_bus.get();

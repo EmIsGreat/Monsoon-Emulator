@@ -26,7 +26,7 @@ impl ApuRegisters {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn poll_a(&self, open_bus: u8) -> u8 {
         let val = self.shift_a.get();
         let res = (open_bus & !0b111) | (val & 1);
@@ -34,7 +34,7 @@ impl ApuRegisters {
         res
     }
 
-    #[inline(always)]
+    #[inline]
     fn poll_b(&self, open_bus: u8) -> u8 {
         let val = self.shift_b.get();
         let res = (open_bus & !0b111) | (val & 1);
@@ -42,7 +42,7 @@ impl ApuRegisters {
         res
     }
 
-    #[inline(always)]
+    #[inline]
     fn strobe(&self) {
         if self.strobe {
             self.shift_a.replace(self.input_a);
@@ -52,7 +52,7 @@ impl ApuRegisters {
 }
 
 impl MemoryDevice for ApuRegisters {
-    #[inline(always)]
+    #[inline]
     fn read(&self, addr: u16, open_bus: u8) -> u8 {
         self.strobe();
 
@@ -64,7 +64,7 @@ impl MemoryDevice for ApuRegisters {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn write(&mut self, addr: u16, data: u8) {
         self.strobe();
 
@@ -73,7 +73,7 @@ impl MemoryDevice for ApuRegisters {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn init(&mut self, addr: u16, val: u8) {
         match addr {
             0x16 => self.input_a = val,

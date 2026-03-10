@@ -719,7 +719,7 @@ impl Ppu {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn clear_vbl_bit(&self) {
         self.status_register
             .set(self.status_register.get() & !VBLANK_NMI_BIT);
@@ -860,7 +860,7 @@ impl Ppu {
         self.write_latch.set(!self.write_latch.get());
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn poll_nmi(&self) -> bool { self.nmi_requested.get() }
 
     #[inline]
@@ -925,7 +925,7 @@ impl Ppu {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn mem_read(&mut self, addr: u16) -> u8 {
         match addr {
             PALETTE_RAM_START_ADDRESS..PALETTE_RAM_END_INDEX => {
@@ -935,7 +935,7 @@ impl Ppu {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn mem_write(&mut self, addr: u16, data: u8) {
         match addr {
             PALETTE_RAM_START_ADDRESS..PALETTE_RAM_END_INDEX => self
@@ -945,7 +945,7 @@ impl Ppu {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn mem_init(&mut self, addr: u16, data: u8) {
         match addr {
             PALETTE_RAM_START_ADDRESS..PALETTE_RAM_END_INDEX => self
@@ -955,7 +955,7 @@ impl Ppu {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn oam_read(&mut self, addr: u8) -> u8 {
         let row = addr / 8;
         let byte = addr % 8;
@@ -968,7 +968,7 @@ impl Ppu {
         res
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn oam_snapshot(&self, addr: u8) -> u8 {
         let row = addr / 8;
         let byte = addr % 8;
@@ -981,14 +981,14 @@ impl Ppu {
         res
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn oam_write(&mut self, addr: u8, data: u8) {
         let row = addr / 8;
         let byte = addr % 8;
         self.oam.mem_write((row as u16 * 9) + byte as u16, data)
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn secondary_oam_read(&mut self, addr: u8) -> u8 {
         // Mask for only 0-32
         let row = addr & 0x1F;
@@ -997,7 +997,7 @@ impl Ppu {
         self.oam.mem_read((row as u16 * 9) + byte as u16)
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn secondary_oam_snapshot(&self, addr: u8) -> u8 {
         let row = addr & 0x1F;
         let byte = 8u8;
@@ -1005,7 +1005,7 @@ impl Ppu {
         self.oam.mem_read_debug((row as u16 * 9) + byte as u16)
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn secondary_oam_write(&mut self, addr: u8, data: u8) {
         // Mask for only 0-32
         let row = addr & 0x1F;
@@ -1043,7 +1043,7 @@ impl Ppu {
         self.memory.get_memory_debug(range)
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn process_vbl_clear_scheduled(&self) {
         if let Some(vbl_clear_cycle) = self.vbl_clear_scheduled.get() {
             if vbl_clear_cycle >= self.vbl_reset_counter.get() {
@@ -1089,7 +1089,7 @@ impl Ppu {
         data
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn tick_open_bus(&self, times: u8) {
         let mut bus = self.open_bus.get();
         bus.tick(times);
