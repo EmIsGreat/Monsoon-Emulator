@@ -10,7 +10,7 @@ use crate::emulation::mem::mirror_memory::MirrorMemory;
 use crate::emulation::mem::{Memory, Ram};
 use crate::emulation::nes::ExecutionFinished;
 use crate::emulation::opcode;
-use crate::emulation::opcode::{OPCODES_MAP, OPCODES_TABLE, OpCode, get_opcode};
+use crate::emulation::opcode::{get_opcode, OpCode, OPCODES_MAP, OPCODES_TABLE};
 use crate::emulation::ppu::Ppu;
 use crate::emulation::rom::RomFile;
 use crate::emulation::savestate::CpuState;
@@ -66,7 +66,7 @@ pub struct Cpu {
     pub dma_triggered: bool,
     pub dma_page: u8,
     /// Last memory access for watchpoint debugging (address, was_read)
-    pub last_memory_access: Option<(u16, bool)>,
+    pub last_memory_access: Option<(u16, bool, u8)>,
 }
 
 impl Default for Cpu {
@@ -120,15 +120,17 @@ impl Cpu {
     #[inline(always)]
     pub fn mem_read(&mut self, addr: u16) -> u8 {
         self.cpu_read_cycle = true;
-        self.last_memory_access = Some((addr, true));
+        let res = self.memory.mem_read(addr);
 
-        self.memory.mem_read(addr)
+        self.last_memory_access = Some((addr, true, res));
+
+        res
     }
 
     #[inline(always)]
     pub fn mem_write(&mut self, addr: u16, data: u8) {
         self.cpu_read_cycle = false;
-        self.last_memory_access = Some((addr, false));
+        self.last_memory_access = Some((addr, false, data));
 
         if addr == DMA_ADDRESS {
             self.dma_triggered = true;
@@ -741,7 +743,7 @@ impl Cpu {
                     ));
                 self.op_queue.push_back(MicroOp::ReadPageCrossAware(
                     AddressSource::AddressLatch,
-                    Source::X,
+                    offset,
                     Target::DataBus,
                     false,
                     MicroOpCallback::None,
@@ -1131,7 +1133,7 @@ impl Cpu {
                 ..Default::default()
             });
         }
-        
+
         self.dma_read = !self.dma_read;
 
         let op = self.current_op;
@@ -1145,7 +1147,7 @@ impl Cpu {
             self.irq_pending = self.irq_detected;
         }
 
-        self.execute_micro_op(op);
+         self.execute_micro_op(op);
 
         if self.dma_triggered && self.cpu_read_cycle {
             self.trigger_oam_dma();
@@ -1361,10 +1363,10 @@ impl Cpu {
                 callback,
             ) => {
                 if let Some(address) = self.get_u16_address(&address_source) {
-                    let src_value = self.get_src_value(&offset);
+                    let offset = self.get_src_value(&offset);
 
-                    if let Some(src_value) = src_value {
-                        let offset_address = util::add_to_low_byte(address, src_value);
+                    if let Some(offset) = offset {
+                        let offset_address = util::add_to_low_byte(address, offset);
                         let value = self.mem_read(offset_address);
                         self.write_to_target(&target, value);
                     }
@@ -1674,6 +1676,7 @@ pub enum MicroOp {
     Write(Target, Source, bool, MicroOpCallback),
     StackPush(Source, MicroOpCallback),
     StackPop(Target, MicroOpCallback),
+    /// When reading from AddressSource, assuming it was obtained by offsetting by Source, if an overflow occurred in its obtaining, increment hi to fix address latch
     ReadPageCrossAware(AddressSource, Source, Target, bool, MicroOpCallback),
     DummyReadAddOffsetWriteToTarget(AddressSource, Source, Target, MicroOpCallback),
     DummyRead(MicroOpCallback),

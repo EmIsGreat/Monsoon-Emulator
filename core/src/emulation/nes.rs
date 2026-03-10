@@ -500,7 +500,7 @@ impl Nes {
     pub fn is_halted(&self) -> bool { self.cpu.is_halted }
 
     /// Returns the last memory access (address, was_read), or `None` if no access occurred.
-    pub fn last_memory_access(&self) -> Option<(u16, bool)> { self.cpu.last_memory_access }
+    pub fn last_memory_access(&self) -> Option<(u16, bool, u8)> { self.cpu.last_memory_access }
 
     // --- PPU debug accessors ---
 
