@@ -394,7 +394,7 @@ impl Nes {
     #[inline]
     pub fn step(&mut self) -> Result<ExecutionFinished, String> { self.step_internal(u128::MAX) }
 
-    #[inline]
+    #[inline(always)]
     fn step_internal(&mut self, last_cycle: u128) -> Result<ExecutionFinished, String> {
         let mut res = ExecutionFinished {
             cycle_completed: true,

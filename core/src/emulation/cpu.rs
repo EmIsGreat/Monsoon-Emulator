@@ -118,7 +118,7 @@ impl Cpu {
         Self::default()
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn mem_read(&mut self, addr: u16) -> u8 {
         self.cpu_read_cycle = true;
         let res = self.memory.mem_read(addr);
@@ -128,7 +128,7 @@ impl Cpu {
         res
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn mem_write(&mut self, addr: u16, data: u8) {
         self.cpu_read_cycle = false;
         self.last_memory_access = Some((addr, false, data));
@@ -1126,7 +1126,7 @@ impl Cpu {
         self.memory.get_memory_debug(range)
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn step(&mut self) -> Result<ExecutionFinished, String> {
         if self.is_halted {
             return Ok(ExecutionFinished {
@@ -1205,7 +1205,7 @@ impl Cpu {
         })
     }
 
-    #[inline]
+    #[inline(always)]
     fn execute_micro_op(&mut self, micro_op: MicroOp) {
         match micro_op {
             MicroOp::FetchOpcode => {

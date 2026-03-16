@@ -174,7 +174,7 @@ impl Ppu {
         map
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn step(&mut self) -> ExecutionFinished {
         self.prev_vbl = self.status_register.get() & VBLANK_NMI_BIT;
 
@@ -210,7 +210,8 @@ impl Ppu {
                 self.clear_sprite_zero()
             }
 
-            if (1..=64).contains(&self.dot) {
+            // Replace (1..=64).contains(&self.dot) with manual comparison
+            if self.dot >= 1 && self.dot <= 64 {
                 self.set_soam_disable(false);
                 self.is_soam_clear_active = true;
                 self.init_soam();
@@ -218,11 +219,13 @@ impl Ppu {
                 self.is_soam_clear_active = false;
             }
 
-            if (65..=256).contains(&self.dot) {
+            // Replace (65..=256).contains(&self.dot) with manual comparison
+            if self.dot >= 65 && self.dot <= 256 {
                 self.sprite_eval();
             }
 
-            if (257..=320).contains(&self.dot) {
+            // Replace (257..=320).contains(&self.dot) with manual comparison
+            if self.dot >= 257 && self.dot <= 320 {
                 if self.dot == 257 {
                     self.soam_index = 0;
                 }
@@ -230,7 +233,8 @@ impl Ppu {
                 self.sprite_fetch();
             }
 
-            if (321..=341).contains(&self.dot) {
+            // Replace (321..=341).contains(&self.dot) with manual comparison
+            if self.dot >= 321 && self.dot <= 341 {
                 if self.dot.is_multiple_of(2) {
                     self.secondary_oam_read(self.soam_index);
                 }
@@ -242,10 +246,11 @@ impl Ppu {
                 }
             }
 
-            if (1..=256).contains(&self.dot) || (321..=336).contains(&self.dot) {
+            // Replace (1..=256).contains(&self.dot) || (321..=336).contains(&self.dot) with manual comparison
+            if (self.dot >= 1 && self.dot <= 256) || (self.dot >= 321 && self.dot <= 336) {
                 self.do_dot_fetch();
 
-                if self.scanline != PRE_RENDER_SCANLINE && (0x01..=256).contains(&self.dot) {
+                if self.scanline != PRE_RENDER_SCANLINE && self.dot >= 0x01 && self.dot <= 256 {
                     let bg_color_address = self.get_bg_pixel();
 
                     let mut sprite_pixel_palette = 0u8;
@@ -337,7 +342,8 @@ impl Ppu {
                 }
             }
 
-            if (257..=320).contains(&self.dot) {
+            // Replace (257..=320).contains(&self.dot) with manual comparison
+            if self.dot >= 257 && self.dot <= 320 {
                 if self.dot == 257 {
                     self.v_register = (self.v_register & !0x041F) | (self.t_register & 0x041F);
                 }
@@ -345,7 +351,8 @@ impl Ppu {
                 self.oam_addr_register = 0;
             }
 
-            if (280..=304).contains(&self.dot) && self.scanline == PRE_RENDER_SCANLINE {
+            // Replace (280..=304).contains(&self.dot) with manual comparison
+            if self.dot >= 280 && self.dot <= 304 && self.scanline == PRE_RENDER_SCANLINE {
                 self.v_register = (self.v_register & !0x7BE0) | (self.t_register & 0x7BE0);
             }
         }

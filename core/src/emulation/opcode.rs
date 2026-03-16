@@ -1142,7 +1142,7 @@ pub fn init_lookup_table() -> [Option<OpCode>; 256] {
 }
 
 /// Fast opcode lookup - O(1) array access
-#[inline]
+#[inline(always)]
 pub fn get_opcode(opcode: u8) -> Option<OpCode> {
     OPCODES_TABLE.get_or_init(init_lookup_table)[opcode as usize]
 }
