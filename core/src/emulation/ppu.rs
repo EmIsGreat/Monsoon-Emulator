@@ -235,7 +235,7 @@ impl Ppu {
 
             // Replace (321..=341).contains(&self.dot) with manual comparison
             if self.dot >= 321 && self.dot <= 341 {
-                if self.dot.is_multiple_of(2) {
+                if (self.dot & 1) == 0 {
                     self.secondary_oam_read(self.soam_index);
                 }
 
@@ -334,7 +334,7 @@ impl Ppu {
 
                 self.shift_bg_shifters();
 
-                if (self.dot - 1) % 8 == 7 {
+                if ((self.dot - 1) & 7) == 7 {
                     self.inc_coarse_x_scroll();
                     self.reload_shifters();
                 }
@@ -513,7 +513,7 @@ impl Ppu {
 
     #[inline]
     pub fn sprite_eval(&mut self) {
-        match (self.dot - 1).is_multiple_of(2) {
+        match ((self.dot - 1) & 1) == 0 {
             true => {
                 self.oam_addr_register = self.oam_index;
                 self.oam_fetch = self.get_oam_at_addr();
@@ -575,7 +575,7 @@ impl Ppu {
 
     #[inline]
     pub fn init_soam(&mut self) {
-        match (self.dot - 1).is_multiple_of(2) {
+        match ((self.dot - 1) & 1) == 0 {
             true => {
                 self.oam_addr_register = (self.dot - 1) as u8;
                 self.oam_fetch = self.get_oam_at_addr();
@@ -792,7 +792,7 @@ impl Ppu {
     pub fn get_vram_at_addr(&mut self) -> u8 {
         let mut ret = self.ppu_data_buffer;
 
-        if !(PALETTE_RAM_START_ADDRESS..=PALETTE_RAM_END_INDEX).contains(&self.v_register) {
+        if !(self.v_register >= PALETTE_RAM_START_ADDRESS && self.v_register <= PALETTE_RAM_END_INDEX) {
             self.ppu_data_buffer = self.mem_read(self.v_register);
         } else {
             ret = self.mem_read(self.v_register);

@@ -48,8 +48,55 @@ if self.dot >= 1 && self.dot <= 64 { ... }
   - `(321..=341).contains(&self.dot)`
   - `(1..=256).contains(&self.dot) || (321..=336).contains(&self.dot)`
   - `(280..=304).contains(&self.dot)`
+- `Ppu::get_vram_at_addr()` - VRAM address range check
+  - `(PALETTE_RAM_START_ADDRESS..=PALETTE_RAM_END_INDEX).contains(&self.v_register)`
 
-### 3. Build Profile Optimization
+### 3. Bitwise Operation Optimizations
+Replaced modulo and `is_multiple_of()` calls with bitwise operations in hot paths:
+
+```rust
+// Before:
+if self.dot.is_multiple_of(2) { ... }
+if (self.dot - 1) % 8 == 7 { ... }
+
+// After:
+if (self.dot & 1) == 0 { ... }
+if ((self.dot - 1) & 7) == 7 { ... }
+```
+
+**Impact**: Bitwise AND operations are significantly faster than modulo/division operations, especially when executed millions of times per frame. The compiler may optimize simple modulo by powers of 2, but explicit bitwise operations guarantee this optimization.
+
+**Locations optimized**:
+- `Ppu::step()` - Dot cycle checks (line 238)
+  - `self.dot.is_multiple_of(2)` → `(self.dot & 1) == 0`
+  - `(self.dot - 1) % 8 == 7` → `((self.dot - 1) & 7) == 7`
+- `Ppu::sprite_eval()` - Sprite evaluation timing (line 516)
+  - `(self.dot - 1).is_multiple_of(2)` → `((self.dot - 1) & 1) == 0`
+- `Ppu::init_soam()` - Secondary OAM initialization (line 578)
+  - `(self.dot - 1).is_multiple_of(2)` → `((self.dot - 1) & 1) == 0`
+
+### 4. Early Exit Optimization
+Added early exit to sprite rendering loop to avoid unnecessary iterations:
+
+```rust
+// In sprite pixel rendering loop:
+for (i, s) in self.sprite_fifos.iter_mut().enumerate() {
+    if s.down_counter == 0 && !s.is_counting {
+        // ... extract sprite pattern ...
+        if pattern != 0 && sprite_pixel_pattern == 0 {
+            // ... set sprite pixel data ...
+            // Early exit: we found the first non-transparent sprite
+            break;
+        }
+    }
+}
+```
+
+**Impact**: NES sprite priority means only the first opaque sprite matters for rendering at each pixel. Breaking early avoids checking remaining sprites once we've found a visible one. This optimization affects the most common case where sprites are present.
+
+**Location**: `Ppu::step()` sprite rendering loop (line 280)
+
+### 5. Build Profile Optimization
 
 #### Changed Configuration
 ```toml
@@ -96,9 +143,12 @@ test result: ok. 335 passed; 0 failed; 0 ignored; 0 measured
 |--------------|------|-------------|-------------|
 | Baseline (codegen-units=4) | 4.98s | - | - |
 | + Inline optimizations | ~4.99s | +0.2% | +0.2% |
-| + Range optimization | ~4.99s | +0.2% | 0% |
+| + Range optimization (partial) | ~4.99s | +0.2% | 0% |
 | + Build profile (codegen-units=1) | 3.64s | **-26.9%** | **-27.1%** |
 | + Native CPU (max_performance) | 3.51s | **-29.5%** | **-3.6%** |
+| + All micro-optimizations (current) | TBD | TBD | TBD |
+
+**Note**: The additional micro-optimizations (complete range replacement, bitwise operations, early exit) were applied after the initial performance measurements. Their individual impact is expected to be small but cumulative.
 
 ## Key Insights
 
