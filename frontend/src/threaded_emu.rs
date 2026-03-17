@@ -46,7 +46,7 @@ use crate::messages::{ControllerEvent, EmulatorMessage, FrontendMessage, SaveTyp
 ///
 pub struct ThreadedEmulator {
     thread_handle: Option<thread::JoinHandle<()>>,
-    to_emulator: Sender<FrontendMessage>,
+    pub(crate) to_emulator: Sender<FrontendMessage>,
 }
 
 impl ThreadedEmulator {

@@ -8,21 +8,25 @@ use monsoon_core::emulation::nes::Nes;
 use crate::channel_emu::ChannelEmulator;
 use crate::messages::{EmulatorMessage, FrontendMessage};
 
+#[cfg(not(target_arch = "wasm32"))]
+use crate::threaded_emu::ThreadedEmulator;
+
 /// Emulator wrapper that abstracts over threaded and non-threaded implementations.
 pub enum EmulatorWrapper {
     /// Non-threaded emulator (used on WASM, or for debugging)
     Channel(ChannelEmulator),
     /// Threaded emulator (used on native platforms for better responsiveness)
-    /// We don't need to store anything here since ThreadedEmulator is dropped when the struct drops
+    /// Stores the ThreadedEmulator to keep the background thread alive
     #[cfg(not(target_arch = "wasm32"))]
-    Threaded,
+    Threaded(ThreadedEmulator),
 }
 
 impl EmulatorWrapper {
     /// Create a new emulator wrapper.
     ///
-    /// On native platforms, creates a `ThreadedEmulator`.
-    /// On WASM, creates a `ChannelEmulator`.
+    /// On native platforms, creates a `ThreadedEmulator` which spawns a background thread
+    /// and creates the `Nes` instance on that thread (avoiding the need for `Send`).
+    /// On WASM, creates a `ChannelEmulator` with the provided `console` instance.
     pub fn new(
         console: Nes,
     ) -> (
@@ -32,29 +36,16 @@ impl EmulatorWrapper {
     ) {
         #[cfg(not(target_arch = "wasm32"))]
         {
-            use crate::threaded_emu::ThreadedEmulator;
-
             // On native, use threaded emulator for better UI responsiveness
+            // The ThreadedEmulator creates Nes on the background thread, so we don't use console
+            let _ = console; // Explicitly mark as intentionally unused on native
             let (threaded_emu, rx_from_emu) = ThreadedEmulator::new();
 
-            // Create a channel for the frontend to send messages
-            // We'll forward these to the threaded emulator
-            let (tx_to_emu, rx_to_emu) = crossbeam_channel::unbounded();
-
-            // Spawn a forwarding thread
-            // ThreadedEmulator manages its own thread lifetime via Drop
-            std::thread::spawn(move || {
-                while let Ok(msg) = rx_to_emu.recv() {
-                    // Forward messages to the threaded emulator
-                    if threaded_emu.send(msg).is_err() {
-                        break;
-                    }
-                }
-                // threaded_emu will be dropped here, which sends Quit and joins the thread
-            });
+            // Clone the sender for the frontend to use
+            let tx_to_emu = threaded_emu.to_emulator.clone();
 
             (
-                EmulatorWrapper::Threaded,
+                EmulatorWrapper::Threaded(threaded_emu),
                 tx_to_emu,
                 rx_from_emu,
             )
@@ -62,7 +53,7 @@ impl EmulatorWrapper {
 
         #[cfg(target_arch = "wasm32")]
         {
-            // On WASM, use non-threaded emulator
+            // On WASM, use non-threaded emulator with the provided console
             let (emu, tx_to_emu, rx_from_emu) = ChannelEmulator::new(console);
             (EmulatorWrapper::Channel(emu), tx_to_emu, rx_from_emu)
         }
@@ -76,7 +67,7 @@ impl EmulatorWrapper {
         match self {
             EmulatorWrapper::Channel(emu) => emu.process_messages(),
             #[cfg(not(target_arch = "wasm32"))]
-            EmulatorWrapper::Threaded => {
+            EmulatorWrapper::Threaded(_) => {
                 // Threaded emulator processes messages on background thread
                 Ok(())
             }
@@ -91,7 +82,19 @@ impl EmulatorWrapper {
         match self {
             EmulatorWrapper::Channel(emu) => Some(&emu.nes),
             #[cfg(not(target_arch = "wasm32"))]
-            EmulatorWrapper::Threaded => None,
+            EmulatorWrapper::Threaded(_) => None,
+        }
+    }
+
+    /// Get mutable access to the Nes instance (only available for ChannelEmulator).
+    ///
+    /// Returns `None` for `ThreadedEmulator` since Nes is on a different thread.
+    /// When this returns `None`, you should use the message-based API instead.
+    pub fn nes_mut(&mut self) -> Option<&mut Nes> {
+        match self {
+            EmulatorWrapper::Channel(emu) => Some(&mut emu.nes),
+            #[cfg(not(target_arch = "wasm32"))]
+            EmulatorWrapper::Threaded(_) => None,
         }
     }
 }
