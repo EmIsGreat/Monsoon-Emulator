@@ -96,7 +96,61 @@ for (i, s) in self.sprite_fifos.iter_mut().enumerate() {
 
 **Location**: `Ppu::step()` sprite rendering loop (line 280)
 
-### 5. Build Profile Optimization
+### 6. Branch Prediction Optimization (`#[cold]`)
+
+Applied the `#[cold]` attribute to cold paths (rarely executed code) to improve branch prediction and code layout:
+
+```rust
+#[cold]
+#[inline(never)]
+fn write_trace_log(&mut self) {
+    // Trace logging code (only used during debugging)
+}
+```
+
+**Impact**: The `#[cold]` attribute tells the compiler that this function is rarely called, allowing it to:
+- Move the function's code out of the hot path
+- Improve instruction cache utilization for the main execution loop
+- Optimize branch predictions assuming the cold path is unlikely
+
+**Locations optimized**:
+- `Nes::write_trace_log()` - Trace logging (only active during debugging)
+
+**Analysis of other cold path candidates**:
+- Error handling (line 444 in nes.rs): Already returns early, not extracted as separate function
+- The error path in `run_until()` (line 195-197) is at the top level and panics, so `#[cold]` wouldn't help
+
+### 7. Memory Layout Analysis
+
+**SpriteFifo Structure** (Array-of-Structs layout):
+```rust
+pub struct SpriteFifo {
+    pub shifter_pattern_lo: u8,
+    pub shifter_pattern_hi: u8,
+    pub down_counter: u8,
+    pub attribute: u8,
+    pub is_counting: bool,
+}  // 5 bytes per struct, no padding
+
+pub sprite_fifos: [SpriteFifo; 8]  // 40 bytes total
+```
+
+**Analysis**: The current Array-of-Structs (AoS) layout is **optimal** for this use case:
+
+1. **Cache efficiency**: The entire array (40 bytes) fits in a single 64-byte cache line
+2. **Access pattern**: Fields are accessed together in the rendering loop (all fields of a sprite at once)
+3. **No padding**: Struct is tightly packed with no wasted space
+4. **Sequential iteration**: All 8 sprites are processed sequentially
+
+**Struct-of-Arrays (SoA) would be worse** because:
+- Would separate fields across multiple cache lines (8 bytes each field * 5 fields = 40 bytes still)
+- Access pattern requires all fields together, causing multiple cache line accesses
+- Would complicate code without performance benefit
+- The access pattern `for s in sprite_fifos.iter_mut()` benefits from spatial locality
+
+**Conclusion**: No memory layout changes needed. The current AoS design is ideal for sprite rendering.
+
+### 8. Build Profile Optimization
 
 #### Changed Configuration
 ```toml
@@ -166,9 +220,9 @@ test result: ok. 335 passed; 0 failed; 0 ignored; 0 measured
 
 1. **Profile-guided optimization (PGO)**: Could provide additional gains by optimizing branch predictions and code layout based on real execution patterns.
 
-2. **Data layout optimization**: Consider struct-of-arrays vs array-of-structs for sprite FIFOs and other hot data structures.
+2. **Data layout optimization**: ✅ **Analyzed** - Current Array-of-Structs layout for sprite FIFOs is optimal. No changes needed (see section 7).
 
-3. **Branch prediction hints**: Rust nightly supports `#[cold]` and experimental `likely`/`unlikely` intrinsics that could help with branch mispredictions in the PPU rendering loop.
+3. **Branch prediction hints**: ✅ **Implemented** - Added `#[cold]` attribute to trace logging path (see section 6). Rust's experimental `likely`/`unlikely` intrinsics remain unstable and would provide minimal benefit.
 
 4. **Memory access patterns**: Analyze cache miss rates - the pixel buffer write pattern in `Ppu::step()` might benefit from optimization.
 

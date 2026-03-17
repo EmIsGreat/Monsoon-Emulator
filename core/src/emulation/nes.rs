@@ -444,23 +444,8 @@ impl Nes {
                 return cpu_res;
             }
 
-            if do_trace && let Some(ref mut trace) = self.trace_log {
-                let ppu_state = {
-                    let ppu_ref = self.ppu.borrow();
-                    PpuState::from(ppu_ref.deref())
-                };
-
-                let state = SaveState {
-                    cpu: CpuState::from(&self.cpu),
-                    ppu: ppu_state,
-                    ppu_cycle_counter: self.ppu_cycle_counter,
-                    cpu_cycle_counter: self.cpu_cycle_counter,
-                    total_cycles: self.total_cycles,
-                    rom_file: self.rom_file.as_ref().unwrap().clone(),
-                    version: 1,
-                };
-
-                trace.trace(state)
+            if do_trace {
+                self.write_trace_log();
             }
         }
 
@@ -477,6 +462,30 @@ impl Nes {
     /// trace buffer in a nestest-compatible format. This is primarily useful
     /// for verifying CPU accuracy against reference logs.
     pub fn enable_trace(&mut self) { self.trace_log = Some(TraceLog::default()) }
+
+    /// Cold path: Write a trace log entry (only called when tracing is enabled)
+    #[cold]
+    #[inline(never)]
+    fn write_trace_log(&mut self) {
+        if let Some(ref mut trace) = self.trace_log {
+            let ppu_state = {
+                let ppu_ref = self.ppu.borrow();
+                PpuState::from(ppu_ref.deref())
+            };
+
+            let state = SaveState {
+                cpu: CpuState::from(&self.cpu),
+                ppu: ppu_state,
+                ppu_cycle_counter: self.ppu_cycle_counter,
+                cpu_cycle_counter: self.cpu_cycle_counter,
+                total_cycles: self.total_cycles,
+                rom_file: self.rom_file.as_ref().unwrap().clone(),
+                version: 1,
+            };
+
+            trace.trace(state)
+        }
+    }
 }
 
 impl Default for Nes {
