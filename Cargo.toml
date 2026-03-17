@@ -26,7 +26,6 @@ incremental = true
 inherits = "release"
 codegen-units = 1
 lto = "fat"
-opt-level = 3
 
 [profile.max_performance]
 inherits = "full_release"

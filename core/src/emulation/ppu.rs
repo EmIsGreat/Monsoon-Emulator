@@ -26,7 +26,7 @@ pub const SPRITE_RENDER_BIT: u8 = 0x10;
 pub const VRAM_ADDR_COARSE_X_SCROLL_MASK: u16 = 0x1F;
 pub const VRAM_ADDR_COARSE_Y_SCROLL_MASK: u16 = 0x3E0;
 pub const VRAM_ADDR_FINE_Y_SCROLL_MASK: u16 = 0x7000;
-pub const PALETTE_RAM_END_INDEX: u16 = 0x3FFF;
+pub const PALETTE_RAM_END_ADDRESS: u16 = 0x3FFF;
 pub const PALETTE_RAM_SIZE: u16 = 0x20;
 pub const VRAM_SIZE: usize = 0x800;
 pub const DOTS_PER_SCANLINE: u16 = 340;
@@ -154,7 +154,7 @@ impl Ppu {
         let mut mem = MemoryMap::default();
 
         mem.add_memory(
-            0..=PALETTE_RAM_END_INDEX - PALETTE_RAM_START_ADDRESS,
+            0..=PALETTE_RAM_END_ADDRESS - PALETTE_RAM_START_ADDRESS,
             Memory::MirrorMemory(MirrorMemory::new(
                 Box::new(Memory::PaletteRam(PaletteRam::default())),
                 PALETTE_RAM_SIZE - 1,
@@ -210,7 +210,6 @@ impl Ppu {
                 self.clear_sprite_zero()
             }
 
-            // Replace (1..=64).contains(&self.dot) with manual comparison
             if self.dot >= 1 && self.dot <= 64 {
                 self.set_soam_disable(false);
                 self.is_soam_clear_active = true;
@@ -219,12 +218,10 @@ impl Ppu {
                 self.is_soam_clear_active = false;
             }
 
-            // Replace (65..=256).contains(&self.dot) with manual comparison
             if self.dot >= 65 && self.dot <= 256 {
                 self.sprite_eval();
             }
 
-            // Replace (257..=320).contains(&self.dot) with manual comparison
             if self.dot >= 257 && self.dot <= 320 {
                 if self.dot == 257 {
                     self.soam_index = 0;
@@ -233,7 +230,6 @@ impl Ppu {
                 self.sprite_fetch();
             }
 
-            // Replace (321..=341).contains(&self.dot) with manual comparison
             if self.dot >= 321 && self.dot <= 341 {
                 if (self.dot & 1) == 0 {
                     self.secondary_oam_read(self.soam_index);
@@ -246,7 +242,6 @@ impl Ppu {
                 }
             }
 
-            // Replace (1..=256).contains(&self.dot) || (321..=336).contains(&self.dot) with manual comparison
             if (self.dot >= 1 && self.dot <= 256) || (self.dot >= 321 && self.dot <= 336) {
                 self.do_dot_fetch();
 
@@ -344,7 +339,6 @@ impl Ppu {
                 }
             }
 
-            // Replace (257..=320).contains(&self.dot) with manual comparison
             if self.dot >= 257 && self.dot <= 320 {
                 if self.dot == 257 {
                     self.v_register = (self.v_register & !0x041F) | (self.t_register & 0x041F);
@@ -353,7 +347,6 @@ impl Ppu {
                 self.oam_addr_register = 0;
             }
 
-            // Replace (280..=304).contains(&self.dot) with manual comparison
             if self.dot >= 280 && self.dot <= 304 && self.scanline == PRE_RENDER_SCANLINE {
                 self.v_register = (self.v_register & !0x7BE0) | (self.t_register & 0x7BE0);
             }
@@ -792,7 +785,7 @@ impl Ppu {
     pub fn get_vram_at_addr(&mut self) -> u8 {
         let mut ret = self.ppu_data_buffer;
 
-        if !(self.v_register >= PALETTE_RAM_START_ADDRESS && self.v_register <= PALETTE_RAM_END_INDEX) {
+        if !(self.v_register >= PALETTE_RAM_START_ADDRESS && self.v_register <= PALETTE_RAM_END_ADDRESS) {
             self.ppu_data_buffer = self.mem_read(self.v_register);
         } else {
             ret = self.mem_read(self.v_register);
@@ -927,7 +920,7 @@ impl Ppu {
 
     pub fn mem_read_debug(&self, addr: u16) -> u8 {
         match addr {
-            PALETTE_RAM_START_ADDRESS..PALETTE_RAM_END_INDEX => self
+            PALETTE_RAM_START_ADDRESS..PALETTE_RAM_END_ADDRESS => self
                 .palette_ram
                 .mem_read_debug(addr - PALETTE_RAM_START_ADDRESS),
             _ => self.memory.mem_read_debug(addr),
@@ -937,7 +930,7 @@ impl Ppu {
     #[inline]
     pub fn mem_read(&mut self, addr: u16) -> u8 {
         match addr {
-            PALETTE_RAM_START_ADDRESS..PALETTE_RAM_END_INDEX => {
+            PALETTE_RAM_START_ADDRESS..PALETTE_RAM_END_ADDRESS => {
                 self.palette_ram.mem_read(addr - PALETTE_RAM_START_ADDRESS)
             }
             _ => self.memory.mem_read(addr),
@@ -947,7 +940,7 @@ impl Ppu {
     #[inline]
     pub fn mem_write(&mut self, addr: u16, data: u8) {
         match addr {
-            PALETTE_RAM_START_ADDRESS..PALETTE_RAM_END_INDEX => self
+            PALETTE_RAM_START_ADDRESS..PALETTE_RAM_END_ADDRESS => self
                 .palette_ram
                 .mem_write(addr - PALETTE_RAM_START_ADDRESS, data),
             _ => self.memory.mem_write(addr, data),
@@ -957,7 +950,7 @@ impl Ppu {
     #[inline]
     pub fn mem_init(&mut self, addr: u16, data: u8) {
         match addr {
-            PALETTE_RAM_START_ADDRESS..PALETTE_RAM_END_INDEX => self
+            PALETTE_RAM_START_ADDRESS..PALETTE_RAM_END_ADDRESS => self
                 .palette_ram
                 .init(addr - PALETTE_RAM_START_ADDRESS, data),
             _ => self.memory.init(addr, data),
@@ -1035,7 +1028,7 @@ impl Ppu {
         }
 
         self.memory.add_memory(
-            0x2000..=PALETTE_RAM_END_INDEX,
+            0x2000..=PALETTE_RAM_END_ADDRESS,
             Memory::MirrorMemory(MirrorMemory::new(
                 Box::new(rom_file.get_nametable_memory()),
                 (VRAM_SIZE * 2 - 1) as u16,

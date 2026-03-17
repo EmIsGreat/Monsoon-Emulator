@@ -10,6 +10,7 @@
       <sourceFolder url="file://$MODULE_DIR$/cli/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/renderer/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/proc-util/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/frontend/examples" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/.idea/dictionaries" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
       <excludeFolder url="file://$MODULE_DIR$/trace.etl.NGENPDB" />

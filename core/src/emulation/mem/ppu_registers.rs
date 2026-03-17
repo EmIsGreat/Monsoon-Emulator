@@ -3,7 +3,7 @@ use std::fmt::{Debug, Formatter};
 use std::rc::Rc;
 
 use crate::emulation::mem::MemoryDevice;
-use crate::emulation::ppu::{PALETTE_RAM_END_INDEX, PALETTE_RAM_START_ADDRESS, Ppu};
+use crate::emulation::ppu::{PALETTE_RAM_END_ADDRESS, PALETTE_RAM_START_ADDRESS, Ppu};
 
 #[derive(Clone)]
 pub struct PpuRegisters {
@@ -56,7 +56,7 @@ impl MemoryDevice for PpuRegisters {
 
                 let mut bus = ppu.open_bus.get();
                 match ppu.v_register {
-                    PALETTE_RAM_START_ADDRESS..=PALETTE_RAM_END_INDEX => {
+                    PALETTE_RAM_START_ADDRESS..=PALETTE_RAM_END_ADDRESS => {
                         bus.set_masked(val, 0b0011_1111);
                     }
                     _ => {
