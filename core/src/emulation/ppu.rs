@@ -276,6 +276,8 @@ impl Ppu {
                                 if i == 0 {
                                     sprite_zero_outputting = true;
                                 }
+                                // Early exit: we found the first non-transparent sprite
+                                break;
                             }
                         }
                     }
