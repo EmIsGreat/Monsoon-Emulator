@@ -41,7 +41,7 @@ impl Debug for Memory {
 }
 
 impl MemoryDevice for Memory {
-    #[inline(always)]
+    #[inline]
     fn read(&self, addr: u16, open_bus: u8) -> u8 {
         match self {
             Memory::Ram(ram) => ram.read(addr, open_bus),
@@ -54,7 +54,7 @@ impl MemoryDevice for Memory {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn write(&mut self, addr: u16, data: u8) {
         match self {
             Memory::Ram(ram) => ram.write(addr, data),
@@ -67,7 +67,7 @@ impl MemoryDevice for Memory {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn init(&mut self, addr: u16, data: u8) {
         match self {
             Memory::Ram(ram) => ram.init(addr, data),
@@ -80,7 +80,7 @@ impl MemoryDevice for Memory {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn load(&mut self, data: Box<[u8]>) {
         match self {
             Memory::Ram(ram) => ram.load(data),
@@ -93,7 +93,7 @@ impl MemoryDevice for Memory {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn is_internal(&self) -> bool {
         match self {
             Memory::Ram(ram) => ram.is_internal(),
@@ -106,7 +106,7 @@ impl MemoryDevice for Memory {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn snapshot(&self, addr: u16, open_bus: u8) -> u8 {
         match self {
             Memory::Ram(ram) => ram.snapshot(addr, open_bus),
@@ -159,15 +159,15 @@ impl Ram {
 }
 
 impl MemoryDevice for Ram {
-    #[inline(always)]
+    #[inline]
     fn read(&self, addr: u16, _: u8) -> u8 { self.memory[addr as usize % self.memory.len()] }
 
-    #[inline(always)]
+    #[inline]
     fn write(&mut self, addr: u16, data: u8) {
         self.memory[addr as usize % self.memory.len()] = data;
     }
 
-    #[inline(always)]
+    #[inline]
     fn init(&mut self, addr: u16, data: u8) {
         self.memory[addr as usize % self.memory.len()] = data;
     }
@@ -193,13 +193,13 @@ impl Rom {
 }
 
 impl MemoryDevice for Rom {
-    #[inline(always)]
+    #[inline]
     fn read(&self, addr: u16, _: u8) -> u8 { self.memory[addr as usize % self.memory.len()] }
 
-    #[inline(always)]
+    #[inline]
     fn write(&mut self, _: u16, _: u8) {}
 
-    #[inline(always)]
+    #[inline]
     fn init(&mut self, addr: u16, data: u8) {
         self.memory[addr as usize % self.memory.len()] = data;
     }
@@ -232,7 +232,7 @@ impl OpenBus {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn set_masked(&mut self, value: u8, mask: u8) {
         for bit in 0..8 {
             let bit_mask = 1 << bit;
@@ -244,7 +244,7 @@ impl OpenBus {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn tick(&mut self, times: u8) {
         let times_u32 = times as u32;
         for bit in &mut self.bits {
@@ -256,7 +256,7 @@ impl OpenBus {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn read(&self) -> u8 {
         self.bits
             .iter()

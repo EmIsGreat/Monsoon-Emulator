@@ -391,10 +391,10 @@ impl Nes {
     /// respective clock dividers.
     ///
     /// For most use cases, prefer [`step_frame()`](Nes::step_frame).
-    #[inline(always)]
+    #[inline]
     pub fn step(&mut self) -> Result<ExecutionFinished, String> { self.step_internal(u128::MAX) }
 
-    #[inline]
+    #[inline(always)]
     fn step_internal(&mut self, last_cycle: u128) -> Result<ExecutionFinished, String> {
         let mut res = ExecutionFinished {
             cycle_completed: true,
@@ -431,8 +431,8 @@ impl Nes {
         // cpu_cycle_counter + 2 == 12  means cpu_cycle_counter == 10
         if self.cpu_cycle_counter == 10 {
             // Only check trace_log when actually needed
-            let do_trace = self.trace_log.is_some()
-                && matches!(&self.cpu.current_op, &MicroOp::FetchOpcode(..));
+            let do_trace =
+                self.trace_log.is_some() && matches!(&self.cpu.current_op, &MicroOp::FetchOpcode);
 
             let cpu_res = self.cpu.step();
 
@@ -444,23 +444,8 @@ impl Nes {
                 return cpu_res;
             }
 
-            if do_trace && let Some(ref mut trace) = self.trace_log {
-                let ppu_state = {
-                    let ppu_ref = self.ppu.borrow();
-                    PpuState::from(ppu_ref.deref())
-                };
-
-                let state = SaveState {
-                    cpu: CpuState::from(&self.cpu),
-                    ppu: ppu_state,
-                    ppu_cycle_counter: self.ppu_cycle_counter,
-                    cpu_cycle_counter: self.cpu_cycle_counter,
-                    total_cycles: self.total_cycles,
-                    rom_file: self.rom_file.as_ref().unwrap().clone(),
-                    version: 1,
-                };
-
-                trace.trace(state)
+            if do_trace {
+                self.write_trace_log();
             }
         }
 
@@ -477,6 +462,30 @@ impl Nes {
     /// trace buffer in a nestest-compatible format. This is primarily useful
     /// for verifying CPU accuracy against reference logs.
     pub fn enable_trace(&mut self) { self.trace_log = Some(TraceLog::default()) }
+
+    /// Cold path: Write a trace log entry (only called when tracing is enabled)
+    #[cold]
+    #[inline(never)]
+    fn write_trace_log(&mut self) {
+        if let Some(ref mut trace) = self.trace_log {
+            let ppu_state = {
+                let ppu_ref = self.ppu.borrow();
+                PpuState::from(ppu_ref.deref())
+            };
+
+            let state = SaveState {
+                cpu: CpuState::from(&self.cpu),
+                ppu: ppu_state,
+                ppu_cycle_counter: self.ppu_cycle_counter,
+                cpu_cycle_counter: self.cpu_cycle_counter,
+                total_cycles: self.total_cycles,
+                rom_file: self.rom_file.as_ref().unwrap().clone(),
+                version: 1,
+            };
+
+            trace.trace(state)
+        }
+    }
 }
 
 impl Default for Nes {
@@ -500,7 +509,7 @@ impl Nes {
     pub fn is_halted(&self) -> bool { self.cpu.is_halted }
 
     /// Returns the last memory access (address, was_read), or `None` if no access occurred.
-    pub fn last_memory_access(&self) -> Option<(u16, bool)> { self.cpu.last_memory_access }
+    pub fn last_memory_access(&self) -> Option<(u16, bool, u8)> { self.cpu.last_memory_access }
 
     // --- PPU debug accessors ---
 

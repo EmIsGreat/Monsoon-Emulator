@@ -3,7 +3,7 @@ use std::fmt::{Debug, Formatter};
 use std::rc::Rc;
 
 use crate::emulation::mem::MemoryDevice;
-use crate::emulation::ppu::{PALETTE_RAM_END_INDEX, PALETTE_RAM_START_ADDRESS, Ppu};
+use crate::emulation::ppu::{PALETTE_RAM_END_ADDRESS, PALETTE_RAM_START_ADDRESS, Ppu};
 
 #[derive(Clone)]
 pub struct PpuRegisters {
@@ -30,7 +30,7 @@ impl Debug for PpuRegisters {
 }
 
 impl MemoryDevice for PpuRegisters {
-    #[inline(always)]
+    #[inline]
     fn read(&self, addr: u16, _: u8) -> u8 {
         match addr {
             0x2 => {
@@ -56,7 +56,7 @@ impl MemoryDevice for PpuRegisters {
 
                 let mut bus = ppu.open_bus.get();
                 match ppu.v_register {
-                    PALETTE_RAM_START_ADDRESS..=PALETTE_RAM_END_INDEX => {
+                    PALETTE_RAM_START_ADDRESS..=PALETTE_RAM_END_ADDRESS => {
                         bus.set_masked(val, 0b0011_1111);
                     }
                     _ => {
@@ -70,7 +70,7 @@ impl MemoryDevice for PpuRegisters {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn write(&mut self, addr: u16, data: u8) {
         let mut ppu = self.ppu.borrow_mut();
         let mut bus = ppu.open_bus.get();

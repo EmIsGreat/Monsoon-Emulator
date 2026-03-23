@@ -27,15 +27,56 @@ pub(crate) fn hotkey_expecting_id() -> Id { Id::new("hotkey_expecting_input") }
 // Binding types (ported from egui_hotkey)
 // ============================================================================
 
-/// Variant for binding. This can be either [`PointerButton`] or [`Key`].
+/// A standalone modifier key (Shift, Ctrl, or Alt) used as a binding target.
+///
+/// Unlike regular [`Key`] variants, modifier keys are not part of egui's `Key`
+/// enum and are only tracked via [`Modifiers`].  This variant allows users to
+/// bind a bare modifier key to a controller button.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ModifierKey {
+    Shift,
+    Ctrl,
+    Alt,
+}
+
+impl ModifierKey {
+    /// Returns `true` if this modifier key is currently held down.
+    pub fn is_down(&self, input: &InputState) -> bool {
+        match self {
+            ModifierKey::Shift => input.modifiers.shift,
+            ModifierKey::Ctrl => input.modifiers.ctrl,
+            ModifierKey::Alt => input.modifiers.alt,
+        }
+    }
+}
+
+impl std::fmt::Display for ModifierKey {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        match self {
+            ModifierKey::Shift => f.write_str("Shift"),
+            ModifierKey::Ctrl => f.write_str("Ctrl"),
+            ModifierKey::Alt => f.write_str("Alt"),
+        }
+    }
+}
+
+/// Variant for binding. This can be a [`PointerButton`], a [`Key`], or a
+/// standalone [`ModifierKey`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BindVariant {
     Mouse(PointerButton),
     Keyboard(Key),
+    /// A bare modifier key (Shift / Ctrl / Alt) used on its own.
+    ModifierKey(ModifierKey),
 }
 
 impl BindVariant {
     /// Returns true if the variant was pressed.
+    ///
+    /// Note: [`ModifierKey`] bindings always return `false` here because egui
+    /// does not emit single-frame press events for modifier keys.  Use
+    /// [`down`](Self::down) for continuous (held) checks instead, which is
+    /// what controller inputs use.
     pub fn pressed(&self, input_state: impl Deref<Target = InputState>) -> bool {
         match self {
             BindVariant::Mouse(mb) => input_state.events.iter().any(|e| {
@@ -46,6 +87,9 @@ impl BindVariant {
                 } if mb == button)
             }),
             BindVariant::Keyboard(kb) => input_state.key_pressed(*kb),
+            // egui doesn't emit Event::Key for modifier-only presses, so we
+            // cannot distinguish "just pressed" from "still held".
+            BindVariant::ModifierKey(_) => false,
         }
     }
 
@@ -54,6 +98,7 @@ impl BindVariant {
         match self {
             BindVariant::Mouse(mb) => input_state.pointer.button_down(*mb),
             BindVariant::Keyboard(kb) => input_state.key_down(*kb),
+            BindVariant::ModifierKey(mk) => mk.is_down(&input_state),
         }
     }
 }
@@ -77,6 +122,7 @@ impl Display for BindVariant {
                 PointerButton::Extra2 => "M5",
             }),
             BindVariant::Keyboard(kb) => write!(f, "{}", kb.name()),
+            BindVariant::ModifierKey(mk) => write!(f, "{mk}"),
         }
     }
 }
@@ -136,13 +182,34 @@ impl Binding {
     }
 
     /// Returns true if the variant was pressed and input modifiers are matching.
+    ///
+    /// Note: always returns `false` for [`ModifierKey`] bindings — see
+    /// [`BindVariant::pressed`] for details.
     pub fn pressed(&self, input_state: impl Deref<Target = InputState>) -> bool {
-        input_state.modifiers.matches_logically(self.modifiers) && self.variant.pressed(input_state)
+        match &self.variant {
+            // Modifier-only bindings cannot detect single-frame presses
+            // because egui does not emit key events for modifiers.
+            BindVariant::ModifierKey(_) => false,
+            _ => {
+                input_state.modifiers.matches_logically(self.modifiers)
+                    && self.variant.pressed(input_state)
+            }
+        }
     }
 
     /// Returns true if the variant is down and input modifiers are matching.
     pub fn down(&self, input_state: impl Deref<Target = InputState>) -> bool {
-        input_state.modifiers.matches_logically(self.modifiers) && self.variant.down(input_state)
+        match &self.variant {
+            // Modifier-only bindings check the modifier flag directly.
+            // We bypass `matches_logically` because it would reject
+            // e.g. a Ctrl-only binding (Ctrl sets `modifiers.ctrl`, and
+            // `matches_logically(NONE)` considers extra Ctrl an error).
+            BindVariant::ModifierKey(mk) => mk.is_down(&input_state),
+            _ => {
+                input_state.modifiers.matches_logically(self.modifiers)
+                    && self.variant.down(input_state)
+            }
+        }
     }
 }
 
@@ -244,10 +311,18 @@ where
         let size = ui.spacing().interact_size;
         let (rect, mut response) = ui.allocate_exact_size(size * vec2(1.5, 1.), Sense::click());
 
-        let mut expecting = get_expecting(ui, self.id);
+        let was_expecting = get_expecting(ui, self.id);
+        let mut expecting = was_expecting;
 
         if response.clicked() {
             expecting = !expecting;
+        }
+
+        // When we first enter expecting mode, store the current modifier
+        // state so we can detect *new* modifier presses later.
+        if expecting && !was_expecting {
+            let mods = ui.input(|i| i.modifiers);
+            set_initial_modifiers(ui, self.id, mods);
         }
 
         if expecting {
@@ -293,6 +368,21 @@ where
                         self.binding.set(key, mods.unwrap_or(Modifiers::NONE));
                         response.mark_changed();
                         expecting = false;
+                    } else if B::ACCEPT_KEYBOARD {
+                        // No regular key or mouse event — check whether a
+                        // modifier key was pressed on its own (Shift, Ctrl,
+                        // or Alt).  Compare against the modifiers that were
+                        // active when we entered expecting mode so that a
+                        // modifier held *before* clicking the widget is not
+                        // immediately captured.
+                        let initial_mods = get_initial_modifiers(ui, self.id);
+                        let current_mods = ui.input(|i| i.modifiers);
+                        if let Some(mk) = newly_pressed_modifier(initial_mods, current_mods) {
+                            self.binding
+                                .set(BindVariant::ModifierKey(mk), Modifiers::NONE);
+                            response.mark_changed();
+                            expecting = false;
+                        }
                     }
                 }
             }
@@ -350,6 +440,38 @@ fn set_expecting(ui: &Ui, id: Id, new: bool) {
     });
 }
 
+/// Store the modifier state at the moment the Hotkey widget enters expecting
+/// mode so that we can distinguish newly-pressed modifiers from ones that
+/// were already held.
+fn set_initial_modifiers(ui: &Ui, id: Id, mods: Modifiers) {
+    let storage_id = Id::new("hotkey_initial_mods").with(ui.make_persistent_id(id));
+    ui.ctx()
+        .memory_mut(|memory| memory.data.insert_temp(storage_id, mods));
+}
+
+fn get_initial_modifiers(ui: &Ui, id: Id) -> Modifiers {
+    let storage_id = Id::new("hotkey_initial_mods").with(ui.make_persistent_id(id));
+    ui.ctx()
+        .memory_mut(|memory| memory.data.get_temp(storage_id).unwrap_or(Modifiers::NONE))
+}
+
+/// Return the first modifier key that is active in `current` but was *not*
+/// active in `initial`.  Returns `None` if no new modifier was pressed.
+///
+/// When multiple modifiers are pressed simultaneously, priority is
+/// Shift → Ctrl → Alt (the first match wins).
+fn newly_pressed_modifier(initial: Modifiers, current: Modifiers) -> Option<ModifierKey> {
+    if current.shift && !initial.shift {
+        Some(ModifierKey::Shift)
+    } else if current.ctrl && !initial.ctrl {
+        Some(ModifierKey::Ctrl)
+    } else if current.alt && !initial.alt {
+        Some(ModifierKey::Alt)
+    } else {
+        None
+    }
+}
+
 // ============================================================================
 // Keybindings configuration
 // ============================================================================
@@ -370,13 +492,13 @@ pub struct ControllerKeybindings {
 impl Default for ControllerKeybindings {
     fn default() -> Self {
         Self {
-            up: Some(Binding::key(Key::ArrowUp)),
-            down: Some(Binding::key(Key::ArrowDown)),
-            left: Some(Binding::key(Key::ArrowLeft)),
-            right: Some(Binding::key(Key::ArrowRight)),
+            up: Some(Binding::key(Key::W)),
+            down: Some(Binding::key(Key::S)),
+            left: Some(Binding::key(Key::A)),
+            right: Some(Binding::key(Key::D)),
             a: Some(Binding::key(Key::Space)),
             b: Some(Binding::key(Key::Delete)),
-            start: Some(Binding::key(Key::S)),
+            start: Some(Binding::key(Key::Enter)),
             select: Some(Binding::key(Key::Tab)),
         }
     }

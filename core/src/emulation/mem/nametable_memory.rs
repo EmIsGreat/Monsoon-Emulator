@@ -25,7 +25,7 @@ impl NametableMemory {
     }
 
     /// Translate PPU address (0x2000–0x3EFF) to physical VRAM offset
-    #[inline(always)]
+    #[inline]
     fn mirror_addr(&self, addr: u16) -> u16 {
         let table = addr / NAMETABLE_SIZE;
         let offset = addr % NAMETABLE_SIZE;
@@ -49,15 +49,15 @@ impl NametableMemory {
 }
 
 impl MemoryDevice for NametableMemory {
-    #[inline(always)]
+    #[inline]
     fn read(&self, addr: u16, open_bus: u8) -> u8 {
         self.vram.read(self.mirror_addr(addr), open_bus)
     }
 
-    #[inline(always)]
+    #[inline]
     fn write(&mut self, addr: u16, data: u8) { self.vram.write(self.mirror_addr(addr), data) }
 
-    #[inline(always)]
+    #[inline]
     fn init(&mut self, addr: u16, data: u8) { self.vram.init(self.mirror_addr(addr), data) }
 
     #[inline]

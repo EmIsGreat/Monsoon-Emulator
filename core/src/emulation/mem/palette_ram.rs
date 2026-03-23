@@ -16,7 +16,7 @@ impl Default for PaletteRam {
 }
 
 impl MemoryDevice for PaletteRam {
-    #[inline(always)]
+    #[inline]
     fn read(&self, addr: u16, open_bus: u8) -> u8 {
         match addr {
             0x0 | 0x4 | 0x8 | 0xC | 0x10 | 0x14 | 0x18 | 0x1C => {
@@ -26,7 +26,7 @@ impl MemoryDevice for PaletteRam {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn write(&mut self, addr: u16, data: u8) {
         let data = data & 0b00111111;
         match addr {

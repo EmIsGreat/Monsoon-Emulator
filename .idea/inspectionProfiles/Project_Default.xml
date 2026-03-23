@@ -1,12 +1,30 @@
 <component name="InspectionProjectProfileManager">
   <profile version="1.0">
     <option name="myName" value="Project Default" />
+    <inspection_tool class="CssBrowserCompatibilityForProperties" enabled="true" level="WARNING" enabled_by_default="true" />
+    <inspection_tool class="CssConvertColorToHexInspection" enabled="true" level="WARNING" enabled_by_default="true" />
+    <inspection_tool class="CssConvertColorToRgbInspection" enabled="true" level="WARNING" enabled_by_default="true" />
+    <inspection_tool class="CssInvalidNestedSelector" enabled="true" level="WARNING" enabled_by_default="true" />
+    <inspection_tool class="CssMissingSemicolon" enabled="true" level="WARNING" enabled_by_default="true" />
     <inspection_tool class="DuplicatedCode" enabled="false" level="WEAK WARNING" enabled_by_default="false">
       <Languages>
         <language minSize="67" name="Rust" />
       </Languages>
     </inspection_tool>
+    <inspection_tool class="HtmlNonExistentInternetResource" enabled="true" level="WARNING" enabled_by_default="true" />
+    <inspection_tool class="HtmlPresentationalElement" enabled="true" level="INFORMATION" enabled_by_default="true" />
+    <inspection_tool class="HtmlRequiredSummaryAttribute" enabled="true" level="INFORMATION" enabled_by_default="true" />
+    <inspection_tool class="HtmlRequiredTitleAttribute" enabled="true" level="INFORMATION" enabled_by_default="true" />
     <inspection_tool class="NewCrateVersionAvailable" enabled="false" level="WARNING" enabled_by_default="false" />
     <inspection_tool class="PyShadowingNamesInspection" enabled="false" level="WEAK WARNING" enabled_by_default="false" />
+    <inspection_tool class="RsAssociatedTypeMismatch" enabled="true" level="ERROR" enabled_by_default="true" />
+    <inspection_tool class="RsExperimentalAmbiguousMethodCall" enabled="true" level="ERROR" enabled_by_default="true" />
+    <inspection_tool class="RsExperimentalChecks" enabled="true" level="ERROR" enabled_by_default="true" />
+    <inspection_tool class="RsExperimentalTraitObligations" enabled="true" level="ERROR" enabled_by_default="true" />
+    <inspection_tool class="RsExperimentalTypeCheck" enabled="true" level="ERROR" enabled_by_default="true" />
+    <inspection_tool class="RsExperimentalUnresolvedMethod" enabled="true" level="ERROR" enabled_by_default="true" />
+    <inspection_tool class="RsExperimentalUnresolvedPath" enabled="true" level="ERROR" enabled_by_default="true" />
+    <inspection_tool class="RsNonConstantInConstant" enabled="true" level="ERROR" enabled_by_default="true" />
+    <inspection_tool class="Stylelint" enabled="true" level="ERROR" enabled_by_default="true" />
   </profile>
 </component>

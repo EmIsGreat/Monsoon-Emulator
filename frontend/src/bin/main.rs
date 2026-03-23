@@ -19,7 +19,7 @@ use std::path::PathBuf;
 use clap::Parser;
 use monsoon_frontend::frontend::egui_frontend;
 #[derive(Parser, Debug, Clone, Default)]
-#[command(name = "Monsoon-Emulator - Ballroom")]
+#[command(name = "Monsoon-Emulator - Frontend")]
 #[command(version, about, long_about = None)]
 pub struct CliArgs {
     /// Path to ROM file

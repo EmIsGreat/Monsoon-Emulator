@@ -100,6 +100,27 @@ impl ChannelEmulator {
         (emu, tx_to_emu, rx_to_frontend)
     }
 
+    /// Create a ChannelEmulator with existing channel endpoints.
+    ///
+    /// This is used by ThreadedEmulator to reuse channel endpoints
+    /// when creating the emulator on a background thread.
+    pub fn new_with_channels(
+        nes: Nes,
+        to_frontend: Sender<EmulatorMessage>,
+        from_frontend: Receiver<FrontendMessage>,
+    ) -> Self {
+        Self::setup_fetch_deps();
+
+        Self {
+            nes,
+            to_frontend,
+            from_frontend,
+            input: 0,
+            last_palette_data: None,
+            last_pattern_table_hash: None,
+        }
+    }
+
     /// Run one frame of emulation and handle messages
     pub fn process_messages(&mut self) -> Result<(), String> {
         // Check for messages from frontend

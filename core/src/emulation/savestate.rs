@@ -87,8 +87,6 @@ pub struct CpuState {
     pub(crate) dma_page: u8,
     /// DMA read/write toggle.
     pub(crate) dma_read: bool,
-    /// DMA temporary data register.
-    pub(crate) dma_temp: u8,
     /// Whether a DMA transfer has been triggered.
     pub(crate) dma_triggered: bool,
     /// NMI detection flag.
@@ -121,7 +119,7 @@ impl From<&Cpu> for CpuState {
             current_op: cpu.current_op,
             op_queue: cpu.op_queue.clone(),
             current_opcode: cpu.current_opcode.map(|c| c.opcode),
-            temp: cpu.temp,
+            temp: cpu.data_bus,
             ane_constant: cpu.ane_constant,
             is_halted: cpu.is_halted,
             read_cycle: cpu.cpu_read_cycle,
@@ -133,7 +131,6 @@ impl From<&Cpu> for CpuState {
             locked_irq_vec: cpu.locked_irq_vec,
             dma_page: cpu.dma_page,
             dma_read: cpu.dma_read,
-            dma_temp: cpu.dma_temp,
             dma_triggered: cpu.dma_triggered,
             nmi_detected: cpu.nmi_detected,
             nmi_pending: cpu.nmi_pending,

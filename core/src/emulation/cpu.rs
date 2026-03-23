@@ -51,7 +51,7 @@ pub struct Cpu {
     pub current_op: MicroOp,
     pub op_queue: VecDeque<MicroOp>,
     pub current_opcode: Option<OpCode>,
-    pub temp: u8,
+    pub data_bus: u8,
     pub ane_constant: u8,
     pub is_halted: bool,
     pub irq_pending: bool,
@@ -66,9 +66,8 @@ pub struct Cpu {
     pub dma_read: bool,
     pub dma_triggered: bool,
     pub dma_page: u8,
-    pub dma_temp: u8,
     /// Last memory access for watchpoint debugging (address, was_read)
-    pub last_memory_access: Option<(u16, bool)>,
+    pub last_memory_access: Option<(u16, bool, u8)>,
 }
 
 impl Default for Cpu {
@@ -89,10 +88,10 @@ impl Default for Cpu {
             irq_provider: Cell::new(false),
             lo: 0,
             hi: 0,
-            current_op: MicroOp::FetchOpcode(MicroOpCallback::None),
+            current_op: MicroOp::FetchOpcode,
             op_queue: VecDeque::with_capacity(8),
             current_opcode: None,
-            temp: 0,
+            data_bus: 0,
             ane_constant: 0xEE,
             is_halted: false,
             irq_pending: false,
@@ -107,7 +106,6 @@ impl Default for Cpu {
             dma_read: true,
             dma_triggered: false,
             dma_page: 0,
-            dma_temp: 0,
             last_memory_access: None,
         }
     }
@@ -123,15 +121,17 @@ impl Cpu {
     #[inline(always)]
     pub fn mem_read(&mut self, addr: u16) -> u8 {
         self.cpu_read_cycle = true;
-        self.last_memory_access = Some((addr, true));
+        let res = self.memory.mem_read(addr);
 
-        self.memory.mem_read(addr)
+        self.last_memory_access = Some((addr, true, res));
+
+        res
     }
 
     #[inline(always)]
     pub fn mem_write(&mut self, addr: u16, data: u8) {
         self.cpu_read_cycle = false;
-        self.last_memory_access = Some((addr, false));
+        self.last_memory_access = Some((addr, false, data));
 
         if addr == DMA_ADDRESS {
             self.dma_triggered = true;
@@ -141,25 +141,25 @@ impl Cpu {
         self.memory.mem_write(addr, data);
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn mem_read_u16(&mut self, addr: u16) -> u16 { self.memory.mem_read_u16(addr) }
 
-    #[inline(always)]
+    #[inline]
     pub fn mem_write_u16(&mut self, addr: u16, data: u16) { self.memory.mem_write_u16(addr, data); }
 
-    #[inline(always)]
+    #[inline]
     pub fn stack_pop(&mut self) -> u8 {
         let val = self.mem_read(STACK_START_ADDRESS + self.stack_pointer as u16);
         self.stack_pointer = self.stack_pointer.wrapping_add(1);
         val
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn stack_peek(&mut self) -> u8 {
         self.mem_read(STACK_START_ADDRESS + self.stack_pointer as u16)
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn stack_push(&mut self, data: Option<u8>) {
         if let Some(data) = data {
             let addr = STACK_START_ADDRESS + self.stack_pointer as u16;
@@ -169,14 +169,14 @@ impl Cpu {
         self.stack_pointer = self.stack_pointer.wrapping_sub(1);
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn stack_pop_u16(&mut self) -> u16 {
         let lo = self.stack_pop() as u16;
         let hi = self.stack_pop() as u16;
         (hi << 8) | lo
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn stack_push_u16(&mut self, data: u16) {
         let hi = (data >> 8) as u8;
         let lo = (data & 0xFF) as u8;
@@ -184,19 +184,19 @@ impl Cpu {
         self.stack_push(Option::from(lo));
     }
 
-    #[inline(always)]
+    #[inline]
     fn set_zero_flag(&mut self) { self.processor_status |= ZERO_BIT; }
 
-    #[inline(always)]
+    #[inline]
     fn clear_zero_flag(&mut self) { self.processor_status &= !ZERO_BIT; }
 
-    #[inline(always)]
+    #[inline]
     fn set_negative_flag(&mut self) { self.processor_status |= NEGATIVE_BIT }
 
-    #[inline(always)]
+    #[inline]
     fn clear_negative_flag(&mut self) { self.processor_status &= !NEGATIVE_BIT }
 
-    #[inline(always)]
+    #[inline]
     fn update_zero_flag(&mut self, result: u8) {
         if result == 0 {
             self.set_zero_flag()
@@ -205,7 +205,7 @@ impl Cpu {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn update_negative_flag(&mut self, result: u8) {
         if result & NEGATIVE_BIT != 0 {
             self.set_negative_flag();
@@ -214,61 +214,61 @@ impl Cpu {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn update_negative_and_zero_flags(&mut self, result: u8) {
         self.update_negative_flag(result);
         self.update_zero_flag(result);
     }
 
-    #[inline(always)]
+    #[inline]
     fn set_carry_flag(&mut self) { self.processor_status |= CARRY_BIT; }
 
-    #[inline(always)]
+    #[inline]
     fn clear_carry_flag(&mut self) { self.processor_status &= !CARRY_BIT; }
 
-    #[inline(always)]
+    #[inline]
     fn set_overflow_flag(&mut self) { self.processor_status |= OVERFLOW_BIT; }
 
-    #[inline(always)]
+    #[inline]
     fn clear_overflow_flag(&mut self) { self.processor_status &= !OVERFLOW_BIT; }
 
-    #[inline(always)]
+    #[inline]
     fn set_interrupt_disable(&mut self) { self.processor_status |= IRQ_BIT; }
 
-    #[inline(always)]
+    #[inline]
     fn clear_interrupt_disable(&mut self) { self.processor_status &= !IRQ_BIT; }
 
-    #[inline(always)]
+    #[inline]
     fn set_decimal_flag(&mut self) { self.processor_status |= DECIMAL_BIT; }
 
-    #[inline(always)]
+    #[inline]
     fn clear_decimal_flag(&mut self) { self.processor_status &= !DECIMAL_BIT; }
 
-    #[inline(always)]
+    #[inline]
     pub fn get_zero_flag(&self) -> bool { (self.processor_status & ZERO_BIT) != 0 }
 
-    #[inline(always)]
+    #[inline]
     pub fn get_negative_flag(&self) -> bool { (self.processor_status & NEGATIVE_BIT) != 0 }
 
-    #[inline(always)]
+    #[inline]
     pub fn get_carry_flag(&self) -> bool { (self.processor_status & CARRY_BIT) != 0 }
 
-    #[inline(always)]
+    #[inline]
     pub fn get_overflow_flag(&self) -> bool { (self.processor_status & OVERFLOW_BIT) != 0 }
 
-    #[inline(always)]
+    #[inline]
     pub fn get_decimal_flag(&self) -> bool { (self.processor_status & DECIMAL_BIT) != 0 }
 
-    #[inline(always)]
+    #[inline]
     pub fn get_interrupt_disable_flag(&self) -> bool { (self.processor_status & IRQ_BIT) != 0 }
 
-    #[inline(always)]
+    #[inline]
     pub fn get_break_flag(&self) -> bool { (self.processor_status & BREAK_BIT) != 0 }
 
-    #[inline(always)]
+    #[inline]
     pub fn get_unused_flag(&self) -> bool { (self.processor_status & UNUSED_BIT) != 0 }
 
-    #[inline(always)]
+    #[inline]
     fn shift_left(&mut self, data: u8) -> u8 {
         let res = data << 1;
 
@@ -282,7 +282,7 @@ impl Cpu {
         res
     }
 
-    #[inline(always)]
+    #[inline]
     fn shift_right(&mut self, data: u8) -> u8 {
         let res = data >> 1;
 
@@ -296,7 +296,7 @@ impl Cpu {
         res
     }
 
-    #[inline(always)]
+    #[inline]
     fn rotate_left(&mut self, data: u8) -> u8 {
         let mut res = data << 1;
 
@@ -312,7 +312,7 @@ impl Cpu {
         res
     }
 
-    #[inline(always)]
+    #[inline]
     fn rotate_right(&mut self, data: u8) -> u8 {
         let mut res = data >> 1;
 
@@ -330,10 +330,10 @@ impl Cpu {
         res
     }
 
-    #[inline(always)]
+    #[inline]
     fn get_addr_latch(&self) -> u16 { ((self.hi as u16) << 8) | (self.lo as u16) }
 
-    #[inline(always)]
+    #[inline]
     fn get_instructions_for_op_type(&mut self) {
         self.op_queue.clear();
         let Some(op) = self.current_opcode else {
@@ -403,7 +403,7 @@ impl Cpu {
                     .push_back(MicroOp::DummyReadAddOffsetWriteToTarget(
                         AddressSource::LO,
                         index,
-                        Target::TEMP,
+                        Target::DataBus,
                         MicroOpCallback::None,
                     ));
                 self.op_queue
@@ -416,7 +416,7 @@ impl Cpu {
                     .push_back(MicroOp::DummyReadAddOffsetWriteToTarget(
                         AddressSource::LO,
                         Source::X,
-                        Target::TEMP,
+                        Target::DataBus,
                         MicroOpCallback::None,
                     ));
                 self.op_queue.push_back(MicroOp::Read(
@@ -446,7 +446,7 @@ impl Cpu {
                     .push_back(MicroOp::FetchOperandLo(MicroOpCallback::None));
                 self.op_queue.push_back(MicroOp::Read(
                     AddressSource::LO,
-                    Target::TEMP,
+                    Target::DataBus,
                     MicroOpCallback::None,
                 ));
                 self.op_queue
@@ -454,7 +454,7 @@ impl Cpu {
                         AddressSource::LO,
                         Source::Constant(1),
                         Target::HI,
-                        Source::TEMP,
+                        Source::DataBus,
                         Source::Y,
                         Target::LO,
                         false,
@@ -629,13 +629,13 @@ impl Cpu {
                 ));
                 self.op_queue.push_back(MicroOp::Write(
                     Target::AddressLatch,
-                    Source::TEMP,
+                    Source::DataBus,
                     false,
                     callback,
                 ));
                 self.op_queue.push_back(MicroOp::Write(
                     Target::AddressLatch,
-                    Source::TEMP,
+                    Source::DataBus,
                     false,
                     MicroOpCallback::None,
                 ))
@@ -662,13 +662,13 @@ impl Cpu {
                 ));
                 self.op_queue.push_back(MicroOp::Write(
                     Target::LoWrite,
-                    Source::TEMP,
+                    Source::DataBus,
                     false,
                     callback,
                 ));
                 self.op_queue.push_back(MicroOp::Write(
                     Target::LoWrite,
-                    Source::TEMP,
+                    Source::DataBus,
                     true,
                     MicroOpCallback::None,
                 ))
@@ -695,18 +695,18 @@ impl Cpu {
                     ));
                 self.op_queue.push_back(MicroOp::Read(
                     AddressSource::LO,
-                    Target::TEMP,
+                    Target::DataBus,
                     MicroOpCallback::None,
                 ));
                 self.op_queue.push_back(MicroOp::Write(
                     Target::LoWrite,
-                    Source::TEMP,
+                    Source::DataBus,
                     false,
                     callback,
                 ));
                 self.op_queue.push_back(MicroOp::Write(
                     Target::LoWrite,
-                    Source::TEMP,
+                    Source::DataBus,
                     true,
                     MicroOpCallback::None,
                 ));
@@ -744,25 +744,25 @@ impl Cpu {
                     ));
                 self.op_queue.push_back(MicroOp::ReadPageCrossAware(
                     AddressSource::AddressLatch,
-                    Source::X,
-                    Target::TEMP,
+                    offset,
+                    Target::DataBus,
                     false,
                     MicroOpCallback::None,
                 ));
                 self.op_queue.push_back(MicroOp::Read(
                     AddressSource::AddressLatch,
-                    Target::TEMP,
+                    Target::DataBus,
                     MicroOpCallback::None,
                 ));
                 self.op_queue.push_back(MicroOp::Write(
                     Target::AddressLatch,
-                    Source::TEMP,
+                    Source::DataBus,
                     false,
                     callback,
                 ));
                 self.op_queue.push_back(MicroOp::Write(
                     Target::AddressLatch,
-                    Source::TEMP,
+                    Source::DataBus,
                     true,
                     MicroOpCallback::None,
                 ));
@@ -805,7 +805,7 @@ impl Cpu {
                         Target::None,
                         Source::LO,
                         Source::X,
-                        Target::TEMP,
+                        Target::DataBus,
                         false,
                         MicroOpCallback::None,
                     ));
@@ -839,7 +839,7 @@ impl Cpu {
                     .push_back(MicroOp::FetchOperandHi(MicroOpCallback::None));
                 self.op_queue.push_back(MicroOp::Read(
                     AddressSource::AddressLatch,
-                    Target::TEMP,
+                    Target::DataBus,
                     MicroOpCallback::None,
                 ));
                 self.op_queue
@@ -847,7 +847,7 @@ impl Cpu {
                         AddressSource::AddressLatch,
                         Source::Constant(1),
                         Target::PCH,
-                        Source::TEMP,
+                        Source::DataBus,
                         Source::Constant(0),
                         Target::PCL,
                         false,
@@ -861,7 +861,7 @@ impl Cpu {
                     .push_back(MicroOp::ReadWithOffsetFromZPAndAddSomethingU8(
                         AddressSource::LO,
                         Source::Constant(0),
-                        Target::TEMP,
+                        Target::DataBus,
                         Source::None,
                         Source::None,
                         Target::None,
@@ -873,7 +873,7 @@ impl Cpu {
                         AddressSource::LO,
                         Source::Constant(1),
                         Target::HI,
-                        Source::TEMP,
+                        Source::DataBus,
                         Source::Y,
                         Target::LO,
                         false,
@@ -906,7 +906,7 @@ impl Cpu {
                         Target::None,
                         Source::LO,
                         Source::X,
-                        Target::TEMP,
+                        Target::DataBus,
                         false,
                         MicroOpCallback::None,
                     ));
@@ -928,18 +928,18 @@ impl Cpu {
                     ));
                 self.op_queue.push_back(MicroOp::Read(
                     AddressSource::AddressLatch,
-                    Target::TEMP,
+                    Target::DataBus,
                     MicroOpCallback::None,
                 ));
                 self.op_queue.push_back(MicroOp::Write(
                     Target::AddressLatch,
-                    Source::TEMP,
+                    Source::DataBus,
                     false,
                     callback,
                 ));
                 self.op_queue.push_back(MicroOp::Write(
                     Target::AddressLatch,
-                    Source::TEMP,
+                    Source::DataBus,
                     true,
                     MicroOpCallback::None,
                 ))
@@ -949,7 +949,7 @@ impl Cpu {
                     .push_back(MicroOp::FetchOperandLo(MicroOpCallback::None));
                 self.op_queue.push_back(MicroOp::Read(
                     AddressSource::LO,
-                    Target::TEMP,
+                    Target::DataBus,
                     MicroOpCallback::None,
                 ));
                 self.op_queue
@@ -957,7 +957,7 @@ impl Cpu {
                         AddressSource::LO,
                         Source::Constant(1),
                         Target::HI,
-                        Source::TEMP,
+                        Source::DataBus,
                         Source::Y,
                         Target::LO,
                         false,
@@ -966,24 +966,24 @@ impl Cpu {
                 self.op_queue.push_back(MicroOp::ReadPageCrossAware(
                     AddressSource::AddressLatch,
                     Source::Y,
-                    Target::TEMP,
+                    Target::DataBus,
                     false,
                     MicroOpCallback::None,
                 ));
                 self.op_queue.push_back(MicroOp::Read(
                     AddressSource::AddressLatch,
-                    Target::TEMP,
+                    Target::DataBus,
                     MicroOpCallback::None,
                 ));
                 self.op_queue.push_back(MicroOp::Write(
                     Target::AddressLatch,
-                    Source::TEMP,
+                    Source::DataBus,
                     false,
                     callback,
                 ));
                 self.op_queue.push_back(MicroOp::Write(
                     Target::AddressLatch,
-                    Source::TEMP,
+                    Source::DataBus,
                     true,
                     MicroOpCallback::None,
                 ))
@@ -991,7 +991,7 @@ impl Cpu {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn get_instructions_for_irq(&mut self) -> VecDeque<MicroOp> {
         let mut instructions = VecDeque::with_capacity(7);
 
@@ -1040,7 +1040,7 @@ impl Cpu {
         instructions
     }
 
-    #[inline(always)]
+    #[inline]
     fn get_instructions_for_reset(&mut self) -> VecDeque<MicroOp> {
         let mut instructions = VecDeque::with_capacity(7);
 
@@ -1081,7 +1081,7 @@ impl Cpu {
         instructions
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn trigger_nmi(&mut self) {
         let mut seq = self.get_instructions_for_irq();
         self.nmi_pending = false;
@@ -1095,7 +1095,7 @@ impl Cpu {
         self.op_queue = seq;
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn trigger_irq(&mut self) {
         let mut seq = self.get_instructions_for_irq();
 
@@ -1108,7 +1108,7 @@ impl Cpu {
         self.op_queue = seq;
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn reset(&mut self) {
         if !self.is_in_irq {
             let mut seq = self.get_instructions_for_reset();
@@ -1126,7 +1126,7 @@ impl Cpu {
         self.memory.get_memory_debug(range)
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn step(&mut self) -> Result<ExecutionFinished, String> {
         if self.is_halted {
             return Ok(ExecutionFinished {
@@ -1196,7 +1196,7 @@ impl Cpu {
                 });
             }
 
-            self.current_op = MicroOp::FetchOpcode(MicroOpCallback::None);
+            self.current_op = MicroOp::FetchOpcode;
         }
 
         Ok(ExecutionFinished {
@@ -1208,13 +1208,12 @@ impl Cpu {
     #[inline(always)]
     fn execute_micro_op(&mut self, micro_op: MicroOp) {
         match micro_op {
-            MicroOp::FetchOpcode(callback) => {
+            MicroOp::FetchOpcode => {
                 let opcode = self.mem_read(self.program_counter);
                 self.program_counter = self.program_counter.wrapping_add(1);
 
                 // Fast O(1) array lookup instead of HashMap
                 self.current_opcode = get_opcode(opcode);
-                self.run_op(callback);
 
                 self.get_instructions_for_op_type();
             }
@@ -1365,10 +1364,10 @@ impl Cpu {
                 callback,
             ) => {
                 if let Some(address) = self.get_u16_address(&address_source) {
-                    let src_value = self.get_src_value(&offset);
+                    let offset = self.get_src_value(&offset);
 
-                    if let Some(src_value) = src_value {
-                        let offset_address = util::add_to_low_byte(address, src_value);
+                    if let Some(offset) = offset {
+                        let offset_address = util::add_to_low_byte(address, offset);
                         let value = self.mem_read(offset_address);
                         self.write_to_target(&target, value);
                     }
@@ -1409,7 +1408,7 @@ impl Cpu {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn run_op(&mut self, op: MicroOpCallback) {
         match op {
             MicroOpCallback::None => {}
@@ -1477,13 +1476,13 @@ impl Cpu {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn get_u16_address(&self, address_source: &AddressSource) -> Option<u16> {
         match address_source {
             AddressSource::AddressLatch => Some(self.get_addr_latch()),
             AddressSource::Address(u16) => Some(*u16),
             AddressSource::LO => Some(self.get_addr_latch() as u8 as u16),
-            AddressSource::Temp => Some(self.temp as u16),
+            AddressSource::Temp => Some(self.data_bus as u16),
             AddressSource::None => None,
             AddressSource::HI => Some(self.hi as u16),
             AddressSource::PC => Some(self.program_counter),
@@ -1549,7 +1548,7 @@ impl Cpu {
         mem
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn get_src_value(&mut self, src: &Source) -> Option<u8> {
         match src {
             Source::A => Option::from(self.accumulator),
@@ -1560,16 +1559,15 @@ impl Cpu {
             Source::PCH => Option::from(((self.program_counter & UPPER_BYTE) >> 8) as u8),
             Source::LO => Option::from(self.lo),
             Source::HI => Option::from(self.hi),
-            Source::TEMP => Option::from(self.temp),
+            Source::DataBus => Option::from(self.data_bus),
             Source::Constant(val) => Option::from(*val),
             Source::None => None,
             Source::PBrk => Option::from(self.processor_status | (UNUSED_BIT | BREAK_BIT)),
             Source::PIrq => Option::from(self.processor_status | UNUSED_BIT),
-            Source::DmaTemp => Option::from(self.dma_temp),
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn write_to_target(&mut self, trg: &Target, val: u8) {
         match trg {
             Target::A => {
@@ -1593,20 +1591,19 @@ impl Cpu {
             }
             Target::LO => self.lo = val,
             Target::HI => self.hi = val,
-            Target::TEMP => self.temp = val,
+            Target::DataBus => self.data_bus = val,
             Target::P => self.processor_status = val & (!UNUSED_BIT & !BREAK_BIT),
             Target::AddressLatch => {
                 self.mem_write(self.get_addr_latch(), val);
             }
             Target::LoWrite => self.mem_write(self.lo as u16, val),
             Target::None => {}
-            Target::DmaTemp => self.dma_temp = val,
             Target::OamWrite => self.mem_write(OAM_REG_ADDRESS, val),
             Target::IrqVecCandidate => unreachable!(),
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn check_condition(&self, condition: Condition) -> bool {
         match condition {
             Condition::CarrySet => self.get_carry_flag(),
@@ -1620,7 +1617,7 @@ impl Cpu {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn trigger_oam_dma(&mut self) {
         self.dma_triggered = false;
         self.is_in_irq = true;
@@ -1643,12 +1640,12 @@ impl Cpu {
         for oam_addr in 0x00u8..0xFFu8 {
             instr.push_back(MicroOp::Read(
                 AddressSource::Address((self.dma_page as u16) << 8 | oam_addr as u16),
-                Target::DmaTemp,
+                Target::DataBus,
                 MicroOpCallback::None,
             ));
             instr.push_back(MicroOp::Write(
                 Target::OamWrite,
-                Source::DmaTemp,
+                Source::DataBus,
                 false,
                 MicroOpCallback::None,
             ))
@@ -1656,12 +1653,12 @@ impl Cpu {
 
         instr.push_back(MicroOp::Read(
             AddressSource::Address(((self.dma_page as u16) << 8) | 0xFFu16),
-            Target::DmaTemp,
+            Target::DataBus,
             MicroOpCallback::None,
         ));
         instr.push_back(MicroOp::Write(
             Target::OamWrite,
-            Source::DmaTemp,
+            Source::DataBus,
             false,
             MicroOpCallback::ExitIrq,
         ));
@@ -1673,13 +1670,14 @@ impl Cpu {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub enum MicroOp {
-    FetchOpcode(MicroOpCallback),
+    FetchOpcode,
     FetchOperandLo(MicroOpCallback),
     FetchOperandHi(MicroOpCallback),
     Read(AddressSource, Target, MicroOpCallback),
     Write(Target, Source, bool, MicroOpCallback),
     StackPush(Source, MicroOpCallback),
     StackPop(Target, MicroOpCallback),
+    /// When reading from AddressSource, assuming it was obtained by offsetting by Source, if an overflow occurred in its obtaining, increment hi to fix address latch
     ReadPageCrossAware(AddressSource, Source, Target, bool, MicroOpCallback),
     DummyReadAddOffsetWriteToTarget(AddressSource, Source, Target, MicroOpCallback),
     DummyRead(MicroOpCallback),
@@ -1718,13 +1716,12 @@ pub enum Target {
     PCH,
     LO,
     HI,
-    TEMP,
+    DataBus,
     None,
     P,
     AddressLatch,
     LoWrite,
     IrqVecCandidate,
-    DmaTemp,
     OamWrite,
 }
 
@@ -1739,11 +1736,10 @@ pub enum Source {
     PCH,
     LO,
     HI,
-    TEMP,
+    DataBus,
     Constant(u8),
     None,
     PIrq,
-    DmaTemp,
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize, Hash)]
@@ -1900,7 +1896,7 @@ impl Cpu {
             current_op: state.current_op,
             op_queue: state.op_queue.clone(),
             current_opcode: state.current_opcode.and_then(get_opcode),
-            temp: state.temp,
+            data_bus: state.temp,
             ane_constant: state.ane_constant,
             is_halted: state.is_halted,
             irq_pending: state.irq_pending,
@@ -1915,7 +1911,6 @@ impl Cpu {
             dma_read: state.dma_read,
             dma_triggered: state.dma_triggered,
             dma_page: state.dma_page,
-            dma_temp: state.dma_temp,
             last_memory_access: None,
         };
 
@@ -1934,9 +1929,9 @@ impl Cpu {
     }
 }
 
-#[inline(always)]
+#[inline]
 pub fn adc(cpu: &mut Cpu) {
-    let target_value = cpu.temp;
+    let target_value = cpu.data_bus;
     let carry_in = cpu.processor_status & CARRY_BIT;
 
     let acc_check = cpu.accumulator;
@@ -1963,151 +1958,151 @@ pub fn adc(cpu: &mut Cpu) {
     cpu.update_negative_and_zero_flags(cpu.accumulator);
 }
 
-#[inline(always)]
+#[inline]
 fn rol(cpu: &mut Cpu) {
     if !matches!(
         &cpu.current_opcode.unwrap().op_type,
         OpType::AccumulatorOrImplied(..)
     ) {
-        let target_value = cpu.temp;
+        let target_value = cpu.data_bus;
         let res = cpu.rotate_left(target_value);
-        cpu.temp = res;
+        cpu.data_bus = res;
     } else {
         cpu.accumulator = cpu.rotate_left(cpu.accumulator);
         cpu.update_negative_and_zero_flags(cpu.accumulator);
     }
 }
 
-#[inline(always)]
+#[inline]
 fn ror(cpu: &mut Cpu) {
     if !matches!(
         &cpu.current_opcode.unwrap().op_type,
         OpType::AccumulatorOrImplied(..)
     ) {
-        let target_value = cpu.temp;
+        let target_value = cpu.data_bus;
         let res = cpu.rotate_right(target_value);
-        cpu.temp = res;
+        cpu.data_bus = res;
     } else {
         cpu.accumulator = cpu.rotate_right(cpu.accumulator);
         cpu.update_negative_and_zero_flags(cpu.accumulator);
     }
 }
 
-#[inline(always)]
+#[inline]
 fn asl(cpu: &mut Cpu) {
     if !matches!(
         &cpu.current_opcode.unwrap().op_type,
         OpType::AccumulatorOrImplied(..)
     ) {
-        let target_value = cpu.temp;
+        let target_value = cpu.data_bus;
         let res = cpu.shift_left(target_value);
-        cpu.temp = res;
+        cpu.data_bus = res;
     } else {
         cpu.accumulator = cpu.shift_left(cpu.accumulator);
         cpu.update_negative_and_zero_flags(cpu.accumulator);
     }
 }
 
-#[inline(always)]
+#[inline]
 fn lsr(cpu: &mut Cpu) {
     if !matches!(
         &cpu.current_opcode.unwrap().op_type,
         OpType::AccumulatorOrImplied(..)
     ) {
-        let target_value = cpu.temp;
+        let target_value = cpu.data_bus;
         let res = cpu.shift_right(target_value);
-        cpu.temp = res
+        cpu.data_bus = res
     } else {
         cpu.accumulator = cpu.shift_right(cpu.accumulator);
         cpu.update_negative_and_zero_flags(cpu.accumulator);
     }
 }
 
-#[inline(always)]
+#[inline]
 fn tax(cpu: &mut Cpu) {
     cpu.x_register = cpu.accumulator;
     cpu.update_negative_and_zero_flags(cpu.x_register);
 }
 
-#[inline(always)]
+#[inline]
 fn tay(cpu: &mut Cpu) {
     cpu.y_register = cpu.accumulator;
     cpu.update_negative_and_zero_flags(cpu.y_register);
 }
 
-#[inline(always)]
+#[inline]
 fn txa(cpu: &mut Cpu) {
     cpu.accumulator = cpu.x_register;
     cpu.update_negative_and_zero_flags(cpu.accumulator);
 }
 
-#[inline(always)]
+#[inline]
 fn tya(cpu: &mut Cpu) {
     cpu.accumulator = cpu.y_register;
     cpu.update_negative_and_zero_flags(cpu.accumulator);
 }
 
-#[inline(always)]
+#[inline]
 fn tsx(cpu: &mut Cpu) {
     cpu.x_register = cpu.stack_pointer;
     cpu.update_negative_and_zero_flags(cpu.x_register)
 }
 
-#[inline(always)]
+#[inline]
 fn txs(cpu: &mut Cpu) { cpu.stack_pointer = cpu.x_register; }
 
-#[inline(always)]
+#[inline]
 fn clc(cpu: &mut Cpu) { cpu.clear_carry_flag(); }
 
-#[inline(always)]
+#[inline]
 fn cld(cpu: &mut Cpu) { cpu.clear_decimal_flag(); }
 
-#[inline(always)]
+#[inline]
 fn cli(cpu: &mut Cpu) { cpu.clear_interrupt_disable(); }
 
-#[inline(always)]
+#[inline]
 fn clv(cpu: &mut Cpu) { cpu.clear_overflow_flag(); }
 
-#[inline(always)]
+#[inline]
 fn sec(cpu: &mut Cpu) { cpu.set_carry_flag(); }
 
-#[inline(always)]
+#[inline]
 fn sed(cpu: &mut Cpu) { cpu.set_decimal_flag(); }
 
-#[inline(always)]
+#[inline]
 fn sei(cpu: &mut Cpu) { cpu.set_interrupt_disable(); }
 
-#[inline(always)]
+#[inline]
 fn dex(cpu: &mut Cpu) {
     let mod_value = cpu.x_register.wrapping_sub(1);
     cpu.x_register = mod_value;
     cpu.update_negative_and_zero_flags(cpu.x_register);
 }
 
-#[inline(always)]
+#[inline]
 fn dey(cpu: &mut Cpu) {
     let mod_value = cpu.y_register.wrapping_sub(1);
     cpu.y_register = mod_value;
     cpu.update_negative_and_zero_flags(cpu.y_register);
 }
 
-#[inline(always)]
+#[inline]
 fn inx(cpu: &mut Cpu) {
     let mod_value = cpu.x_register.wrapping_add(1);
     cpu.x_register = mod_value;
     cpu.update_negative_and_zero_flags(cpu.x_register);
 }
 
-#[inline(always)]
+#[inline]
 fn iny(cpu: &mut Cpu) {
     let mod_value = cpu.y_register.wrapping_add(1);
     cpu.y_register = mod_value;
     cpu.update_negative_and_zero_flags(cpu.y_register);
 }
 
-#[inline(always)]
+#[inline]
 fn cmp(cpu: &mut Cpu) {
-    let target_value = cpu.temp;
+    let target_value = cpu.data_bus;
 
     if target_value == cpu.accumulator {
         cpu.set_zero_flag();
@@ -2128,9 +2123,9 @@ fn cmp(cpu: &mut Cpu) {
     }
 }
 
-#[inline(always)]
+#[inline]
 fn cpx(cpu: &mut Cpu) {
-    let target_value = cpu.temp;
+    let target_value = cpu.data_bus;
 
     if target_value == cpu.x_register {
         cpu.set_zero_flag();
@@ -2151,9 +2146,9 @@ fn cpx(cpu: &mut Cpu) {
     }
 }
 
-#[inline(always)]
+#[inline]
 fn cpy(cpu: &mut Cpu) {
-    let target_value = cpu.temp;
+    let target_value = cpu.data_bus;
 
     if target_value == cpu.y_register {
         cpu.set_zero_flag();
@@ -2174,30 +2169,30 @@ fn cpy(cpu: &mut Cpu) {
     }
 }
 
-#[inline(always)]
+#[inline]
 fn and(cpu: &mut Cpu) {
-    let target_val = cpu.temp;
+    let target_val = cpu.data_bus;
     cpu.accumulator &= target_val;
     cpu.update_negative_and_zero_flags(cpu.accumulator);
 }
 
-#[inline(always)]
+#[inline]
 fn eor(cpu: &mut Cpu) {
-    let target_val = cpu.temp;
+    let target_val = cpu.data_bus;
     cpu.accumulator ^= target_val;
     cpu.update_negative_and_zero_flags(cpu.accumulator);
 }
 
-#[inline(always)]
+#[inline]
 fn ora(cpu: &mut Cpu) {
-    let target_val = cpu.temp;
+    let target_val = cpu.data_bus;
     cpu.accumulator |= target_val;
     cpu.update_negative_and_zero_flags(cpu.accumulator);
 }
 
-#[inline(always)]
+#[inline]
 fn sbc(cpu: &mut Cpu) {
-    let target_value = cpu.temp;
+    let target_value = cpu.data_bus;
     let carry_in = cpu.processor_status & CARRY_BIT;
 
     let acc_check = cpu.accumulator;
@@ -2223,9 +2218,9 @@ fn sbc(cpu: &mut Cpu) {
     cpu.update_negative_and_zero_flags(cpu.accumulator);
 }
 
-#[inline(always)]
+#[inline]
 fn bit(cpu: &mut Cpu) {
-    let target_val = cpu.temp;
+    let target_val = cpu.data_bus;
     let res = cpu.accumulator & target_val;
     cpu.update_zero_flag(res);
 
@@ -2242,37 +2237,37 @@ fn bit(cpu: &mut Cpu) {
     }
 }
 
-#[inline(always)]
+#[inline]
 fn inc(cpu: &mut Cpu) {
-    let target_value = cpu.temp;
+    let target_value = cpu.data_bus;
     let mod_value = target_value.wrapping_add(1);
-    cpu.temp = mod_value;
-    cpu.update_negative_and_zero_flags(cpu.temp);
+    cpu.data_bus = mod_value;
+    cpu.update_negative_and_zero_flags(cpu.data_bus);
 }
 
-#[inline(always)]
+#[inline]
 fn dec(cpu: &mut Cpu) {
-    let target_value = cpu.temp;
+    let target_value = cpu.data_bus;
     let mod_value = target_value.wrapping_sub(1);
-    cpu.temp = mod_value;
-    cpu.update_negative_and_zero_flags(cpu.temp);
+    cpu.data_bus = mod_value;
+    cpu.update_negative_and_zero_flags(cpu.data_bus);
 }
 
-#[inline(always)]
+#[inline]
 fn branch(cpu: &mut Cpu, condition: Condition) {
     if cpu.check_condition(condition) {
         cpu.op_queue.push_back(MicroOp::BranchIncrement(Source::LO))
     }
 }
 
-#[inline(always)]
+#[inline]
 fn isb(cpu: &mut Cpu) {
     // Inc
-    let target_value = cpu.get_src_value(&Source::TEMP);
+    let target_value = cpu.get_src_value(&Source::DataBus);
 
     if let Some(target_value) = target_value {
         let mod_value = target_value.wrapping_add(1);
-        cpu.write_to_target(&Target::TEMP, mod_value);
+        cpu.write_to_target(&Target::DataBus, mod_value);
         cpu.update_negative_and_zero_flags(mod_value);
 
         // SBC
@@ -2302,9 +2297,9 @@ fn isb(cpu: &mut Cpu) {
     }
 }
 
-#[inline(always)]
+#[inline]
 fn alr(cpu: &mut Cpu) {
-    let target_val = cpu.temp;
+    let target_val = cpu.data_bus;
     cpu.accumulator &= target_val;
     cpu.update_negative_and_zero_flags(cpu.accumulator);
 
@@ -2312,9 +2307,9 @@ fn alr(cpu: &mut Cpu) {
     cpu.update_negative_and_zero_flags(cpu.accumulator);
 }
 
-#[inline(always)]
+#[inline]
 fn anc(cpu: &mut Cpu) {
-    let target_val = cpu.temp;
+    let target_val = cpu.data_bus;
     cpu.accumulator &= target_val;
     cpu.update_negative_and_zero_flags(cpu.accumulator);
 
@@ -2325,16 +2320,14 @@ fn anc(cpu: &mut Cpu) {
     }
 }
 
-#[inline(always)]
+#[inline]
 fn ane(cpu: &mut Cpu) {
-    cpu.accumulator |= cpu.ane_constant;
-    cpu.accumulator &= cpu.x_register;
-    cpu.accumulator &= cpu.temp;
+    cpu.accumulator = (cpu.accumulator | cpu.ane_constant) & cpu.x_register & cpu.data_bus;
 }
 
-#[inline(always)]
+#[inline]
 fn arr(cpu: &mut Cpu) {
-    let target_val = cpu.temp;
+    let target_val = cpu.data_bus;
     cpu.accumulator &= target_val;
 
     cpu.accumulator = (cpu.accumulator >> 1)
@@ -2358,64 +2351,64 @@ fn arr(cpu: &mut Cpu) {
     }
 }
 
-#[inline(always)]
+#[inline]
 fn dcp(cpu: &mut Cpu) {
     dec(cpu);
     cmp(cpu)
 }
 
-#[inline(always)]
+#[inline]
 fn las(cpu: &mut Cpu) {
-    let res = cpu.temp & cpu.stack_pointer;
+    let res = cpu.data_bus & cpu.stack_pointer;
     cpu.accumulator = res;
     cpu.x_register = res;
     cpu.stack_pointer = res;
 }
 
-#[inline(always)]
+#[inline]
 fn lax(cpu: &mut Cpu) {
-    cpu.accumulator = cpu.temp;
-    cpu.x_register = cpu.temp;
+    cpu.accumulator = cpu.data_bus;
+    cpu.x_register = cpu.data_bus;
     cpu.update_negative_and_zero_flags(cpu.accumulator)
 }
 
-#[inline(always)]
+#[inline]
 fn lxa(cpu: &mut Cpu) {
-    cpu.accumulator = (cpu.accumulator | cpu.ane_constant) & cpu.temp;
+    cpu.accumulator = (cpu.accumulator | cpu.ane_constant) & cpu.data_bus;
     cpu.x_register = cpu.accumulator;
     cpu.update_negative_and_zero_flags(cpu.accumulator)
 }
 
-#[inline(always)]
+#[inline]
 fn rla(cpu: &mut Cpu) {
-    let target_value = cpu.temp;
+    let target_value = cpu.data_bus;
     let res = cpu.rotate_left(target_value);
-    cpu.temp = res;
+    cpu.data_bus = res;
     cpu.accumulator &= res;
     cpu.update_negative_and_zero_flags(cpu.accumulator);
 }
 
-#[inline(always)]
+#[inline]
 fn rra(cpu: &mut Cpu) {
-    let target_value = cpu.temp;
+    let target_value = cpu.data_bus;
     let res = cpu.rotate_right(target_value);
-    cpu.temp = res;
+    cpu.data_bus = res;
     adc(cpu);
 }
 
-#[inline(always)]
+#[inline]
 fn sax(cpu: &mut Cpu) {
     let res = cpu.accumulator & cpu.x_register;
-    cpu.temp = res;
+    cpu.data_bus = res;
 }
 
-#[inline(always)]
+#[inline]
 fn sbx(cpu: &mut Cpu) {
     let t = cpu.accumulator & cpu.x_register;
-    let r = t.wrapping_sub(cpu.temp);
+    let r = t.wrapping_sub(cpu.data_bus);
     cpu.x_register = r;
 
-    if t >= cpu.temp {
+    if t >= cpu.data_bus {
         cpu.set_carry_flag();
     } else {
         cpu.clear_carry_flag();
@@ -2434,61 +2427,61 @@ fn sbx(cpu: &mut Cpu) {
     }
 }
 
-#[inline(always)]
-fn sha(cpu: &mut Cpu) { cpu.temp = cpu.accumulator & cpu.x_register & cpu.hi.wrapping_add(1); }
+#[inline]
+fn sha(cpu: &mut Cpu) { cpu.data_bus = cpu.accumulator & cpu.x_register & cpu.hi.wrapping_add(1); }
 
-#[inline(always)]
+#[inline]
 fn shx(cpu: &mut Cpu) {
     if !cpu.lo.overflowing_sub(cpu.y_register).1 {
-        cpu.temp = cpu.x_register & cpu.hi.wrapping_add(1);
+        cpu.data_bus = cpu.x_register & cpu.hi.wrapping_add(1);
     } else {
         let res = cpu.x_register & cpu.hi;
         cpu.hi = res;
-        cpu.temp = res;
+        cpu.data_bus = res;
     }
 }
 
-#[inline(always)]
+#[inline]
 fn shy(cpu: &mut Cpu) {
     if !cpu.lo.overflowing_sub(cpu.x_register).1 {
-        cpu.temp = cpu.y_register & cpu.hi.wrapping_add(1);
+        cpu.data_bus = cpu.y_register & cpu.hi.wrapping_add(1);
     } else {
         let res = cpu.y_register & cpu.hi;
         cpu.hi = res;
-        cpu.temp = res;
+        cpu.data_bus = res;
     }
 }
 
-#[inline(always)]
+#[inline]
 fn slo(cpu: &mut Cpu) {
-    let target_value = cpu.temp;
+    let target_value = cpu.data_bus;
     let res = cpu.shift_left(target_value);
-    cpu.temp = res;
+    cpu.data_bus = res;
 
     cpu.accumulator |= res;
     cpu.update_negative_and_zero_flags(cpu.accumulator);
 }
 
-#[inline(always)]
+#[inline]
 fn sre(cpu: &mut Cpu) {
-    let target_value = cpu.temp;
+    let target_value = cpu.data_bus;
     let res = cpu.shift_right(target_value);
-    cpu.temp = res;
+    cpu.data_bus = res;
 
     cpu.accumulator ^= res;
     cpu.update_negative_and_zero_flags(cpu.accumulator);
 }
 
-#[inline(always)]
+#[inline]
 fn tas(cpu: &mut Cpu) {
     cpu.stack_pointer = cpu.accumulator & cpu.x_register;
-    cpu.temp = cpu.accumulator & cpu.x_register & cpu.hi.wrapping_add(1);
+    cpu.data_bus = cpu.accumulator & cpu.x_register & cpu.hi.wrapping_add(1);
 }
 
-#[inline(always)]
+#[inline]
 fn jam(cpu: &mut Cpu) { cpu.is_halted = true }
 
-#[inline(always)]
+#[inline]
 fn copy(cpu: &mut Cpu, source: AddressSource, target: Target) {
     let Some(address) = cpu.get_u16_address(&source) else {
         unreachable!()

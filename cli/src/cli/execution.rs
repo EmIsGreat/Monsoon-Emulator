@@ -267,7 +267,7 @@ impl StopCondition {
             } => {
                 // Check if CPU accessed this address
                 if let Some(last_access) = emu.last_memory_access() {
-                    let (access_addr, was_read) = last_access;
+                    let (access_addr, was_read, _) = last_access;
                     if access_addr == *addr {
                         match access_type {
                             MemoryAccessType::Read => was_read,
@@ -312,7 +312,7 @@ impl StopCondition {
             } => {
                 let was_read = emu
                     .last_memory_access()
-                    .map(|(_, was_read)| was_read)
+                    .map(|(_, was_read, _)| was_read)
                     .unwrap_or(true);
                 StopReason::MemoryWatchpoint {
                     addr: *addr,

@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io;
 use std::io::BufRead;
 
-use crate::emulation::nes::Nes;
+use crate::emulation::nes::{Nes, RunOptions};
 
 #[test]
 fn nestest() {
@@ -10,7 +10,8 @@ fn nestest() {
     emu.enable_trace();
     emu.load_rom(&String::from("./tests/nes-test-roms/nestest_headless.nes"));
     emu.power();
-    emu.run().expect("Error running test");
+    emu.run_until(1_000_000_000, RunOptions::default())
+        .expect("Error running test");
 
     let log = emu
         .trace_log

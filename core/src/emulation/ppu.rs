@@ -26,7 +26,7 @@ pub const SPRITE_RENDER_BIT: u8 = 0x10;
 pub const VRAM_ADDR_COARSE_X_SCROLL_MASK: u16 = 0x1F;
 pub const VRAM_ADDR_COARSE_Y_SCROLL_MASK: u16 = 0x3E0;
 pub const VRAM_ADDR_FINE_Y_SCROLL_MASK: u16 = 0x7000;
-pub const PALETTE_RAM_END_INDEX: u16 = 0x3FFF;
+pub const PALETTE_RAM_END_ADDRESS: u16 = 0x3FFF;
 pub const PALETTE_RAM_SIZE: u16 = 0x20;
 pub const VRAM_SIZE: usize = 0x800;
 pub const DOTS_PER_SCANLINE: u16 = 340;
@@ -154,7 +154,7 @@ impl Ppu {
         let mut mem = MemoryMap::default();
 
         mem.add_memory(
-            0..=PALETTE_RAM_END_INDEX - PALETTE_RAM_START_ADDRESS,
+            0..=PALETTE_RAM_END_ADDRESS - PALETTE_RAM_START_ADDRESS,
             Memory::MirrorMemory(MirrorMemory::new(
                 Box::new(Memory::PaletteRam(PaletteRam::default())),
                 PALETTE_RAM_SIZE - 1,
@@ -174,7 +174,7 @@ impl Ppu {
         map
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn step(&mut self) -> ExecutionFinished {
         self.prev_vbl = self.status_register.get() & VBLANK_NMI_BIT;
 
@@ -210,7 +210,7 @@ impl Ppu {
                 self.clear_sprite_zero()
             }
 
-            if (1..=64).contains(&self.dot) {
+            if self.dot >= 1 && self.dot <= 64 {
                 self.set_soam_disable(false);
                 self.is_soam_clear_active = true;
                 self.init_soam();
@@ -218,11 +218,11 @@ impl Ppu {
                 self.is_soam_clear_active = false;
             }
 
-            if (65..=256).contains(&self.dot) {
+            if self.dot >= 65 && self.dot <= 256 {
                 self.sprite_eval();
             }
 
-            if (257..=320).contains(&self.dot) {
+            if self.dot >= 257 && self.dot <= 320 {
                 if self.dot == 257 {
                     self.soam_index = 0;
                 }
@@ -230,8 +230,8 @@ impl Ppu {
                 self.sprite_fetch();
             }
 
-            if (321..=341).contains(&self.dot) {
-                if self.dot.is_multiple_of(2) {
+            if self.dot >= 321 && self.dot <= 341 {
+                if (self.dot & 1) == 0 {
                     self.secondary_oam_read(self.soam_index);
                 }
 
@@ -242,10 +242,10 @@ impl Ppu {
                 }
             }
 
-            if (1..=256).contains(&self.dot) || (321..=336).contains(&self.dot) {
+            if (self.dot >= 1 && self.dot <= 256) || (self.dot >= 321 && self.dot <= 336) {
                 self.do_dot_fetch();
 
-                if self.scanline != PRE_RENDER_SCANLINE && (0x01..=256).contains(&self.dot) {
+                if self.scanline != PRE_RENDER_SCANLINE && self.dot >= 0x01 && self.dot <= 256 {
                     let bg_color_address = self.get_bg_pixel();
 
                     let mut sprite_pixel_palette = 0u8;
@@ -327,7 +327,7 @@ impl Ppu {
 
                 self.shift_bg_shifters();
 
-                if (self.dot - 1) % 8 == 7 {
+                if ((self.dot - 1) & 7) == 7 {
                     self.inc_coarse_x_scroll();
                     self.reload_shifters();
                 }
@@ -337,7 +337,7 @@ impl Ppu {
                 }
             }
 
-            if (257..=320).contains(&self.dot) {
+            if self.dot >= 257 && self.dot <= 320 {
                 if self.dot == 257 {
                     self.v_register = (self.v_register & !0x041F) | (self.t_register & 0x041F);
                 }
@@ -345,7 +345,7 @@ impl Ppu {
                 self.oam_addr_register = 0;
             }
 
-            if (280..=304).contains(&self.dot) && self.scanline == PRE_RENDER_SCANLINE {
+            if self.dot >= 280 && self.dot <= 304 && self.scanline == PRE_RENDER_SCANLINE {
                 self.v_register = (self.v_register & !0x7BE0) | (self.t_register & 0x7BE0);
             }
         }
@@ -433,7 +433,7 @@ impl Ppu {
                 let row_offset = if self.get_sprite_fifo_for_soam_index().attribute & 0x80 == 0 {
                     raw_row
                 } else {
-                    (self.get_sprite_height() - 1) - raw_row
+                    (self.get_sprite_height() - 1).wrapping_sub(raw_row)
                 };
 
                 let tile_id = if sprite_height == 8 {
@@ -504,7 +504,7 @@ impl Ppu {
 
     #[inline]
     pub fn sprite_eval(&mut self) {
-        match (self.dot - 1).is_multiple_of(2) {
+        match ((self.dot - 1) & 1) == 0 {
             true => {
                 self.oam_addr_register = self.oam_index;
                 self.oam_fetch = self.get_oam_at_addr();
@@ -566,7 +566,7 @@ impl Ppu {
 
     #[inline]
     pub fn init_soam(&mut self) {
-        match (self.dot - 1).is_multiple_of(2) {
+        match ((self.dot - 1) & 1) == 0 {
             true => {
                 self.oam_addr_register = (self.dot - 1) as u8;
                 self.oam_fetch = self.get_oam_at_addr();
@@ -719,7 +719,7 @@ impl Ppu {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn clear_vbl_bit(&self) {
         self.status_register
             .set(self.status_register.get() & !VBLANK_NMI_BIT);
@@ -783,10 +783,11 @@ impl Ppu {
     pub fn get_vram_at_addr(&mut self) -> u8 {
         let mut ret = self.ppu_data_buffer;
 
-        self.ppu_data_buffer = self.mem_read(self.v_register);
-
-        if (PALETTE_RAM_START_ADDRESS..=PALETTE_RAM_END_INDEX).contains(&self.v_register) {
+        if !(self.v_register >= PALETTE_RAM_START_ADDRESS && self.v_register <= PALETTE_RAM_END_ADDRESS) {
+            self.ppu_data_buffer = self.mem_read(self.v_register);
+        } else {
             ret = self.mem_read(self.v_register);
+            self.ppu_data_buffer = self.mem_read(self.v_register - 0x1000);
         }
 
         if !(self.scanline < VISIBLE_SCANLINES + 1 || self.scanline == PRE_RENDER_SCANLINE)
@@ -859,7 +860,7 @@ impl Ppu {
         self.write_latch.set(!self.write_latch.get());
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn poll_nmi(&self) -> bool { self.nmi_requested.get() }
 
     #[inline]
@@ -917,44 +918,44 @@ impl Ppu {
 
     pub fn mem_read_debug(&self, addr: u16) -> u8 {
         match addr {
-            PALETTE_RAM_START_ADDRESS..PALETTE_RAM_END_INDEX => self
+            PALETTE_RAM_START_ADDRESS..PALETTE_RAM_END_ADDRESS => self
                 .palette_ram
                 .mem_read_debug(addr - PALETTE_RAM_START_ADDRESS),
             _ => self.memory.mem_read_debug(addr),
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn mem_read(&mut self, addr: u16) -> u8 {
         match addr {
-            PALETTE_RAM_START_ADDRESS..PALETTE_RAM_END_INDEX => {
+            PALETTE_RAM_START_ADDRESS..PALETTE_RAM_END_ADDRESS => {
                 self.palette_ram.mem_read(addr - PALETTE_RAM_START_ADDRESS)
             }
             _ => self.memory.mem_read(addr),
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn mem_write(&mut self, addr: u16, data: u8) {
         match addr {
-            PALETTE_RAM_START_ADDRESS..PALETTE_RAM_END_INDEX => self
+            PALETTE_RAM_START_ADDRESS..PALETTE_RAM_END_ADDRESS => self
                 .palette_ram
                 .mem_write(addr - PALETTE_RAM_START_ADDRESS, data),
             _ => self.memory.mem_write(addr, data),
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn mem_init(&mut self, addr: u16, data: u8) {
         match addr {
-            PALETTE_RAM_START_ADDRESS..PALETTE_RAM_END_INDEX => self
+            PALETTE_RAM_START_ADDRESS..PALETTE_RAM_END_ADDRESS => self
                 .palette_ram
                 .init(addr - PALETTE_RAM_START_ADDRESS, data),
             _ => self.memory.init(addr, data),
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn oam_read(&mut self, addr: u8) -> u8 {
         let row = addr / 8;
         let byte = addr % 8;
@@ -967,7 +968,7 @@ impl Ppu {
         res
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn oam_snapshot(&self, addr: u8) -> u8 {
         let row = addr / 8;
         let byte = addr % 8;
@@ -980,14 +981,14 @@ impl Ppu {
         res
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn oam_write(&mut self, addr: u8, data: u8) {
         let row = addr / 8;
         let byte = addr % 8;
         self.oam.mem_write((row as u16 * 9) + byte as u16, data)
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn secondary_oam_read(&mut self, addr: u8) -> u8 {
         // Mask for only 0-32
         let row = addr & 0x1F;
@@ -996,7 +997,7 @@ impl Ppu {
         self.oam.mem_read((row as u16 * 9) + byte as u16)
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn secondary_oam_snapshot(&self, addr: u8) -> u8 {
         let row = addr & 0x1F;
         let byte = 8u8;
@@ -1004,7 +1005,7 @@ impl Ppu {
         self.oam.mem_read_debug((row as u16 * 9) + byte as u16)
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn secondary_oam_write(&mut self, addr: u8, data: u8) {
         // Mask for only 0-32
         let row = addr & 0x1F;
@@ -1025,7 +1026,7 @@ impl Ppu {
         }
 
         self.memory.add_memory(
-            0x2000..=PALETTE_RAM_END_INDEX,
+            0x2000..=PALETTE_RAM_END_ADDRESS,
             Memory::MirrorMemory(MirrorMemory::new(
                 Box::new(rom_file.get_nametable_memory()),
                 (VRAM_SIZE * 2 - 1) as u16,
@@ -1042,7 +1043,7 @@ impl Ppu {
         self.memory.get_memory_debug(range)
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn process_vbl_clear_scheduled(&self) {
         if let Some(vbl_clear_cycle) = self.vbl_clear_scheduled.get() {
             if vbl_clear_cycle >= self.vbl_reset_counter.get() {
@@ -1088,7 +1089,7 @@ impl Ppu {
         data
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn tick_open_bus(&self, times: u8) {
         let mut bus = self.open_bus.get();
         bus.tick(times);
