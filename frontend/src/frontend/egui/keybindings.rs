@@ -13,7 +13,7 @@ use std::hash::Hash;
 use std::ops::Deref;
 
 use egui::{
-    vec2, Event, Id, InputState, Key, Modifiers, PointerButton, Response, Sense, Ui, Widget,
+    Event, Id, InputState, Key, Modifiers, PointerButton, Response, Sense, Ui, Widget, vec2,
 };
 use serde::{Deserialize, Serialize};
 
