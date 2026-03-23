@@ -92,66 +92,87 @@ fn render_emulation_keybindings(ui: &mut egui::Ui, config: &mut AppConfig) {
             .striped(true)
             .show(ui, |ui| {
                 ui.label("Pause/Resume");
-                ui.add(Hotkey::with_id(
-                    &mut config.keybindings.emulation.pause,
-                    "kb_pause",
-                ));
+                ui.add(
+                    Hotkey::with_id(&mut config.keybindings.emulation.pause, "kb_pause")
+                        .accept_modifier_keys(false),
+                );
                 ui.end_row();
 
                 ui.label("Step Frame");
-                ui.add(Hotkey::with_id(
-                    &mut config.keybindings.emulation.step_frame,
-                    "kb_step_frame",
-                ));
+                ui.add(
+                    Hotkey::with_id(
+                        &mut config.keybindings.emulation.step_frame,
+                        "kb_step_frame",
+                    )
+                    .accept_modifier_keys(false),
+                );
                 ui.end_row();
 
                 ui.label("Step Scanline");
-                ui.add(Hotkey::with_id(
-                    &mut config.keybindings.emulation.step_scanline,
-                    "kb_step_scanline",
-                ));
+                ui.add(
+                    Hotkey::with_id(
+                        &mut config.keybindings.emulation.step_scanline,
+                        "kb_step_scanline",
+                    )
+                    .accept_modifier_keys(false),
+                );
                 ui.end_row();
 
                 ui.label("Step Master Cycle");
-                ui.add(Hotkey::with_id(
-                    &mut config.keybindings.emulation.step_master_cycle,
-                    "kb_step_master_cycle",
-                ));
+                ui.add(
+                    Hotkey::with_id(
+                        &mut config.keybindings.emulation.step_master_cycle,
+                        "kb_step_master_cycle",
+                    )
+                    .accept_modifier_keys(false),
+                );
                 ui.end_row();
 
                 ui.label("Step PPU Cycle");
-                ui.add(Hotkey::with_id(
-                    &mut config.keybindings.emulation.step_ppu_cycle,
-                    "kb_step_cpu_cycle",
-                ));
+                ui.add(
+                    Hotkey::with_id(
+                        &mut config.keybindings.emulation.step_ppu_cycle,
+                        "kb_step_cpu_cycle",
+                    )
+                    .accept_modifier_keys(false),
+                );
                 ui.end_row();
 
                 ui.label("Step CPU Cycle");
-                ui.add(Hotkey::with_id(
-                    &mut config.keybindings.emulation.step_cpu_cycle,
-                    "kb_step_ppu_cycle",
-                ));
+                ui.add(
+                    Hotkey::with_id(
+                        &mut config.keybindings.emulation.step_cpu_cycle,
+                        "kb_step_ppu_cycle",
+                    )
+                    .accept_modifier_keys(false),
+                );
                 ui.end_row();
 
                 ui.label("Reset");
-                ui.add(Hotkey::with_id(
-                    &mut config.keybindings.emulation.reset,
-                    "kb_reset",
-                ));
+                ui.add(
+                    Hotkey::with_id(&mut config.keybindings.emulation.reset, "kb_reset")
+                        .accept_modifier_keys(false),
+                );
                 ui.end_row();
 
                 ui.label("Quicksave");
-                ui.add(Hotkey::with_id(
-                    &mut config.keybindings.emulation.quicksave,
-                    "kb_quicksave",
-                ));
+                ui.add(
+                    Hotkey::with_id(
+                        &mut config.keybindings.emulation.quicksave,
+                        "kb_quicksave",
+                    )
+                    .accept_modifier_keys(false),
+                );
                 ui.end_row();
 
                 ui.label("Quickload");
-                ui.add(Hotkey::with_id(
-                    &mut config.keybindings.emulation.quickload,
-                    "kb_quickload",
-                ));
+                ui.add(
+                    Hotkey::with_id(
+                        &mut config.keybindings.emulation.quickload,
+                        "kb_quickload",
+                    )
+                    .accept_modifier_keys(false),
+                );
                 ui.end_row();
             });
     });
@@ -166,10 +187,13 @@ fn render_debug_keybindings(ui: &mut egui::Ui, config: &mut AppConfig) {
             .striped(true)
             .show(ui, |ui| {
                 ui.label("Cycle Palette");
-                ui.add(Hotkey::with_id(
-                    &mut config.keybindings.debug.cycle_palette,
-                    "kb_cycle_palette",
-                ));
+                ui.add(
+                    Hotkey::with_id(
+                        &mut config.keybindings.debug.cycle_palette,
+                        "kb_cycle_palette",
+                    )
+                    .accept_modifier_keys(false),
+                );
                 ui.end_row();
             });
     });

@@ -322,6 +322,13 @@ where
     binding: &'a mut B,
     id: Id,
     tooltip: Option<bool>,
+    /// When `false`, the widget will not capture bare modifier keys
+    /// (Shift / Ctrl / Alt / Command / MacCmd) as binding targets.
+    ///
+    /// Set to `false` for hotkeys that are evaluated with
+    /// [`Binding::pressed`], because that function cannot detect
+    /// single-frame presses for modifier-only bindings.
+    accept_modifier_keys: bool,
 }
 
 impl<'a, B> Hotkey<'a, B>
@@ -334,7 +341,20 @@ where
             binding,
             id: Id::new(id_source),
             tooltip: None,
+            accept_modifier_keys: true,
         }
+    }
+
+    /// Allow or disallow bare modifier keys (Shift / Ctrl / Alt / Command /
+    /// MacCmd) as binding targets.
+    ///
+    /// Pass `false` for hotkeys whose binding is evaluated with
+    /// [`Binding::pressed`] — `pressed()` cannot detect single-frame presses
+    /// for modifier-only bindings, so permitting them would create an
+    /// apparently-valid binding that silently never fires.
+    pub fn accept_modifier_keys(mut self, accept: bool) -> Self {
+        self.accept_modifier_keys = accept;
+        self
     }
 }
 
@@ -404,7 +424,7 @@ where
                         self.binding.set(key, mods.unwrap_or(Modifiers::NONE));
                         response.mark_changed();
                         expecting = false;
-                    } else if B::ACCEPT_KEYBOARD {
+                    } else if B::ACCEPT_KEYBOARD && self.accept_modifier_keys {
                         // No regular key or mouse event — check whether a
                         // modifier key was pressed on its own (Shift, Ctrl,
                         // or Alt).  Compare against the modifiers from the
