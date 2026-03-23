@@ -10,6 +10,8 @@ fn nestest() {
     emu.enable_trace();
     emu.load_rom(&String::from("./tests/nes-test-roms/nestest_headless.nes"));
     emu.power();
+
+    // Stops after reaching terminating hlt instruction
     emu.run_until(1_000_000_000, RunOptions::default())
         .expect("Error running test");
 
