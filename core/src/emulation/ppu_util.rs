@@ -16,6 +16,8 @@ pub const TILE_COUNT: usize = 512;
 pub const PALETTE_COUNT: usize = 8;
 /// PPU address at which palette RAM begins (`$3F00`).
 pub const PALETTE_RAM_START_ADDRESS: u16 = 0x3F00;
+/// PPU address at which palette RAM ends (`$3FFF`).
+pub const PALETTE_RAM_END_ADDRESS: u16 = 0x3FFF;
 /// Size of a single tile in pixels (8×8).
 pub const TILE_SIZE: usize = 8;
 

@@ -10,11 +10,11 @@ use crate::emulation::nes::ExecutionFinished;
 // Re-import public constants/types from ppu_util so internal code can use them
 // with short names.
 pub use crate::emulation::ppu_util::{
-    EmulatorFetchable, NAMETABLE_COLS, NAMETABLE_COUNT, NAMETABLE_ROWS, NametableData,
-    PALETTE_RAM_START_ADDRESS, PaletteData, TILE_SIZE, TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH,
-    TileData,
+    EmulatorFetchable, NametableData, PaletteData,
+    SoamData, Sprite, SpriteData, SpriteMode,
+    TileData, NAMETABLE_COLS, NAMETABLE_COUNT, NAMETABLE_ROWS, PALETTE_RAM_END_ADDRESS, PALETTE_RAM_START_ADDRESS,
+    SPRITE_COUNT, TILE_SIZE, TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH,
 };
-use crate::emulation::ppu_util::{SPRITE_COUNT, SoamData, Sprite, SpriteData, SpriteMode};
 use crate::emulation::rom::RomFile;
 use crate::emulation::savestate::PpuState;
 
@@ -26,7 +26,6 @@ pub const SPRITE_RENDER_BIT: u8 = 0x10;
 pub const VRAM_ADDR_COARSE_X_SCROLL_MASK: u16 = 0x1F;
 pub const VRAM_ADDR_COARSE_Y_SCROLL_MASK: u16 = 0x3E0;
 pub const VRAM_ADDR_FINE_Y_SCROLL_MASK: u16 = 0x7000;
-pub const PALETTE_RAM_END_ADDRESS: u16 = 0x3FFF;
 pub const PALETTE_RAM_SIZE: u16 = 0x20;
 pub const VRAM_SIZE: usize = 0x800;
 pub const DOTS_PER_SCANLINE: u16 = 340;
@@ -920,7 +919,7 @@ impl Ppu {
 
     pub fn mem_read_debug(&self, addr: u16) -> u8 {
         match addr {
-            PALETTE_RAM_START_ADDRESS..PALETTE_RAM_END_ADDRESS => self
+            PALETTE_RAM_START_ADDRESS..=PALETTE_RAM_END_ADDRESS => self
                 .palette_ram
                 .mem_read_debug(addr - PALETTE_RAM_START_ADDRESS),
             _ => self.memory.mem_read_debug(addr),
@@ -930,7 +929,7 @@ impl Ppu {
     #[inline]
     pub fn mem_read(&mut self, addr: u16) -> u8 {
         match addr {
-            PALETTE_RAM_START_ADDRESS..PALETTE_RAM_END_ADDRESS => {
+            PALETTE_RAM_START_ADDRESS..=PALETTE_RAM_END_ADDRESS => {
                 self.palette_ram.mem_read(addr - PALETTE_RAM_START_ADDRESS)
             }
             _ => self.memory.mem_read(addr),
@@ -940,7 +939,7 @@ impl Ppu {
     #[inline]
     pub fn mem_write(&mut self, addr: u16, data: u8) {
         match addr {
-            PALETTE_RAM_START_ADDRESS..PALETTE_RAM_END_ADDRESS => self
+            PALETTE_RAM_START_ADDRESS..=PALETTE_RAM_END_ADDRESS => self
                 .palette_ram
                 .mem_write(addr - PALETTE_RAM_START_ADDRESS, data),
             _ => self.memory.mem_write(addr, data),
@@ -950,7 +949,7 @@ impl Ppu {
     #[inline]
     pub fn mem_init(&mut self, addr: u16, data: u8) {
         match addr {
-            PALETTE_RAM_START_ADDRESS..PALETTE_RAM_END_ADDRESS => self
+            PALETTE_RAM_START_ADDRESS..=PALETTE_RAM_END_ADDRESS => self
                 .palette_ram
                 .init(addr - PALETTE_RAM_START_ADDRESS, data),
             _ => self.memory.init(addr, data),
