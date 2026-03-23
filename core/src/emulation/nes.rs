@@ -508,7 +508,9 @@ impl Nes {
     /// Returns `true` if the CPU has executed a halt (KIL) instruction.
     pub fn is_halted(&self) -> bool { self.cpu.is_halted }
 
-    /// Returns the last memory access (address, was_read), or `None` if no access occurred.
+    /// Returns the last memory access `(address, was_read, value)`, where `value` is the byte
+    /// that was read (if `was_read` is `true`) or written (if `was_read` is `false`), or `None`
+    /// if no access has occurred yet.
     pub fn last_memory_access(&self) -> Option<(u16, bool, u8)> { self.cpu.last_memory_access }
 
     // --- PPU debug accessors ---
