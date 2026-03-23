@@ -224,39 +224,19 @@ impl Binding {
 
                 match mk {
                     ModifierKey::Shift => {
-                        mods.shift
-                            && !mods.ctrl
-                            && !mods.alt
-                            && !mods.command
-                            && !mods.mac_cmd
+                        mods.shift && !mods.ctrl && !mods.alt && !mods.command && !mods.mac_cmd
                     }
                     ModifierKey::Ctrl => {
-                        mods.ctrl
-                            && !mods.shift
-                            && !mods.alt
-                            && !mods.command
-                            && !mods.mac_cmd
+                        mods.ctrl && !mods.shift && !mods.alt && !mods.command && !mods.mac_cmd
                     }
                     ModifierKey::Alt => {
-                        mods.alt
-                            && !mods.shift
-                            && !mods.ctrl
-                            && !mods.command
-                            && !mods.mac_cmd
+                        mods.alt && !mods.shift && !mods.ctrl && !mods.command && !mods.mac_cmd
                     }
                     ModifierKey::Command => {
-                        mods.command
-                            && !mods.shift
-                            && !mods.ctrl
-                            && !mods.alt
-                            && !mods.mac_cmd
+                        mods.command && !mods.shift && !mods.ctrl && !mods.alt && !mods.mac_cmd
                     }
                     ModifierKey::MacCmd => {
-                        mods.mac_cmd
-                            && !mods.shift
-                            && !mods.ctrl
-                            && !mods.alt
-                            && !mods.command
+                        mods.mac_cmd && !mods.shift && !mods.ctrl && !mods.alt && !mods.command
                     }
                 }
             }
