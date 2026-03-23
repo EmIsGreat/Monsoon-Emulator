@@ -480,7 +480,7 @@ impl Nes {
                 cpu_cycle_counter: self.cpu_cycle_counter,
                 total_cycles: self.total_cycles,
                 rom_file: self.rom_file.as_ref().unwrap().clone(),
-                version: 1,
+                version: CpuState::VERSION,
             };
 
             trace.trace(state)
