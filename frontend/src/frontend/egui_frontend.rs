@@ -646,7 +646,7 @@ impl eframe::App for EguiApp {
         #[cfg(not(target_arch = "wasm32"))]
         let persistent_config: PersistentConfig = (&self.config).into();
         // On native, block on the async save to ensure it completes before exit.
-        // On WASM, fire-and-forget since we can't block the browser thread.
+        // On WASM, call the async helper since we can't block the browser thread.
         #[cfg(not(target_arch = "wasm32"))]
         {
             let rt = tokio::runtime::Handle::current();
