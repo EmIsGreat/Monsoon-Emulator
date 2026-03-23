@@ -72,7 +72,7 @@ impl Display for ModifierKey {
 pub enum BindVariant {
     Mouse(PointerButton),
     Keyboard(Key),
-    /// A bare modifier key (Shift / Ctrl / Alt) used on its own.
+    /// A bare modifier key (e.g., Shift / Ctrl / Alt / Command / MacCmd) used on its own.
     ModifierKey(ModifierKey),
 }
 
