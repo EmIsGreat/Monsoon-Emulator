@@ -468,9 +468,6 @@ fn get_prev_modifiers(ui: &Ui, id: Id) -> Modifiers {
 
 /// Return the first modifier key that is active in `current` but was *not*
 /// active in `initial`.  Returns `None` if no new modifier was pressed.
-///
-/// When multiple modifiers are pressed simultaneously, priority is
-/// Shift → Ctrl → Alt (the first match wins).
 fn newly_pressed_modifier(initial: Modifiers, current: Modifiers) -> Option<ModifierKey> {
     if current.shift && !initial.shift {
         Some(ModifierKey::Shift)

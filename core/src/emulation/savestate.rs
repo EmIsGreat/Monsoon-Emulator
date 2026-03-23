@@ -27,6 +27,8 @@ pub const BINARY_FORMAT_VERSION: u8 = 0;
 /// Format version byte for JSON encoding.
 pub const JSON_FORMAT_VERSION: u8 = 1;
 
+pub const VERSION: u16 = 1;
+
 /// Snapshot of the CPU state at a specific point in time.
 ///
 /// All 6502 registers, internal RAM, PRG RAM, and micro-operation state

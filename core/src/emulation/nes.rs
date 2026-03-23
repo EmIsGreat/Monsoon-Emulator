@@ -5,12 +5,12 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use crate::emulation::cpu::{Cpu, MicroOp};
-use crate::emulation::mem::Memory;
 use crate::emulation::mem::mirror_memory::MirrorMemory;
 use crate::emulation::mem::ppu_registers::PpuRegisters;
+use crate::emulation::mem::Memory;
 use crate::emulation::ppu::{EmulatorFetchable, Ppu};
 use crate::emulation::rom::RomFile;
-use crate::emulation::savestate::{CpuState, PpuState, SaveState};
+use crate::emulation::savestate::{CpuState, PpuState, SaveState, VERSION};
 use crate::trace::TraceLog;
 
 /// Number of CPU cycles executed in a single NTSC frame (~29,780).
@@ -345,7 +345,7 @@ impl Nes {
             ppu: ppu_state,
             total_cycles: self.total_cycles,
             rom_file: rom.clone(),
-            version: 1,
+            version: VERSION,
             ppu_cycle_counter: self.ppu_cycle_counter,
             cpu_cycle_counter: self.cpu_cycle_counter,
         })
@@ -480,7 +480,7 @@ impl Nes {
                 cpu_cycle_counter: self.cpu_cycle_counter,
                 total_cycles: self.total_cycles,
                 rom_file: self.rom_file.as_ref().unwrap().clone(),
-                version: CpuState::VERSION,
+                version: VERSION,
             };
 
             trace.trace(state)
