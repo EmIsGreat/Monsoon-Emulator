@@ -324,11 +324,12 @@ where
             expecting = !expecting;
         }
 
-        // When we first enter expecting mode, store the current modifier
-        // state so we can detect *new* modifier presses later.
+        // When we first enter expecting mode, seed prev_mods with the current
+        // modifier state so that modifiers already held at click time are not
+        // immediately captured.
         if expecting && !was_expecting {
             let mods = ui.input(|i| i.modifiers);
-            set_initial_modifiers(ui, self.id, mods);
+            set_prev_modifiers(ui, self.id, mods);
         }
 
         if expecting {
@@ -377,13 +378,16 @@ where
                     } else if B::ACCEPT_KEYBOARD {
                         // No regular key or mouse event — check whether a
                         // modifier key was pressed on its own (Shift, Ctrl,
-                        // or Alt).  Compare against the modifiers that were
-                        // active when we entered expecting mode so that a
-                        // modifier held *before* clicking the widget is not
-                        // immediately captured.
-                        let initial_mods = get_initial_modifiers(ui, self.id);
+                        // or Alt).  Compare against the modifiers from the
+                        // *previous frame* so that releasing and re-pressing
+                        // a modifier that was held during the initial click
+                        // is correctly detected as a new press (up→down edge).
+                        let prev_mods = get_prev_modifiers(ui, self.id);
                         let current_mods = ui.input(|i| i.modifiers);
-                        if let Some(mk) = newly_pressed_modifier(initial_mods, current_mods) {
+                        // Always update prev_mods for the next frame so we
+                        // track releases and detect the next down edge.
+                        set_prev_modifiers(ui, self.id, current_mods);
+                        if let Some(mk) = newly_pressed_modifier(prev_mods, current_mods) {
                             self.binding
                                 .set(BindVariant::ModifierKey(mk), Modifiers::NONE);
                             response.mark_changed();
@@ -446,17 +450,18 @@ fn set_expecting(ui: &Ui, id: Id, new: bool) {
     });
 }
 
-/// Store the modifier state at the moment the Hotkey widget enters expecting
-/// mode so that we can distinguish newly-pressed modifiers from ones that
-/// were already held.
-fn set_initial_modifiers(ui: &Ui, id: Id, mods: Modifiers) {
-    let storage_id = Id::new("hotkey_initial_mods").with(ui.make_persistent_id(id));
+/// Store the modifier state from the previous frame while the Hotkey widget
+/// is in expecting mode.  Comparing the current modifiers against these lets
+/// us detect up→down edge transitions: a modifier that was held before
+/// clicking can be released and re-pressed and will still be captured.
+fn set_prev_modifiers(ui: &Ui, id: Id, mods: Modifiers) {
+    let storage_id = Id::new("hotkey_prev_mods").with(ui.make_persistent_id(id));
     ui.ctx()
         .memory_mut(|memory| memory.data.insert_temp(storage_id, mods));
 }
 
-fn get_initial_modifiers(ui: &Ui, id: Id) -> Modifiers {
-    let storage_id = Id::new("hotkey_initial_mods").with(ui.make_persistent_id(id));
+fn get_prev_modifiers(ui: &Ui, id: Id) -> Modifiers {
+    let storage_id = Id::new("hotkey_prev_mods").with(ui.make_persistent_id(id));
     ui.ctx()
         .memory_mut(|memory| memory.data.get_temp(storage_id).unwrap_or(Modifiers::NONE))
 }
