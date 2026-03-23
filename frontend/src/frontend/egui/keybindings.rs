@@ -206,11 +206,60 @@ impl Binding {
     /// Returns true if the variant is down and input modifiers are matching.
     pub fn down(&self, input_state: impl Deref<Target = InputState>) -> bool {
         match &self.variant {
-            // Modifier-only bindings check the modifier flag directly.
-            // We bypass `matches_logically` because it would reject
-            // e.g. a Ctrl-only binding (Ctrl sets `modifiers.ctrl`, and
-            // `matches_logically(NONE)` considers extra Ctrl an error).
-            BindVariant::ModifierKey(mk) => mk.is_down(&input_state),
+            // Modifier-only bindings check the modifier flag directly, but
+            // we also ensure that *no other* modifiers are active.
+            //
+            // We intentionally do not use `matches_logically` here, because
+            // it would treat the active modifier itself (e.g. `ctrl` for a
+            // Ctrl-only binding) as an "extra" modifier when
+            // `self.modifiers == Modifiers::NONE`.
+            BindVariant::ModifierKey(mk) => {
+                debug_assert!(
+                    self.modifiers == Modifiers::NONE,
+                    "ModifierKey bindings are expected to use Modifiers::NONE; got {:?}",
+                    self.modifiers,
+                );
+
+                let mods = input_state.modifiers;
+
+                match mk {
+                    ModifierKey::Shift => {
+                        mods.shift
+                            && !mods.ctrl
+                            && !mods.alt
+                            && !mods.command
+                            && !mods.mac_cmd
+                    }
+                    ModifierKey::Ctrl => {
+                        mods.ctrl
+                            && !mods.shift
+                            && !mods.alt
+                            && !mods.command
+                            && !mods.mac_cmd
+                    }
+                    ModifierKey::Alt => {
+                        mods.alt
+                            && !mods.shift
+                            && !mods.ctrl
+                            && !mods.command
+                            && !mods.mac_cmd
+                    }
+                    ModifierKey::Command => {
+                        mods.command
+                            && !mods.shift
+                            && !mods.ctrl
+                            && !mods.alt
+                            && !mods.mac_cmd
+                    }
+                    ModifierKey::MacCmd => {
+                        mods.mac_cmd
+                            && !mods.shift
+                            && !mods.ctrl
+                            && !mods.alt
+                            && !mods.command
+                    }
+                }
+            }
             _ => {
                 input_state.modifiers.matches_logically(self.modifiers)
                     && self.variant.down(input_state)
