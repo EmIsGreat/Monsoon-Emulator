@@ -13,7 +13,7 @@ use std::hash::Hash;
 use std::ops::Deref;
 
 use egui::{
-    Event, Id, InputState, Key, Modifiers, PointerButton, Response, Sense, Ui, Widget, vec2,
+    vec2, Event, Id, InputState, Key, Modifiers, PointerButton, Response, Sense, Ui, Widget,
 };
 use serde::{Deserialize, Serialize};
 
@@ -37,6 +37,8 @@ pub enum ModifierKey {
     Shift,
     Ctrl,
     Alt,
+    Command,
+    MacCmd,
 }
 
 impl ModifierKey {
@@ -46,16 +48,20 @@ impl ModifierKey {
             ModifierKey::Shift => input.modifiers.shift,
             ModifierKey::Ctrl => input.modifiers.ctrl,
             ModifierKey::Alt => input.modifiers.alt,
+            ModifierKey::Command => input.modifiers.command,
+            ModifierKey::MacCmd => input.modifiers.mac_cmd,
         }
     }
 }
 
-impl std::fmt::Display for ModifierKey {
+impl Display for ModifierKey {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
             ModifierKey::Shift => f.write_str("Shift"),
             ModifierKey::Ctrl => f.write_str("Ctrl"),
             ModifierKey::Alt => f.write_str("Alt"),
+            ModifierKey::Command => f.write_str("Command"),
+            ModifierKey::MacCmd => f.write_str("Command"),
         }
     }
 }
@@ -229,8 +235,8 @@ pub trait HotkeyBinding {
 }
 
 impl HotkeyBinding for Binding {
-    const ACCEPT_KEYBOARD: bool = true;
     const ACCEPT_MOUSE: bool = true;
+    const ACCEPT_KEYBOARD: bool = true;
 
     fn new(variant: BindVariant, modifiers: Modifiers) -> Self {
         Binding {
@@ -257,8 +263,8 @@ impl<B> HotkeyBinding for Option<B>
 where
     B: HotkeyBinding,
 {
-    const ACCEPT_KEYBOARD: bool = B::ACCEPT_KEYBOARD;
     const ACCEPT_MOUSE: bool = B::ACCEPT_MOUSE;
+    const ACCEPT_KEYBOARD: bool = B::ACCEPT_KEYBOARD;
 
     fn new(variant: BindVariant, modifiers: Modifiers) -> Self { Some(B::new(variant, modifiers)) }
 
@@ -497,7 +503,10 @@ impl Default for ControllerKeybindings {
             left: Some(Binding::key(Key::A)),
             right: Some(Binding::key(Key::D)),
             a: Some(Binding::key(Key::Space)),
-            b: Some(Binding::key(Key::Delete)),
+            b: Some(Binding::new(
+                BindVariant::ModifierKey(ModifierKey::Shift),
+                Modifiers::NONE,
+            )),
             start: Some(Binding::key(Key::Enter)),
             select: Some(Binding::key(Key::Tab)),
         }
