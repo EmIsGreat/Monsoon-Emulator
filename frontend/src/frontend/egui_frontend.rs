@@ -552,10 +552,23 @@ impl EguiApp {
 
         self.was_focused = is_focused;
     }
+
+    #[cfg(target_arch = "wasm32")]
+    fn persist_config_async(&self) {
+        let persistent_config: PersistentConfig = (&self.config).into();
+        util::spawn_async(async move {
+            if let Err(e) = crate::frontend::persistence::save_config(&persistent_config).await {
+                eprintln!("Failed to save configuration: {}", e);
+            }
+        });
+    }
 }
 
 impl eframe::App for EguiApp {
     fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
+        #[cfg(target_arch = "wasm32")]
+        let previous_keybindings = self.config.keybindings.clone();
+
         // Handle keyboard input
         handle_keyboard_input(
             ctx,
@@ -611,6 +624,11 @@ impl eframe::App for EguiApp {
         // Render save browser dialog if open
         self.render_save_browser_impl(ctx);
 
+        #[cfg(target_arch = "wasm32")]
+        if self.config.keybindings != previous_keybindings {
+            self.persist_config_async();
+        }
+
         // Request continuous repaint for animation
         ctx.request_repaint();
     }
@@ -622,6 +640,7 @@ impl eframe::App for EguiApp {
 
     fn on_exit(&mut self, _gl: Option<&glow::Context>) {
         // Save configuration before exiting
+        #[cfg(not(target_arch = "wasm32"))]
         let persistent_config: PersistentConfig = (&self.config).into();
         // On native, block on the async save to ensure it completes before exit.
         // On WASM, fire-and-forget since we can't block the browser thread.
@@ -638,12 +657,7 @@ impl eframe::App for EguiApp {
         }
         #[cfg(target_arch = "wasm32")]
         {
-            util::spawn_async(async move {
-                if let Err(e) = crate::frontend::persistence::save_config(&persistent_config).await
-                {
-                    eprintln!("Failed to save configuration: {}", e);
-                }
-            });
+            self.persist_config_async();
         }
 
         let savestate = self.channel_emu.nes.save_state();
