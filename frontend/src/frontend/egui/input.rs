@@ -1,6 +1,5 @@
 use crossbeam_channel::Sender;
 use egui::{Context, FocusDirection};
-use web_time::Instant;
 
 use crate::frontend::egui::config::AppConfig;
 use crate::frontend::egui::keybindings::{BindVariant, Binding, hotkey_expecting_id};
@@ -39,7 +38,6 @@ pub fn handle_keyboard_input(
     ctx: &Context,
     async_sender: &Sender<AsyncFrontendMessage>,
     config: &mut AppConfig,
-    last_frame_request: &mut Instant,
 ) {
     // Check whether a Hotkey widget is currently waiting for the user to
     // press a key (set during the *previous* frame's widget rendering).
@@ -53,49 +51,7 @@ pub fn handle_keyboard_input(
     });
 
     ctx.input_mut(|i| {
-        // Debug controls
-        if is_binding_pressed(i, &config.keybindings.debug.cycle_palette) {
-            config.view_config.debug_active_palette += 1;
-            config.view_config.debug_active_palette &= 7;
-        }
 
-        // Emulation controls
-        if is_binding_pressed(i, &config.keybindings.emulation.pause) {
-            config.speed_config.is_paused = !config.speed_config.is_paused;
-            *last_frame_request = Instant::now();
-        }
-
-        if is_binding_pressed(i, &config.keybindings.emulation.step_frame) {
-            let _ = async_sender.send(AsyncFrontendMessage::StepFrame);
-        }
-
-        if is_binding_pressed(i, &config.keybindings.emulation.step_scanline) {
-            let _ = async_sender.send(AsyncFrontendMessage::StepScanline);
-        }
-
-        if is_binding_pressed(i, &config.keybindings.emulation.step_master_cycle) {
-            let _ = async_sender.send(AsyncFrontendMessage::StepMasterCycle);
-        }
-
-        if is_binding_pressed(i, &config.keybindings.emulation.step_cpu_cycle) {
-            let _ = async_sender.send(AsyncFrontendMessage::StepCpuCycle);
-        }
-
-        if is_binding_pressed(i, &config.keybindings.emulation.step_ppu_cycle) {
-            let _ = async_sender.send(AsyncFrontendMessage::StepPpuCycle);
-        }
-
-        if is_binding_pressed(i, &config.keybindings.emulation.reset) {
-            let _ = async_sender.send(AsyncFrontendMessage::Reset);
-        }
-
-        if is_binding_pressed(i, &config.keybindings.emulation.quicksave) {
-            let _ = async_sender.send(AsyncFrontendMessage::Quicksave);
-        }
-
-        if is_binding_pressed(i, &config.keybindings.emulation.quickload) {
-            let _ = async_sender.send(AsyncFrontendMessage::Quickload);
-        }
 
         // NES controller input
         handle_controller_input(i, async_sender, config);

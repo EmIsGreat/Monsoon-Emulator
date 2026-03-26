@@ -13,17 +13,18 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::{fs, thread};
 
-use crossbeam_channel::{Receiver, bounded};
+use crossbeam_channel::{bounded, Receiver};
 use directories::ProjectDirs;
+use egui::Modifiers;
 use monsoon_core::emulation::palette_util::RgbPalette;
 use monsoon_core::emulation::ppu_util::EmulatorFetchable;
-use monsoon_core::emulation::screen_renderer::{NoneRenderer, ScreenRenderer, create_renderer};
+use monsoon_core::emulation::screen_renderer::{create_renderer, NoneRenderer, ScreenRenderer};
 use serde::{Deserialize, Serialize};
 
 use crate::frontend::egui::config::{
     AppConfig, AppSpeed, ConsoleConfig, DebugSpeed, SpeedConfig, UserConfig, ViewConfig,
 };
-use crate::frontend::egui::keybindings::KeybindingsConfig;
+use crate::frontend::egui::keybindings::{BindVariant, Binding, KeybindingsConfig};
 use crate::frontend::egui_frontend::get_all_renderers;
 use crate::frontend::storage;
 use crate::frontend::storage::{Storage, StorageKey};
@@ -289,8 +290,7 @@ pub struct PersistentConfig {
     pub view_config: PersistentViewConfig,
     pub speed_config: PersistentSpeedConfig,
     pub console_config: PersistentConsoleConfig,
-    #[serde(default)]
-    pub keybindings: KeybindingsConfig,
+    pub keybindings: PersistentKeybindConfig,
 }
 
 impl From<&AppConfig> for PersistentConfig {
@@ -300,7 +300,7 @@ impl From<&AppConfig> for PersistentConfig {
             view_config: (&value.view_config).into(),
             speed_config: (&value.speed_config).into(),
             console_config: (&value.console_config).into(),
-            keybindings: value.keybindings.clone(),
+            keybindings: (&value.keybindings).into(),
         }
     }
 }
@@ -313,7 +313,7 @@ impl From<&PersistentConfig> for AppConfig {
             user_config: (&value.user_config).into(),
             console_config: (&value.console_config).into(),
             pending_dialogs: Default::default(),
-            keybindings: value.keybindings.clone(),
+            keybindings: (&value.keybindings).into(),
         }
     }
 }
@@ -595,6 +595,76 @@ impl From<&PersistentConsoleConfig> for ConsoleConfig {
     fn from(config: &PersistentConsoleConfig) -> Self {
         Self {
             is_powered: config.is_powered,
+        }
+    }
+}
+
+impl From<&KeybindingsConfig> for PersistentKeybindConfig {
+    fn from(value: &KeybindingsConfig) -> Self {
+
+    }
+}
+
+impl From<&PersistentKeybindConfig> for KeybindingsConfig {
+
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct PersistentKeybindConfig {
+    pub controller: PersistentControllerKeybindings,
+    pub emulation: PersistentEmulationKeybindings,
+    pub debug: PersistentDebugKeybindings,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct PersistentControllerKeybindings {
+    pub up: Option<PersistentBinding>,
+    pub down: Option<PersistentBinding>,
+    pub left: Option<PersistentBinding>,
+    pub right: Option<PersistentBinding>,
+    pub a: Option<PersistentBinding>,
+    pub b: Option<PersistentBinding>,
+    pub start: Option<PersistentBinding>,
+    pub select: Option<PersistentBinding>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct PersistentEmulationKeybindings {
+    pub pause: Option<PersistentBinding>,
+    pub step_frame: Option<PersistentBinding>,
+    pub step_scanline: Option<PersistentBinding>,
+    pub step_cpu_cycle: Option<PersistentBinding>,
+    pub step_ppu_cycle: Option<PersistentBinding>,
+    pub step_master_cycle: Option<PersistentBinding>,
+    pub reset: Option<PersistentBinding>,
+    pub quicksave: Option<PersistentBinding>,
+    pub quickload: Option<PersistentBinding>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct PersistentDebugKeybindings {
+    pub cycle_palette: Option<PersistentBinding>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PersistentBinding {
+    pub variant: BindVariant,
+    pub modifiers: Modifiers,
+    pub callback_Id: String,
+}
+
+impl From<&PersistentBinding> for Binding {
+    fn from(value: &PersistentBinding) -> Self {
+        todo!()
+    }
+}
+
+impl From<&Binding> for PersistentBinding {
+    fn from(value: &Binding) -> Self {
+        PersistentBinding {
+            variant: value.variant,
+            modifiers: value.modifiers,
+            callback_Id: value.callback
         }
     }
 }

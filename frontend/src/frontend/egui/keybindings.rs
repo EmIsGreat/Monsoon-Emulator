@@ -8,14 +8,21 @@
 //! This module includes a port of the egui_hotkey crate's functionality
 //! updated to work with egui 0.33.
 
-use std::fmt::{Display, Formatter, Result as FmtResult};
+use std::collections::HashMap;
+use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::hash::Hash;
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
+use std::sync::OnceLock;
+use std::time::Instant;
 
+use crossbeam_channel::Sender;
 use egui::{
-    Event, Id, InputState, Key, Modifiers, PointerButton, Response, Sense, Ui, Widget, vec2,
+    vec2, Event, Id, InputState, Key, Modifiers, PointerButton, Response, Sense, Ui, Widget,
 };
 use serde::{Deserialize, Serialize};
+
+use crate::frontend::egui::config::AppConfig;
+use crate::frontend::messages::AsyncFrontendMessage;
 
 /// Well-known egui data ID used to signal that a [`Hotkey`] widget is
 /// currently waiting for the user to press a key.  The input handler
@@ -133,11 +140,59 @@ impl Display for BindVariant {
     }
 }
 
+struct HotKeyCallback {
+    callback: Box<dyn FnMut(&mut AppConfig, &Sender<AsyncFrontendMessage>) + Sync + Send>,
+    name: String,
+}
+
+impl Deref for HotKeyCallback {
+    type Target = dyn FnMut(&mut AppConfig, &Sender<AsyncFrontendMessage>);
+
+    fn deref(&self) -> &Self::Target { &self.callback }
+}
+
+impl DerefMut for HotKeyCallback {
+    fn deref_mut(&mut self) -> &mut Self::Target { &mut self.callback }
+}
+
+static CALLBACK_LOOKUP: OnceLock<HashMap<&str, HotKeyCallback>> = OnceLock::new();
+
+pub fn register_callback(
+    callbacks: &mut HashMap<&str, HotKeyCallback>,
+    name: &'static str,
+    callback: impl FnMut(&mut AppConfig, &Sender<AsyncFrontendMessage>) + Send + Sync + 'static,
+) {
+    callbacks.insert(
+        name,
+        HotKeyCallback {
+            name: name.to_string(),
+            callback: Box::new(callback),
+        },
+    );
+}
+pub fn init_callbacks() {
+    let mut callbacks = HashMap::new();
+
+    register_callback(&mut callbacks, "change_debug_palette", |config, _| {
+        config.view_config.debug_active_palette += 1;
+        config.view_config.debug_active_palette &= 7;
+    });
+}
+
 /// Binding to a variant that also stores the [`Modifiers`].
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Binding {
     pub variant: BindVariant,
     pub modifiers: Modifiers,
+    pub callback: Option<HotKeyCallback>,
+}
+
+impl Debug for Binding {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        f.debug_struct("Binding")
+            .field("variant", &self.variant)
+            .field("modifiers", &self.modifiers)
+            .finish()
+    }
 }
 
 impl Default for Binding {
@@ -145,29 +200,36 @@ impl Default for Binding {
         Self {
             variant: BindVariant::Keyboard(Key::Space),
             modifiers: Modifiers::NONE,
+            callback: None,
         }
     }
 }
 
 impl Binding {
     /// Create a new binding with just a key.
-    pub const fn key(key: Key) -> Self {
+    pub const fn key(key: Key, callback: &str) -> Self {
         Self {
             variant: BindVariant::Keyboard(key),
             modifiers: Modifiers::NONE,
+            ,
         }
     }
 
     /// Create a new binding with a key and modifiers.
-    pub const fn with_modifiers(key: Key, modifiers: Modifiers) -> Self {
+    pub const fn with_modifiers(
+        key: Key,
+        modifiers: Modifiers,
+        callback: Option<HotKeyCallback>,
+    ) -> Self {
         Self {
             variant: BindVariant::Keyboard(key),
             modifiers,
+            callback,
         }
     }
 
     /// Format as a short string for display.
-    pub fn into_string(self) -> String {
+    pub fn get_string_rep(&self) -> String {
         let mut items = Vec::new();
         if self.modifiers.ctrl {
             items.push("Ctrl");
@@ -257,24 +319,27 @@ pub trait HotkeyBinding {
     const ACCEPT_KEYBOARD: bool;
     const ACCEPT_MOUSE: bool;
 
-    fn new(variant: BindVariant, modifiers: Modifiers) -> Self;
-    fn get(&self) -> Option<Binding>;
+    fn new(variant: BindVariant, modifiers: Modifiers, callback: Option<HotKeyCallback>) -> Self;
+    fn get(&self) -> Option<&Binding>;
     fn set(&mut self, variant: BindVariant, modifiers: Modifiers);
     fn clear(&mut self);
+    fn pressed(&self, input: &mut InputState) -> bool;
+    fn run_bound(&mut self, config: &mut AppConfig, sender: &Sender<AsyncFrontendMessage>);
 }
 
 impl HotkeyBinding for Binding {
     const ACCEPT_KEYBOARD: bool = true;
     const ACCEPT_MOUSE: bool = true;
 
-    fn new(variant: BindVariant, modifiers: Modifiers) -> Self {
+    fn new(variant: BindVariant, modifiers: Modifiers, callback: Option<HotKeyCallback>) -> Self {
         Binding {
             variant,
             modifiers,
+            callback,
         }
     }
 
-    fn get(&self) -> Option<Binding> { Some(*self) }
+    fn get(&self) -> Option<&Binding> { Some(self) }
 
     fn set(&mut self, variant: BindVariant, modifiers: Modifiers) {
         self.variant = variant;
@@ -286,6 +351,15 @@ impl HotkeyBinding for Binding {
             "Binding cannot be cleared directly. Use Option<Binding> wrapper type if clearing is needed, as Binding always requires a value."
         );
     }
+
+    fn pressed(&self, input: &mut InputState) -> bool { self.pressed(input) }
+
+    fn run_bound(&mut self, config: &mut AppConfig, sender: &Sender<AsyncFrontendMessage>) {
+        match &mut self.callback {
+            Some(c) => c(config, sender),
+            None => {}
+        }
+    }
 }
 
 impl<B> HotkeyBinding for Option<B>
@@ -295,19 +369,35 @@ where
     const ACCEPT_KEYBOARD: bool = B::ACCEPT_KEYBOARD;
     const ACCEPT_MOUSE: bool = B::ACCEPT_MOUSE;
 
-    fn new(variant: BindVariant, modifiers: Modifiers) -> Self { Some(B::new(variant, modifiers)) }
+    fn new(variant: BindVariant, modifiers: Modifiers, callback: Option<HotKeyCallback>) -> Self {
+        Some(B::new(variant, modifiers, callback))
+    }
 
-    fn get(&self) -> Option<Binding> { self.as_ref()?.get() }
+    fn get(&self) -> Option<&Binding> { self.as_ref()?.get() }
 
     fn set(&mut self, variant: BindVariant, modifiers: Modifiers) {
         if let Some(this) = self {
             this.set(variant, modifiers);
         } else {
-            *self = Self::new(variant, modifiers);
+            *self = Self::new(variant, modifiers, None);
         }
     }
 
     fn clear(&mut self) { *self = None; }
+
+    fn pressed(&self, input: &mut InputState) -> bool {
+        match self {
+            Some(b) => b.pressed(input),
+            None => false,
+        }
+    }
+
+    fn run_bound(&mut self, config: &mut AppConfig, sender: &Sender<AsyncFrontendMessage>) {
+        match self {
+            Some(b) => b.run_bound(config, sender),
+            None => {}
+        }
+    }
 }
 
 // ============================================================================
@@ -448,7 +538,7 @@ where
         } else if let Some(bind) = self.binding.get()
             && self.tooltip.unwrap_or(true)
         {
-            response = response.on_hover_text(bind.into_string());
+            response = response.on_hover_text(bind.get_string_rep());
         }
 
         if ui.is_rect_visible(rect) {
@@ -456,10 +546,10 @@ where
             ui.painter()
                 .rect_filled(rect, visuals.corner_radius, visuals.bg_fill);
 
-            let binding = self.binding.get();
-
-            let text = binding
-                .map(|hk| hk.into_string())
+            let text = self
+                .binding
+                .get()
+                .map(|hk| hk.get_string_rep())
                 .unwrap_or_else(|| "None".into());
 
             ui.painter().text(
@@ -538,7 +628,7 @@ fn newly_pressed_modifier(initial: Modifiers, current: Modifiers) -> Option<Modi
 // ============================================================================
 
 /// Keybindings for NES controller (Player 1)
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug)]
 pub struct ControllerKeybindings {
     pub up: Option<Binding>,
     pub down: Option<Binding>,
@@ -553,23 +643,24 @@ pub struct ControllerKeybindings {
 impl Default for ControllerKeybindings {
     fn default() -> Self {
         Self {
-            up: Some(Binding::key(Key::W)),
-            down: Some(Binding::key(Key::S)),
-            left: Some(Binding::key(Key::A)),
-            right: Some(Binding::key(Key::D)),
-            a: Some(Binding::key(Key::Space)),
+            up: Some(Binding::key(Key::W, None)),
+            down: Some(Binding::key(Key::S, None)),
+            left: Some(Binding::key(Key::A, None)),
+            right: Some(Binding::key(Key::D, None)),
+            a: Some(Binding::key(Key::Space, None)),
             b: Some(Binding::new(
                 BindVariant::ModifierKey(ModifierKey::Shift),
                 Modifiers::NONE,
+                None,
             )),
-            start: Some(Binding::key(Key::Enter)),
-            select: Some(Binding::key(Key::Tab)),
+            start: Some(Binding::key(Key::Enter, None)),
+            select: Some(Binding::key(Key::Tab, None)),
         }
     }
 }
 
 /// Keybindings for emulation controls
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug)]
 pub struct EmulationKeybindings {
     pub pause: Option<Binding>,
     pub step_frame: Option<Binding>,
@@ -585,21 +676,74 @@ pub struct EmulationKeybindings {
 impl Default for EmulationKeybindings {
     fn default() -> Self {
         Self {
-            pause: Some(Binding::key(Key::Comma)),
-            step_frame: Some(Binding::key(Key::Period)),
-            step_scanline: Some(Binding::with_modifiers(Key::Period, Modifiers::CTRL)),
-            step_master_cycle: Some(Binding::key(Key::Slash)),
-            step_cpu_cycle: Some(Binding::with_modifiers(Key::Slash, Modifiers::ALT)),
-            step_ppu_cycle: Some(Binding::with_modifiers(Key::Slash, Modifiers::SHIFT)),
-            reset: Some(Binding::key(Key::R)),
-            quicksave: Some(Binding::key(Key::F5)),
-            quickload: Some(Binding::key(Key::F8)),
+            pause: Some(Binding::key(
+                Key::Comma,
+                Some(HotKeyCallback {
+                    callback: Box::new(|config, sender| {
+                        config.speed_config.is_paused = !config.speed_config.is_paused;
+                        let _ =
+                            sender.send(AsyncFrontendMessage::SetLastFrameRequest(Instant::now()));
+                    }),
+                    name: "pause_emulator".to_string(),
+                }),
+            )),
+            step_frame: Some(Binding::key(
+                Key::Period,
+                Some(Box::new(|_, sender| {
+                    let _ = sender.send(AsyncFrontendMessage::StepFrame);
+                })),
+            )),
+            step_scanline: Some(Binding::with_modifiers(
+                Key::Period,
+                Modifiers::CTRL,
+                Some(Box::new(|_, sender| {
+                    let _ = sender.send(AsyncFrontendMessage::StepScanline);
+                })),
+            )),
+            step_master_cycle: Some(Binding::key(
+                Key::Slash,
+                Some(Box::new(|_, sender| {
+                    let _ = sender.send(AsyncFrontendMessage::StepMasterCycle);
+                })),
+            )),
+            step_cpu_cycle: Some(Binding::with_modifiers(
+                Key::Slash,
+                Modifiers::ALT,
+                Some(Box::new(|_, sender| {
+                    let _ = sender.send(AsyncFrontendMessage::StepCpuCycle);
+                })),
+            )),
+            step_ppu_cycle: Some(Binding::with_modifiers(
+                Key::Slash,
+                Modifiers::SHIFT,
+                Some(Box::new(|_, sender| {
+                    let _ = sender.send(AsyncFrontendMessage::StepPpuCycle);
+                })),
+            )),
+            reset: Some(Binding::key(
+                Key::R,
+                Some(Box::new(|_, sender| {
+                    let _ = sender.send(AsyncFrontendMessage::Reset);
+                })),
+            )),
+            quicksave: Some(Binding::key(
+                Key::F5,
+                Some(Box::new(|_, sender| {
+                    let _ = sender.send(AsyncFrontendMessage::Quicksave);
+                })),
+            )),
+            quickload: Some(Binding::key(
+                Key::F8,
+                Some(Box::new(|_, sender| {
+                    let _ = sender.send(AsyncFrontendMessage::Quickload);
+                })),
+            )),
         }
     }
 }
 
 /// Keybindings for debug controls
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug)]
 pub struct DebugKeybindings {
     pub cycle_palette: Option<Binding>,
 }
@@ -607,13 +751,22 @@ pub struct DebugKeybindings {
 impl Default for DebugKeybindings {
     fn default() -> Self {
         Self {
-            cycle_palette: Some(Binding::key(Key::N)),
+            cycle_palette: Some(Binding::key(
+                Key::N,
+                Some(HotKeyCallback {
+                    callback: |config, _| {
+                        config.view_config.debug_active_palette += 1;
+                        config.view_config.debug_active_palette &= 7;
+                    },
+                    name: "cycle_palette".to_string(),
+                }),
+            )),
         }
     }
 }
 
 /// All keybindings for the emulator
-#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+#[derive(Debug, Default)]
 pub struct KeybindingsConfig {
     pub controller: ControllerKeybindings,
     pub emulation: EmulationKeybindings,

@@ -1,3 +1,4 @@
+use std::time::Instant;
 use monsoon_core::emulation::palette_util::RgbPalette;
 use monsoon_core::emulation::savestate::SaveState;
 
@@ -126,6 +127,7 @@ pub enum AsyncFrontendMessage {
     StepMasterCycle,
     StepScanline,
     StepFrame,
+    SetLastFrameRequest(Instant)
 }
 
 /// Context for the multistep savestate loading process

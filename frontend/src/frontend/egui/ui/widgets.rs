@@ -4,6 +4,7 @@
 //! multiple UI components to reduce code duplication.
 
 use monsoon_core::emulation::palette_util::RgbColor;
+use crate::frontend::egui::keybindings::Binding;
 
 /// Draw a colored cell with hover highlighting using RgbColor.
 ///
@@ -45,6 +46,10 @@ pub fn color_cell_rgb(
     }
 
     response
+}
+
+pub fn hotkey_menu_button(ui: &mut egui::Ui, title: &str, binding: Option<Binding>) -> egui::Response {
+
 }
 
 /// Draw an image cell (texture) with hover highlighting.

@@ -224,6 +224,9 @@ impl EguiApp {
             AsyncFrontendMessage::StepFrame => {
                 let _ = self.to_emulator.send(FrontendMessage::StepFrame);
             }
+            AsyncFrontendMessage::SetLastFrameRequest(i) => {
+                self.emu_textures.last_frame_request = i;
+            }
         }
     }
 

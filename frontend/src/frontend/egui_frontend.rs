@@ -571,7 +571,6 @@ impl eframe::App for EguiApp {
             ctx,
             &self.async_sender,
             &mut self.config,
-            &mut self.emu_textures.last_frame_request,
         );
 
         if let Err(e) = self.channel_emu.process_messages() {
