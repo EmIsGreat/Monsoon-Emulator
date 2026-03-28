@@ -28,10 +28,27 @@ use crate::messages::ControllerEvent;
 /// The input handler checks this state so it can skip normal key handling while
 /// the keybinding UI is active.
 fn hotkey_active_id() -> Id { Id::new("hotkey_active_widget_id") }
+fn hotkey_just_set_this_frame_id() -> Id { Id::new("hotkey_just_set_this_frame") }
 
 /// Returns true if any hotkey widget is currently waiting for key input.
 pub(crate) fn hotkey_is_any_expecting(ctx: &egui::Context) -> bool {
     ctx.memory_mut(|memory| memory.data.get_temp::<Id>(hotkey_active_id()).is_some())
+}
+
+/// Returns whether a hotkey was captured this frame and clears the flag.
+pub(crate) fn hotkey_take_just_set_this_frame(ctx: &egui::Context) -> bool {
+    ctx.memory_mut(|memory| {
+        if memory
+            .data
+            .get_temp::<bool>(hotkey_just_set_this_frame_id())
+            .unwrap_or(false)
+        {
+            memory.data.remove::<bool>(hotkey_just_set_this_frame_id());
+            true
+        } else {
+            false
+        }
+    })
 }
 
 // ============================================================================
@@ -633,6 +650,11 @@ where
                         let (key, mods) =
                             normalize_captured_binding(key, mods.unwrap_or(Modifiers::NONE));
                         self.binding.set(key, mods, action);
+                        ui.ctx().memory_mut(|memory| {
+                            memory
+                                .data
+                                .insert_temp(hotkey_just_set_this_frame_id(), true);
+                        });
                         response.mark_changed();
                         expecting = false;
                         set_pending_modifier(ui, self.id, None);
@@ -654,6 +676,11 @@ where
                                     Modifiers::NONE,
                                     action,
                                 );
+                                ui.ctx().memory_mut(|memory| {
+                                    memory
+                                        .data
+                                        .insert_temp(hotkey_just_set_this_frame_id(), true);
+                                });
                                 response.mark_changed();
                                 expecting = false;
                                 set_pending_modifier(ui, self.id, None);

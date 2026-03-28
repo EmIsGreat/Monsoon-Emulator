@@ -3,7 +3,7 @@ use egui::{Context, FocusDirection};
 
 use crate::frontend::egui::config::{AppConfig, KeybindingsConfig};
 use crate::frontend::egui::keybindings::{
-    BindVariant, Binding, HotkeyBinding, hotkey_is_any_expecting,
+    BindVariant, Binding, HotkeyBinding, hotkey_is_any_expecting, hotkey_take_just_set_this_frame,
 };
 use crate::frontend::messages::AsyncFrontendMessage;
 
@@ -20,17 +20,20 @@ pub fn handle_keyboard_input(
     config: &mut AppConfig,
 ) {
     let hotkey_is_expecting = hotkey_is_any_expecting(ctx);
+    let hotkey_just_set_this_frame = hotkey_take_just_set_this_frame(ctx);
 
     ctx.input_mut(|i| {
-        for idx in 0..config.keybindings.keybindings.len() {
-            let is_active = {
-                let binding = &config.keybindings.keybindings[idx];
-                binding.active(i)
-            };
+        if !hotkey_is_expecting && !hotkey_just_set_this_frame {
+            for idx in 0..config.keybindings.keybindings.len() {
+                let is_active = {
+                    let binding = &config.keybindings.keybindings[idx];
+                    binding.active(i)
+                };
 
-            if is_active {
-                let action = config.keybindings.keybindings[idx].logical_bind;
-                action.get_callback_function()(config, async_sender);
+                if is_active {
+                    let action = config.keybindings.keybindings[idx].logical_bind;
+                    action.get_callback_function()(config, async_sender);
+                }
             }
         }
 
@@ -38,8 +41,8 @@ pub fn handle_keyboard_input(
         // widgets do not act on them (e.g. Space clicking a focused
         // button).  Skip this when the Hotkey rebinding widget is
         // waiting for a key press – it needs to see the raw events.
-        if !hotkey_is_expecting {
-            consume_bound_keys(i, &config.keybindings);
+        if !hotkey_is_expecting && !hotkey_just_set_this_frame {
+            consume_triggered_keys(i, &config.keybindings);
         }
     });
 
@@ -58,9 +61,11 @@ pub fn handle_keyboard_input(
 /// corresponding `Event::Key` entries from [`egui::InputState`] so that egui
 /// widgets rendered later in the frame do not also react to them (e.g. Space
 /// clicking a focused button, or Tab advancing widget focus).
-fn consume_bound_keys(input: &mut egui::InputState, keybindings: &KeybindingsConfig) {
+fn consume_triggered_keys(input: &mut egui::InputState, keybindings: &KeybindingsConfig) {
     for binding in &keybindings.keybindings {
-        consume_binding(input, &Some(*binding))
+        if binding.pressed(input) {
+            consume_binding(input, &Some(*binding))
+        }
     }
 }
 
