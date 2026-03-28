@@ -41,8 +41,9 @@ use crate::messages::{ControllerEvent, EmulatorMessage, FrontendMessage, SaveTyp
 /// emu.step_frame()?; // Run one frame
 /// ```
 /// A non-threaded emulator wrapper that communicates via channels
-/// This provides a clean interface for the frontend without threading complications.
-/// The emulator runs in the same thread but is decoupled via message passing.
+/// This provides a clean interface for the frontend without threading
+/// complications. The emulator runs in the same thread but is decoupled via
+/// message passing.
 pub struct ChannelEmulator {
     pub nes: Nes,
     to_frontend: Sender<EmulatorMessage>,
@@ -322,9 +323,10 @@ impl ChannelEmulator {
         }
     }
 
-    /// Check if debug data has changed since last check, and send the data if so.
-    /// This enables passive fetching of debug data - the frontend only rebuilds
-    /// textures when data actually changes, rather than on a regular interval.
+    /// Check if debug data has changed since last check, and send the data if
+    /// so. This enables passive fetching of debug data - the frontend only
+    /// rebuilds textures when data actually changes, rather than on a regular
+    /// interval.
     fn check_debug_data_changed(&mut self) {
         // Check palette data (32 bytes, cheap comparison)
         if let EmulatorFetchable::Palettes(Some(current_palette)) = self.nes.get_palettes_debug() {

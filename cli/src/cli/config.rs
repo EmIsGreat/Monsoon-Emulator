@@ -1,7 +1,8 @@
 //! Configuration file support for the NES emulator CLI.
 //!
 //! This module provides TOML configuration file parsing that can be merged
-//! with command-line arguments. CLI arguments take precedence over config file values.
+//! with command-line arguments. CLI arguments take precedence over config file
+//! values.
 
 use std::collections::HashMap;
 use std::fs;
@@ -126,7 +127,8 @@ pub struct VideoConfig {
     pub screenshot_on: Option<String>,
     pub video_path: Option<PathBuf>,
     pub video_format: Option<String>,
-    /// Video FPS: Can be a multiplier like "2x", "3x" or a fixed value like "60.0"
+    /// Video FPS: Can be a multiplier like "2x", "3x" or a fixed value like
+    /// "60.0"
     pub video_fps: Option<String>,
     /// Video export mode: "accurate" or "smooth"
     pub video_mode: Option<String>,
@@ -380,8 +382,8 @@ impl ConfigFile {
         if cli.output.output.is_none() {
             cli.output.output = self.output.path.clone();
         }
-        // Handle shorthand flags from config (precedence: json > toml > binary > format)
-        // This matches the CLI behavior in OutputArgs::effective_format()
+        // Handle shorthand flags from config (precedence: json > toml > binary >
+        // format) This matches the CLI behavior in OutputArgs::effective_format()
         if !cli.output.json && self.output.json.unwrap_or(false) {
             cli.output.json = true;
         }

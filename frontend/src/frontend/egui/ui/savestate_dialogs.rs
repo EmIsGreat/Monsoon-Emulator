@@ -5,8 +5,9 @@
 
 use crossbeam_channel::Sender;
 
-use crate::frontend::egui::config::{PendingDialogs, RomSelectionDialogState, UserConfig};
+use crate::frontend::egui::config::{PendingDialogs, UserConfig};
 use crate::frontend::messages::AsyncFrontendMessage;
+use crate::frontend::savestates::RomSelectionDialogState;
 use crate::frontend::util;
 
 /// Helper to create a centered modal window
@@ -80,7 +81,7 @@ fn render_rom_selection_dialog(
             util::spawn_rom_picker_for_savestate(
                 &sender,
                 context,
-                user_config.previous_rom_dir.as_ref(),
+                user_config.previous_rom_load_dir.as_ref(),
             );
         }
         dialogs.rom_selection_dialog = None;
@@ -138,7 +139,8 @@ fn render_matching_rom_dialog(
     }
 }
 
-/// Checksum mismatch dialog - shown when selected ROM doesn't match expected checksum
+/// Checksum mismatch dialog - shown when selected ROM doesn't match expected
+/// checksum
 fn render_checksum_mismatch_dialog(
     ctx: &egui::Context,
     dialogs: &mut PendingDialogs,

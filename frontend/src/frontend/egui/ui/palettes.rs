@@ -76,7 +76,7 @@ pub fn render_palettes(
             if ui.button("Load Palette").clicked() {
                 spawn_palette_picker(
                     async_sender,
-                    config.user_config.previous_palette_dir.as_ref(),
+                    config.user_config.previous_palette_load_dir.as_ref(),
                 );
             }
 

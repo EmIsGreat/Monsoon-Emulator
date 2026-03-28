@@ -1,25 +1,18 @@
 use crossbeam_channel::Sender;
 use egui::{Context, FocusDirection};
 
-use crate::frontend::egui::config::AppConfig;
-use crate::frontend::egui::keybindings::{BindVariant, Binding, hotkey_expecting_id};
+use crate::frontend::egui::config::{AppConfig, KeybindingsConfig};
+use crate::frontend::egui::keybindings::{
+    BindVariant, Binding, HotkeyBinding, hotkey_expecting_id,
+};
 use crate::frontend::messages::AsyncFrontendMessage;
-use crate::messages::ControllerEvent;
-
-/// Check if a keybind is pressed in the given input state.
-fn is_binding_pressed(input: &egui::InputState, binding: &Option<Binding>) -> bool {
-    match binding {
-        Some(b) => b.pressed(input),
-        None => false,
-    }
-}
 
 /// Check if a keybind is currently held down.
 ///
-/// Unlike [`is_binding_pressed`], this returns true every frame the key is held,
-/// supports multiple simultaneous keys, and has no OS text-input repeat delay.
-/// This is appropriate for controller inputs where immediate, continuous response
-/// is needed.
+/// Unlike [`is_binding_pressed`], this returns true every frame the key is
+/// held, supports multiple simultaneous keys, and has no OS text-input repeat
+/// delay. This is appropriate for controller inputs where immediate, continuous
+/// response is needed.
 fn is_binding_down(input: &egui::InputState, binding: &Option<Binding>) -> bool {
     match binding {
         Some(b) => b.down(input),
@@ -50,11 +43,14 @@ pub fn handle_keyboard_input(
         val
     });
 
+    let bindings = config.keybindings.keybindings.clone();
+
     ctx.input_mut(|i| {
-
-
-        // NES controller input
-        handle_controller_input(i, async_sender, config);
+        for mut binding in bindings {
+            if binding.active(&i) {
+                binding.run_bound(config, async_sender)
+            }
+        }
 
         // Consume key events for all active keybindings so that egui
         // widgets do not act on them (e.g. Space clicking a focused
@@ -74,81 +70,16 @@ pub fn handle_keyboard_input(
     }
 }
 
-/// Handle NES controller input mapping from keyboard
-fn handle_controller_input(
-    input: &egui::InputState,
-    async_sender: &Sender<AsyncFrontendMessage>,
-    config: &AppConfig,
-) {
-    // D-pad — use is_binding_down for immediate, continuous input without
-    // OS text-input repeat delay, and to allow multiple simultaneous keys.
-    if is_binding_down(input, &config.keybindings.controller.left) {
-        let _ = async_sender.send(AsyncFrontendMessage::ControllerInput(ControllerEvent::Left));
-    }
-    if is_binding_down(input, &config.keybindings.controller.right) {
-        let _ = async_sender.send(AsyncFrontendMessage::ControllerInput(
-            ControllerEvent::Right,
-        ));
-    }
-    if is_binding_down(input, &config.keybindings.controller.up) {
-        let _ = async_sender.send(AsyncFrontendMessage::ControllerInput(ControllerEvent::Up));
-    }
-    if is_binding_down(input, &config.keybindings.controller.down) {
-        let _ = async_sender.send(AsyncFrontendMessage::ControllerInput(ControllerEvent::Down));
-    }
-
-    // Buttons
-    if is_binding_down(input, &config.keybindings.controller.start) {
-        let _ = async_sender.send(AsyncFrontendMessage::ControllerInput(
-            ControllerEvent::Start,
-        ));
-    }
-    if is_binding_down(input, &config.keybindings.controller.select) {
-        let _ = async_sender.send(AsyncFrontendMessage::ControllerInput(
-            ControllerEvent::Select,
-        ));
-    }
-    if is_binding_down(input, &config.keybindings.controller.a) {
-        let _ = async_sender.send(AsyncFrontendMessage::ControllerInput(ControllerEvent::A));
-    }
-    if is_binding_down(input, &config.keybindings.controller.b) {
-        let _ = async_sender.send(AsyncFrontendMessage::ControllerInput(ControllerEvent::B));
-    }
-}
-
 /// Consume key-press events for every active keybinding.
 ///
 /// After the emulator's input handler has read the key state, we remove the
 /// corresponding `Event::Key` entries from [`egui::InputState`] so that egui
 /// widgets rendered later in the frame do not also react to them (e.g. Space
 /// clicking a focused button, or Tab advancing widget focus).
-fn consume_bound_keys(
-    input: &mut egui::InputState,
-    keybindings: &crate::frontend::egui::keybindings::KeybindingsConfig,
-) {
-    // Controller
-    consume_binding(input, &keybindings.controller.up);
-    consume_binding(input, &keybindings.controller.down);
-    consume_binding(input, &keybindings.controller.left);
-    consume_binding(input, &keybindings.controller.right);
-    consume_binding(input, &keybindings.controller.a);
-    consume_binding(input, &keybindings.controller.b);
-    consume_binding(input, &keybindings.controller.start);
-    consume_binding(input, &keybindings.controller.select);
-
-    // Emulation
-    consume_binding(input, &keybindings.emulation.pause);
-    consume_binding(input, &keybindings.emulation.step_frame);
-    consume_binding(input, &keybindings.emulation.step_scanline);
-    consume_binding(input, &keybindings.emulation.step_master_cycle);
-    consume_binding(input, &keybindings.emulation.step_cpu_cycle);
-    consume_binding(input, &keybindings.emulation.step_ppu_cycle);
-    consume_binding(input, &keybindings.emulation.reset);
-    consume_binding(input, &keybindings.emulation.quicksave);
-    consume_binding(input, &keybindings.emulation.quickload);
-
-    // Debug
-    consume_binding(input, &keybindings.debug.cycle_palette);
+fn consume_bound_keys(input: &mut egui::InputState, keybindings: &KeybindingsConfig) {
+    for binding in &keybindings.keybindings {
+        consume_binding(input, &Some(*binding))
+    }
 }
 
 /// Consume the key-press event for a single binding, if it is a keyboard

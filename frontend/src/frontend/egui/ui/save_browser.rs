@@ -6,8 +6,9 @@
 
 use crossbeam_channel::Sender;
 
-use crate::frontend::egui::config::{PendingDialogs, SaveEntryType};
+use crate::frontend::egui::config::PendingDialogs;
 use crate::frontend::messages::AsyncFrontendMessage;
+use crate::frontend::savestates::SaveEntryType;
 
 /// Render the save browser dialog if it's open
 pub fn render_save_browser(

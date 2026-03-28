@@ -6,7 +6,8 @@
 use crate::emulation::cpu::UPPER_BYTE;
 use crate::emulation::mem::{Memory, MemoryDevice};
 use crate::emulation::savestate::{BINARY_FORMAT_VERSION, JSON_FORMAT_VERSION, MAGIC, SaveState};
-/// Returns `true` if adding a signed `offset` to `base` crosses a 256-byte page boundary.
+/// Returns `true` if adding a signed `offset` to `base` crosses a 256-byte page
+/// boundary.
 ///
 /// This is used by the 6502 CPU for relative branch offset calculations.
 #[inline(always)]

@@ -22,7 +22,8 @@ pub const FRAME_DURATION: Duration = Duration::from_nanos(16_666_667);
 /// Number of master clock cycles per NTSC frame (357,366).
 ///
 /// The NES master clock runs at ~21.477 MHz. The CPU divides this by 12 and
-/// the PPU divides it by 4, so one master cycle is the finest timing granularity.
+/// the PPU divides it by 4, so one master cycle is the finest timing
+/// granularity.
 pub const MASTER_CYCLES_PER_FRAME: u32 = 357366;
 
 /// The top-level NES emulator.
@@ -36,9 +37,10 @@ pub const MASTER_CYCLES_PER_FRAME: u32 = 357366;
 /// 1. Create an instance with [`Nes::default()`] or [`Nes::new()`].
 /// 2. Load a ROM with [`load_rom()`](Nes::load_rom).
 /// 3. Power on with [`power()`](Nes::power).
-/// 4. Advance emulation with [`step_frame()`](Nes::step_frame), [`step()`](Nes::step),
-///    or [`run()`](Nes::run).
-/// 5. Read the rendered output with [`get_pixel_buffer()`](Nes::get_pixel_buffer).
+/// 4. Advance emulation with [`step_frame()`](Nes::step_frame),
+///    [`step()`](Nes::step), or [`run()`](Nes::run).
+/// 5. Read the rendered output with
+///    [`get_pixel_buffer()`](Nes::get_pixel_buffer).
 ///
 /// # Example
 ///
@@ -81,14 +83,17 @@ impl Nes {
     ///
     /// Each value encodes:
     /// - **Bits 0-5**: NES color index (0-63 from the system palette).
-    /// - **Bits 6-8**: Emphasis bits (R, G, B emphasis from the PPU mask register).
+    /// - **Bits 6-8**: Emphasis bits (R, G, B emphasis from the PPU mask
+    ///   register).
     ///
-    /// The buffer has dimensions [`TOTAL_OUTPUT_WIDTH`](crate::emulation::ppu::TOTAL_OUTPUT_WIDTH)
-    /// × [`TOTAL_OUTPUT_HEIGHT`](crate::emulation::ppu::TOTAL_OUTPUT_HEIGHT) (256 × 240) pixels,
-    /// stored in row-major order.
+    /// The buffer has dimensions
+    /// [`TOTAL_OUTPUT_WIDTH`](crate::emulation::ppu::TOTAL_OUTPUT_WIDTH)
+    /// × [`TOTAL_OUTPUT_HEIGHT`](crate::emulation::ppu::TOTAL_OUTPUT_HEIGHT)
+    /// (256 × 240) pixels, stored in row-major order.
     ///
     /// To convert these indices to RGB colors, use a
-    /// [`ScreenRenderer`](crate::emulation::screen_renderer::ScreenRenderer) implementation.
+    /// [`ScreenRenderer`](crate::emulation::screen_renderer::ScreenRenderer)
+    /// implementation.
     #[inline]
     pub fn get_pixel_buffer(&self) -> Vec<u16> { self.ppu.borrow().pixel_buffer.clone() }
 
@@ -124,11 +129,13 @@ impl Nes {
         self.ppu_cycle_counter = 0;
     }
 
-    /// Runs the emulator indefinitely until a halt instruction (`HLT`) is encountered.
+    /// Runs the emulator indefinitely until a halt instruction (`HLT`) is
+    /// encountered.
     ///
     /// # Returns
     ///
-    /// - `Ok(ExecutionFinishedType::ReachedHlt)` when the CPU executes a halt instruction.
+    /// - `Ok(ExecutionFinishedType::ReachedHlt)` when the CPU executes a halt
+    ///   instruction.
     ///
     /// # Panics
     ///
@@ -137,21 +144,22 @@ impl Nes {
         self.run_until(u128::MAX, RunOptions::default())
     }
 
-    /// Runs the emulator until a specific cycle count is reached, or until a frame
-    /// boundary if `stop_at_frame` is `true`.
+    /// Runs the emulator until a specific cycle count is reached, or until a
+    /// frame boundary if `stop_at_frame` is `true`.
     ///
     /// # Arguments
     ///
-    /// * `last_cycle` — The master clock cycle count at which to stop execution.
-    ///   Use `u128::MAX` to run without a cycle limit.
+    /// * `last_cycle` — The master clock cycle count at which to stop
+    ///   execution. Use `u128::MAX` to run without a cycle limit.
     /// * `stop_at_frame` — If `true`, execution also stops at the end of the
     ///   current video frame (after scanline 240).
     ///
     /// # Returns
     ///
-    /// - `Ok(ExecutionFinishedType::ReachedLastCycle)` when `last_cycle` is exceeded.
-    /// - `Ok(ExecutionFinishedType::FrameDone)` when a frame boundary is reached
-    ///   (only if `stop_at_frame` is `true`).
+    /// - `Ok(ExecutionFinishedType::ReachedLastCycle)` when `last_cycle` is
+    ///   exceeded.
+    /// - `Ok(ExecutionFinishedType::FrameDone)` when a frame boundary is
+    ///   reached (only if `stop_at_frame` is `true`).
     /// - `Ok(ExecutionFinishedType::ReachedHlt)` when the CPU halts.
     ///
     /// # Panics
@@ -202,12 +210,14 @@ impl Nes {
     /// Returns a debug snapshot of memory contents.
     ///
     /// Returns a vector containing two memory dumps:
-    /// - Index 0: CPU memory (the full 64 KB address space, or the requested range).
+    /// - Index 0: CPU memory (the full 64 KB address space, or the requested
+    ///   range).
     /// - Index 1: PPU memory (VRAM, or the requested range).
     ///
     /// # Arguments
     ///
-    /// * `range` — An optional address range to read. If `None`, dumps all mapped memory.
+    /// * `range` — An optional address range to read. If `None`, dumps all
+    ///   mapped memory.
     ///
     /// This is a side-effect-free read intended for debugger UIs.
     pub fn get_memory_debug(&self, range: Option<RangeInclusive<u16>>) -> Vec<Vec<u8>> {
@@ -232,8 +242,8 @@ impl Nes {
         )
     }
 
-    /// Runs the emulator until the next scanline completion (until the PPU completes
-    /// dot 340).
+    /// Runs the emulator until the next scanline completion (until the PPU
+    /// completes dot 340).
     #[inline]
     pub fn step_scanline(&mut self) -> Result<ExecutionFinished, String> {
         self.run_until(
@@ -245,7 +255,8 @@ impl Nes {
         )
     }
 
-    /// Runs the emulator for until the next cpu cycle completes (<=12 master cycles)
+    /// Runs the emulator for until the next cpu cycle completes (<=12 master
+    /// cycles)
     #[inline]
     pub fn step_cpu_cycle(&mut self) -> Result<ExecutionFinished, String> {
         self.run_until(
@@ -257,7 +268,8 @@ impl Nes {
         )
     }
 
-    /// Runs the emulator for until the next ppu cycle completes (<=4 master cycles)
+    /// Runs the emulator for until the next ppu cycle completes (<=4 master
+    /// cycles)
     #[inline]
     pub fn step_ppu_cycle(&mut self) -> Result<ExecutionFinished, String> {
         self.run_until(
@@ -300,8 +312,8 @@ impl Nes {
 
     /// Loads a ROM into the emulator.
     ///
-    /// The argument can be anything that converts to a [`RomFile`] by reference.
-    /// Common conversions include:
+    /// The argument can be anything that converts to a [`RomFile`] by
+    /// reference. Common conversions include:
     ///
     /// - `&RomFile` — a pre-parsed ROM file.
     /// - `&[u8]` — raw ROM bytes (name is set to `None`).
@@ -332,7 +344,8 @@ impl Nes {
     /// Captures the current emulator state as a [`SaveState`].
     ///
     /// Returns `None` if no ROM is currently loaded. The returned state can
-    /// be serialized with [`ToBytes::to_bytes()`](crate::util::ToBytes::to_bytes)
+    /// be serialized with
+    /// [`ToBytes::to_bytes()`](crate::util::ToBytes::to_bytes)
     /// and later restored with [`load_state()`](Nes::load_state).
     pub fn save_state(&self) -> Option<SaveState> {
         let ppu_state = {
@@ -353,12 +366,13 @@ impl Nes {
 
     /// Restores the emulator to a previously captured [`SaveState`].
     ///
-    /// If a ROM is currently loaded, its data is preserved (the save state's ROM
-    /// metadata is used only when no ROM is loaded). After loading, execution can
-    /// resume from the exact point where the state was saved.
+    /// If a ROM is currently loaded, its data is preserved (the save state's
+    /// ROM metadata is used only when no ROM is loaded). After loading,
+    /// execution can resume from the exact point where the state was saved.
     pub fn load_state(&mut self, state: SaveState) {
         // Use the already loaded ROM file if available (it has the actual ROM data),
-        // otherwise fall back to the savestate's ROM (which may have empty data due to Skip)
+        // otherwise fall back to the savestate's ROM (which may have empty data due to
+        // Skip)
         let rom_to_use = self.rom_file.as_ref().unwrap_or(&state.rom_file);
 
         self.ppu = Rc::new(RefCell::new(Ppu::from(&state.ppu, rom_to_use)));
@@ -508,9 +522,9 @@ impl Nes {
     /// Returns `true` if the CPU has executed a halt (KIL) instruction.
     pub fn is_halted(&self) -> bool { self.cpu.is_halted }
 
-    /// Returns the last memory access `(address, was_read, value)`, where `value` is the byte
-    /// that was read (if `was_read` is `true`) or written (if `was_read` is `false`), or `None`
-    /// if no access has occurred yet.
+    /// Returns the last memory access `(address, was_read, value)`, where
+    /// `value` is the byte that was read (if `was_read` is `true`) or written
+    /// (if `was_read` is `false`), or `None` if no access has occurred yet.
     pub fn last_memory_access(&self) -> Option<(u16, bool, u8)> { self.cpu.last_memory_access }
 
     // --- PPU debug accessors ---
@@ -518,7 +532,8 @@ impl Nes {
     /// Returns `true` if the current frame is an even frame.
     pub fn is_even_frame(&self) -> bool { self.ppu.borrow().even_frame }
 
-    /// Returns `true` if the PPU is currently rendering (background or sprites enabled).
+    /// Returns `true` if the PPU is currently rendering (background or sprites
+    /// enabled).
     pub fn is_rendering(&self) -> bool { self.ppu.borrow().is_rendering() }
 
     /// Returns debug palette data from the PPU.
@@ -543,23 +558,28 @@ impl Nes {
 
     // --- Memory write methods ---
 
-    /// Writes a value to CPU memory at the given address (for initialization/debugging).
+    /// Writes a value to CPU memory at the given address (for
+    /// initialization/debugging).
     pub fn cpu_mem_write(&mut self, addr: u16, value: u8) {
         self.cpu.memory.mem_write(addr, value);
     }
 
-    /// Initializes CPU memory at the given address (for initialization/debugging).
+    /// Initializes CPU memory at the given address (for
+    /// initialization/debugging).
     pub fn cpu_mem_init(&mut self, addr: u16, data: u8) { self.cpu.memory.init(addr, data); }
 
-    /// Writes a value to PPU memory at the given address (for initialization/debugging).
+    /// Writes a value to PPU memory at the given address (for
+    /// initialization/debugging).
     pub fn ppu_mem_write(&self, addr: u16, value: u8) {
         self.ppu.borrow_mut().memory.mem_write(addr, value);
     }
 
-    /// Initializes PPU memory at the given address (for initialization/debugging).
+    /// Initializes PPU memory at the given address (for
+    /// initialization/debugging).
     pub fn ppu_mem_init(&self, addr: u16, data: u8) { self.ppu.borrow_mut().mem_init(addr, data); }
 
-    /// Writes a value to OAM (sprite memory) at the given address (for initialization/debugging).
+    /// Writes a value to OAM (sprite memory) at the given address (for
+    /// initialization/debugging).
     pub fn oam_write(&self, addr: u16, value: u8) {
         self.ppu.borrow_mut().oam.mem_write(addr, value);
     }

@@ -21,7 +21,8 @@ pub fn render_pattern_table(
         let available = ui.available_size();
         // Each pattern table is 128x128 pixels (16x16 tiles * 8 pixels each)
         // We show 2 side by side with spacing
-        // Fixed (non-scaling) UI elements: spacing between tables, label + palette selector
+        // Fixed (non-scaling) UI elements: spacing between tables, label + palette
+        // selector
         let fixed_width = ui.spacing().item_spacing.x * 3.0;
         let fixed_height = 40.0; // label and palette selector
         // Scale to fit: subtract fixed elements from available space before dividing
@@ -35,12 +36,12 @@ pub fn render_pattern_table(
             ui.label(format!("Pattern Tables (128x128x2 at {:.1}x scale)", scale));
             ui.separator();
             ui.label("Debug Palette:");
-            let palette_label = if config.view_config.debug_active_palette < 4 {
-                format!("BG Palette {}", config.view_config.debug_active_palette + 1)
+            let palette_label = if config.user_config.debug_active_palette < 4 {
+                format!("BG Palette {}", config.user_config.debug_active_palette + 1)
             } else {
                 format!(
                     "Sprite Palette {}",
-                    config.view_config.debug_active_palette - 3
+                    config.user_config.debug_active_palette - 3
                 )
             };
             egui::ComboBox::from_id_salt("debug_palette_selector")
@@ -52,12 +53,12 @@ pub fn render_pattern_table(
                         } else {
                             format!("Sprite Palette {}", i - 3)
                         };
-                        ui.selectable_value(&mut config.view_config.debug_active_palette, i, label);
+                        ui.selectable_value(&mut config.user_config.debug_active_palette, i, label);
                     }
                 });
         });
 
-        let selected_palette = palettes.colors[config.view_config.debug_active_palette];
+        let selected_palette = palettes.colors[config.user_config.debug_active_palette];
         let transformed_palette = selected_palette
             .map(|color_index| config.view_config.palette_rgb_data.colors[0][color_index as usize]);
 
@@ -65,7 +66,7 @@ pub fn render_pattern_table(
             draw_pattern_table(
                 ui,
                 table_size,
-                &tile_textures[config.view_config.debug_active_palette][..256],
+                &tile_textures[config.user_config.debug_active_palette][..256],
                 transformed_palette,
                 &pattern_data[..256],
                 async_sender,
@@ -76,7 +77,7 @@ pub fn render_pattern_table(
             draw_pattern_table(
                 ui,
                 table_size,
-                &tile_textures[config.view_config.debug_active_palette][256..],
+                &tile_textures[config.user_config.debug_active_palette][256..],
                 transformed_palette,
                 &pattern_data[256..],
                 async_sender,

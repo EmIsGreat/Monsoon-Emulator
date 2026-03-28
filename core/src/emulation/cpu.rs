@@ -1677,7 +1677,9 @@ pub enum MicroOp {
     Write(Target, Source, bool, MicroOpCallback),
     StackPush(Source, MicroOpCallback),
     StackPop(Target, MicroOpCallback),
-    /// When reading from AddressSource, assuming it was obtained by offsetting by Source, if an overflow occurred in its obtaining, increment hi to fix address latch
+    /// When reading from AddressSource, assuming it was obtained by offsetting
+    /// by Source, if an overflow occurred in its obtaining, increment hi to fix
+    /// address latch
     ReadPageCrossAware(AddressSource, Source, Target, bool, MicroOpCallback),
     DummyReadAddOffsetWriteToTarget(AddressSource, Source, Target, MicroOpCallback),
     DummyRead(MicroOpCallback),
@@ -1869,7 +1871,7 @@ impl Cpu {
         inst.memory
             .add_memory(0x4020..=0xFFFF, Memory::Ram(Ram::new(0xBFE0)));
 
-        //Test instance doesn't get reset, therefore we need to manually fix the stack
+        // Test instance doesn't get reset, therefore we need to manually fix the stack
         // pointer
         inst.stack_pointer = 0xFD;
         inst

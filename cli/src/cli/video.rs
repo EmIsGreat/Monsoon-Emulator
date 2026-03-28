@@ -82,7 +82,8 @@ impl VideoResolution {
                     Ok(VideoResolution::Custom(width, height))
                 } else {
                     Err(format!(
-                        "Unknown resolution: '{}'. Try: native, 2x, 3x, 4x, 720p, 1080p, 4k, or WxH",
+                        "Unknown resolution: '{}'. Try: native, 2x, 3x, 4x, 720p, 1080p, 4k, or \
+                         WxH",
                         s
                     ))
                 }
@@ -160,7 +161,8 @@ pub const SMOOTH_FPS: f64 = 60.0;
 /// the video export mode.
 #[derive(Debug, Clone)]
 pub struct FpsConfig {
-    /// Multiplier for frame capture (1 = normal, 2 = capture twice per frame, etc.)
+    /// Multiplier for frame capture (1 = normal, 2 = capture twice per frame,
+    /// etc.)
     pub multiplier: u32,
     /// The export mode (accurate or smooth)
     pub mode: VideoExportMode,
@@ -169,8 +171,10 @@ pub struct FpsConfig {
 impl FpsConfig {
     /// Parse an FPS string (e.g., "1x", "2x", "60", "120.0").
     ///
-    /// - Multipliers like "1x", "2x", "3x" specify how often to sample the framebuffer
-    /// - Fixed values like "60" or "120.0" are converted to the nearest multiplier
+    /// - Multipliers like "1x", "2x", "3x" specify how often to sample the
+    ///   framebuffer
+    /// - Fixed values like "60" or "120.0" are converted to the nearest
+    ///   multiplier
     pub fn parse(s: &str, mode: VideoExportMode) -> Result<Self, String> {
         let s = s.trim().to_lowercase();
 
@@ -226,8 +230,9 @@ impl FpsConfig {
 
     /// Get the output framerate as a rational string for FFmpeg.
     ///
-    /// For accurate mode, this returns the exact NES framerate fraction multiplied.
-    /// For smooth mode, this returns clean integer multiples of 60.
+    /// For accurate mode, this returns the exact NES framerate fraction
+    /// multiplied. For smooth mode, this returns clean integer multiples of
+    /// 60.
     pub fn output_fps_rational(&self) -> String {
         match self.mode {
             VideoExportMode::Accurate => {
@@ -291,7 +296,8 @@ impl std::fmt::Display for VideoError {
             VideoError::FfmpegNotFound => {
                 write!(
                     f,
-                    "FFmpeg not found. Please install FFmpeg for MP4 export, or use PNG/PPM format."
+                    "FFmpeg not found. Please install FFmpeg for MP4 export, or use PNG/PPM \
+                     format."
                 )
             }
             VideoError::FfmpegFailed(msg) => write!(f, "FFmpeg encoding failed: {}", msg),
@@ -618,7 +624,8 @@ impl FfmpegMp4Encoder {
 
         // Convert FPS to a precise fractional representation for FFmpeg.
         // This avoids frame timing drift caused by floating-point approximations.
-        // For the NES NTSC framerate (39375000/655171 ≈ 60.0988), we use the exact fraction.
+        // For the NES NTSC framerate (39375000/655171 ≈ 60.0988), we use the exact
+        // fraction.
         let fps_str = fps_to_rational(fps);
 
         // Build FFmpeg arguments
@@ -963,7 +970,8 @@ pub struct StreamingVideoEncoder {
 impl StreamingVideoEncoder {
     /// Create a new streaming encoder with explicit FPS configuration.
     ///
-    /// This is the preferred constructor when using the new FPS multiplier system.
+    /// This is the preferred constructor when using the new FPS multiplier
+    /// system.
     pub fn with_fps_config(
         format: VideoFormat,
         output_path: &Path,

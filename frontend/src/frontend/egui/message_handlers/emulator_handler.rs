@@ -51,7 +51,7 @@ impl EguiApp {
                 self.handle_savestate(s, t);
             }
             EmulatorMessage::RomLoaded(rom) => {
-                self.config.user_config.loaded_rom = rom;
+                self.config.console_config.loaded_rom = rom;
             }
         }
     }
@@ -77,7 +77,8 @@ impl EguiApp {
     }
 
     fn handle_palette_data(&mut self, ctx: &Context, new_palette_data: Option<Box<PaletteData>>) {
-        // Only rebuild textures if palette data actually changed and a tile viewer is visible
+        // Only rebuild textures if palette data actually changed and a tile viewer is
+        // visible
         if self.emu_textures.palette_data != new_palette_data {
             let changed_palettes = self.detect_changed_palettes(&new_palette_data);
             self.emu_textures.palette_data = new_palette_data;
@@ -144,7 +145,7 @@ impl EguiApp {
     }
 
     fn handle_quicksave(&self, savestate: Box<SaveState>) {
-        if let Some(rom) = &self.config.user_config.loaded_rom {
+        if let Some(rom) = &self.config.console_config.loaded_rom {
             let rom_hash = &rom.0.data_checksum;
             let prev_name = &self.config.user_config.previous_rom_name;
             if let Some(prev_name) = prev_name {

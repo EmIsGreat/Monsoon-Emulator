@@ -84,9 +84,11 @@ pub struct EguiApp {
     pub(crate) config: AppConfig,
     /// The tile tree for docking behavior
     tree: egui_tiles::Tree<Pane>,
-    /// Track if pattern tables was visible last frame to detect when it becomes visible
+    /// Track if pattern tables was visible last frame to detect when it becomes
+    /// visible
     pattern_tables_was_visible: bool,
-    /// Track if nametables was visible last frame to detect when it becomes visible
+    /// Track if nametables was visible last frame to detect when it becomes
+    /// visible
     nametables_was_visible: bool,
     /// Time of last periodic autosave
     last_autosave: Instant,
@@ -230,7 +232,7 @@ impl EguiApp {
         context: &SavestateLoadContext,
         rom: LoadedRom,
     ) {
-        if self.config.user_config.loaded_rom.is_some() {
+        if self.config.console_config.loaded_rom.is_some() {
             let _ = self
                 .to_emulator
                 .send(FrontendMessage::CreateSaveState(SaveType::Autosave));
@@ -251,12 +253,12 @@ impl EguiApp {
         // Update config names and directories
         self.config.user_config.previous_savestate_name = Some(context.savestate_name.clone());
         if let Some(ref dir) = context.savestate_dir {
-            self.config.user_config.previous_savestate_dir = Some(StorageKey::from(dir));
+            self.config.user_config.previous_savestate_load_dir = Some(StorageKey::from(dir));
         }
     }
 
     pub(crate) fn create_auto_save(&self, savestate: Box<SaveState>) {
-        if let Some(rom) = &self.config.user_config.loaded_rom {
+        if let Some(rom) = &self.config.console_config.loaded_rom {
             let rom_hash = &rom.0.data_checksum;
             let prev_name = &self.config.user_config.previous_rom_name;
             if let Some(prev_name) = prev_name {
@@ -277,8 +279,9 @@ impl EguiApp {
         }
     }
 
-    /// Remove the oldest autosaves if there are more than MAX_AUTOSAVES_PER_GAME.
-    /// Runs asynchronously in a background thread (native) or spawn_local (WASM).
+    /// Remove the oldest autosaves if there are more than
+    /// MAX_AUTOSAVES_PER_GAME. Runs asynchronously in a background thread
+    /// (native) or spawn_local (WASM).
     fn cleanup_old_autosaves_async(display_name: String) {
         util::spawn_async(async move {
             let prefix = storage::autosaves_prefix(&display_name);
@@ -372,7 +375,8 @@ impl EguiApp {
             || self.is_soam_viewer_visible()
     }
 
-    /// Check if pattern tables or nametables viewer just became visible and force rebuild if so
+    /// Check if pattern tables or nametables viewer just became visible and
+    /// force rebuild if so
     fn check_and_handle_viewer_visibility(&mut self, ctx: &Context) {
         let pattern_tables_visible = self.is_pattern_tables_visible();
         let nametables_visible = self.is_nametables_visible();
@@ -473,8 +477,8 @@ impl EguiApp {
     /// Request debug data from the emulator based on timing and visibility.
     ///
     /// Active fetches (like nametables) are requested on a regular interval.
-    /// Passive fetches (like tiles and palettes) are only requested once initially,
-    /// then re-requested when the emulator notifies of changes via
+    /// Passive fetches (like tiles and palettes) are only requested once
+    /// initially, then re-requested when the emulator notifies of changes via
     /// `PatternTableChanged` or `PaletteChanged` messages.
     fn request_debug_views(&mut self, now: Instant) {
         let debug_frame_budget = self.get_debug_viewers_frame_budget();
@@ -522,7 +526,7 @@ impl EguiApp {
     /// Check if a periodic autosave should be triggered based on elapsed time
     fn check_periodic_autosave(&mut self) {
         // Only autosave if a ROM is loaded and console is powered
-        if self.config.user_config.loaded_rom.is_some()
+        if self.config.console_config.loaded_rom.is_some()
             && self.config.console_config.is_powered
             && self.last_autosave.elapsed() >= AUTOSAVE_INTERVAL
         {
@@ -541,7 +545,7 @@ impl EguiApp {
         // This also resets the periodic timer since we just saved
         if self.was_focused
             && !is_focused
-            && self.config.user_config.loaded_rom.is_some()
+            && self.config.console_config.loaded_rom.is_some()
             && self.config.console_config.is_powered
         {
             // Update timestamp first to prevent overlapping save operations
@@ -567,11 +571,7 @@ impl EguiApp {
 impl eframe::App for EguiApp {
     fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
         // Handle keyboard input
-        handle_keyboard_input(
-            ctx,
-            &self.async_sender,
-            &mut self.config,
-        );
+        handle_keyboard_input(ctx, &self.async_sender, &mut self.config);
 
         if let Err(e) = self.channel_emu.process_messages() {
             eprintln!("Emulator error: {}", e);
@@ -584,7 +584,8 @@ impl eframe::App for EguiApp {
         // Process messages from emulator
         self.process_messages(ctx);
 
-        // Check if pattern tables viewer just became visible and force rebuild if needed
+        // Check if pattern tables viewer just became visible and force rebuild if
+        // needed
         self.check_and_handle_viewer_visibility(ctx);
 
         // Update required debug fetches based on visible panes

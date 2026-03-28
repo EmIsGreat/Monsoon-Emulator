@@ -61,8 +61,8 @@ impl EmuTextures {
     ///
     /// # Note
     /// Takes a mutable reference to the renderer because `buffer_to_image`
-    /// requires `&mut self` - renderers may use internal buffers to avoid reallocating
-    /// the output image on each frame.
+    /// requires `&mut self` - renderers may use internal buffers to avoid
+    /// reallocating the output image on each frame.
     pub fn update_emulator_texture(
         &mut self,
         ctx: &Context,
@@ -122,9 +122,10 @@ impl EmuTextures {
     }
 
     /// Update the pattern table textures
-    /// If `palette_index` is Some, only update textures for that specific palette
-    /// If `palette_index` is None, update all palette variations
-    /// If `tile_index` is Some, only update that specific tile (across all requested palettes)
+    /// If `palette_index` is Some, only update textures for that specific
+    /// palette If `palette_index` is None, update all palette variations
+    /// If `tile_index` is Some, only update that specific tile (across all
+    /// requested palettes)
     pub fn update_tile_textures(
         &mut self,
         ctx: &Context,
@@ -177,7 +178,8 @@ impl EmuTextures {
         }
     }
 
-    /// Force rebuild all tile textures - call when pattern tables viewer becomes visible
+    /// Force rebuild all tile textures - call when pattern tables viewer
+    /// becomes visible
     pub fn force_rebuild_all_tiles(&mut self, ctx: &Context, rgb_palette_map: &RgbPalette) {
         // Clear existing textures to force full rebuild
         self.tile_textures = None;

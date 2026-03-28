@@ -8,7 +8,8 @@ use std::path::PathBuf;
 use clap::{Args, Parser, ValueEnum, value_parser};
 use serde::Deserialize;
 
-/// NES Emulator CLI - A cycle-accurate NES emulator with comprehensive CLI support
+/// NES Emulator CLI - A cycle-accurate NES emulator with comprehensive CLI
+/// support
 #[derive(Parser, Debug, Clone, Default)]
 #[command(name = "nes_main")]
 #[command(version, about, long_about = None)]
@@ -195,19 +196,21 @@ pub struct VideoArgs {
     #[arg(long, default_value = "raw")]
     pub video_format: VideoFormat,
 
-    /// Video frame rate multiplier or fixed value (1x, 2x, 3x, or a number like 60.0).
-    /// Multipliers sample the framebuffer more frequently, inserting half-finished frames.
-    /// Default is 1x (native PPU output rate).
+    /// Video frame rate multiplier or fixed value (1x, 2x, 3x, or a number like
+    /// 60.0). Multipliers sample the framebuffer more frequently, inserting
+    /// half-finished frames. Default is 1x (native PPU output rate).
     #[arg(long, default_value = "1x")]
     pub video_fps: String,
 
     /// Video export mode: accurate or smooth.
     /// - accurate: Encode at exact NES framerate (60.0988 fps or its multiple)
-    /// - smooth: Encode at exactly 60 fps (or its multiple), accepting slight timing drift
+    /// - smooth: Encode at exactly 60 fps (or its multiple), accepting slight
+    ///   timing drift
     #[arg(long, default_value = "accurate")]
     pub video_mode: VideoExportMode,
 
-    /// Video output resolution (native, 2x, 3x, 4x, 720p, 1080p, 4k, or WIDTHxHEIGHT)
+    /// Video output resolution (native, 2x, 3x, 4x, 720p, 1080p, 4k, or
+    /// WIDTHxHEIGHT)
     #[arg(long, default_value = "native")]
     pub video_scale: Option<String>,
 
@@ -224,10 +227,12 @@ pub struct VideoArgs {
 /// Video export mode options
 #[derive(Debug, Clone, Copy, ValueEnum, Default, PartialEq, Eq)]
 pub enum VideoExportMode {
-    /// Accurate mode: encode at exact NES framerate (60.0988 fps or its multiple)
+    /// Accurate mode: encode at exact NES framerate (60.0988 fps or its
+    /// multiple)
     #[default]
     Accurate,
-    /// Smooth mode: encode at exactly 60 fps (or its multiple), accepting slight timing drift
+    /// Smooth mode: encode at exactly 60 fps (or its multiple), accepting
+    /// slight timing drift
     Smooth,
 }
 
@@ -276,9 +281,10 @@ pub struct ExecutionArgs {
     #[arg(long, value_parser = parse_hex_u16, action = clap::ArgAction::Append)]
     pub breakpoint: Vec<u16>,
 
-    /// Watch memory address for access (format: ADDR or ADDR:MODE where MODE is r/w/rw)
-    /// Stops execution when the CPU reads/writes the specified address.
-    /// Examples: 0x2002 (any access), 0x2002:r (reads only), 0x4016:w (writes only)
+    /// Watch memory address for access (format: ADDR or ADDR:MODE where MODE is
+    /// r/w/rw) Stops execution when the CPU reads/writes the specified
+    /// address. Examples: 0x2002 (any access), 0x2002:r (reads only), 0x4016:w
+    /// (writes only)
     #[arg(long, action = clap::ArgAction::Append)]
     pub watch_mem: Vec<String>,
 }

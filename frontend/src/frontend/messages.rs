@@ -1,7 +1,10 @@
 use std::time::Instant;
+
 use monsoon_core::emulation::palette_util::RgbPalette;
 use monsoon_core::emulation::savestate::SaveState;
+use serde::{Deserialize, Serialize};
 
+use crate::frontend::savestates::SaveEntry;
 use crate::frontend::storage::StorageKey;
 use crate::frontend::util::{FileType, SavestateLoadError};
 use crate::messages::ControllerEvent;
@@ -32,7 +35,7 @@ pub struct LoadedFile {
 
 /// Represents ROM data loaded from a file picker.
 /// Contains the raw bytes, the filename, and optionally the directory.
-#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct LoadedRom {
     /// Raw ROM data bytes
     pub data: Vec<u8>,
@@ -53,11 +56,13 @@ pub struct LoadedPalette {
 /// operations without directly sending FrontendMessages to the emulator.
 /// This consolidates all emulator communication logic in one place.
 pub enum AsyncFrontendMessage {
-    /// Palette file was loaded asynchronously - includes the parsed palette data and directory
+    /// Palette file was loaded asynchronously - includes the parsed palette
+    /// data and directory
     PaletteLoaded(LoadedPalette),
     /// User has selected a savestate file, now need to verify/select ROM
     SavestateLoaded(Box<SavestateLoadContext>),
-    /// Show dialog asking if user wants to load the found matching ROM (native only - we found a ROM in same dir)
+    /// Show dialog asking if user wants to load the found matching ROM (native
+    /// only - we found a ROM in same dir)
     ShowMatchingRomDialog(Box<SavestateLoadContext>, LoadedRom),
     /// User chose to use the matching ROM that was found
     UseMatchingRom(Box<SavestateLoadContext>, LoadedRom),
@@ -75,7 +80,8 @@ pub enum AsyncFrontendMessage {
     SavestateLoadFailed(SavestateLoadError),
     /// An error occurred while verifying the ROM
     RomVerificationFailed(Box<SavestateLoadContext>, SavestateLoadError),
-    /// File save completed (success or error message, with directory and file type for persistence)
+    /// File save completed (success or error message, with directory and file
+    /// type for persistence)
     FileSaveCompleted {
         error: Option<String>,
         directory: Option<StorageKey>,
@@ -88,7 +94,7 @@ pub enum AsyncFrontendMessage {
     /// Open the save browser dialog (triggers async listing of saves)
     OpenSaveBrowser,
     /// Save browser has finished loading entries
-    SaveBrowserLoaded(Vec<crate::frontend::egui::config::SaveEntry>),
+    SaveBrowserLoaded(Vec<SaveEntry>),
     /// Load a specific save from the browser by its storage key
     LoadSaveFromBrowser(StorageKey),
     /// Export a specific save from the browser to a file on disk
@@ -127,7 +133,7 @@ pub enum AsyncFrontendMessage {
     StepMasterCycle,
     StepScanline,
     StepFrame,
-    SetLastFrameRequest(Instant)
+    SetLastFrameRequest(Instant),
 }
 
 /// Context for the multistep savestate loading process

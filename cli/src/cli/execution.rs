@@ -100,7 +100,8 @@ pub enum StopCondition {
     },
     /// Stop on HLT instruction
     OnHalt,
-    /// Breakpoint at address (alias for PcEquals, kept for backward compatibility)
+    /// Breakpoint at address (alias for PcEquals, kept for backward
+    /// compatibility)
     Breakpoint(u16),
     /// Watch memory address for access
     MemoryWatch {
@@ -532,12 +533,13 @@ impl SavestateConfig {
 ///
 /// # Video Export Modes
 ///
-/// - **Buffered mode** (default): All frames are stored in memory, then encoded at the end.
-///   Suitable for small exports or when you need access to all frames.
+/// - **Buffered mode** (default): All frames are stored in memory, then encoded
+///   at the end. Suitable for small exports or when you need access to all
+///   frames.
 ///
 /// - **Streaming mode**: Frames are encoded immediately as they are generated.
-///   Use `run_with_video_encoder()` for this mode. Significantly reduces memory usage
-///   for long recordings.
+///   Use `run_with_video_encoder()` for this mode. Significantly reduces memory
+///   usage for long recordings.
 pub struct ExecutionEngine {
     /// The emulator instance
     pub emu: Nes,
@@ -719,13 +721,14 @@ impl ExecutionEngine {
 
     /// Run execution with streaming video export.
     ///
-    /// This mode writes frames directly to the video encoder as they are generated,
-    /// instead of buffering all frames in memory. This significantly reduces memory
-    /// usage for long recordings.
+    /// This mode writes frames directly to the video encoder as they are
+    /// generated, instead of buffering all frames in memory. This
+    /// significantly reduces memory usage for long recordings.
     ///
     /// # Arguments
     ///
-    /// * `encoder` - A streaming video encoder that will receive frames as they're generated
+    /// * `encoder` - A streaming video encoder that will receive frames as
+    ///   they're generated
     ///
     /// # Performance
     ///
@@ -740,7 +743,8 @@ impl ExecutionEngine {
     /// - 2x: Captures at mid-frame and end of frame (2 captures per PPU frame)
     /// - 3x: Captures at 1/3, 2/3, and end of frame (3 captures per PPU frame)
     ///
-    /// This produces true intermediate states showing partial rendering progress.
+    /// This produces true intermediate states showing partial rendering
+    /// progress.
     pub fn run_with_video_encoder(
         &mut self,
         encoder: &mut super::video::StreamingVideoEncoder,

@@ -12,7 +12,8 @@ const PALETTE_COLORS: usize = 64;
 const EMPHASIS_COMBINATIONS: usize = 8;
 /// Total size of the flat palette lookup table
 const FLAT_PALETTE_SIZE: usize = PALETTE_COLORS * EMPHASIS_COMBINATIONS;
-/// Bitmask for extracting the 9-bit palette index (6 color bits + 3 emphasis bits)
+/// Bitmask for extracting the 9-bit palette index (6 color bits + 3 emphasis
+/// bits)
 const PALETTE_INDEX_MASK: usize = FLAT_PALETTE_SIZE - 1;
 
 /// A flat palette structure optimized for lookup-table based rendering.

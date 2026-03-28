@@ -1,7 +1,8 @@
 //! Persistent configuration and file storage utilities.
 //!
 //! This module provides:
-//! - Directory management using the storage abstraction for cross-platform paths
+//! - Directory management using the storage abstraction for cross-platform
+//!   paths
 //! - Generic async file read/write operations to avoid blocking the UI thread
 //! - TOML-based configuration persistence for application settings
 //! - Helper functions for saving files to data and cache directories
@@ -13,17 +14,17 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::{fs, thread};
 
-use crossbeam_channel::{bounded, Receiver};
+use crossbeam_channel::{Receiver, bounded};
 use directories::ProjectDirs;
 use monsoon_core::emulation::palette_util::RgbPalette;
 use monsoon_core::emulation::ppu_util::EmulatorFetchable;
-use monsoon_core::emulation::screen_renderer::{create_renderer, NoneRenderer, ScreenRenderer};
+use monsoon_core::emulation::screen_renderer::{NoneRenderer, ScreenRenderer, create_renderer};
 use serde::{Deserialize, Serialize};
 
 use crate::frontend::egui::config::{
-    AppConfig, AppSpeed, ConsoleConfig, DebugSpeed, SpeedConfig, UserConfig, ViewConfig,
+    AppConfig, AppSpeed, ConsoleConfig, DebugSpeed, KeybindingsConfig, SpeedConfig, UserConfig,
+    ViewConfig,
 };
-use crate::frontend::egui::keybindings::KeybindingsConfig;
 use crate::frontend::egui_frontend::get_all_renderers;
 use crate::frontend::storage;
 use crate::frontend::storage::{Storage, StorageKey};
@@ -35,14 +36,15 @@ const APP_NAME: &str = "MonsoonEmulator";
 
 /// Singleton for project directories.
 ///
-/// This uses a `OnceLock` to lazily initialize the project directories on first access.
-/// The singleton pattern is used here because:
+/// This uses a `OnceLock` to lazily initialize the project directories on first
+/// access. The singleton pattern is used here because:
 /// 1. Directory paths are determined by the OS and don't change during runtime
 /// 2. Creating `ProjectDirs` multiple times is wasteful
 /// 3. All parts of the application need consistent paths for config/data/cache
 ///
-/// Note: The directories crate returns `Option<ProjectDirs>` because on some platforms
-/// (like Linux without a proper home directory) it may fail to determine paths.
+/// Note: The directories crate returns `Option<ProjectDirs>` because on some
+/// platforms (like Linux without a proper home directory) it may fail to
+/// determine paths.
 static PROJECT_DIRS: OnceLock<Option<ProjectDirs>> = OnceLock::new();
 
 /// Get the project directories (lazily initialized)
@@ -117,9 +119,9 @@ pub enum AsyncFileResult {
 /// when reading potentially large files. The result is returned through a
 /// crossbeam channel.
 ///
-/// Note: For frequent small file operations, consider batching requests or using
-/// the synchronous `read_file_sync` if blocking is acceptable. Thread spawning
-/// has overhead that may not be justified for very small files.
+/// Note: For frequent small file operations, consider batching requests or
+/// using the synchronous `read_file_sync` if blocking is acceptable. Thread
+/// spawning has overhead that may not be justified for very small files.
 ///
 /// # Usage
 /// ```ignore
@@ -147,8 +149,8 @@ pub fn read_file_async(path: PathBuf) -> Receiver<AsyncFileResult> {
 /// This spawns a new thread for each operation to avoid blocking the UI thread
 /// when writing files. The result is returned through a crossbeam channel.
 ///
-/// Note: For operations that must complete before proceeding (like saving config
-/// on exit), use the synchronous `save_config` function instead.
+/// Note: For operations that must complete before proceeding (like saving
+/// config on exit), use the synchronous `save_config` function instead.
 pub fn write_file_async(
     path: PathBuf,
     data: Vec<u8>,
@@ -299,7 +301,7 @@ impl From<&AppConfig> for PersistentConfig {
             view_config: (&value.view_config).into(),
             speed_config: (&value.speed_config).into(),
             console_config: (&value.console_config).into(),
-            keybindings: value.keybindings,
+            keybindings: value.keybindings.clone(),
         }
     }
 }
@@ -312,7 +314,7 @@ impl From<&PersistentConfig> for AppConfig {
             user_config: (&value.user_config).into(),
             console_config: (&value.console_config).into(),
             pending_dialogs: Default::default(),
-            keybindings: value.keybindings,
+            keybindings: value.keybindings.clone(),
         }
     }
 }
@@ -324,9 +326,9 @@ pub struct PersistentViewConfig {
     pub show_pattern_table: bool,
     pub show_nametable: bool,
     pub required_debug_fetches: HashSet<PersistentEmulatorFetchable>,
-    pub debug_active_palette: usize,
-    /// The serialized renderer state. When present, the renderer is restored from this.
-    /// When absent (e.g., first run), a default renderer is created.
+    /// The serialized renderer state. When present, the renderer is restored
+    /// from this. When absent (e.g., first run), a default renderer is
+    /// created.
     #[serde(default)]
     pub renderer: String,
 }
@@ -338,7 +340,6 @@ impl Default for PersistentViewConfig {
             show_pattern_table: false,
             show_nametable: false,
             required_debug_fetches: HashSet::new(),
-            debug_active_palette: 0,
             renderer: NoneRenderer::new().get_id().to_string(),
         }
     }
@@ -355,7 +356,6 @@ impl From<&ViewConfig> for PersistentViewConfig {
                 .iter()
                 .map(|f| f.into())
                 .collect(),
-            debug_active_palette: config.debug_active_palette,
             renderer: config.renderer.get_id().to_string(),
         }
     }
@@ -367,7 +367,6 @@ impl From<&PersistentViewConfig> for ViewConfig {
         let renderer = create_renderer(Some(config.renderer.as_str()), get_all_renderers());
 
         Self {
-            debug_active_palette: config.debug_active_palette,
             palette_rgb_data: RgbPalette::default(),
             show_nametable: config.show_nametable,
             show_palette: config.show_palette,
@@ -410,7 +409,8 @@ impl From<PersistentEmulatorFetchable> for EmulatorFetchable {
     }
 }
 
-/// Persistent user configuration - stores display names instead of paths for WASM compatibility
+/// Persistent user configuration - stores display names instead of paths for
+/// WASM compatibility
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct PersistentUserConfig {
     /// Last loaded palette filename (display only)
@@ -432,20 +432,22 @@ pub struct PersistentUserConfig {
     #[serde(default)]
     pub previous_savestate_save_dir: Option<StorageKey>,
     pub pattern_edit_color: u8,
+    pub debug_active_palette: usize,
 }
 
 impl From<&UserConfig> for PersistentUserConfig {
     fn from(config: &UserConfig) -> Self {
         Self {
             previous_palette_name: config.previous_palette_name.clone(),
-            previous_palette_dir: config.previous_palette_dir.clone(),
+            previous_palette_dir: config.previous_palette_load_dir.clone(),
             previous_rom_name: config.previous_rom_name.clone(),
-            previous_rom_dir: config.previous_rom_dir.clone(),
+            previous_rom_dir: config.previous_rom_load_dir.clone(),
             previous_savestate_name: config.previous_savestate_name.clone(),
-            previous_savestate_dir: config.previous_savestate_dir.clone(),
+            previous_savestate_dir: config.previous_savestate_load_dir.clone(),
             previous_palette_save_dir: config.previous_palette_save_dir.clone(),
             previous_savestate_save_dir: config.previous_savestate_save_dir.clone(),
             pattern_edit_color: config.pattern_edit_color,
+            debug_active_palette: config.debug_active_palette,
         }
     }
 }
@@ -454,15 +456,15 @@ impl From<&PersistentUserConfig> for UserConfig {
     fn from(config: &PersistentUserConfig) -> Self {
         Self {
             previous_palette_name: config.previous_palette_name.clone(),
-            previous_palette_dir: config.previous_palette_dir.clone(),
+            previous_palette_load_dir: config.previous_palette_dir.clone(),
             previous_rom_name: config.previous_rom_name.clone(),
-            previous_rom_dir: config.previous_rom_dir.clone(),
+            previous_rom_load_dir: config.previous_rom_dir.clone(),
             previous_savestate_name: config.previous_savestate_name.clone(),
-            previous_savestate_dir: config.previous_savestate_dir.clone(),
+            previous_savestate_load_dir: config.previous_savestate_dir.clone(),
             previous_palette_save_dir: config.previous_palette_save_dir.clone(),
             previous_savestate_save_dir: config.previous_savestate_save_dir.clone(),
             pattern_edit_color: config.pattern_edit_color,
-            loaded_rom: None,
+            debug_active_palette: config.debug_active_palette,
         }
     }
 }
@@ -594,6 +596,7 @@ impl From<&PersistentConsoleConfig> for ConsoleConfig {
     fn from(config: &PersistentConsoleConfig) -> Self {
         Self {
             is_powered: config.is_powered,
+            loaded_rom: None,
         }
     }
 }

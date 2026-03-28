@@ -1,14 +1,17 @@
 //! Cross-platform storage abstraction for native and WASM environments.
 //!
-//! This module provides a unified interface for persistent storage that works across:
-//! - **Native**: Uses the file system via the `directories` crate for OS-appropriate paths
+//! This module provides a unified interface for persistent storage that works
+//! across:
+//! - **Native**: Uses the file system via the `directories` crate for
+//!   OS-appropriate paths
 //! - **WASM**: Uses IndexedDB via `rexie` for structured data storage
 //!
 //! # Architecture
 //!
 //! The storage system is built around three main concepts:
 //!
-//! 1. **StorageKey**: Identifies what data is being stored (config, saves, palettes, etc.)
+//! 1. **StorageKey**: Identifies what data is being stored (config, saves,
+//!    palettes, etc.)
 //! 2. **Storage trait**: Async interface for get/set/delete/list operations
 //! 3. **Platform-specific implementations**: NativeStorage and WasmStorage
 //!
@@ -31,10 +34,13 @@
 //! # WASM Considerations
 //!
 //! On WASM, storage has different characteristics:
-//! - **localStorage**: ~5MB limit, synchronous, string-only (not suitable for binary data)
-//! - **IndexedDB**: Larger storage (~50MB+), async, supports binary data (recommended)
+//! - **localStorage**: ~5MB limit, synchronous, string-only (not suitable for
+//!   binary data)
+//! - **IndexedDB**: Larger storage (~50MB+), async, supports binary data
+//!   (recommended)
 //!
-//! This module uses IndexedDB for WASM to support save states and other binary data.
+//! This module uses IndexedDB for WASM to support save states and other binary
+//! data.
 
 use std::fmt::Display;
 use std::path::PathBuf;
@@ -101,7 +107,8 @@ pub enum StorageCategory {
     Data,
     /// Cached data that can be regenerated (thumbnails, compiled shaders)
     Cache,
-    /// Data not managed by Monsoon, that still needs to be addressed via storage keys
+    /// Data not managed by Monsoon, that still needs to be addressed via
+    /// storage keys
     Root,
 }
 
@@ -160,7 +167,8 @@ impl StorageCategory {
 /// All operations are async to support both native (thread-based) and
 /// WASM (Promise-based) implementations.
 ///
-/// Note: On WASM, futures don't need to be Send since JavaScript is single-threaded.
+/// Note: On WASM, futures don't need to be Send since JavaScript is
+/// single-threaded.
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 pub trait Storage: Send + Sync {
@@ -391,9 +399,11 @@ mod wasm {
     /// # Database Structure
     ///
     /// - Database name: "monsoon_emulator"
-    /// - Object store: "storage" (key-value pairs where key is the StorageKey path string)
+    /// - Object store: "storage" (key-value pairs where key is the StorageKey
+    ///   path string)
     /// - Values are stored as Uint8Array (raw bytes)
-    /// - Prefix queries use KeyRange::bound() on the primary key for efficient listing
+    /// - Prefix queries use KeyRange::bound() on the primary key for efficient
+    ///   listing
     pub struct WasmStorage;
 
     impl WasmStorage {

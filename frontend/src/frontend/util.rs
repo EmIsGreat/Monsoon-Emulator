@@ -41,7 +41,8 @@ pub trait Contrastable {
 }
 
 impl Contrastable for egui::Color32 {
-    /// Calculate foreground color (black or white) based on background luminance
+    /// Calculate foreground color (black or white) based on background
+    /// luminance
     fn get_contrast(&self) -> Self {
         let bg = self.as_u32();
         let r = (bg >> 16) & 0xFF;
@@ -157,7 +158,8 @@ impl AddFilter for AsyncFileDialog {
 
 /// Spawn a file picker for palette files that loads the palette asynchronously.
 ///
-/// This reads and parses the palette file asynchronously to avoid blocking the UI.
+/// This reads and parses the palette file asynchronously to avoid blocking the
+/// UI.
 ///
 /// # Arguments
 /// * `sender` - Channel to send the loaded palette back to the UI thread

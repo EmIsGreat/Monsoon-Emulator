@@ -2,8 +2,8 @@
 //!
 //! This module provides types for capturing and restoring the full emulator
 //! state. Save states can be serialized to a compact binary format (postcard)
-//! or a human-readable JSON format using the [`ToBytes`](crate::util::ToBytes) trait,
-//! and deserialized with [`try_load_state_from_bytes()`].
+//! or a human-readable JSON format using the [`ToBytes`](crate::util::ToBytes)
+//! trait, and deserialized with [`try_load_state_from_bytes()`].
 //!
 //! # Wire Format
 //!
@@ -283,8 +283,9 @@ impl From<&Ppu> for PpuState {
 /// A complete snapshot of the NES emulator state.
 ///
 /// Contains the CPU state, PPU state, loaded ROM metadata, and timing
-/// information. Can be serialized with [`ToBytes::to_bytes()`](crate::util::ToBytes::to_bytes)
-/// and deserialized with [`try_load_state_from_bytes()`].
+/// information. Can be serialized with
+/// [`ToBytes::to_bytes()`](crate::util::ToBytes::to_bytes) and deserialized
+/// with [`try_load_state_from_bytes()`].
 ///
 /// # Serialization
 ///

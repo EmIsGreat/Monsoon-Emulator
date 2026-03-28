@@ -10,7 +10,6 @@
 
 use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::hash::Hash;
-use std::ops::Deref;
 use std::time::Instant;
 
 use crossbeam_channel::Sender;
@@ -21,6 +20,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::frontend::egui::config::AppConfig;
 use crate::frontend::messages::AsyncFrontendMessage;
+use crate::messages::ControllerEvent;
 
 /// Well-known egui data ID used to signal that a [`Hotkey`] widget is
 /// currently waiting for the user to press a key.  The input handler
@@ -32,11 +32,12 @@ pub(crate) fn hotkey_expecting_id() -> Id { Id::new("hotkey_expecting_input") }
 // Binding types (ported from egui_hotkey)
 // ============================================================================
 
-/// A standalone modifier key (Shift, Ctrl, Alt, Command, or MacCmd) used as a binding target.
+/// A standalone modifier key (Shift, Ctrl, Alt, Command, or MacCmd) used as a
+/// binding target.
 ///
-/// Unlike regular [`Key`] variants, these modifier keys are not part of egui's `Key`
-/// enum and are only tracked via [`Modifiers`].  This variant allows users to
-/// bind a bare modifier key to a controller button.
+/// Unlike regular [`Key`] variants, these modifier keys are not part of egui's
+/// `Key` enum and are only tracked via [`Modifiers`].  This variant allows
+/// users to bind a bare modifier key to a controller button.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ModifierKey {
     Shift,
@@ -77,7 +78,8 @@ impl Display for ModifierKey {
 pub enum BindVariant {
     Mouse(PointerButton),
     Keyboard(Key),
-    /// A bare modifier key (e.g., Shift / Ctrl / Alt / Command / MacCmd) used on its own.
+    /// A bare modifier key (e.g., Shift / Ctrl / Alt / Command / MacCmd) used
+    /// on its own.
     ModifierKey(ModifierKey),
 }
 
@@ -88,7 +90,7 @@ impl BindVariant {
     /// does not emit single-frame press events for modifier keys.  Use
     /// [`down`](Self::down) for continuous (held) checks instead, which is
     /// what controller inputs use.
-    pub fn pressed(&self, input_state: impl Deref<Target = InputState>) -> bool {
+    pub fn pressed(&self, input_state: &InputState) -> bool {
         match self {
             BindVariant::Mouse(mb) => input_state.events.iter().any(|e| {
                 matches!(e, Event::PointerButton {
@@ -105,7 +107,7 @@ impl BindVariant {
     }
 
     /// Returns true if the variant is down.
-    pub fn down(&self, input_state: impl Deref<Target = InputState>) -> bool {
+    pub fn down(&self, input_state: &InputState) -> bool {
         match self {
             BindVariant::Mouse(mb) => input_state.pointer.button_down(*mb),
             BindVariant::Keyboard(kb) => input_state.key_down(*kb),
@@ -141,7 +143,7 @@ impl Display for BindVariant {
 type HotKeyCallback = dyn FnMut(&mut AppConfig, &Sender<AsyncFrontendMessage>) + Sync + Send;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-enum OnKeyAction {
+pub enum OnKeyAction {
     ControllerUp,
     ControllerDown,
     ControllerLeft,
@@ -160,6 +162,18 @@ enum OnKeyAction {
     Reset,
     Quicksave,
     Quickload,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TriggerType {
+    Single,
+    Continuous,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum KeybindCategory {
+    Controller,
+    Emulator,
 }
 
 impl OnKeyAction {
@@ -186,19 +200,78 @@ impl OnKeyAction {
         }
     }
 
+    pub fn get_trigger_type(&self) -> TriggerType {
+        match self {
+            OnKeyAction::ControllerUp
+            | OnKeyAction::ControllerDown
+            | OnKeyAction::ControllerLeft
+            | OnKeyAction::ControllerRight
+            | OnKeyAction::ControllerAButton
+            | OnKeyAction::ControllerBButton
+            | OnKeyAction::ControllerStartButton
+            | OnKeyAction::ControllerSelectButton => TriggerType::Continuous,
+            _ => TriggerType::Single,
+        }
+    }
+
+    pub fn get_category(&self) -> KeybindCategory {
+        match self {
+            OnKeyAction::ControllerUp
+            | OnKeyAction::ControllerDown
+            | OnKeyAction::ControllerLeft
+            | OnKeyAction::ControllerRight
+            | OnKeyAction::ControllerAButton
+            | OnKeyAction::ControllerBButton
+            | OnKeyAction::ControllerStartButton
+            | OnKeyAction::ControllerSelectButton => KeybindCategory::Controller,
+            OnKeyAction::PauseEmulator
+            | OnKeyAction::StepFrame
+            | OnKeyAction::StepScanline
+            | OnKeyAction::StepMasterCycle
+            | OnKeyAction::StepPpuCycle
+            | OnKeyAction::StepCpuCycle
+            | OnKeyAction::Reset
+            | OnKeyAction::Quicksave
+            | OnKeyAction::Quickload
+            | OnKeyAction::ChangeDebugPalette => KeybindCategory::Emulator,
+        }
+    }
+
     pub fn get_callback_function(&self) -> Box<HotKeyCallback> {
         match self {
-            OnKeyAction::ControllerUp => Box::new(|_, _| {}),
-            OnKeyAction::ControllerDown => Box::new(|_, _| {}),
-            OnKeyAction::ControllerLeft => Box::new(|_, _| {}),
-            OnKeyAction::ControllerRight => Box::new(|_, _| {}),
-            OnKeyAction::ControllerAButton => Box::new(|_, _| {}),
-            OnKeyAction::ControllerBButton => Box::new(|_, _| {}),
-            OnKeyAction::ControllerStartButton => Box::new(|_, _| {}),
-            OnKeyAction::ControllerSelectButton => Box::new(|_, _| {}),
+            OnKeyAction::ControllerUp => Box::new(|_, sender| {
+                let _ = sender.send(AsyncFrontendMessage::ControllerInput(ControllerEvent::Up));
+            }),
+            OnKeyAction::ControllerDown => Box::new(|_, sender| {
+                let _ = sender.send(AsyncFrontendMessage::ControllerInput(ControllerEvent::Down));
+            }),
+            OnKeyAction::ControllerLeft => Box::new(|_, sender| {
+                let _ = sender.send(AsyncFrontendMessage::ControllerInput(ControllerEvent::Left));
+            }),
+            OnKeyAction::ControllerRight => Box::new(|_, sender| {
+                let _ = sender.send(AsyncFrontendMessage::ControllerInput(
+                    ControllerEvent::Right,
+                ));
+            }),
+            OnKeyAction::ControllerAButton => Box::new(|_, sender| {
+                let _ = sender.send(AsyncFrontendMessage::ControllerInput(ControllerEvent::A));
+            }),
+            OnKeyAction::ControllerBButton => Box::new(|_, sender| {
+                let _ = sender.send(AsyncFrontendMessage::ControllerInput(ControllerEvent::B));
+            }),
+            OnKeyAction::ControllerStartButton => Box::new(|_, sender| {
+                let _ = sender.send(AsyncFrontendMessage::ControllerInput(
+                    ControllerEvent::Start,
+                ));
+            }),
+            OnKeyAction::ControllerSelectButton => Box::new(|_, sender| {
+                let _ = sender.send(AsyncFrontendMessage::ControllerInput(
+                    ControllerEvent::Select,
+                ));
+            }),
             OnKeyAction::ChangeDebugPalette => Box::new(|config, _| {
-                config.view_config.debug_active_palette += 1;
-                config.view_config.debug_active_palette &= 7;
+                config.user_config.debug_active_palette += 1;
+                config.user_config.debug_active_palette &= 7;
             }),
             OnKeyAction::PauseEmulator => Box::new(|config, sender| {
                 config.speed_config.is_paused = !config.speed_config.is_paused;
@@ -289,11 +362,12 @@ impl Binding {
         }
     }
 
-    /// Returns true if the variant was pressed and input modifiers are matching.
+    /// Returns true if the variant was pressed and input modifiers are
+    /// matching.
     ///
     /// Note: always returns `false` for [`ModifierKey`] bindings — see
     /// [`BindVariant::pressed`] for details.
-    pub fn pressed(&self, input_state: impl Deref<Target = InputState>) -> bool {
+    pub fn pressed(&self, input_state: &InputState) -> bool {
         match &self.variant {
             // Modifier-only bindings cannot detect single-frame presses
             // because egui does not emit key events for modifiers.
@@ -306,7 +380,7 @@ impl Binding {
     }
 
     /// Returns true if the variant is down and input modifiers are matching.
-    pub fn down(&self, input_state: impl Deref<Target = InputState>) -> bool {
+    pub fn down(&self, input_state: &InputState) -> bool {
         match &self.variant {
             // Modifier-only bindings check the modifier flag directly, but
             // we also ensure that *no other* modifiers are active.
@@ -363,7 +437,7 @@ pub trait HotkeyBinding {
     fn get(&self) -> Option<&Binding>;
     fn set(&mut self, variant: BindVariant, modifiers: Modifiers, action: OnKeyAction);
     fn clear(&mut self);
-    fn pressed(&self, input: &mut InputState) -> bool;
+    fn active(&self, input: &InputState) -> bool;
     fn run_bound(&mut self, config: &mut AppConfig, sender: &Sender<AsyncFrontendMessage>);
 }
 
@@ -389,11 +463,17 @@ impl HotkeyBinding for Binding {
 
     fn clear(&mut self) {
         panic!(
-            "Binding cannot be cleared directly. Use Option<Binding> wrapper type if clearing is needed, as Binding always requires a value."
+            "Binding cannot be cleared directly. Use Option<Binding> wrapper type if clearing is \
+             needed, as Binding always requires a value."
         );
     }
 
-    fn pressed(&self, input: &mut InputState) -> bool { self.pressed(input) }
+    fn active(&self, input: &InputState) -> bool {
+        match self.logical_bind.get_trigger_type() {
+            TriggerType::Single => self.pressed(input),
+            TriggerType::Continuous => self.down(input),
+        }
+    }
 
     fn run_bound(&mut self, config: &mut AppConfig, sender: &Sender<AsyncFrontendMessage>) {
         self.logical_bind.get_callback_function()(config, sender);
@@ -423,9 +503,9 @@ where
 
     fn clear(&mut self) { *self = None; }
 
-    fn pressed(&self, input: &mut InputState) -> bool {
+    fn active(&self, input: &InputState) -> bool {
         match self {
-            Some(b) => b.pressed(input),
+            Some(b) => b.active(input),
             None => false,
         }
     }
@@ -450,12 +530,6 @@ where
     binding: &'a mut B,
     id: Id,
     tooltip: Option<bool>,
-    /// When `false`, the widget will not capture bare modifier keys
-    /// (Shift / Ctrl / Alt / Command / MacCmd) as binding targets.
-    ///
-    /// Set to `false` for hotkeys that are evaluated with
-    /// [`Binding::pressed`], because that function cannot detect
-    /// single-frame presses for modifier-only bindings.
     accept_modifier_keys: bool,
 }
 
@@ -475,11 +549,6 @@ where
 
     /// Allow or disallow bare modifier keys (Shift / Ctrl / Alt / Command /
     /// MacCmd) as binding targets.
-    ///
-    /// Pass `false` for hotkeys whose binding is evaluated with
-    /// [`Binding::pressed`] — `pressed()` cannot detect single-frame presses
-    /// for modifier-only bindings, so permitting them would create an
-    /// apparently-valid binding that silently never fires.
     pub fn accept_modifier_keys(mut self, accept: bool) -> Self {
         self.accept_modifier_keys = accept;
         self
@@ -492,7 +561,7 @@ where
 {
     fn ui(self, ui: &mut Ui) -> Response {
         let size = ui.spacing().interact_size;
-        let (rect, mut response) = ui.allocate_exact_size(size * vec2(1.5, 1.), Sense::click());
+        let (rect, mut response) = ui.allocate_exact_size(size * vec2(2.0, 1.0), Sense::click());
 
         let was_expecting = get_expecting(ui, self.id);
         let mut expecting = was_expecting;
@@ -551,10 +620,7 @@ where
                     let action = self
                         .binding
                         .get()
-                        .expect(
-                            "Binding does not have associated \
-                        Action",
-                        )
+                        .expect("Binding does not have associated Action")
                         .logical_bind;
 
                     if let Some((key, mods)) = keyboard.or(mouse) {
@@ -601,7 +667,7 @@ where
                 .unwrap_or_else(|| "None".into());
 
             ui.painter().text(
-                rect.center() + vec2(0., 1.),
+                rect.center() + vec2(0.0, 1.0),
                 egui::Align2::CENTER_CENTER,
                 text,
                 egui::FontId::default(),
@@ -669,109 +735,4 @@ fn newly_pressed_modifier(initial: Modifiers, current: Modifiers) -> Option<Modi
     } else {
         None
     }
-}
-
-// ============================================================================
-// Keybindings configuration
-// ============================================================================
-
-/// Keybindings for NES controller (Player 1)
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
-pub struct ControllerKeybindings {
-    pub up: Option<Binding>,
-    pub down: Option<Binding>,
-    pub left: Option<Binding>,
-    pub right: Option<Binding>,
-    pub a: Option<Binding>,
-    pub b: Option<Binding>,
-    pub start: Option<Binding>,
-    pub select: Option<Binding>,
-}
-
-impl Default for ControllerKeybindings {
-    fn default() -> Self {
-        Self {
-            up: Some(Binding::key(Key::W, OnKeyAction::ControllerUp)),
-            down: Some(Binding::key(Key::S, OnKeyAction::ControllerDown)),
-            left: Some(Binding::key(Key::A, OnKeyAction::ControllerLeft)),
-            right: Some(Binding::key(Key::D, OnKeyAction::ControllerRight)),
-            a: Some(Binding::key(Key::Space, OnKeyAction::ControllerAButton)),
-            b: Some(Binding::new(
-                BindVariant::ModifierKey(ModifierKey::Shift),
-                Modifiers::NONE,
-                OnKeyAction::ControllerBButton,
-            )),
-            start: Some(Binding::key(Key::Enter, OnKeyAction::ControllerStartButton)),
-            select: Some(Binding::key(Key::Tab, OnKeyAction::ControllerSelectButton)),
-        }
-    }
-}
-
-/// Keybindings for emulation controls
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
-pub struct EmulationKeybindings {
-    pub pause: Option<Binding>,
-    pub step_frame: Option<Binding>,
-    pub step_scanline: Option<Binding>,
-    pub step_cpu_cycle: Option<Binding>,
-    pub step_ppu_cycle: Option<Binding>,
-    pub step_master_cycle: Option<Binding>,
-    pub reset: Option<Binding>,
-    pub quicksave: Option<Binding>,
-    pub quickload: Option<Binding>,
-}
-
-impl Default for EmulationKeybindings {
-    fn default() -> Self {
-        Self {
-            pause: Some(Binding::key(Key::Comma, OnKeyAction::PauseEmulator)),
-            step_frame: Some(Binding::key(Key::Period, OnKeyAction::StepFrame)),
-            step_scanline: Some(Binding::with_modifiers(
-                Key::Period,
-                Modifiers::CTRL,
-                OnKeyAction::StepScanline,
-            )),
-            step_master_cycle: Some(Binding::key(Key::Slash, OnKeyAction::StepMasterCycle)),
-            step_cpu_cycle: Some(Binding::with_modifiers(
-                Key::Slash,
-                Modifiers::ALT,
-                OnKeyAction::StepCpuCycle,
-            )),
-            step_ppu_cycle: Some(Binding::with_modifiers(
-                Key::Slash,
-                Modifiers::SHIFT,
-                OnKeyAction::StepPpuCycle,
-            )),
-            reset: Some(Binding::key(Key::R, OnKeyAction::Reset)),
-            quicksave: Some(Binding::key(Key::F5, OnKeyAction::Quicksave)),
-            quickload: Some(Binding::key(Key::F8, OnKeyAction::Quickload)),
-        }
-    }
-}
-
-/// Keybindings for debug controls
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Eq, PartialEq)]
-pub struct DebugKeybindings {
-    pub cycle_palette: Option<Binding>,
-}
-
-impl Default for DebugKeybindings {
-    fn default() -> Self {
-        Self {
-            cycle_palette: Some(Binding::key(Key::N, OnKeyAction::ChangeDebugPalette)),
-        }
-    }
-}
-
-/// All keybindings for the emulator
-#[derive(Debug, Default, Clone, Serialize, Deserialize, Copy, PartialEq, Eq)]
-pub struct KeybindingsConfig {
-    pub controller: ControllerKeybindings,
-    pub emulation: EmulationKeybindings,
-    pub debug: DebugKeybindings,
-}
-
-impl KeybindingsConfig {
-    /// Reset all keybindings to defaults.
-    pub fn reset_to_defaults(&mut self) { *self = Self::default(); }
 }

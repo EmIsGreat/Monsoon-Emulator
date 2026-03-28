@@ -22,7 +22,8 @@ pub enum Pane {
     EmulatorOutput,
     /// Options panel - closeable, can be reopened via menu
     Options,
-    /// Pattern tables viewer (both tables side by side) - closeable debug viewer
+    /// Pattern tables viewer (both tables side by side) - closeable debug
+    /// viewer
     PatternTables,
     /// Nametables viewer (all 4 nametables in a grid) - closeable debug viewer
     Nametables,

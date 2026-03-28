@@ -11,7 +11,8 @@
 //! OAM and nametable dumps include both raw data and interpreted structures:
 //!
 //! - **OAM**: 64 sprites with position, tile index, attributes, flip flags
-//! - **Nametables**: 4 nametables with tile IDs, attribute tables, and per-tile palettes
+//! - **Nametables**: 4 nametables with tile IDs, attribute tables, and per-tile
+//!   palettes
 //!
 //! # Example: Adding a new format
 //!
@@ -129,7 +130,8 @@ pub struct InterpretedOam {
 }
 
 impl InterpretedOam {
-    /// Create interpreted OAM from raw OAM data (up to 256 bytes for 64 sprites).
+    /// Create interpreted OAM from raw OAM data (up to 256 bytes for 64
+    /// sprites).
     pub fn from_raw(data: &[u8]) -> Self {
         let mut sprites = Vec::with_capacity(64);
         let mut visible_count = 0u8;
@@ -411,8 +413,9 @@ pub trait MemoryFormatter: Send + Sync {
 
 /// Hexadecimal dump formatter (traditional hex dump format)
 ///
-/// For OAM dumps, includes both raw hex and human-readable sprite interpretation.
-/// For nametable dumps, includes both raw hex and nametable summary.
+/// For OAM dumps, includes both raw hex and human-readable sprite
+/// interpretation. For nametable dumps, includes both raw hex and nametable
+/// summary.
 pub struct HexFormatter;
 
 impl MemoryFormatter for HexFormatter {
@@ -739,8 +742,8 @@ impl OutputFormat {
 // =============================================================================
 
 /// Track whether the output file has been initialized (created/truncated).
-/// Note: This is intentionally global to support multiple OutputWriter instances
-/// writing to the same file in append mode within a single CLI run.
+/// Note: This is intentionally global to support multiple OutputWriter
+/// instances writing to the same file in append mode within a single CLI run.
 static OUTPUT_FILE_INITIALIZED: AtomicBool = AtomicBool::new(false);
 
 /// Manages output writing with support for file and stdout.
@@ -854,7 +857,8 @@ mod tests {
 
     #[test]
     fn test_oam_sprite_from_bytes() {
-        // Y=0x20, Tile=0x42, Attr=0b11100011 (pal=3, behind=true, flipH=true, flipV=true), X=0x80
+        // Y=0x20, Tile=0x42, Attr=0b11100011 (pal=3, behind=true, flipH=true,
+        // flipV=true), X=0x80
         let bytes = [0x20, 0x42, 0xE3, 0x80];
         let sprite = OamSprite::from_bytes(5, &bytes);
 
@@ -882,7 +886,8 @@ mod tests {
 
     #[test]
     fn test_interpreted_oam_from_raw() {
-        // Create full 256-byte OAM data (64 sprites × 4 bytes) with all sprites hidden by default
+        // Create full 256-byte OAM data (64 sprites × 4 bytes) with all sprites hidden
+        // by default
         let mut data = vec![0xFFu8; 256]; // Y=0xFF means hidden
         // Sprite 0: visible
         data[0] = 0x10; // Y

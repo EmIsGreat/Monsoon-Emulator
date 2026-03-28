@@ -105,9 +105,11 @@ pub struct RomFile {
     pub vs_system_ppu_type: Option<u8>,
     /// CPU/PPU timing mode (0 = NTSC, 1 = PAL, 2 = Multi-region, 3 = Dendy).
     pub cpu_ppu_timing: u8,
-    /// Console type (0 = NES/Famicom, 1 = VS System, 2 = Playchoice-10, 3 = Extended).
+    /// Console type (0 = NES/Famicom, 1 = VS System, 2 = Playchoice-10, 3 =
+    /// Extended).
     pub console_type: u8,
-    /// Nametable mirroring mode from header bit 0 (`true` = vertical, `false` = horizontal).
+    /// Nametable mirroring mode from header bit 0 (`true` = vertical, `false` =
+    /// horizontal).
     pub hardwired_nametable_layout: bool,
     /// Whether the cartridge contains battery-backed persistent memory.
     pub is_battery_backed: bool,
@@ -119,7 +121,8 @@ pub struct RomFile {
     pub submapper_number: u8,
     /// SHA-256 checksum of the raw ROM data.
     pub data_checksum: [u8; 32],
-    /// Raw ROM file bytes. Skipped during serialization to reduce save state size.
+    /// Raw ROM file bytes. Skipped during serialization to reduce save state
+    /// size.
     #[serde(skip)]
     pub data: Vec<u8>,
 }
@@ -225,9 +228,11 @@ impl RomFile {
     /// # Errors
     ///
     /// Returns a [`ParseError`] if:
-    /// - The data is too short to contain a valid header ([`ParseError::InvalidHeader`]).
+    /// - The data is too short to contain a valid header
+    ///   ([`ParseError::InvalidHeader`]).
     /// - The ROM format is not recognized ([`ParseError::UnsupportedFormat`]).
-    /// - The header declares sizes larger than the file ([`ParseError::SizeBiggerThanFile`]).
+    /// - The header declares sizes larger than the file
+    ///   ([`ParseError::SizeBiggerThanFile`]).
     pub fn load(data: &[u8], name: Option<String>) -> Result<RomFile, ParseError> {
         let mut hasher = Sha256::new();
         hasher.update(data);
@@ -262,7 +267,8 @@ impl RomFile {
         Memory::Rom(rom)
     }
 
-    /// Extracts the CHR ROM region as a read-only [`Memory`] device, if present.
+    /// Extracts the CHR ROM region as a read-only [`Memory`] device, if
+    /// present.
     ///
     /// Returns `None` when the ROM uses CHR RAM instead of CHR ROM
     /// (i.e., `chr_rom_size == 0`).
@@ -314,7 +320,8 @@ impl RomFile {
         Memory::Ram(ram)
     }
 
-    /// Creates the nametable memory for the PPU based on the ROM's mirroring mode.
+    /// Creates the nametable memory for the PPU based on the ROM's mirroring
+    /// mode.
     ///
     /// Returns a [`Memory`] device configured for either horizontal or vertical
     /// nametable mirroring, as specified by the ROM header.
@@ -510,7 +517,8 @@ impl RomBuilder {
         self
     }
 
-    /// Sets the console type (0 = NES, 1 = VS System, 2 = Playchoice-10, 3 = Extended).
+    /// Sets the console type (0 = NES, 1 = VS System, 2 = Playchoice-10, 3 =
+    /// Extended).
     pub fn console_type(mut self, console_type: u8) -> Self {
         self.console_type = console_type;
         self

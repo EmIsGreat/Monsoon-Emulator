@@ -11,8 +11,9 @@ use crate::frontend::messages::LoadedRom;
 /// - `EmulatorMessage`: Notifications sent from the emulator to the frontend
 /// - `ControllerEvent`: Input events for the emulated console
 ///
-/// The message-based architecture provides clean separation between the frontend
-/// and emulation logic, enabling future threading and remote control features.
+/// The message-based architecture provides clean separation between the
+/// frontend and emulation logic, enabling future threading and remote control
+/// features.
 ///
 /// Messages sent from the frontend to the emulator
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]

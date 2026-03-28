@@ -1,6 +1,7 @@
 //! NES emulation components.
 //!
-//! This module contains all emulation subsystems for the Nintendo Entertainment System.
+//! This module contains all emulation subsystems for the Nintendo Entertainment
+//! System.
 //!
 //! # Public Modules
 //!

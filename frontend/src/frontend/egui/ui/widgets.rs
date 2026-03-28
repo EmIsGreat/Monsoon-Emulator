@@ -4,6 +4,7 @@
 //! multiple UI components to reduce code duplication.
 
 use monsoon_core::emulation::palette_util::RgbColor;
+
 use crate::frontend::egui::keybindings::Binding;
 
 /// Draw a colored cell with hover highlighting using RgbColor.
@@ -46,10 +47,6 @@ pub fn color_cell_rgb(
     }
 
     response
-}
-
-pub fn hotkey_menu_button(ui: &mut egui::Ui, title: &str, binding: Option<Binding>) -> egui::Response {
-
 }
 
 /// Draw an image cell (texture) with hover highlighting.
@@ -103,9 +100,11 @@ pub fn image_cell_flipped(
     response
 }
 
-/// Draw two vertically stacked image cells with optional horizontal/vertical flip.
+/// Draw two vertically stacked image cells with optional horizontal/vertical
+/// flip.
 ///
-/// When v_flip is set, each tile is flipped vertically and the top and bottom tiles are swapped.
+/// When v_flip is set, each tile is flipped vertically and the top and bottom
+/// tiles are swapped.
 #[allow(clippy::too_many_arguments)]
 pub fn image_cell_dual_vert_flipped(
     ui: &mut egui::Ui,

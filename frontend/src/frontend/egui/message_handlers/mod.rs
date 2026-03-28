@@ -4,8 +4,10 @@
 //! and the main application loop. It defines traits for handling different
 //! types of messages:
 //!
-//! - `AsyncMessageHandler`: Handles messages from async operations (file dialogs, etc.)
-//! - `EmulatorMessageHandler`: Handles messages from the emulator backend (frames, debug data, etc.)
+//! - `AsyncMessageHandler`: Handles messages from async operations (file
+//!   dialogs, etc.)
+//! - `EmulatorMessageHandler`: Handles messages from the emulator backend
+//!   (frames, debug data, etc.)
 //!
 //! # Architecture
 //!

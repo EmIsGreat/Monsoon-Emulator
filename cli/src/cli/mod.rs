@@ -1,11 +1,13 @@
 //! CLI module for the NES emulator.
 //!
 //! This module provides a comprehensive command-line interface for programmatic
-//! control of the emulator. It is designed with extensibility and robustness in mind.
+//! control of the emulator. It is designed with extensibility and robustness in
+//! mind.
 //!
 //! # Architecture
 //!
-//! The CLI is organized into several submodules, each with a specific responsibility:
+//! The CLI is organized into several submodules, each with a specific
+//! responsibility:
 //!
 //! | Module | Purpose |
 //! |--------|---------|
@@ -369,7 +371,8 @@ fn validate_memory_condition_syntax(cond: &Vec<String>) -> Result<(), CliError> 
 
 /// Parse a memory range string in format `START-END` or `START:LENGTH`.
 ///
-/// Both `START` and `END`/`LENGTH` should be hexadecimal values (with or without 0x prefix).
+/// Both `START` and `END`/`LENGTH` should be hexadecimal values (with or
+/// without 0x prefix).
 ///
 /// # Errors
 ///
@@ -420,7 +423,8 @@ pub fn parse_memory_range(range: &str) -> Result<(u16, u16), String> {
         Ok((start, end))
     } else {
         Err(format!(
-            "Invalid memory range format: '{}'. Use START-END or START:LENGTH (e.g., 0x0000-0x07FF or 0x6000:0x100)",
+            "Invalid memory range format: '{}'. Use START-END or START:LENGTH (e.g., \
+             0x0000-0x07FF or 0x6000:0x100)",
             range
         ))
     }

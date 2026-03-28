@@ -100,7 +100,8 @@ pub fn draw_pattern_table(
                     );
 
                     // Support both click and drag for editing pixels
-                    // Check if clicked OR if pointer is within this pixel's rect while primary button is down
+                    // Check if clicked OR if pointer is within this pixel's rect while primary
+                    // button is down
                     let pointer_in_rect = ui.ctx().input(|i| {
                         i.pointer
                             .interact_pos()

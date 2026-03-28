@@ -1,9 +1,9 @@
 //! Screen rendering abstraction.
 //!
-//! This module defines the [`ScreenRenderer`] trait for converting the NES PPU's
-//! palette index buffer into RGB pixel data. It also provides [`NoneRenderer`]
-//! (a no-op implementation), [`RendererRegistration`] for registering custom
-//! renderers, and the [`create_renderer`] factory function.
+//! This module defines the [`ScreenRenderer`] trait for converting the NES
+//! PPU's palette index buffer into RGB pixel data. It also provides
+//! [`NoneRenderer`] (a no-op implementation), [`RendererRegistration`] for
+//! registering custom renderers, and the [`create_renderer`] factory function.
 //!
 //! For a full-featured renderer, see `LookupPaletteRenderer` in the
 //! `monsoon-default-renderers` crate.
@@ -16,7 +16,9 @@
 //! use monsoon_core::emulation::palette_util::{RgbColor, RgbPalette};
 //! use monsoon_core::emulation::screen_renderer::ScreenRenderer;
 //!
-//! struct MyRenderer {/* ... */}
+//! struct MyRenderer {
+//!     // ...
+//! }
 //!
 //! impl Debug for MyRenderer {
 //!     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result { f.write_str("MyRenderer") }
@@ -74,7 +76,8 @@ pub trait ScreenRenderer: Debug {
     /// Returns the output image height in pixels (typically 240).
     fn get_height(&self) -> usize;
 
-    /// Returns a unique string identifier for this renderer (e.g., `"PaletteLookup"`).
+    /// Returns a unique string identifier for this renderer (e.g.,
+    /// `"PaletteLookup"`).
     fn get_id(&self) -> &'static str;
 
     /// Returns a human-readable display name for this renderer.
@@ -102,7 +105,8 @@ impl PartialEq for RendererRegistration {
     fn eq(&self, other: &Self) -> bool { self.key == other.key }
 }
 
-/// Declares which [`ScreenRenderer`](crate::emulation::screen_renderer::ScreenRenderer)
+/// Declares which
+/// [`ScreenRenderer`](crate::emulation::screen_renderer::ScreenRenderer)
 /// implementations are available in a crate.
 ///
 /// This macro generates a `get_all_renderers()` function that returns a

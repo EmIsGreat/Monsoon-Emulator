@@ -37,7 +37,8 @@ fn render_renderer_settings(ui: &mut egui::Ui, config: &mut AppConfig) {
                         .clicked()
                     {
                         // Transfer the current palette to the new renderer
-                        // Note: This copies the palette (~1.5KB), but this is an infrequent UI operation
+                        // Note: This copies the palette (~1.5KB), but this is an infrequent UI
+                        // operation
                         let palette = config.view_config.palette_rgb_data;
                         let mut renderer: Box<dyn ScreenRenderer> = (variant.factory)();
                         renderer.set_palette(palette);

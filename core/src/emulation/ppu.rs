@@ -361,8 +361,9 @@ impl Ppu {
 
         self.update_nmi();
 
-        // Skip cycle on odd frames when rendering (skips from dot 339 directly to next frame)
-        // This occurs at dot 339 of scanline 261 on odd frames when rendering is enabled
+        // Skip cycle on odd frames when rendering (skips from dot 339 directly to next
+        // frame) This occurs at dot 339 of scanline 261 on odd frames when rendering
+        // is enabled
         let skip_cycle = self.dot == DOTS_PER_SCANLINE - 1
             && self.scanline == PRE_RENDER_SCANLINE
             && !self.even_frame
@@ -1138,7 +1139,7 @@ impl Ppu {
             soam_index: state.soam_index,
             soam_disable: state.soam_disable,
             oam_increment: state.oam_increment,
-            soam_write_counter: state.soam_write_counter, //1
+            soam_write_counter: state.soam_write_counter, // 1
             oam_fetch: state.oam_fetch,
             current_sprite_tile_id: 0,
             current_sprite_y: 0,

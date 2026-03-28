@@ -9,12 +9,12 @@ use monsoon_core::emulation::ppu_util::EmulatorFetchable;
 use monsoon_core::emulation::savestate;
 use monsoon_core::util::ToBytes;
 
-use crate::frontend::egui::config::{
+use crate::frontend::egui_frontend::EguiApp;
+use crate::frontend::messages::{AsyncFrontendMessage, LoadedRom, SavestateLoadContext};
+use crate::frontend::savestates::{
     ChecksumMismatchDialogState, ErrorDialogState, MatchingRomDialogState, RomSelectionDialogState,
     SaveBrowserState, SaveEntry, SaveEntryType,
 };
-use crate::frontend::egui_frontend::EguiApp;
-use crate::frontend::messages::{AsyncFrontendMessage, LoadedRom, SavestateLoadContext};
 use crate::frontend::storage::Storage;
 use crate::frontend::util::SavestateLoadError;
 use crate::frontend::{storage, util};
@@ -42,7 +42,7 @@ impl EguiApp {
     pub(crate) fn handle_single_async_message(&mut self, msg: AsyncFrontendMessage, ctx: &Context) {
         match msg {
             AsyncFrontendMessage::PaletteLoaded(loaded) => {
-                self.config.user_config.previous_palette_dir = Some(loaded.directory);
+                self.config.user_config.previous_palette_load_dir = Some(loaded.directory);
                 self.handle_palette_loaded(ctx, loaded.palette);
             }
             AsyncFrontendMessage::FileSaveCompleted {
@@ -82,7 +82,7 @@ impl EguiApp {
                 util::spawn_rom_picker_for_savestate(
                     &self.async_sender,
                     context,
-                    self.config.user_config.previous_rom_dir.as_ref(),
+                    self.config.user_config.previous_rom_load_dir.as_ref(),
                 );
             }
             AsyncFrontendMessage::RomSelectedForSavestate(context, rom) => {
@@ -102,7 +102,7 @@ impl EguiApp {
                 util::spawn_rom_picker_for_savestate(
                     &self.async_sender,
                     context,
-                    self.config.user_config.previous_rom_dir.as_ref(),
+                    self.config.user_config.previous_rom_load_dir.as_ref(),
                 );
             }
             AsyncFrontendMessage::SavestateLoadFailed(error) => {
@@ -127,7 +127,7 @@ impl EguiApp {
                     let _ = self.to_emulator.send(FrontendMessage::PowerOff);
 
                     // Save directory for next file picker
-                    self.config.user_config.previous_rom_dir = Some(rom.directory.clone());
+                    self.config.user_config.previous_rom_load_dir = Some(rom.directory.clone());
 
                     self.load_rom(rom);
                     let _ = self.to_emulator.send(FrontendMessage::Power);
@@ -249,7 +249,8 @@ impl EguiApp {
 
     fn handle_savestate_loaded(&mut self, context: Box<SavestateLoadContext>) {
         // Try to find a matching ROM by scanning available ROM storage.
-        // Only scan if savestate_dir is set (cleared after first scan attempt to prevent loops).
+        // Only scan if savestate_dir is set (cleared after first scan attempt to
+        // prevent loops).
         if context.savestate_dir.is_some() {
             let sender = self.async_sender.clone();
             let context_clone = context.clone();
@@ -259,7 +260,7 @@ impl EguiApp {
             let rom_dir = self
                 .config
                 .user_config
-                .previous_rom_dir
+                .previous_rom_load_dir
                 .as_ref()
                 .and_then(storage::get_path_for_key)
                 .map(|d| d.to_string_lossy().to_string());
@@ -297,7 +298,7 @@ impl EguiApp {
         rom: LoadedRom,
     ) {
         // Save directory for next file picker
-        self.config.user_config.previous_rom_dir = Some(rom.directory.clone());
+        self.config.user_config.previous_rom_load_dir = Some(rom.directory.clone());
 
         let checksum = util::compute_data_checksum(&rom.data);
         if checksum == context.savestate.rom_file.data_checksum {
@@ -351,7 +352,7 @@ impl EguiApp {
     fn handle_quickload(&mut self) {
         let rom_info = self
             .config
-            .user_config
+            .console_config
             .loaded_rom
             .as_ref()
             .map(|r| r.0.data_checksum);
@@ -437,7 +438,7 @@ impl EguiApp {
 
     /// Open the save browser dialog and start loading save entries.
     fn handle_open_save_browser(&mut self) {
-        if let Some(rom) = &self.config.user_config.loaded_rom
+        if let Some(rom) = &self.config.console_config.loaded_rom
             && let Some(prev_name) = &self.config.user_config.previous_rom_name
         {
             let rom_hash = &rom.0.data_checksum;
@@ -468,7 +469,7 @@ impl EguiApp {
         let to_emulator = self.to_emulator.clone();
         let loaded_rom_checksum = self
             .config
-            .user_config
+            .console_config
             .loaded_rom
             .as_ref()
             .map(|r| r.0.data_checksum);
@@ -512,7 +513,8 @@ impl EguiApp {
 
         // Read from storage asynchronously, then open save dialog.
         // On native, spawn_save_dialog internally uses tokio::spawn which requires
-        // the tokio runtime context, so we read via async Storage instead of sync wrappers.
+        // the tokio runtime context, so we read via async Storage instead of sync
+        // wrappers.
         util::spawn_async(async move {
             let storage_impl = storage::get_storage();
             match storage_impl.get(&key).await {
@@ -533,11 +535,13 @@ impl EguiApp {
     }
 }
 
-/// Try to find a matching ROM by first checking the storage cache (works on both native and WASM),
-/// then falling back to scanning the filesystem directory on native.
+/// Try to find a matching ROM by first checking the storage cache (works on
+/// both native and WASM), then falling back to scanning the filesystem
+/// directory on native.
 ///
-/// On native, `rom_dir` should be the resolved filesystem path of the user's ROM directory.
-/// On WASM, `rom_dir` is ignored (always None) and only the IndexedDB cache is searched.
+/// On native, `rom_dir` should be the resolved filesystem path of the user's
+/// ROM directory. On WASM, `rom_dir` is ignored (always None) and only the
+/// IndexedDB cache is searched.
 async fn find_matching_rom(
     context: &SavestateLoadContext,
     #[allow(unused)] rom_dir: Option<String>,
@@ -705,7 +709,8 @@ fn parse_save_entry(key: storage::StorageKey, save_type: SaveEntryType) -> Optio
     let filename = key.sub_path.rsplit('/').next()?;
     let stem = filename.strip_suffix(".sav")?;
 
-    // Split into prefix and timestamp: "quicksave_2024-01-15_14-30-00" or with version suffix
+    // Split into prefix and timestamp: "quicksave_2024-01-15_14-30-00" or with
+    // version suffix
     let (_prefix, rest) = stem.split_once('_')?;
 
     // Try to extract timestamp - handle optional version suffix

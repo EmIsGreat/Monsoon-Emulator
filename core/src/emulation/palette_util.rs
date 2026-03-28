@@ -3,7 +3,8 @@
 //! The NES PPU uses a fixed palette of 64 base colors, with 8 emphasis
 //! combinations for a total of 512 possible output colors. This module
 //! provides types for representing these colors ([`RgbColor`], [`RgbPalette`])
-//! and for loading palette data from `.pal` files ([`parse_palette_from_bytes`]).
+//! and for loading palette data from `.pal` files
+//! ([`parse_palette_from_bytes`]).
 //!
 //! A default palette based on the 2C02G PPU is embedded in the library.
 
@@ -13,7 +14,8 @@ use crate::util::{Hashable, ToBytes, compute_hash};
 
 /// An RGB color with 8 bits per channel.
 ///
-/// This is the output type produced by [`ScreenRenderer`](crate::emulation::screen_renderer::ScreenRenderer)
+/// This is the output type produced by
+/// [`ScreenRenderer`](crate::emulation::screen_renderer::ScreenRenderer)
 /// implementations when converting NES palette indices to displayable colors.
 ///
 /// # Example

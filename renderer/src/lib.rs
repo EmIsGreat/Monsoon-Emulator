@@ -1,8 +1,8 @@
 //! Default screen renderer implementations for the Monsoon NES emulator.
 //!
-//! This crate provides [`LookupPaletteRenderer`], a fast O(1) lookup table-based
-//! renderer that converts NES palette indices to RGB colors. It is the default
-//! renderer used by both the frontend and CLI applications.
+//! This crate provides [`LookupPaletteRenderer`], a fast O(1) lookup
+//! table-based renderer that converts NES palette indices to RGB colors. It is
+//! the default renderer used by both the frontend and CLI applications.
 //!
 //! # Example
 //!

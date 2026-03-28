@@ -27,12 +27,12 @@ use crate::cli::{
 // NES Constants
 // =============================================================================
 
-/// NES output width in pixels (256). Re-exported from core as u32 for image library APIs
-/// which require u32 dimensions rather than usize.
+/// NES output width in pixels (256). Re-exported from core as u32 for image
+/// library APIs which require u32 dimensions rather than usize.
 pub const NES_WIDTH: u32 = TOTAL_OUTPUT_WIDTH as u32;
 
-/// NES output height in pixels (240). Re-exported from core as u32 for image library APIs
-/// which require u32 dimensions rather than usize.
+/// NES output height in pixels (240). Re-exported from core as u32 for image
+/// library APIs which require u32 dimensions rather than usize.
 pub const NES_HEIGHT: u32 = TOTAL_OUTPUT_HEIGHT as u32;
 
 /// Create a screen renderer based on CLI arguments.
@@ -143,7 +143,8 @@ pub fn run_headless(args: &CliArgs) -> Result<(), String> {
         save_screenshot(&engine.frames, &mut renderer, args)?;
     }
 
-    // Video was already saved in streaming mode, skip in buffered mode if already done
+    // Video was already saved in streaming mode, skip in buffered mode if already
+    // done
     if !use_streaming {
         save_video(&engine.frames, &mut renderer, args)?;
     }
@@ -286,9 +287,11 @@ fn run_with_streaming_video(
 
     // Check if format requires FFmpeg and warn if not available
     if args.video.video_format == VideoFormat::Mp4 && !is_ffmpeg_available() {
-        return Err("MP4 export requires FFmpeg to be installed. \
-             Use --video-format png or --video-format ppm for self-contained export."
-            .to_string());
+        return Err(
+            "MP4 export requires FFmpeg to be installed. Use --video-format png or --video-format \
+             ppm for self-contained export."
+                .to_string(),
+        );
     }
 
     // Parse video resolution
@@ -494,9 +497,11 @@ pub fn save_video(
     if let Some(ref video_path) = args.video.video_path {
         // Check if format requires FFmpeg and warn if not available
         if args.video.video_format == VideoFormat::Mp4 && !is_ffmpeg_available() {
-            return Err("MP4 export requires FFmpeg to be installed. \
-                 Use --video-format png or --video-format ppm for self-contained export."
-                .to_string());
+            return Err(
+                "MP4 export requires FFmpeg to be installed. Use --video-format png or \
+                 --video-format ppm for self-contained export."
+                    .to_string(),
+            );
         }
 
         if frames.is_empty() {
