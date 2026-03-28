@@ -236,7 +236,7 @@ impl Default for KeybindingsConfig {
             OnKeyAction::StepCpuCycle,
         ));
         bindings.push(Binding::with_modifiers(
-            Key::Slash,
+            Key::Questionmark,
             Modifiers::SHIFT,
             OnKeyAction::StepPpuCycle,
         ));
