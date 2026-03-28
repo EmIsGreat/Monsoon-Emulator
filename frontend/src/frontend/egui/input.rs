@@ -22,14 +22,16 @@ pub fn handle_keyboard_input(
     let hotkey_is_expecting = hotkey_is_any_expecting(ctx);
 
     ctx.input_mut(|i| {
-        let mut active_actions = Vec::new();
-        for binding in &config.keybindings.keybindings {
-            if binding.active(i) {
-                active_actions.push(binding.logical_bind);
+        for idx in 0..config.keybindings.keybindings.len() {
+            let is_active = {
+                let binding = &config.keybindings.keybindings[idx];
+                binding.active(i)
+            };
+
+            if is_active {
+                let action = config.keybindings.keybindings[idx].logical_bind;
+                action.get_callback_function()(config, async_sender);
             }
-        }
-        for action in active_actions {
-            action.get_callback_function()(config, async_sender);
         }
 
         // Consume key events for all active keybindings so that egui

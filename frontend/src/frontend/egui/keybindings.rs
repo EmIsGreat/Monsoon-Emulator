@@ -775,6 +775,12 @@ fn modifier_is_down(modifier: ModifierKey, modifiers: Modifiers) -> bool {
     }
 }
 
+/// Normalize a just-captured binding for conventional keybind display.
+///
+/// On some platforms/layouts, pressing `Shift + <base-key>` yields a shifted
+/// symbol key variant (e.g. `Questionmark`) instead of the physical base key
+/// (`Slash`) with `shift = true`. We normalize such captures to base-key plus
+/// modifier so bindings are stored and shown in the common `Shift+/` style.
 fn normalize_captured_binding(
     variant: BindVariant,
     modifiers: Modifiers,
@@ -788,11 +794,14 @@ fn normalize_captured_binding(
     }
 }
 
-fn normalize_shifted_key(key: Key, shift: bool) -> Key {
-    if !shift {
+fn normalize_shifted_key(key: Key, shift_held: bool) -> Key {
+    if !shift_held {
         return key;
     }
 
+    // Normalize only keys with a clear unshifted counterpart in egui's Key
+    // enum. Layout-dependent symbols that do not map to a distinct base key
+    // variant are intentionally left unchanged.
     match key {
         Key::Questionmark => Key::Slash,
         Key::Plus => Key::Equals,
