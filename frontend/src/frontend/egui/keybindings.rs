@@ -14,7 +14,7 @@ use std::time::Instant;
 
 use crossbeam_channel::Sender;
 use egui::{
-    vec2, Event, Id, InputState, Key, Modifiers, PointerButton, Response, Sense, Ui, Widget,
+    Event, Id, InputState, Key, Modifiers, PointerButton, Response, Sense, Ui, Widget, vec2,
 };
 use serde::{Deserialize, Serialize};
 
@@ -23,10 +23,16 @@ use crate::frontend::messages::AsyncFrontendMessage;
 use crate::messages::ControllerEvent;
 
 /// Well-known egui data ID used to signal that a [`Hotkey`] widget is
-/// currently waiting for the user to press a key.  The input handler
-/// checks this flag so it can skip consuming key events while the
-/// keybinding UI is active.
-pub(crate) fn hotkey_expecting_id() -> Id { Id::new("hotkey_expecting_input") }
+/// currently waiting for the user to press a key.
+///
+/// The input handler checks this state so it can skip normal key handling while
+/// the keybinding UI is active.
+fn hotkey_active_id() -> Id { Id::new("hotkey_active_widget_id") }
+
+/// Returns true if any hotkey widget is currently waiting for key input.
+pub(crate) fn hotkey_is_any_expecting(ctx: &egui::Context) -> bool {
+    ctx.memory_mut(|memory| memory.data.get_temp::<Id>(hotkey_active_id()).is_some())
+}
 
 // ============================================================================
 // Binding types (ported from egui_hotkey)
@@ -624,27 +630,36 @@ where
                         .logical_bind;
 
                     if let Some((key, mods)) = keyboard.or(mouse) {
-                        self.binding
-                            .set(key, mods.unwrap_or(Modifiers::NONE), action);
+                        let (key, mods) =
+                            normalize_captured_binding(key, mods.unwrap_or(Modifiers::NONE));
+                        self.binding.set(key, mods, action);
                         response.mark_changed();
                         expecting = false;
+                        set_pending_modifier(ui, self.id, None);
                     } else if B::ACCEPT_KEYBOARD && self.accept_modifier_keys {
-                        // No regular key or mouse event — check whether a
-                        // modifier key was pressed on its own (Shift, Ctrl,
-                        // or Alt).  Compare against the modifiers from the
-                        // *previous frame* so that releasing and re-pressing
-                        // a modifier that was held during the initial click
-                        // is correctly detected as a new press (up→down edge).
+                        // No regular key or mouse event. For modifier-only
+                        // bindings we defer commit until modifier release, so
+                        // modifier-first combos (e.g. Ctrl+K) can be captured.
                         let prev_mods = get_prev_modifiers(ui, self.id);
                         let current_mods = ui.input(|i| i.modifiers);
+                        let pending_modifier = get_pending_modifier(ui, self.id);
                         // Always update prev_mods for the next frame so we
                         // track releases and detect the next down edge.
                         set_prev_modifiers(ui, self.id, current_mods);
-                        if let Some(mk) = newly_pressed_modifier(prev_mods, current_mods) {
-                            self.binding
-                                .set(BindVariant::ModifierKey(mk), Modifiers::NONE, action);
-                            response.mark_changed();
-                            expecting = false;
+
+                        if let Some(mk) = pending_modifier {
+                            if !modifier_is_down(mk, current_mods) {
+                                self.binding.set(
+                                    BindVariant::ModifierKey(mk),
+                                    Modifiers::NONE,
+                                    action,
+                                );
+                                response.mark_changed();
+                                expecting = false;
+                                set_pending_modifier(ui, self.id, None);
+                            }
+                        } else if let Some(mk) = newly_pressed_modifier(prev_mods, current_mods) {
+                            set_pending_modifier(ui, self.id, Some(mk));
                         }
                     }
                 }
@@ -675,32 +690,28 @@ where
             );
         }
 
-        // Signal the input handler that a hotkey widget is waiting for
-        // a key press so it should not consume key events this frame.
-        if expecting {
-            ui.ctx()
-                .data_mut(|d| d.insert_temp(hotkey_expecting_id(), true));
-        }
-
         set_expecting(ui, self.id, expecting);
         response
     }
 }
 
 fn get_expecting(ui: &Ui, id: Id) -> bool {
-    ui.ctx().memory_mut(|memory| {
-        *memory
-            .data
-            .get_temp_mut_or_default::<bool>(ui.make_persistent_id(id))
-    })
+    ui.ctx()
+        .memory_mut(|memory| memory.data.get_temp::<Id>(hotkey_active_id()) == Some(id))
 }
 
 fn set_expecting(ui: &Ui, id: Id, new: bool) {
     ui.ctx().memory_mut(|memory| {
-        *memory
-            .data
-            .get_temp_mut_or_default::<bool>(ui.make_persistent_id(id)) = new;
+        if new {
+            memory.data.insert_temp(hotkey_active_id(), id);
+        } else if memory.data.get_temp::<Id>(hotkey_active_id()) == Some(id) {
+            memory.data.remove::<Id>(hotkey_active_id());
+        }
     });
+
+    if !new {
+        set_pending_modifier(ui, id, None);
+    }
 }
 
 /// Store the modifier state from the previous frame while the Hotkey widget
@@ -719,6 +730,23 @@ fn get_prev_modifiers(ui: &Ui, id: Id) -> Modifiers {
         .memory_mut(|memory| memory.data.get_temp(storage_id).unwrap_or(Modifiers::NONE))
 }
 
+fn set_pending_modifier(ui: &Ui, id: Id, modifier: Option<ModifierKey>) {
+    let storage_id = Id::new("hotkey_pending_modifier").with(ui.make_persistent_id(id));
+    ui.ctx().memory_mut(|memory| {
+        if let Some(modifier) = modifier {
+            memory.data.insert_temp(storage_id, modifier);
+        } else {
+            memory.data.remove::<ModifierKey>(storage_id);
+        }
+    });
+}
+
+fn get_pending_modifier(ui: &Ui, id: Id) -> Option<ModifierKey> {
+    let storage_id = Id::new("hotkey_pending_modifier").with(ui.make_persistent_id(id));
+    ui.ctx()
+        .memory_mut(|memory| memory.data.get_temp(storage_id))
+}
+
 /// Return the first modifier key that is active in `current` but was *not*
 /// active in `initial`.  Returns `None` if no new modifier was pressed.
 fn newly_pressed_modifier(initial: Modifiers, current: Modifiers) -> Option<ModifierKey> {
@@ -734,5 +762,45 @@ fn newly_pressed_modifier(initial: Modifiers, current: Modifiers) -> Option<Modi
         Some(ModifierKey::MacCmd)
     } else {
         None
+    }
+}
+
+fn modifier_is_down(modifier: ModifierKey, modifiers: Modifiers) -> bool {
+    match modifier {
+        ModifierKey::Shift => modifiers.shift,
+        ModifierKey::Ctrl => modifiers.ctrl,
+        ModifierKey::Alt => modifiers.alt,
+        ModifierKey::Command => modifiers.command,
+        ModifierKey::MacCmd => modifiers.mac_cmd,
+    }
+}
+
+fn normalize_captured_binding(
+    variant: BindVariant,
+    modifiers: Modifiers,
+) -> (BindVariant, Modifiers) {
+    match variant {
+        BindVariant::Keyboard(key) => {
+            let normalized_key = normalize_shifted_key(key, modifiers.shift);
+            (BindVariant::Keyboard(normalized_key), modifiers)
+        }
+        _ => (variant, modifiers),
+    }
+}
+
+fn normalize_shifted_key(key: Key, shift: bool) -> Key {
+    if !shift {
+        return key;
+    }
+
+    match key {
+        Key::Questionmark => Key::Slash,
+        Key::Plus => Key::Equals,
+        Key::Colon => Key::Semicolon,
+        Key::OpenCurlyBracket => Key::OpenBracket,
+        Key::CloseCurlyBracket => Key::CloseBracket,
+        Key::Pipe => Key::Backslash,
+        Key::Exclamationmark => Key::Num1,
+        _ => key,
     }
 }

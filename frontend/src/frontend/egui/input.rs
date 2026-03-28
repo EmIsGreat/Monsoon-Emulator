@@ -3,22 +3,9 @@ use egui::{Context, FocusDirection};
 
 use crate::frontend::egui::config::{AppConfig, KeybindingsConfig};
 use crate::frontend::egui::keybindings::{
-    BindVariant, Binding, HotkeyBinding, hotkey_expecting_id,
+    BindVariant, Binding, HotkeyBinding, hotkey_is_any_expecting,
 };
 use crate::frontend::messages::AsyncFrontendMessage;
-
-/// Check if a keybind is currently held down.
-///
-/// Unlike [`is_binding_pressed`], this returns true every frame the key is
-/// held, supports multiple simultaneous keys, and has no OS text-input repeat
-/// delay. This is appropriate for controller inputs where immediate, continuous
-/// response is needed.
-fn is_binding_down(input: &egui::InputState, binding: &Option<Binding>) -> bool {
-    match binding {
-        Some(b) => b.down(input),
-        None => false,
-    }
-}
 
 /// Handle keyboard input from the user.
 ///
@@ -32,24 +19,17 @@ pub fn handle_keyboard_input(
     async_sender: &Sender<AsyncFrontendMessage>,
     config: &mut AppConfig,
 ) {
-    // Check whether a Hotkey widget is currently waiting for the user to
-    // press a key (set during the *previous* frame's widget rendering).
-    // When true we must let the raw key events through so the Hotkey
-    // widget can capture them.
-    let hotkey_is_expecting = ctx.data_mut(|d| {
-        let val = d.get_temp::<bool>(hotkey_expecting_id()).unwrap_or(false);
-        // Reset so the flag doesn't persist when no widget sets it.
-        d.insert_temp(hotkey_expecting_id(), false);
-        val
-    });
-
-    let bindings = config.keybindings.keybindings.clone();
+    let hotkey_is_expecting = hotkey_is_any_expecting(ctx);
 
     ctx.input_mut(|i| {
-        for mut binding in bindings {
-            if binding.active(&i) {
-                binding.run_bound(config, async_sender)
+        let mut active_actions = Vec::new();
+        for binding in &config.keybindings.keybindings {
+            if binding.active(i) {
+                active_actions.push(binding.logical_bind);
             }
+        }
+        for action in active_actions {
+            action.get_callback_function()(config, async_sender);
         }
 
         // Consume key events for all active keybindings so that egui
