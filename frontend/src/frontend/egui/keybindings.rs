@@ -142,7 +142,7 @@ impl Display for BindVariant {
 
 type HotKeyCallback = dyn FnMut(&mut AppConfig, &Sender<AsyncFrontendMessage>) + Sync + Send;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub enum OnKeyAction {
     ControllerUp,
     ControllerDown,

@@ -30,10 +30,9 @@ fn render_controller_keybindings(ui: &mut egui::Ui, keybinds: &mut [Binding]) ->
                     .iter_mut()
                     .filter(|b| b.logical_bind.get_category() == KeybindCategory::Controller)
                 {
-                    let display_name = keybinding.logical_bind.get_display_name();
-                    ui.label(display_name);
+                    ui.label(keybinding.logical_bind.get_display_name());
                     changed |= ui
-                        .add(Hotkey::with_id(keybinding, display_name))
+                        .add(Hotkey::with_id(keybinding, keybinding.logical_bind))
                         .changed();
                     ui.end_row()
                 }
@@ -55,11 +54,10 @@ fn render_emulation_keybindings(ui: &mut egui::Ui, keybinds: &mut [Binding]) -> 
                     .iter_mut()
                     .filter(|b| b.logical_bind.get_category() == KeybindCategory::Emulator)
                 {
-                    let display_name = keybinding.logical_bind.get_display_name();
-                    ui.label(display_name);
+                    ui.label(keybinding.logical_bind.get_display_name());
                     changed |= ui
                         .add(
-                            Hotkey::with_id(keybinding, display_name)
+                            Hotkey::with_id(keybinding, keybinding.logical_bind)
                                 .accept_modifier_keys(false),
                         )
                         .changed();
