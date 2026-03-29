@@ -574,8 +574,9 @@ impl EguiApp {
 impl eframe::App for EguiApp {
     /// Run non-visual per-frame application work.
     ///
-    /// This keeps simulation, message processing, and scheduling in `logic`,
-    /// while `ui` stays focused on widget/layout rendering and UI interactions.
+    /// This keeps simulation, message processing, and timing updates in
+    /// `logic`, while `ui` stays focused on widget/layout rendering and UI
+    /// interactions.
     fn logic(&mut self, ctx: &Context, _: &mut Frame) {
         // Handle keyboard input
         handle_keyboard_input(ctx, &self.async_sender, &mut self.config);
