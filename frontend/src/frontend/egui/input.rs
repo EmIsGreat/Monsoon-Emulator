@@ -3,8 +3,8 @@ use egui::{Context, FocusDirection};
 
 use crate::frontend::egui::config::{AppConfig, KeybindingsConfig};
 use crate::frontend::egui::keybindings::{
-    BindVariant, Binding, HotkeyBinding, TriggerType, hotkey_is_any_expecting,
-    hotkey_take_just_set_this_frame,
+    hotkey_is_any_expecting, hotkey_take_just_set_this_frame, BindVariant, Binding, HotkeyBinding,
+    TriggerType,
 };
 use crate::frontend::messages::AsyncFrontendMessage;
 
@@ -25,16 +25,17 @@ pub fn handle_keyboard_input(
 
     ctx.input_mut(|i| {
         if !hotkey_is_expecting && !hotkey_just_set_this_frame {
-            for idx in 0..config.keybindings.keybindings.len() {
-                let is_active = {
-                    let binding = &config.keybindings.keybindings[idx];
-                    binding.active(i)
-                };
+            let mut actions = Vec::new();
 
-                if is_active {
-                    let action = config.keybindings.keybindings[idx].logical_bind;
-                    action.get_callback_function()(config, async_sender);
+            for (action, binding) in &config.keybindings.keybindings {
+                if binding.active(i) {
+                    actions.push(*action);
                 }
+            }
+
+            // Now no borrow of `config.keybindings` is active
+            for action in actions {
+                action.get_callback_function()(config, async_sender);
             }
         }
 
@@ -63,12 +64,11 @@ pub fn handle_keyboard_input(
 /// widgets rendered later in the frame do not also react to them (e.g. Space
 /// clicking a focused button, or Tab advancing widget focus).
 fn consume_triggered_keys(input: &mut egui::InputState, keybindings: &KeybindingsConfig) {
-    for binding in &keybindings.keybindings {
+    for (action, binding) in &keybindings.keybindings {
         // Continuous bindings (controller actions) are evaluated via `down`.
         // Consuming their initial `pressed` event can interfere with hold
         // recognition on some platforms/egui backends.
-        if binding.logical_bind.get_trigger_type() == TriggerType::Single && binding.pressed(input)
-        {
+        if action.get_trigger_type() == TriggerType::Single && binding.pressed(input) {
             consume_binding(input, &Some(*binding))
         }
     }

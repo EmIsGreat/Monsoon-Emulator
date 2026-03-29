@@ -1,11 +1,11 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 
 use egui::{Key, Modifiers};
 use monsoon_core::emulation::palette_util::RgbPalette;
 use monsoon_core::emulation::ppu_util::EmulatorFetchable;
 use monsoon_core::emulation::rom::RomFile;
-use monsoon_core::emulation::screen_renderer::{ScreenRenderer, create_renderer};
+use monsoon_core::emulation::screen_renderer::{create_renderer, ScreenRenderer};
 use serde::{Deserialize, Serialize};
 
 use crate::frontend::egui::keybindings::{
@@ -195,7 +195,7 @@ impl Default for SpeedConfig {
 /// All keybindings for the emulator
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct KeybindingsConfig {
-    pub keybindings: Vec<Binding>,
+    pub keybindings: HashMap<OnKeyAction, Binding>,
 }
 
 impl KeybindingsConfig {
@@ -243,8 +243,14 @@ impl Default for KeybindingsConfig {
         bindings.push(Binding::key(Key::F8, OnKeyAction::Quickload));
         bindings.push(Binding::key(Key::N, OnKeyAction::ChangeDebugPalette));
 
+        let mut map = HashMap::new();
+
+        for bind in bindings {
+            map.insert(bind.logical_bind, bind.clone());
+        }
+
         KeybindingsConfig {
-            keybindings: bindings,
+            keybindings: map,
         }
     }
 }
