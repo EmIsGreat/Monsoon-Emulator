@@ -1,4 +1,4 @@
-use egui::Context;
+use egui::Ui;
 
 use crate::frontend::egui::config::SpeedConfig;
 use crate::frontend::egui::fps_counter::FpsCounter;
@@ -6,12 +6,12 @@ use crate::frontend::egui::textures::EmuTextures;
 
 /// Add the status bar at the bottom of the window
 pub fn add_status_bar(
-    ctx: &Context,
+    ui: &mut Ui,
     fps_counter: &FpsCounter,
     speed_config: &SpeedConfig,
     emu_textures: &EmuTextures,
 ) {
-    egui::TopBottomPanel::bottom("status_bar").show(ctx, |ui| {
+    egui::Panel::bottom("status_bar").show_inside(ui, |ui| {
         ui.horizontal(|ui| {
             ui.label(format!("FPS: {:.1}", fps_counter.fps()));
             ui.separator();

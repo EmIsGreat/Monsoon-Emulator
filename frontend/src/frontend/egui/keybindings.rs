@@ -14,9 +14,10 @@ use std::time::Instant;
 
 use crossbeam_channel::Sender;
 use egui::{
-    Event, Id, InputState, Key, Modifiers, PointerButton, Response, Sense, Ui, Widget, vec2,
+    vec2, Event, Id, InputState, Key, Modifiers, PointerButton, Response, Sense, Ui, Widget,
 };
 use serde::{Deserialize, Serialize};
+use strum::EnumIter;
 
 use crate::frontend::egui::config::AppConfig;
 use crate::frontend::messages::AsyncFrontendMessage;
@@ -168,7 +169,7 @@ impl Display for BindVariant {
     }
 }
 
-type HotKeyCallback = dyn FnMut(&mut AppConfig, &Sender<AsyncFrontendMessage>) + Sync + Send;
+type HotKeyCallback = dyn FnMut(&mut AppConfig, &Sender<AsyncFrontendMessage>);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Hash, Ord, PartialOrd)]
 pub enum OnKeyAction {
@@ -190,6 +191,8 @@ pub enum OnKeyAction {
     Quicksave,
     Quickload,
     ChangeDebugPalette,
+    LoadRom,
+    Quit,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -198,10 +201,21 @@ pub enum TriggerType {
     Continuous,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, EnumIter, Hash)]
 pub enum KeybindCategory {
     Controller,
-    Emulator,
+    Debug,
+    Ui,
+}
+
+impl KeybindCategory {
+    pub fn get_name(&self) -> &'static str {
+        match self {
+            KeybindCategory::Controller => "Controller Keybinds",
+            KeybindCategory::Debug => "Debug Keybinds",
+            KeybindCategory::Ui => "Ui Shortcuts",
+        }
+    }
 }
 
 impl OnKeyAction {
@@ -225,6 +239,8 @@ impl OnKeyAction {
             OnKeyAction::Reset => "Reset Console",
             OnKeyAction::Quicksave => "Quicksave",
             OnKeyAction::Quickload => "Quickload",
+            OnKeyAction::LoadRom => "Load Rom",
+            OnKeyAction::Quit => "Quit",
         }
     }
 
@@ -261,7 +277,8 @@ impl OnKeyAction {
             | OnKeyAction::Reset
             | OnKeyAction::Quicksave
             | OnKeyAction::Quickload
-            | OnKeyAction::ChangeDebugPalette => KeybindCategory::Emulator,
+            | OnKeyAction::ChangeDebugPalette => KeybindCategory::Debug,
+            OnKeyAction::LoadRom | OnKeyAction::Quit => KeybindCategory::Ui,
         }
     }
 
@@ -328,6 +345,12 @@ impl OnKeyAction {
             }),
             OnKeyAction::Quickload => Box::new(|_, sender| {
                 let _ = sender.send(AsyncFrontendMessage::Quickload);
+            }),
+            OnKeyAction::LoadRom => Box::new(|_, sender| {
+                let _ = sender.send(AsyncFrontendMessage::StartLoadRom);
+            }),
+            OnKeyAction::Quit => Box::new(|_, sender| {
+                let _ = sender.send(AsyncFrontendMessage::Quit);
             }),
         }
     }

@@ -1,18 +1,18 @@
 use crossbeam_channel::Sender;
-use egui::Context;
+use egui::Ui;
 
 use crate::frontend::egui::config::AppConfig;
-use crate::frontend::egui::tiles::{Pane, add_pane_if_missing};
+use crate::frontend::egui::tiles::{add_pane_if_missing, Pane};
 use crate::frontend::messages::AsyncFrontendMessage;
 use crate::frontend::util::{spawn_rom_picker, spawn_savestate_picker};
 
 pub fn add_menu_bar(
-    ctx: &Context,
+    ui: &mut Ui,
     config: &AppConfig,
     async_sender: &Sender<AsyncFrontendMessage>,
     tree: &mut egui_tiles::Tree<Pane>,
 ) {
-    egui::TopBottomPanel::top("menu_bar").show(ctx, |ui| {
+    egui::Panel::top("menu_bar").show_inside(ui, |ui| {
         egui::MenuBar::new().ui(ui, |ui| {
             ui.menu_button("File", |ui| {
                 if ui.button("Load Rom").clicked() {

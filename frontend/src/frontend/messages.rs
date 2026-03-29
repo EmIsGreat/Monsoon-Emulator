@@ -91,6 +91,7 @@ pub enum AsyncFrontendMessage {
     Quicksave,
     /// Load a ROM - contains ROM data if provided, None triggers file picker
     LoadRom(Option<LoadedRom>),
+    StartLoadRom,
     /// Open the save browser dialog (triggers async listing of saves)
     OpenSaveBrowser,
     /// Save browser has finished loading entries
@@ -134,6 +135,7 @@ pub enum AsyncFrontendMessage {
     StepScanline,
     StepFrame,
     SetLastFrameRequest(Instant),
+    Quit,
 }
 
 /// Context for the multistep savestate loading process

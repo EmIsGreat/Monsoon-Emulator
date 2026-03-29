@@ -5,8 +5,6 @@
 
 use monsoon_core::emulation::palette_util::RgbColor;
 
-use crate::frontend::egui::keybindings::Binding;
-
 /// Draw a colored cell with hover highlighting using RgbColor.
 ///
 /// This is a common pattern used in palette viewers, pattern tables, etc.
