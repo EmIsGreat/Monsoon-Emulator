@@ -3,7 +3,7 @@
 //! This module handles messages from async operations such as file dialogs,
 //! savestate loading workflows, and other deferred operations.
 
-use egui::{Context, ViewportCommand};
+use egui::{Context, Id, ViewportCommand};
 use monsoon_core::emulation::palette_util::RgbPalette;
 use monsoon_core::emulation::ppu_util::EmulatorFetchable;
 use monsoon_core::emulation::savestate;
@@ -291,6 +291,12 @@ impl EguiApp {
             }
             AsyncFrontendMessage::OpenSpriteViewer => {
                 add_pane_if_missing(&mut self.tree, Pane::Sprites);
+            }
+            AsyncFrontendMessage::Speedup => {
+                ctx.memory_mut(|mem| {
+                    mem.data
+                        .insert_temp::<bool>(Id::new(AsyncFrontendMessage::Speedup), true)
+                });
             }
         }
         self.config.sync_dialog_pause_reason();

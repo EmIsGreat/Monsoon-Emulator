@@ -83,7 +83,10 @@ impl AppConfig {
     }
 
     pub fn is_effectively_paused(&self) -> bool {
-        self.speed_config.is_paused || !self.auto_pause_state.reasons.is_empty()
+        self.speed_config.is_paused
+            || !self.auto_pause_state.reasons.is_empty()
+            || (self.speed_config.app_speed == AppSpeed::Custom
+                && self.speed_config.custom_speed == 0)
     }
 }
 
@@ -266,7 +269,7 @@ impl Default for KeybindingsConfig {
             ),
             Binding::key(Key::Enter, OnKeyAction::ControllerStartButton),
             Binding::key(Key::Tab, OnKeyAction::ControllerSelectButton),
-            // Emulator Bindings
+            // Debug Bindings
             Binding::key(Key::Comma, OnKeyAction::PauseEmulator),
             Binding::key(Key::Period, OnKeyAction::StepFrame),
             Binding::with_modifiers(Key::Period, Modifiers::CTRL, OnKeyAction::StepScanline),
@@ -296,6 +299,7 @@ impl Default for KeybindingsConfig {
                 Modifiers::CTRL.plus(Modifiers::SHIFT),
                 OnKeyAction::OpenSpriteViewer,
             ),
+            Binding::with_modifiers(Key::Tab, Modifiers::CTRL, OnKeyAction::Speedup),
             // Ui Bindings
             Binding::with_modifiers(Key::O, Modifiers::CTRL, OnKeyAction::LoadRom),
             Binding::with_modifiers(Key::Q, Modifiers::CTRL, OnKeyAction::Quit),

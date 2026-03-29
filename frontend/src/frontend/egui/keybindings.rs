@@ -13,7 +13,7 @@ use std::hash::Hash;
 
 use crossbeam_channel::Sender;
 use egui::{
-    Event, Id, InputState, Key, Modifiers, PointerButton, Response, Sense, Ui, Widget, vec2,
+    vec2, Event, Id, InputState, Key, Modifiers, PointerButton, Response, Sense, Ui, Widget,
 };
 use serde::{Deserialize, Serialize};
 use strum::EnumIter;
@@ -228,6 +228,7 @@ pub enum OnKeyAction {
     BrowseSavestates,
     PowerCycle,
     PowerToggle,
+    Speedup,
     OpenOptionsMenu,
     OpenKeybindingsMenu,
     OpenPaletteViewer,
@@ -297,6 +298,7 @@ impl OnKeyAction {
             OnKeyAction::OpenPatternTableViewer => "Open Pattern Table Viewer",
             OnKeyAction::OpenNametableViewer => "Open Nametable Viewer",
             OnKeyAction::OpenSpriteViewer => "Open Sprite Viewer",
+            OnKeyAction::Speedup => "Speedup",
         }
     }
 
@@ -310,7 +312,8 @@ impl OnKeyAction {
             | OnKeyAction::ControllerBButton
             | OnKeyAction::ControllerStartButton
             | OnKeyAction::ControllerSelectButton
-            | OnKeyAction::Reset => TriggerType::Continuous,
+            | OnKeyAction::Reset
+            | OnKeyAction::Speedup => TriggerType::Continuous,
             _ => TriggerType::Single,
         }
     }
@@ -337,7 +340,8 @@ impl OnKeyAction {
             | OnKeyAction::OpenPaletteViewer
             | OnKeyAction::OpenPatternTableViewer
             | OnKeyAction::OpenSpriteViewer
-            | OnKeyAction::ChangeDebugPalette => KeybindCategory::Debug,
+            | OnKeyAction::ChangeDebugPalette
+            | OnKeyAction::Speedup => KeybindCategory::Debug,
             OnKeyAction::LoadRom
             | OnKeyAction::Quit
             | OnKeyAction::LoadSavestate
@@ -351,7 +355,7 @@ impl OnKeyAction {
         }
     }
 
-    /// Returns `true` when this action should pass-through and co-trigger with
+    /// Returns `true` when this action should pass through and co-trigger with
     /// other active bindings.
     ///
     /// When enabled, overlapping bindings can activate simultaneously instead
@@ -411,6 +415,7 @@ impl OnKeyAction {
             OnKeyAction::BrowseSavestates => AsyncFrontendMessage::OpenSaveBrowser,
             OnKeyAction::PowerCycle => AsyncFrontendMessage::PowerCycle,
             OnKeyAction::PowerToggle => AsyncFrontendMessage::PowerToggle,
+            OnKeyAction::Speedup => {AsyncFrontendMessage::Speedup}
             OnKeyAction::OpenOptionsMenu => AsyncFrontendMessage::OpenOptionsMenu,
             OnKeyAction::OpenKeybindingsMenu => AsyncFrontendMessage::OpenKeybindsMenu,
             OnKeyAction::OpenPaletteViewer => AsyncFrontendMessage::OpenPaletteViewer,
