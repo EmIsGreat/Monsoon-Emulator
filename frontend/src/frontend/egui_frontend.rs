@@ -566,6 +566,10 @@ impl EguiApp {
 }
 
 impl eframe::App for EguiApp {
+    /// Run non-visual per-frame application work.
+    ///
+    /// This keeps simulation, message processing, and scheduling in `logic`,
+    /// while `ui` stays focused on widget/layout rendering and UI interactions.
     fn logic(&mut self, ctx: &Context, _: &mut Frame) {
         // Handle keyboard input
         handle_keyboard_input(ctx, &self.async_sender, &mut self.config);
@@ -578,11 +582,10 @@ impl eframe::App for EguiApp {
 
         self.update_emu_textures(ctx);
 
-        // Process messages from emulator/async/frontend queues
+        // Process pending frontend, async, and emulator messages
         self.process_messages(ctx);
 
-        // Check if pattern tables/nametables just became visible and force rebuild if
-        // needed
+        // Check if tile viewers just became visible and force rebuild if needed
         self.check_and_handle_viewer_visibility(ctx);
 
         // Update required debug fetches based on visible panes
