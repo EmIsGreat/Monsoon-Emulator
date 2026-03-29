@@ -236,10 +236,11 @@ impl<'a> HotKeyButton<'a> {
 
 impl<'a> Widget for HotKeyButton<'a> {
     fn ui(self, ui: &mut Ui) -> Response {
-        const DEFAULT_WIDTH_MULTIPLIER: f32 = 8.0;
+        // Width floor for menu-row consistency when labels are short.
+        const DEFAULT_WIDTH_MULTIPLIER: f32 = 4.0;
         // We don't have a direct "tab stop" metric in egui text layout here.
-        // Measured in rendered space widths; tuned so this menu's visual
-        // center gap is roughly half the previous spacing.
+        // Measured in rendered-space widths; this is tuned relative to the
+        // old value (5.0) so the visual center gap is about half as large.
         const TABLIKE_GAP_SPACES: f32 = 2.5;
 
         let left_text = self.action.get_display_name();
@@ -261,8 +262,8 @@ impl<'a> Widget for HotKeyButton<'a> {
         let padding = ui.spacing().button_padding;
 
         let min_width = left_galley.size().x + right_galley.size().x + min_gap + (padding.x * 2.0);
-        // Keep the historical menu row width so alignment remains stable across
-        // items, while still expanding for long labels/key names when needed.
+        // Keep a modest menu row width floor for visual stability across items,
+        // while still expanding for long labels/key names when needed.
         let desired_width =
             (ui.spacing().interact_size.x * DEFAULT_WIDTH_MULTIPLIER).max(min_width);
         let desired_size = vec2(desired_width, ui.spacing().interact_size.y);
