@@ -661,13 +661,6 @@ where
             accept_modifier_keys: true,
         }
     }
-
-    /// Allow or disallow bare modifier keys (Shift / Ctrl / Alt / Command /
-    /// MacCmd) as binding targets.
-    pub fn accept_modifier_keys(mut self, accept: bool) -> Self {
-        self.accept_modifier_keys = accept;
-        self
-    }
 }
 
 impl<B> Widget for Hotkey<'_, B>

@@ -1,6 +1,5 @@
 //! Keybindings pane rendering
 
-
 use strum::IntoEnumIterator;
 
 use crate::frontend::egui::config::AppConfig;

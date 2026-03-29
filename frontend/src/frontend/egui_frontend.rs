@@ -36,6 +36,7 @@ use crate::channel_emu::ChannelEmulator;
 use crate::frontend::egui::config::{AppConfig, AppSpeed};
 use crate::frontend::egui::fps_counter::FpsCounter;
 use crate::frontend::egui::input::handle_keyboard_input;
+use crate::frontend::egui::message_handlers::async_handler::extract_timestamp;
 use crate::frontend::egui::message_handlers::{AsyncMessageHandler, EmulatorMessageHandler};
 use crate::frontend::egui::textures::EmuTextures;
 use crate::frontend::egui::tiles::{
@@ -50,7 +51,6 @@ use crate::frontend::messages::{
 use crate::frontend::persistence::{PersistentConfig, get_egui_storage_path, load_config};
 use crate::frontend::storage::{Storage, StorageKey};
 use crate::frontend::{storage, util};
-use crate::frontend::egui::message_handlers::async_handler::extract_timestamp;
 use crate::messages::{EmulatorMessage, FrontendMessage, SaveType};
 
 /// Key used for storing egui_tiles tree state in egui's persistence
@@ -566,7 +566,7 @@ impl EguiApp {
 }
 
 impl eframe::App for EguiApp {
-    fn ui(&mut self, ui: &mut Ui, frame: &mut Frame) {
+    fn ui(&mut self, ui: &mut Ui, _: &mut Frame) {
         // Handle keyboard input
         handle_keyboard_input(ui, &self.async_sender, &mut self.config);
 

@@ -3,10 +3,11 @@ use std::future::Future;
 use crossbeam_channel::Sender;
 use monsoon_core::emulation::palette_util::parse_palette_from_bytes;
 use monsoon_core::emulation::savestate;
+use monsoon_core::emulation::savestate::SaveState;
 use monsoon_core::util::ToBytes;
 use rfd::{AsyncFileDialog, FileHandle};
 use sha2::{Digest, Sha256};
-use monsoon_core::emulation::savestate::SaveState;
+
 use crate::frontend::messages::{
     AsyncFrontendMessage, LoadedPalette, LoadedRom, SavestateLoadContext,
 };
@@ -379,8 +380,11 @@ pub fn spawn_savestate_picker(sender: &Sender<AsyncFrontendMessage>, dir: Option
     });
 }
 
-pub fn try_parse_savestate(sender: &Sender<AsyncFrontendMessage>, data: &Vec<u8>) -> Option<SaveState> {
-    let savestate = match savestate::try_load_state_from_bytes(&data) {
+pub fn try_parse_savestate(
+    sender: &Sender<AsyncFrontendMessage>,
+    data: &[u8],
+) -> Option<SaveState> {
+    let savestate = match savestate::try_load_state_from_bytes(data) {
         Some(s) => s,
         None => {
             // Failed to load savestate - send error notification

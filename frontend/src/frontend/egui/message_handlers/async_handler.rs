@@ -16,7 +16,7 @@ use crate::frontend::savestates::{
     SaveBrowserState, SaveEntry, SaveEntryType,
 };
 use crate::frontend::storage::{Storage, StorageKey};
-use crate::frontend::util::{spawn_rom_picker, try_parse_savestate, SavestateLoadError};
+use crate::frontend::util::{SavestateLoadError, spawn_rom_picker, try_parse_savestate};
 use crate::frontend::{storage, util};
 use crate::messages::{FrontendMessage, SaveType};
 
@@ -693,7 +693,7 @@ async fn list_save_entries(game_name: &str) -> Vec<SaveEntry> {
 async fn add_save_entries(entries: &mut Vec<SaveEntry>, qs_prefix: &StorageKey) {
     let storage_impl = storage::get_storage();
 
-    if let Ok(qs_entries) = storage_impl.list(&qs_prefix).await {
+    if let Ok(qs_entries) = storage_impl.list(qs_prefix).await {
         for entry in qs_entries {
             if entry.key.sub_path.ends_with(".sav")
                 && let Some(save_entry) = parse_save_entry(entry.key, SaveEntryType::Quicksave)
