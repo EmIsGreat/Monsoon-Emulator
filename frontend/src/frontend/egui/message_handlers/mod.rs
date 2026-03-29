@@ -24,8 +24,8 @@
 //! self.handle_emulator_messages(ctx);
 //! ```
 
-mod async_handler;
-mod emulator_handler;
+pub mod async_handler;
+pub mod emulator_handler;
 
 pub use async_handler::AsyncMessageHandler;
 pub use emulator_handler::EmulatorMessageHandler;

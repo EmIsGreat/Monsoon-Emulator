@@ -228,6 +228,8 @@ impl Default for KeybindingsConfig {
             Binding::key(Key::F5, OnKeyAction::Quicksave),
             Binding::key(Key::F8, OnKeyAction::Quickload),
             Binding::key(Key::N, OnKeyAction::ChangeDebugPalette),
+            Binding::with_modifiers(Key::O, Modifiers::CTRL, OnKeyAction::LoadRom),
+            Binding::with_modifiers(Key::Q, Modifiers::CTRL, OnKeyAction::Quit),
         ];
 
         let mut map = BTreeMap::new();

@@ -19,8 +19,8 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use crossbeam_channel::{Receiver, Sender};
-use eframe::glow;
-use egui::{Context, Style, ViewportCommand, Visuals};
+use eframe::Frame;
+use egui::{Context, Style, Ui, ViewportCommand, Visuals};
 use monsoon_core::declare_renderers;
 use monsoon_core::emulation::nes::Nes;
 use monsoon_core::emulation::ppu_util::{EmulatorFetchable, PaletteData, TILE_COUNT, TileData};
@@ -50,6 +50,7 @@ use crate::frontend::messages::{
 use crate::frontend::persistence::{PersistentConfig, get_egui_storage_path, load_config};
 use crate::frontend::storage::{Storage, StorageKey};
 use crate::frontend::{storage, util};
+use crate::frontend::egui::message_handlers::async_handler::extract_timestamp;
 use crate::messages::{EmulatorMessage, FrontendMessage, SaveType};
 
 /// Key used for storing egui_tiles tree state in egui's persistence
@@ -324,11 +325,7 @@ impl EguiApp {
 
             let time_version = stem.split_once('_')?.1;
 
-            let (timestamp, version) = if time_version.chars().filter(|c| *c == '_').count() > 1 {
-                time_version.rsplit_once('_')?
-            } else {
-                (time_version, "0")
-            };
+            let (timestamp, version) = extract_timestamp(time_version)?;
 
             let time = chrono::NaiveDateTime::parse_from_str(timestamp, "%Y-%m-%d_%H-%M-%S");
 
@@ -569,24 +566,24 @@ impl EguiApp {
 }
 
 impl eframe::App for EguiApp {
-    fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut Ui, frame: &mut Frame) {
         // Handle keyboard input
-        handle_keyboard_input(ctx, &self.async_sender, &mut self.config);
+        handle_keyboard_input(ui, &self.async_sender, &mut self.config);
 
         if let Err(e) = self.channel_emu.process_messages() {
             eprintln!("Emulator error: {}", e);
-            ctx.send_viewport_cmd(ViewportCommand::Close);
+            ui.send_viewport_cmd(ViewportCommand::Close);
             return;
         }
 
-        self.update_emu_textures(ctx);
+        self.update_emu_textures(ui);
 
         // Process messages from emulator
-        self.process_messages(ctx);
+        self.process_messages(ui);
 
         // Check if pattern tables viewer just became visible and force rebuild if
         // needed
-        self.check_and_handle_viewer_visibility(ctx);
+        self.check_and_handle_viewer_visibility(ui);
 
         // Update required debug fetches based on visible panes
         self.config.view_config.required_debug_fetches =
@@ -596,13 +593,13 @@ impl eframe::App for EguiApp {
         self.check_periodic_autosave();
 
         // Check for focus loss autosave (when window loses focus)
-        self.check_focus_autosave(ctx);
+        self.check_focus_autosave(ui);
 
-        add_menu_bar(ctx, &self.config, &self.async_sender, &mut self.tree);
+        add_menu_bar(ui, &self.config, &self.async_sender, &mut self.tree);
 
         // Status bar at bottom
         add_status_bar(
-            ctx,
+            ui,
             &self.fps_counter,
             &self.config.speed_config,
             &self.emu_textures,
@@ -611,7 +608,7 @@ impl eframe::App for EguiApp {
         // Central panel with tile tree
         #[cfg(target_arch = "wasm32")]
         let mut keybindings_changed = false;
-        egui::CentralPanel::default().show(ctx, |ui| {
+        egui::CentralPanel::default().show_inside(ui, |ui| {
             let mut behavior =
                 TreeBehavior::new(&mut self.config, &self.emu_textures, &self.async_sender);
             self.tree.ui(&mut behavior, ui);
@@ -622,10 +619,10 @@ impl eframe::App for EguiApp {
         });
 
         // Render any pending savestate dialogs
-        self.render_savestate_dialogs_impl(ctx);
+        self.render_savestate_dialogs_impl(ui);
 
         // Render save browser dialog if open
-        self.render_save_browser_impl(ctx);
+        self.render_save_browser_impl(ui);
 
         #[cfg(target_arch = "wasm32")]
         if keybindings_changed {
@@ -633,7 +630,7 @@ impl eframe::App for EguiApp {
         }
 
         // Request continuous repaint for animation
-        ctx.request_repaint();
+        ui.request_repaint();
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
@@ -641,7 +638,7 @@ impl eframe::App for EguiApp {
         eframe::set_value(storage, EGUI_TILES_TREE_KEY, &self.tree);
     }
 
-    fn on_exit(&mut self, _gl: Option<&glow::Context>) {
+    fn on_exit(&mut self) {
         // Save configuration before exiting
         #[cfg(not(target_arch = "wasm32"))]
         let persistent_config: PersistentConfig = (&self.config).into();
@@ -776,7 +773,7 @@ async fn run_internal(res: SetupResponse) -> Result<(), Box<dyn std::error::Erro
                 visuals: Visuals::dark(),
                 ..Default::default()
             };
-            cc.egui_ctx.set_style(style);
+            cc.egui_ctx.set_global_style(style);
             cc.egui_ctx.set_theme(egui::Theme::Dark);
             Ok(Box::new(EguiApp::new(
                 cc,

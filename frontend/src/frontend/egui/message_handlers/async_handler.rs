@@ -3,7 +3,7 @@
 //! This module handles messages from async operations such as file dialogs,
 //! savestate loading workflows, and other deferred operations.
 
-use egui::Context;
+use egui::{Context, ViewportCommand};
 use monsoon_core::emulation::palette_util::RgbPalette;
 use monsoon_core::emulation::ppu_util::EmulatorFetchable;
 use monsoon_core::emulation::savestate;
@@ -15,8 +15,8 @@ use crate::frontend::savestates::{
     ChecksumMismatchDialogState, ErrorDialogState, MatchingRomDialogState, RomSelectionDialogState,
     SaveBrowserState, SaveEntry, SaveEntryType,
 };
-use crate::frontend::storage::Storage;
-use crate::frontend::util::SavestateLoadError;
+use crate::frontend::storage::{Storage, StorageKey};
+use crate::frontend::util::{spawn_rom_picker, try_parse_savestate, SavestateLoadError};
 use crate::frontend::{storage, util};
 use crate::messages::{FrontendMessage, SaveType};
 
@@ -227,6 +227,13 @@ impl EguiApp {
             AsyncFrontendMessage::SetLastFrameRequest(i) => {
                 self.emu_textures.last_frame_request = i;
             }
+            AsyncFrontendMessage::StartLoadRom => spawn_rom_picker(
+                &self.async_sender,
+                self.config.user_config.previous_rom_load_dir.as_ref(),
+            ),
+            AsyncFrontendMessage::Quit => {
+                ctx.send_viewport_cmd(ViewportCommand::Close);
+            }
         }
     }
 
@@ -395,15 +402,13 @@ impl EguiApp {
                     }
                 };
 
-                let savestate = match savestate::try_load_state_from_bytes(&data) {
-                    Some(s) => s,
-                    None => {
-                        let _ = sender.send(AsyncFrontendMessage::SavestateLoadFailed(
-                            SavestateLoadError::FailedToLoadSavestate,
-                        ));
-                        return;
-                    }
-                };
+                let savestate = try_parse_savestate(&sender, &data);
+
+                if savestate.is_none() {
+                    return;
+                }
+
+                let savestate = savestate.unwrap();
 
                 // Verify checksum
                 if checksum != savestate.rom_file.data_checksum {
@@ -463,7 +468,7 @@ impl EguiApp {
     }
 
     /// Load a save from the browser by reading it from storage.
-    fn handle_load_save_from_browser(&mut self, key: storage::StorageKey) {
+    fn handle_load_save_from_browser(&mut self, key: StorageKey) {
         // Verify a ROM is loaded and its checksum matches
         let sender = self.async_sender.clone();
         let to_emulator = self.to_emulator.clone();
@@ -507,7 +512,7 @@ impl EguiApp {
     }
 
     /// Export a save from internal storage to a file on disk via save dialog.
-    fn handle_export_save_from_browser(&self, key: storage::StorageKey) {
+    fn handle_export_save_from_browser(&self, key: StorageKey) {
         let sender = self.async_sender.clone();
         let save_dir = self.config.user_config.previous_savestate_save_dir.clone();
 
@@ -671,10 +676,23 @@ impl ToBytes for ExportableData {
 /// List save entries for a game from storage asynchronously.
 async fn list_save_entries(game_name: &str) -> Vec<SaveEntry> {
     let mut entries = Vec::new();
-    let storage_impl = storage::get_storage();
 
     // List quicksaves
     let qs_prefix = storage::quicksaves_prefix(game_name);
+    add_save_entries(&mut entries, &qs_prefix).await;
+
+    // List autosaves
+    let as_prefix = storage::autosaves_prefix(game_name);
+    add_save_entries(&mut entries, &as_prefix).await;
+
+    // Sort by timestamp descending (newest first)
+    entries.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
+    entries
+}
+
+async fn add_save_entries(entries: &mut Vec<SaveEntry>, qs_prefix: &StorageKey) {
+    let storage_impl = storage::get_storage();
+
     if let Ok(qs_entries) = storage_impl.list(&qs_prefix).await {
         for entry in qs_entries {
             if entry.key.sub_path.ends_with(".sav")
@@ -684,26 +702,10 @@ async fn list_save_entries(game_name: &str) -> Vec<SaveEntry> {
             }
         }
     }
-
-    // List autosaves
-    let as_prefix = storage::autosaves_prefix(game_name);
-    if let Ok(as_entries) = storage_impl.list(&as_prefix).await {
-        for entry in as_entries {
-            if entry.key.sub_path.ends_with(".sav")
-                && let Some(save_entry) = parse_save_entry(entry.key, SaveEntryType::Autosave)
-            {
-                entries.push(save_entry);
-            }
-        }
-    }
-
-    // Sort by timestamp descending (newest first)
-    entries.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
-    entries
 }
 
 /// Parse a storage key into a SaveEntry, extracting display name and timestamp.
-fn parse_save_entry(key: storage::StorageKey, save_type: SaveEntryType) -> Option<SaveEntry> {
+fn parse_save_entry(key: StorageKey, save_type: SaveEntryType) -> Option<SaveEntry> {
     // Keys look like: saves/<game>/quicksaves/quicksave_2024-01-15_14-30-00.sav
     // or: saves/<game>/autosaves/autosaves_2024-01-15_14-30-00.sav
     let filename = key.sub_path.rsplit('/').next()?;
@@ -714,11 +716,7 @@ fn parse_save_entry(key: storage::StorageKey, save_type: SaveEntryType) -> Optio
     let (_prefix, rest) = stem.split_once('_')?;
 
     // Try to extract timestamp - handle optional version suffix
-    let (timestamp_str, _version) = if rest.chars().filter(|c| *c == '_').count() > 1 {
-        rest.rsplit_once('_')?
-    } else {
-        (rest, "0")
-    };
+    let timestamp_str = extract_timestamp(rest)?.0;
 
     // Parse the timestamp: "2024-01-15_14-30-00" → "2024/01/15 14:30:00"
     let timestamp = if let Some((date, time)) = timestamp_str.split_once('_') {
@@ -740,4 +738,13 @@ fn parse_save_entry(key: storage::StorageKey, save_type: SaveEntryType) -> Optio
         timestamp,
         save_type,
     })
+}
+
+pub fn extract_timestamp(rest: &str) -> Option<(&str, &str)> {
+    let (timestamp_str, version) = if rest.chars().filter(|c| *c == '_').count() > 1 {
+        rest.rsplit_once('_')?
+    } else {
+        (rest, "0")
+    };
+    Some((timestamp_str, version))
 }

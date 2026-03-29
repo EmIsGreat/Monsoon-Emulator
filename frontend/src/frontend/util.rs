@@ -6,7 +6,7 @@ use monsoon_core::emulation::savestate;
 use monsoon_core::util::ToBytes;
 use rfd::{AsyncFileDialog, FileHandle};
 use sha2::{Digest, Sha256};
-
+use monsoon_core::emulation::savestate::SaveState;
 use crate::frontend::messages::{
     AsyncFrontendMessage, LoadedPalette, LoadedRom, SavestateLoadContext,
 };
@@ -362,16 +362,11 @@ pub fn spawn_savestate_picker(sender: &Sender<AsyncFrontendMessage>, dir: Option
             let _ = get_storage().set(&cache_key, data.clone()).await;
 
             // Try to parse the savestate from the data
-            let savestate = match savestate::try_load_state_from_bytes(&data) {
-                Some(s) => s,
-                None => {
-                    // Failed to load savestate - send error notification
-                    let _ = sender.send(AsyncFrontendMessage::SavestateLoadFailed(
-                        SavestateLoadError::FailedToLoadSavestate,
-                    ));
-                    return;
-                }
+            let savestate = match try_parse_savestate(&sender, &data) {
+                Some(value) => value,
+                None => return,
             };
+
             let context = SavestateLoadContext {
                 savestate,
                 savestate_name,
@@ -382,6 +377,20 @@ pub fn spawn_savestate_picker(sender: &Sender<AsyncFrontendMessage>, dir: Option
             let _ = sender.send(AsyncFrontendMessage::SavestateLoaded(Box::new(context)));
         }
     });
+}
+
+pub fn try_parse_savestate(sender: &Sender<AsyncFrontendMessage>, data: &Vec<u8>) -> Option<SaveState> {
+    let savestate = match savestate::try_load_state_from_bytes(&data) {
+        Some(s) => s,
+        None => {
+            // Failed to load savestate - send error notification
+            let _ = sender.send(AsyncFrontendMessage::SavestateLoadFailed(
+                SavestateLoadError::FailedToLoadSavestate,
+            ));
+            return None;
+        }
+    };
+    Some(savestate)
 }
 
 /// Spawn a file picker to select a ROM for a savestate

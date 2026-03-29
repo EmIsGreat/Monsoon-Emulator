@@ -18,19 +18,20 @@ name = "frontend"
 path = "src/bin/main.rs"
 
 [dependencies]
-eframe = { version = "0.33", features = ["wgpu", "persistence"] }
-egui = { version = "0.33", features = ["accesskit", "persistence", "rayon"] }
-egui_tiles = { version = "0.14", features = ["serde"] }
-clap = { version = "4.5", features = ["derive", "cargo", "env", "string", "unicode", "wrap_help"] }
+eframe = { version = "0.34", features = ["wgpu", "persistence"] }
+egui = { version = "0.34", features = ["persistence", "rayon"] }
+egui_tiles = { version = "0.15", features = ["serde"] }
+clap = { version = "4.6", features = ["derive", "cargo", "env", "string", "unicode", "wrap_help"] }
 crossbeam-channel = { version = "0.5" }
 rfd = { version = "0.17" }
 directories = { version = "6.0" }
 web-time = { version = "1.1" }
 chrono = { version = "0.4", features = ["now"] }
-sha2 = { version = "0.11.0-rc.5" }
+sha2 = { version = "0.11.0" }
 serde = { version = "1.0", features = ["derive", "alloc", "rc"] }
-toml = { version = "1.0", features = ["fast_hash"] }
+toml = { version = "1.1", features = ["fast_hash"] }
 async-trait = { version = "0.1" }
+strum = {version = "0.28.0", features = ["derive"]}
 
 monsoon-core = { workspace = true }
 monsoon-default-renderers = { workspace = true, optional = true }
@@ -40,7 +41,7 @@ default = ["default_renderers"]
 default_renderers = ["monsoon-default-renderers"]
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tokio = { version = "1.49", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1.50", features = ["rt-multi-thread", "macros"] }
 
 # Web-only dependencies
 [target.'cfg(target_arch = "wasm32")'.dependencies]
