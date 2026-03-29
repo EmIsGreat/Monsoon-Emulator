@@ -265,7 +265,7 @@ impl<'a> Widget for HotKeyButton<'a> {
         // items, while still expanding for long labels/key names when needed.
         let desired_width =
             (ui.spacing().interact_size.x * DEFAULT_WIDTH_MULTIPLIER).max(min_width);
-        let desired_size = egui::vec2(desired_width, ui.spacing().interact_size.y);
+        let desired_size = vec2(desired_width, ui.spacing().interact_size.y);
 
         let response = ui.add_sized(desired_size, egui::Button::new(""));
 
