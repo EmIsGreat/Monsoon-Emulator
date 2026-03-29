@@ -4,7 +4,7 @@
 //! multiple UI components to reduce code duplication.
 
 use crossbeam_channel::Sender;
-use egui::{Response, StrokeKind, Ui, Widget, vec2};
+use egui::{vec2, Response, StrokeKind, Ui, Widget};
 use monsoon_core::emulation::palette_util::RgbColor;
 
 use crate::frontend::egui::config::AppConfig;
@@ -238,10 +238,6 @@ impl<'a> Widget for HotKeyButton<'a> {
     fn ui(self, ui: &mut Ui) -> Response {
         // Width floor for menu-row consistency when labels are short.
         const DEFAULT_WIDTH_MULTIPLIER: f32 = 4.0;
-        // We don't have a direct "tab stop" metric in egui text layout here.
-        // Measured in rendered-space widths; this is tuned relative to the
-        // old value (5.0) so the visual center gap is about half as large.
-        const TABLIKE_GAP_SPACES: f32 = 2.5;
 
         let left_text = self.action.get_display_name();
         let bindings = &self.config.keybindings.keybindings;
@@ -254,14 +250,9 @@ impl<'a> Widget for HotKeyButton<'a> {
         let right_galley =
             ui.fonts_mut(|f| f.layout_no_wrap(right_text.clone(), font_id.clone(), text_color));
 
-        let space_width = ui
-            .fonts_mut(|f| f.layout_no_wrap(" ".to_owned(), font_id.clone(), text_color))
-            .size()
-            .x;
-        let min_gap = space_width * TABLIKE_GAP_SPACES;
         let padding = ui.spacing().button_padding;
 
-        let min_width = left_galley.size().x + right_galley.size().x + min_gap + (padding.x * 2.0);
+        let min_width = left_galley.size().x + right_galley.size().x + (padding.x * 2.0);
         // Keep a modest menu row width floor for visual stability across items,
         // while still expanding for long labels/key names when needed.
         let desired_width =
