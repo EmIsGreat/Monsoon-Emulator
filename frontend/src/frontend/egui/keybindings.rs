@@ -235,12 +235,6 @@ pub enum OnKeyAction {
     OpenNametableViewer,
     OpenSpriteViewer,
     Speedup,
-    OpenOptionsMenu,
-    OpenKeybindingsMenu,
-    OpenPaletteViewer,
-    OpenPatternTableViewer,
-    OpenNametableViewer,
-    OpenSpriteViewer,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]

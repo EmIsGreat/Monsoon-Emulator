@@ -298,24 +298,6 @@ impl EguiApp {
                         .insert_temp::<bool>(Id::new(AsyncFrontendMessage::Speedup), true)
                 });
             }
-            AsyncFrontendMessage::OpenKeybindsMenu => {
-                add_pane_if_missing(&mut self.tree, Pane::Keybindings);
-            }
-            AsyncFrontendMessage::OpenOptionsMenu => {
-                add_pane_if_missing(&mut self.tree, Pane::Options);
-            }
-            AsyncFrontendMessage::OpenPaletteViewer => {
-                add_pane_if_missing(&mut self.tree, Pane::Palettes);
-            }
-            AsyncFrontendMessage::OpenPatternTableViewer => {
-                add_pane_if_missing(&mut self.tree, Pane::PatternTables);
-            }
-            AsyncFrontendMessage::OpenNametableViewer => {
-                add_pane_if_missing(&mut self.tree, Pane::Nametables);
-            }
-            AsyncFrontendMessage::OpenSpriteViewer => {
-                add_pane_if_missing(&mut self.tree, Pane::Sprites);
-            }
         }
         self.config.sync_dialog_pause_reason();
     }
