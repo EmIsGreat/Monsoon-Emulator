@@ -1,7 +1,9 @@
 //! Keybindings pane rendering
 
+use std::collections::HashMap;
+
 use crate::frontend::egui::config::AppConfig;
-use crate::frontend::egui::keybindings::{Binding, Hotkey, KeybindCategory};
+use crate::frontend::egui::keybindings::{Binding, Hotkey, KeybindCategory, OnKeyAction};
 
 /// Render the keybindings panel
 pub fn render_keybindings(ui: &mut egui::Ui, config: &mut AppConfig) -> bool {
@@ -18,7 +20,10 @@ pub fn render_keybindings(ui: &mut egui::Ui, config: &mut AppConfig) -> bool {
 }
 
 /// Render NES controller keybindings section
-fn render_controller_keybindings(ui: &mut egui::Ui, keybinds: &mut [Binding]) -> bool {
+fn render_controller_keybindings(
+    ui: &mut egui::Ui,
+    keybinds: &mut HashMap<OnKeyAction, Binding>,
+) -> bool {
     let mut changed = false;
     ui.collapsing("Controller", |ui| {
         egui::Grid::new("controller_keybindings_grid")
@@ -26,14 +31,12 @@ fn render_controller_keybindings(ui: &mut egui::Ui, keybinds: &mut [Binding]) ->
             .spacing([40.0, 4.0])
             .striped(true)
             .show(ui, |ui| {
-                for keybinding in keybinds
+                for (action, binding) in keybinds
                     .iter_mut()
-                    .filter(|b| b.logical_bind.get_category() == KeybindCategory::Controller)
+                    .filter(|(action, bind)| action.get_category() == KeybindCategory::Controller)
                 {
-                    ui.label(keybinding.logical_bind.get_display_name());
-                    changed |= ui
-                        .add(Hotkey::with_id(keybinding, keybinding.logical_bind))
-                        .changed();
+                    ui.label(action.get_display_name());
+                    changed |= ui.add(Hotkey::with_id(binding, action)).changed();
                     ui.end_row()
                 }
             });
@@ -42,7 +45,10 @@ fn render_controller_keybindings(ui: &mut egui::Ui, keybinds: &mut [Binding]) ->
 }
 
 /// Render emulation control keybindings section
-fn render_emulation_keybindings(ui: &mut egui::Ui, keybinds: &mut [Binding]) -> bool {
+fn render_emulation_keybindings(
+    ui: &mut egui::Ui,
+    keybinds: &mut HashMap<OnKeyAction, Binding>,
+) -> bool {
     let mut changed = false;
     ui.collapsing("Emulation Controls", |ui| {
         egui::Grid::new("emulation_keybindings_grid")
@@ -50,16 +56,13 @@ fn render_emulation_keybindings(ui: &mut egui::Ui, keybinds: &mut [Binding]) -> 
             .spacing([40.0, 4.0])
             .striped(true)
             .show(ui, |ui| {
-                for keybinding in keybinds
+                for (action, binding) in keybinds
                     .iter_mut()
-                    .filter(|b| b.logical_bind.get_category() == KeybindCategory::Emulator)
+                    .filter(|(action, binding)| action.get_category() == KeybindCategory::Emulator)
                 {
-                    ui.label(keybinding.logical_bind.get_display_name());
+                    ui.label(action.get_display_name());
                     changed |= ui
-                        .add(
-                            Hotkey::with_id(keybinding, keybinding.logical_bind)
-                                .accept_modifier_keys(false),
-                        )
+                        .add(Hotkey::with_id(binding, action).accept_modifier_keys(false))
                         .changed();
                     ui.end_row()
                 }

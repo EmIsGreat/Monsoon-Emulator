@@ -14,7 +14,7 @@ use std::time::Instant;
 
 use crossbeam_channel::Sender;
 use egui::{
-    Event, Id, InputState, Key, Modifiers, PointerButton, Response, Sense, Ui, Widget, vec2,
+    vec2, Event, Id, InputState, Key, Modifiers, PointerButton, Response, Sense, Ui, Widget,
 };
 use serde::{Deserialize, Serialize};
 
@@ -211,7 +211,7 @@ impl OnKeyAction {
             OnKeyAction::ControllerBButton => "B Button",
             OnKeyAction::ControllerStartButton => "Start Button",
             OnKeyAction::ControllerSelectButton => "Select Button",
-            OnKeyAction::PauseEmulator => "Pause Emulator",
+            OnKeyAction::PauseEmulator => "Pause/Resume Emulator",
             OnKeyAction::StepFrame => "Step Frame",
             OnKeyAction::StepScanline => "Step Scanline",
             OnKeyAction::StepMasterCycle => "Step Master Cycle",
@@ -504,7 +504,6 @@ pub trait HotkeyBinding {
     fn set(&mut self, variant: BindVariant, modifiers: Modifiers, action: OnKeyAction);
     fn clear(&mut self);
     fn active(&self, input: &InputState) -> bool;
-    fn run_bound(&mut self, config: &mut AppConfig, sender: &Sender<AsyncFrontendMessage>);
 }
 
 impl HotkeyBinding for Binding {
@@ -542,10 +541,6 @@ impl HotkeyBinding for Binding {
             TriggerType::Continuous => self.down_permissive(input),
         }
     }
-
-    fn run_bound(&mut self, config: &mut AppConfig, sender: &Sender<AsyncFrontendMessage>) {
-        self.logical_bind.get_callback_function()(config, sender);
-    }
 }
 
 impl<B> HotkeyBinding for Option<B>
@@ -575,13 +570,6 @@ where
         match self {
             Some(b) => b.active(input),
             None => false,
-        }
-    }
-
-    fn run_bound(&mut self, config: &mut AppConfig, sender: &Sender<AsyncFrontendMessage>) {
-        match self {
-            Some(b) => b.run_bound(config, sender),
-            None => {}
         }
     }
 }
