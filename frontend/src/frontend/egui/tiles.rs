@@ -88,7 +88,7 @@ impl Behavior<Pane> for TreeBehavior<'_> {
     fn pane_ui(&mut self, ui: &mut egui::Ui, _: TileId, pane: &mut Pane) -> UiResponse {
         match pane {
             Pane::EmulatorOutput => {
-                render_emulator_output(ui, self.emu_textures);
+                render_emulator_output(ui, self.emu_textures, self.config.is_effectively_paused());
             }
             Pane::Options => {
                 render_options(ui, self.config);
@@ -218,7 +218,7 @@ pub fn compute_required_fetches_from_tree(
     if find_pane(&tree.tiles, &Pane::Sprites).is_some() {
         explicit_fetches.insert(EmulatorFetchable::Sprites(None));
 
-        if config.speed_config.is_paused {
+        if config.is_effectively_paused() {
             explicit_fetches.insert(EmulatorFetchable::SoamSprites(None));
         }
     }

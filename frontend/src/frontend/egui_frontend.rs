@@ -18,13 +18,12 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::time::Duration;
 
-
 use crossbeam_channel::{Receiver, Sender};
 use eframe::Frame;
 use egui::{Context, Style, Ui, ViewportCommand, Visuals};
 use monsoon_core::declare_renderers;
 use monsoon_core::emulation::nes::Nes;
-use monsoon_core::emulation::ppu_util::{EmulatorFetchable, PaletteData, TileData, TILE_COUNT};
+use monsoon_core::emulation::ppu_util::{EmulatorFetchable, PaletteData, TILE_COUNT, TileData};
 use monsoon_core::emulation::savestate::SaveState;
 use monsoon_core::emulation::screen_renderer::{
     NoneRenderer, RendererRegistration, ScreenRenderer,
@@ -41,7 +40,7 @@ use crate::frontend::egui::message_handlers::async_handler::extract_timestamp;
 use crate::frontend::egui::message_handlers::{AsyncMessageHandler, EmulatorMessageHandler};
 use crate::frontend::egui::textures::EmuTextures;
 use crate::frontend::egui::tiles::{
-    compute_required_fetches_from_tree, create_tree, find_pane, Pane, TreeBehavior,
+    Pane, TreeBehavior, compute_required_fetches_from_tree, create_tree, find_pane,
 };
 use crate::frontend::egui::ui::{
     add_menu_bar, add_status_bar, render_save_browser, render_savestate_dialogs,
@@ -49,7 +48,7 @@ use crate::frontend::egui::ui::{
 use crate::frontend::messages::{
     AsyncFrontendMessage, FrontendEvent, LoadedRom, SavestateLoadContext,
 };
-use crate::frontend::persistence::{get_egui_storage_path, load_config, PersistentConfig};
+use crate::frontend::persistence::{PersistentConfig, get_egui_storage_path, load_config};
 use crate::frontend::storage::{Storage, StorageKey};
 use crate::frontend::{storage, util};
 use crate::messages::{EmulatorMessage, FrontendMessage, SaveType};
@@ -96,6 +95,7 @@ pub struct EguiApp {
     last_autosave: Instant,
     /// Track if window was focused last frame to detect focus loss
     was_focused: bool,
+    was_effectively_paused: bool,
 }
 
 impl EguiApp {
@@ -138,6 +138,7 @@ impl EguiApp {
             nametables_was_visible: false,
             last_autosave: Instant::now(),
             was_focused: true,
+            was_effectively_paused: false,
         }
     }
 
@@ -362,7 +363,7 @@ impl EguiApp {
     }
 
     fn is_soam_viewer_visible(&self) -> bool {
-        self.is_sprite_viewer_visible() && self.config.speed_config.is_paused
+        self.is_sprite_viewer_visible() && self.config.is_effectively_paused()
     }
 
     /// Check if any viewer that needs tile textures is visible
@@ -432,7 +433,13 @@ impl EguiApp {
     /// Update emulator textures and run emulation frames
     fn update_emu_textures(&mut self, ctx: &Context) {
         let now = Instant::now();
-        if !self.config.speed_config.is_paused {
+        let is_effectively_paused = self.config.is_effectively_paused();
+        if is_effectively_paused && !self.was_effectively_paused {
+            self.reset_frame_timing_baseline(now);
+        }
+        self.was_effectively_paused = is_effectively_paused;
+
+        if !is_effectively_paused {
             let delta = now.duration_since(self.emu_textures.last_frame_request);
             self.accumulator += delta;
             self.emu_textures.last_frame_request = now;
@@ -586,6 +593,7 @@ impl eframe::App for EguiApp {
     fn logic(&mut self, ctx: &Context, _: &mut Frame) {
         // Handle keyboard input
         handle_keyboard_input(ctx, &self.async_sender, &mut self.config);
+        self.config.sync_dialog_pause_reason();
 
         if let Err(e) = self.channel_emu.process_messages() {
             eprintln!("Emulator error: {}", e);
@@ -617,12 +625,7 @@ impl eframe::App for EguiApp {
         add_menu_bar(ui, &mut self.config, &self.async_sender, &mut self.tree);
 
         // Status bar at bottom
-        add_status_bar(
-            ui,
-            &self.fps_counter,
-            &self.config.speed_config,
-            &self.emu_textures,
-        );
+        add_status_bar(ui, &self.fps_counter, &self.config, &self.emu_textures);
 
         // Central panel with tile tree
         #[cfg(target_arch = "wasm32")]

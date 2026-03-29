@@ -7,6 +7,12 @@ use crate::frontend::storage::StorageKey;
 use crate::frontend::util::{FileType, SavestateLoadError};
 use crate::messages::ControllerEvent;
 
+#[derive(Clone, Copy)]
+pub enum AutoPauseSignal {
+    SavestateLoadPicker,
+    SavestateCreateSaveDialog,
+}
+
 /// Visual/frontend-only events that are processed synchronously via a deque.
 ///
 /// These events only affect the frontend UI state and don't communicate with
@@ -100,6 +106,11 @@ pub enum AsyncFrontendMessage {
     LoadSaveFromBrowser(StorageKey),
     /// Export a specific save from the browser to a file on disk
     ExportSaveFromBrowser(StorageKey),
+    /// Signal that a pause-scoped async workflow started/ended
+    AutoPauseSignal {
+        signal: AutoPauseSignal,
+        active: bool,
+    },
 
     // =========================================================================
     // Consolidated emulator operations

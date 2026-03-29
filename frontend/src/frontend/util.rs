@@ -9,10 +9,9 @@ use rfd::{AsyncFileDialog, FileHandle};
 use sha2::{Digest, Sha256};
 
 use crate::frontend::messages::{
-    AsyncFrontendMessage, LoadedPalette, LoadedRom, SavestateLoadContext,
+    AsyncFrontendMessage, AutoPauseSignal, LoadedPalette, LoadedRom, SavestateLoadContext,
 };
 use crate::frontend::storage::{self, Storage, StorageCategory, StorageKey, get_storage};
-
 
 #[derive(Clone, Copy, Eq, PartialEq)]
 /// Enum to represent errors that can occur during savestate loading UI flow
@@ -240,6 +239,15 @@ pub fn spawn_save_dialog(
     let sender = sender.cloned();
     let dir = dir.cloned();
     spawn_async(async move {
+        if let Some(sender) = &sender
+            && file_type == FileType::Savestate
+        {
+            let _ = sender.send(AsyncFrontendMessage::AutoPauseSignal {
+                signal: AutoPauseSignal::SavestateCreateSaveDialog,
+                active: true,
+            });
+        }
+
         if let Some(handle) = save_file(file_type, dir.as_ref()).await {
             // Get filename for format detection
             let filename = handle.file_name();
@@ -289,7 +297,20 @@ pub fn spawn_save_dialog(
                     directory: save_dir,
                     file_type,
                 });
+                if file_type == FileType::Savestate {
+                    let _ = sender.send(AsyncFrontendMessage::AutoPauseSignal {
+                        signal: AutoPauseSignal::SavestateCreateSaveDialog,
+                        active: false,
+                    });
+                }
             }
+        } else if let Some(sender) = sender
+            && file_type == FileType::Savestate
+        {
+            let _ = sender.send(AsyncFrontendMessage::AutoPauseSignal {
+                signal: AutoPauseSignal::SavestateCreateSaveDialog,
+                active: false,
+            });
         }
     });
 }
@@ -352,6 +373,10 @@ pub fn spawn_savestate_picker(sender: &Sender<AsyncFrontendMessage>, dir: Option
     let dir = dir.cloned();
 
     spawn_async(async move {
+        let _ = sender.send(AsyncFrontendMessage::AutoPauseSignal {
+            signal: AutoPauseSignal::SavestateLoadPicker,
+            active: true,
+        });
         let handle = pick_file(FileType::Savestate, dir.as_ref()).await;
 
         if let Some(handle) = handle {
@@ -379,6 +404,10 @@ pub fn spawn_savestate_picker(sender: &Sender<AsyncFrontendMessage>, dir: Option
             // Send context for next step - user will need to select ROM
             let _ = sender.send(AsyncFrontendMessage::SavestateLoaded(Box::new(context)));
         }
+        let _ = sender.send(AsyncFrontendMessage::AutoPauseSignal {
+            signal: AutoPauseSignal::SavestateLoadPicker,
+            active: false,
+        });
     });
 }
 

@@ -5,7 +5,7 @@ use monsoon_core::emulation::ppu_util::{TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH}
 use crate::frontend::egui::textures::EmuTextures;
 
 /// Render the main emulator output
-pub fn render_emulator_output(ui: &mut egui::Ui, emu_textures: &EmuTextures) {
+pub fn render_emulator_output(ui: &mut egui::Ui, emu_textures: &EmuTextures, is_paused: bool) {
     if let Some(ref texture) = emu_textures.frame_texture {
         let available = ui.available_size();
 
@@ -20,7 +20,25 @@ pub fn render_emulator_output(ui: &mut egui::Ui, emu_textures: &EmuTextures) {
             TOTAL_OUTPUT_WIDTH, TOTAL_OUTPUT_HEIGHT, scale
         ));
 
-        ui.image((texture.id(), egui::vec2(display_width, display_height)));
+        let image_size = egui::vec2(display_width, display_height);
+        let response = ui.add(egui::Image::new((texture.id(), image_size)));
+
+        if is_paused {
+            let overlay_rect = response.rect;
+            let painter = ui.painter();
+            painter.rect_filled(
+                overlay_rect,
+                6.0,
+                egui::Color32::from_rgba_unmultiplied(0, 0, 0, 120),
+            );
+            painter.text(
+                overlay_rect.center(),
+                egui::Align2::CENTER_CENTER,
+                "⏸ EMULATION PAUSED",
+                egui::TextStyle::Heading.resolve(ui.style()),
+                egui::Color32::WHITE,
+            );
+        }
     } else {
         ui.label("Waiting for first frame...");
     }
