@@ -3,7 +3,8 @@ use egui::{Context, FocusDirection};
 
 use crate::frontend::egui::config::{AppConfig, KeybindingsConfig};
 use crate::frontend::egui::keybindings::{
-    BindVariant, Binding, HotkeyBinding, hotkey_is_any_expecting, hotkey_take_just_set_this_frame,
+    BindVariant, Binding, HotkeyBinding, TriggerType, hotkey_is_any_expecting,
+    hotkey_take_just_set_this_frame,
 };
 use crate::frontend::messages::AsyncFrontendMessage;
 
@@ -63,7 +64,11 @@ pub fn handle_keyboard_input(
 /// clicking a focused button, or Tab advancing widget focus).
 fn consume_triggered_keys(input: &mut egui::InputState, keybindings: &KeybindingsConfig) {
     for binding in &keybindings.keybindings {
-        if binding.pressed(input) {
+        // Continuous bindings (controller actions) are evaluated via `down`.
+        // Consuming their initial `pressed` event can interfere with hold
+        // recognition on some platforms/egui backends.
+        if binding.logical_bind.get_trigger_type() == TriggerType::Single && binding.pressed(input)
+        {
             consume_binding(input, &Some(*binding))
         }
     }
