@@ -566,35 +566,38 @@ impl EguiApp {
 }
 
 impl eframe::App for EguiApp {
-    fn ui(&mut self, ui: &mut Ui, _: &mut Frame) {
+    fn logic(&mut self, ctx: &Context, _: &mut Frame) {
         // Handle keyboard input
-        handle_keyboard_input(ui, &self.async_sender, &mut self.config);
+        handle_keyboard_input(ctx, &self.async_sender, &mut self.config);
 
         if let Err(e) = self.channel_emu.process_messages() {
             eprintln!("Emulator error: {}", e);
-            ui.send_viewport_cmd(ViewportCommand::Close);
+            ctx.send_viewport_cmd(ViewportCommand::Close);
             return;
         }
 
-        self.update_emu_textures(ui);
+        self.update_emu_textures(ctx);
 
-        // Process messages from emulator
-        self.process_messages(ui);
+        // Process messages from emulator/async/frontend queues
+        self.process_messages(ctx);
 
-        // Check if pattern tables viewer just became visible and force rebuild if
+        // Check if pattern tables/nametables just became visible and force rebuild if
         // needed
-        self.check_and_handle_viewer_visibility(ui);
+        self.check_and_handle_viewer_visibility(ctx);
 
         // Update required debug fetches based on visible panes
         self.config.view_config.required_debug_fetches =
             compute_required_fetches_from_tree(&self.tree, &self.config);
 
-        // Check for periodic autosave (every 5 minutes)
+        // Check autosave triggers
         self.check_periodic_autosave();
+        self.check_focus_autosave(ctx);
 
-        // Check for focus loss autosave (when window loses focus)
-        self.check_focus_autosave(ui);
+        // Request continuous repaint for animation/emulation
+        ctx.request_repaint();
+    }
 
+    fn ui(&mut self, ui: &mut Ui, _: &mut Frame) {
         add_menu_bar(ui, &self.config, &self.async_sender, &mut self.tree);
 
         // Status bar at bottom
@@ -628,9 +631,6 @@ impl eframe::App for EguiApp {
         if keybindings_changed {
             self.persist_config_async();
         }
-
-        // Request continuous repaint for animation
-        ui.request_repaint();
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
