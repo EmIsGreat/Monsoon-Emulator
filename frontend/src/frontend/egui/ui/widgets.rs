@@ -238,9 +238,9 @@ impl<'a> Widget for HotKeyButton<'a> {
     fn ui(self, ui: &mut Ui) -> Response {
         const DEFAULT_WIDTH_MULTIPLIER: f32 = 8.0;
         // We don't have a direct "tab stop" metric in egui text layout here.
-        // Empirically, ~5 spaces gives a visual separation close to 1-1.5 tabs
-        // for the default button font used in this UI.
-        const TABLIKE_GAP_SPACES: f32 = 5.0;
+        // Measured in rendered space widths; tuned so this menu's visual
+        // center gap is roughly half the previous spacing.
+        const TABLIKE_GAP_SPACES: f32 = 2.5;
 
         let left_text = self.action.get_display_name();
         let bindings = &self.config.keybindings.keybindings;
