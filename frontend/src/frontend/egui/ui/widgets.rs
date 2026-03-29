@@ -217,14 +217,14 @@ fn flip_uv(h_flip: bool, v_flip: bool) -> egui::Rect {
 pub struct HotKeyButton<'a> {
     action: OnKeyAction,
     config: &'a mut AppConfig,
-    sender: Sender<AsyncFrontendMessage>,
+    sender: &'a Sender<AsyncFrontendMessage>,
 }
 
 impl<'a> HotKeyButton<'a> {
     pub fn for_action(
         on_key_action: OnKeyAction,
         config: &'a mut AppConfig,
-        sender: Sender<AsyncFrontendMessage>,
+        sender: &'a Sender<AsyncFrontendMessage>,
     ) -> Self {
         HotKeyButton {
             action: on_key_action,
@@ -262,7 +262,7 @@ impl<'a> Widget for HotKeyButton<'a> {
         let response = ui.add_sized(desired_size, egui::Button::new(""));
 
         if response.clicked() {
-            self.action.get_callback_function()(self.config, &self.sender)
+            self.action.get_callback_function()(&self.sender)
         }
 
         if ui.is_rect_visible(response.rect) {

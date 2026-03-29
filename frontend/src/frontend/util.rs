@@ -13,6 +13,8 @@ use crate::frontend::messages::{
 };
 use crate::frontend::storage::{self, Storage, StorageCategory, StorageKey, get_storage};
 
+
+#[derive(Clone, Copy, Eq, PartialEq)]
 /// Enum to represent errors that can occur during savestate loading UI flow
 pub enum SavestateLoadError {
     /// Failed to load or parse the savestate file

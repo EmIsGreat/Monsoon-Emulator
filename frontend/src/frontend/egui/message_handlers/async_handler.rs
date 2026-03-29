@@ -16,7 +16,9 @@ use crate::frontend::savestates::{
     SaveBrowserState, SaveEntry, SaveEntryType,
 };
 use crate::frontend::storage::{Storage, StorageKey};
-use crate::frontend::util::{SavestateLoadError, spawn_rom_picker, try_parse_savestate};
+use crate::frontend::util::{
+    spawn_rom_picker, spawn_savestate_picker, try_parse_savestate, SavestateLoadError,
+};
 use crate::frontend::{storage, util};
 use crate::messages::{FrontendMessage, SaveType};
 
@@ -60,6 +62,7 @@ impl EguiApp {
                         }
                         util::FileType::Savestate => {
                             self.config.user_config.previous_savestate_save_dir = Some(dir);
+                            self.pause();
                         }
                         // Rom and All don't use save dialogs
                         _ => {}
@@ -120,6 +123,8 @@ impl EguiApp {
                     .send(FrontendMessage::CreateSaveState(SaveType::Quicksave));
             }
             AsyncFrontendMessage::LoadRom(loaded_rom) => {
+                self.pause();
+
                 if let Some(rom) = loaded_rom {
                     let _ = self
                         .to_emulator
@@ -133,8 +138,11 @@ impl EguiApp {
                     let _ = self.to_emulator.send(FrontendMessage::Power);
                     self.config.console_config.is_powered = true;
                 }
+
+                self.pause();
             }
             AsyncFrontendMessage::OpenSaveBrowser => {
+                self.pause();
                 self.handle_open_save_browser();
             }
             AsyncFrontendMessage::SaveBrowserLoaded(entries) => {
@@ -170,6 +178,7 @@ impl EguiApp {
                 let _ = self.to_emulator.send(FrontendMessage::Reset);
             }
             AsyncFrontendMessage::CreateSavestate => {
+                self.pause();
                 let _ = self
                     .to_emulator
                     .send(FrontendMessage::CreateSaveState(SaveType::Manual));
@@ -224,15 +233,23 @@ impl EguiApp {
             AsyncFrontendMessage::StepFrame => {
                 let _ = self.to_emulator.send(FrontendMessage::StepFrame);
             }
-            AsyncFrontendMessage::SetFrameTimingBaseline(i) => {
-                self.reset_frame_timing_baseline(i);
-            }
             AsyncFrontendMessage::StartLoadRom => spawn_rom_picker(
                 &self.async_sender,
                 self.config.user_config.previous_rom_load_dir.as_ref(),
             ),
             AsyncFrontendMessage::Quit => {
                 ctx.send_viewport_cmd(ViewportCommand::Close);
+            }
+            AsyncFrontendMessage::PauseEmulator => self.pause(),
+            AsyncFrontendMessage::ChangeDebugPalette => {
+                self.config.user_config.debug_active_palette += 1;
+                self.config.user_config.debug_active_palette &= 7;
+            }
+            AsyncFrontendMessage::StartLoadSavestate => {
+                spawn_savestate_picker(
+                    &self.async_sender,
+                    self.config.user_config.previous_savestate_load_dir.as_ref(),
+                );
             }
         }
     }

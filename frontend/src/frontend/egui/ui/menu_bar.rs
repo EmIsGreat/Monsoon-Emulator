@@ -3,10 +3,9 @@ use egui::Ui;
 
 use crate::frontend::egui::config::AppConfig;
 use crate::frontend::egui::keybindings::OnKeyAction;
-use crate::frontend::egui::tiles::{Pane, add_pane_if_missing};
+use crate::frontend::egui::tiles::{add_pane_if_missing, Pane};
 use crate::frontend::egui::ui::widgets::HotKeyButton;
 use crate::frontend::messages::AsyncFrontendMessage;
-use crate::frontend::util::spawn_savestate_picker;
 
 pub fn add_menu_bar(
     ui: &mut Ui,
@@ -20,37 +19,34 @@ pub fn add_menu_bar(
                 ui.add(HotKeyButton::for_action(
                     OnKeyAction::LoadRom,
                     config,
-                    async_sender.clone(),
+                    async_sender,
                 ));
 
                 ui.menu_button("Savestates", |ui| {
-                    if config.console_config.loaded_rom.is_some()
-                        && ui.button("Save State").clicked()
-                    {
-                        let _ = async_sender.send(AsyncFrontendMessage::CreateSavestate);
-                    }
+                    ui.add(HotKeyButton::for_action(
+                        OnKeyAction::LoadSavestate,
+                        config,
+                        async_sender,
+                    ));
 
-                    if ui.button("Load State").clicked() {
-                        // Use the new multistep savestate loading flow
-                        spawn_savestate_picker(
+                    if config.console_config.loaded_rom.is_some() {
+                        ui.add(HotKeyButton::for_action(
+                            OnKeyAction::CreateSavestate,
+                            config,
                             async_sender,
-                            config.user_config.previous_savestate_load_dir.as_ref(),
-                        );
-                    }
+                        ));
 
-                    if config.console_config.loaded_rom.is_some()
-                        && ui.button("Browse Saves...").clicked()
-                    {
                         ui.separator();
-                        let _ = async_sender.send(AsyncFrontendMessage::OpenSaveBrowser);
-                        ui.close();
+                        ui.add(HotKeyButton::for_action(
+                            OnKeyAction::BrowseSavestates,
+                            config,
+                            async_sender,
+                        ));
                     }
                 });
             });
             ui.menu_button("Console", |ui| {
-                if ui.button("Reset").clicked() {
-                    let _ = async_sender.send(AsyncFrontendMessage::Reset);
-                }
+                ui.add(HotKeyButton::for_action(OnKeyAction::Reset, config, async_sender));
                 if ui.button("Power cycle").clicked() {
                     let _ = async_sender.send(AsyncFrontendMessage::PowerOff);
                     let _ = async_sender.send(AsyncFrontendMessage::LoadRom(

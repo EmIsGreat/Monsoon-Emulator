@@ -10,16 +10,14 @@
 
 use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::hash::Hash;
-use std::time::Instant;
 
 use crossbeam_channel::Sender;
 use egui::{
-    Event, Id, InputState, Key, Modifiers, PointerButton, Response, Sense, Ui, Widget, vec2,
+    vec2, Event, Id, InputState, Key, Modifiers, PointerButton, Response, Sense, Ui, Widget,
 };
 use serde::{Deserialize, Serialize};
 use strum::EnumIter;
 
-use crate::frontend::egui::config::AppConfig;
 use crate::frontend::messages::AsyncFrontendMessage;
 use crate::messages::ControllerEvent;
 
@@ -201,7 +199,7 @@ impl Display for BindVariant {
     }
 }
 
-type HotKeyCallback = dyn FnMut(&mut AppConfig, &Sender<AsyncFrontendMessage>);
+type HotKeyCallback = dyn Fn(&Sender<AsyncFrontendMessage>);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Hash, Ord, PartialOrd)]
 pub enum OnKeyAction {
@@ -225,6 +223,9 @@ pub enum OnKeyAction {
     ChangeDebugPalette,
     LoadRom,
     Quit,
+    LoadSavestate,
+    CreateSavestate,
+    BrowseSavestates,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -273,6 +274,9 @@ impl OnKeyAction {
             OnKeyAction::Quickload => "Quickload",
             OnKeyAction::LoadRom => "Load Rom",
             OnKeyAction::Quit => "Quit",
+            OnKeyAction::LoadSavestate => "Load Savestate",
+            OnKeyAction::CreateSavestate => "Create Savestate",
+            OnKeyAction::BrowseSavestates => "Browse Savestates",
         }
     }
 
@@ -310,81 +314,62 @@ impl OnKeyAction {
             | OnKeyAction::Quicksave
             | OnKeyAction::Quickload
             | OnKeyAction::ChangeDebugPalette => KeybindCategory::Debug,
-            OnKeyAction::LoadRom | OnKeyAction::Quit => KeybindCategory::Ui,
+            OnKeyAction::LoadRom
+            | OnKeyAction::Quit
+            | OnKeyAction::LoadSavestate
+            | OnKeyAction::CreateSavestate
+            | OnKeyAction::BrowseSavestates => KeybindCategory::Ui,
+        }
+    }
+
+    pub fn get_associated_message(&self) -> AsyncFrontendMessage {
+        match self {
+            OnKeyAction::ControllerUp => AsyncFrontendMessage::ControllerInput(ControllerEvent::Up),
+            OnKeyAction::ControllerDown => {
+                AsyncFrontendMessage::ControllerInput(ControllerEvent::Down)
+            }
+            OnKeyAction::ControllerLeft => {
+                AsyncFrontendMessage::ControllerInput(ControllerEvent::Left)
+            }
+            OnKeyAction::ControllerRight => {
+                AsyncFrontendMessage::ControllerInput(ControllerEvent::Right)
+            }
+            OnKeyAction::ControllerAButton => {
+                AsyncFrontendMessage::ControllerInput(ControllerEvent::A)
+            }
+            OnKeyAction::ControllerBButton => {
+                AsyncFrontendMessage::ControllerInput(ControllerEvent::B)
+            }
+            OnKeyAction::ControllerStartButton => {
+                AsyncFrontendMessage::ControllerInput(ControllerEvent::Start)
+            }
+            OnKeyAction::ControllerSelectButton => {
+                AsyncFrontendMessage::ControllerInput(ControllerEvent::Start)
+            }
+            OnKeyAction::PauseEmulator => AsyncFrontendMessage::PauseEmulator,
+            OnKeyAction::StepFrame => AsyncFrontendMessage::StepFrame,
+            OnKeyAction::StepScanline => AsyncFrontendMessage::StepScanline,
+            OnKeyAction::StepMasterCycle => AsyncFrontendMessage::StepMasterCycle,
+            OnKeyAction::StepPpuCycle => AsyncFrontendMessage::StepPpuCycle,
+            OnKeyAction::StepCpuCycle => AsyncFrontendMessage::StepCpuCycle,
+            OnKeyAction::Reset => AsyncFrontendMessage::Reset,
+            OnKeyAction::Quicksave => AsyncFrontendMessage::Quicksave,
+            OnKeyAction::Quickload => AsyncFrontendMessage::Quickload,
+            OnKeyAction::ChangeDebugPalette => AsyncFrontendMessage::ChangeDebugPalette,
+            OnKeyAction::LoadRom => AsyncFrontendMessage::StartLoadRom,
+            OnKeyAction::Quit => AsyncFrontendMessage::Quit,
+            OnKeyAction::LoadSavestate => AsyncFrontendMessage::StartLoadSavestate,
+            OnKeyAction::CreateSavestate => AsyncFrontendMessage::CreateSavestate,
+            OnKeyAction::BrowseSavestates => AsyncFrontendMessage::OpenSaveBrowser,
         }
     }
 
     pub fn get_callback_function(&self) -> Box<HotKeyCallback> {
-        match self {
-            OnKeyAction::ControllerUp => Box::new(|_, sender| {
-                let _ = sender.send(AsyncFrontendMessage::ControllerInput(ControllerEvent::Up));
-            }),
-            OnKeyAction::ControllerDown => Box::new(|_, sender| {
-                let _ = sender.send(AsyncFrontendMessage::ControllerInput(ControllerEvent::Down));
-            }),
-            OnKeyAction::ControllerLeft => Box::new(|_, sender| {
-                let _ = sender.send(AsyncFrontendMessage::ControllerInput(ControllerEvent::Left));
-            }),
-            OnKeyAction::ControllerRight => Box::new(|_, sender| {
-                let _ = sender.send(AsyncFrontendMessage::ControllerInput(
-                    ControllerEvent::Right,
-                ));
-            }),
-            OnKeyAction::ControllerAButton => Box::new(|_, sender| {
-                let _ = sender.send(AsyncFrontendMessage::ControllerInput(ControllerEvent::A));
-            }),
-            OnKeyAction::ControllerBButton => Box::new(|_, sender| {
-                let _ = sender.send(AsyncFrontendMessage::ControllerInput(ControllerEvent::B));
-            }),
-            OnKeyAction::ControllerStartButton => Box::new(|_, sender| {
-                let _ = sender.send(AsyncFrontendMessage::ControllerInput(
-                    ControllerEvent::Start,
-                ));
-            }),
-            OnKeyAction::ControllerSelectButton => Box::new(|_, sender| {
-                let _ = sender.send(AsyncFrontendMessage::ControllerInput(
-                    ControllerEvent::Select,
-                ));
-            }),
-            OnKeyAction::ChangeDebugPalette => Box::new(|config, _| {
-                config.user_config.debug_active_palette += 1;
-                config.user_config.debug_active_palette &= 7;
-            }),
-            OnKeyAction::PauseEmulator => Box::new(|config, sender| {
-                config.speed_config.is_paused = !config.speed_config.is_paused;
-                let _ = sender.send(AsyncFrontendMessage::SetFrameTimingBaseline(Instant::now()));
-            }),
-            OnKeyAction::StepFrame => Box::new(|_, sender| {
-                let _ = sender.send(AsyncFrontendMessage::StepFrame);
-            }),
-            OnKeyAction::StepScanline => Box::new(|_, sender| {
-                let _ = sender.send(AsyncFrontendMessage::StepScanline);
-            }),
-            OnKeyAction::StepMasterCycle => Box::new(|_, sender| {
-                let _ = sender.send(AsyncFrontendMessage::StepMasterCycle);
-            }),
-            OnKeyAction::StepPpuCycle => Box::new(|_, sender| {
-                let _ = sender.send(AsyncFrontendMessage::StepPpuCycle);
-            }),
-            OnKeyAction::StepCpuCycle => Box::new(|_, sender| {
-                let _ = sender.send(AsyncFrontendMessage::StepCpuCycle);
-            }),
-            OnKeyAction::Reset => Box::new(|_, sender| {
-                let _ = sender.send(AsyncFrontendMessage::Reset);
-            }),
-            OnKeyAction::Quicksave => Box::new(|_, sender| {
-                let _ = sender.send(AsyncFrontendMessage::Quicksave);
-            }),
-            OnKeyAction::Quickload => Box::new(|_, sender| {
-                let _ = sender.send(AsyncFrontendMessage::Quickload);
-            }),
-            OnKeyAction::LoadRom => Box::new(|_, sender| {
-                let _ = sender.send(AsyncFrontendMessage::StartLoadRom);
-            }),
-            OnKeyAction::Quit => Box::new(|_, sender| {
-                let _ = sender.send(AsyncFrontendMessage::Quit);
-            }),
-        }
+        let message = self.get_associated_message();
+
+        Box::new(move |sender| {
+            let _ = sender.send(message.clone());
+        })
     }
 }
 

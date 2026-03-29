@@ -1,5 +1,3 @@
-use std::time::Instant;
-
 use monsoon_core::emulation::palette_util::RgbPalette;
 use monsoon_core::emulation::savestate::SaveState;
 use serde::{Deserialize, Serialize};
@@ -45,11 +43,13 @@ pub struct LoadedRom {
     pub directory: StorageKey,
 }
 
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct LoadedPalette {
     pub palette: RgbPalette,
     pub directory: StorageKey,
 }
 
+#[derive(Clone)]
 /// Messages for async/deferred frontend operations.
 ///
 /// These messages are processed by EguiApp and allow UI components to request
@@ -134,8 +134,10 @@ pub enum AsyncFrontendMessage {
     StepMasterCycle,
     StepScanline,
     StepFrame,
-    SetFrameTimingBaseline(Instant),
     Quit,
+    PauseEmulator,
+    ChangeDebugPalette,
+    StartLoadSavestate,
 }
 
 /// Context for the multistep savestate loading process

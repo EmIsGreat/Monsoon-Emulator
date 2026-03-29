@@ -49,7 +49,7 @@ pub fn handle_keyboard_input(
 
             // Now no borrow of `config.keybindings` is active
             for action in actions {
-                action.get_callback_function()(config, async_sender);
+                action.get_callback_function()(async_sender);
             }
         }
 
