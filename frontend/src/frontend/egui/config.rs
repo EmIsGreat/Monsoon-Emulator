@@ -5,7 +5,7 @@ use egui::{Key, Modifiers};
 use monsoon_core::emulation::palette_util::RgbPalette;
 use monsoon_core::emulation::ppu_util::EmulatorFetchable;
 use monsoon_core::emulation::rom::RomFile;
-use monsoon_core::emulation::screen_renderer::{create_renderer, ScreenRenderer};
+use monsoon_core::emulation::screen_renderer::{ScreenRenderer, create_renderer};
 use serde::{Deserialize, Serialize};
 
 use crate::frontend::egui::keybindings::{
@@ -59,10 +59,32 @@ impl Default for ViewConfig {
 pub struct AppConfig {
     pub view_config: ViewConfig,
     pub speed_config: SpeedConfig,
+    pub auto_pause_state: AutoPauseState,
     pub user_config: UserConfig,
     pub console_config: ConsoleConfig,
     pub pending_dialogs: PendingDialogs,
     pub keybindings: KeybindingsConfig,
+}
+
+impl AppConfig {
+    pub fn set_auto_pause_reason(&mut self, reason: AutoPauseReason, active: bool) {
+        if active {
+            self.auto_pause_state.reasons.insert(reason);
+        } else {
+            self.auto_pause_state.reasons.remove(&reason);
+        }
+    }
+
+    pub fn sync_dialog_pause_reason(&mut self) {
+        self.set_auto_pause_reason(
+            AutoPauseReason::BlockingDialog,
+            self.pending_dialogs.has_blocking_dialog(),
+        );
+    }
+
+    pub fn is_effectively_paused(&self) -> bool {
+        self.speed_config.is_paused || !self.auto_pause_state.reasons.is_empty()
+    }
 }
 
 /// Pending dialog states for multi-step operations
@@ -79,6 +101,31 @@ pub struct PendingDialogs {
     pub error_dialog: Option<ErrorDialogState>,
     /// Save browser dialog for listing and loading internal saves
     pub save_browser: Option<SaveBrowserState>,
+}
+
+impl PendingDialogs {
+    pub fn has_blocking_dialog(&self) -> bool {
+        self.matching_rom_dialog.is_some()
+            || self.checksum_mismatch_dialog.is_some()
+            || self.rom_selection_dialog.is_some()
+            || self.error_dialog.is_some()
+            || self.save_browser.is_some()
+    }
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
+pub enum AutoPauseReason {
+    BlockingDialog,
+    SavestateLoadPicker,
+    SavestateCreateSaveDialog,
+}
+
+/// Tracks currently active automatic pause reasons.
+///
+/// Emulation is automatically paused while at least one reason is active.
+#[derive(Default)]
+pub struct AutoPauseState {
+    pub reasons: HashSet<AutoPauseReason>,
 }
 
 /// User configuration - stores display names and directory hints for WASM

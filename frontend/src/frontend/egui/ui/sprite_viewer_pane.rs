@@ -22,7 +22,7 @@ pub fn render_sprite_viewer(ui: &mut egui::Ui, config: &AppConfig, emu_textures:
             let soam_base_width = 16.0;
 
             // Check if SOAM data is available for balanced layout
-            let soam_available = config.speed_config.is_paused && emu_textures.soam_data.is_some();
+            let soam_available = config.is_effectively_paused() && emu_textures.soam_data.is_some();
 
             let available = ui.available_size();
             let spacing = ui.spacing().item_spacing.x;
@@ -120,7 +120,7 @@ pub fn render_sprite_viewer(ui: &mut egui::Ui, config: &AppConfig, emu_textures:
             });
 
             // Render SOAM if available, using the same shared scale
-            if config.speed_config.is_paused
+            if config.is_effectively_paused()
                 && let Some(soam_data) = &emu_textures.soam_data
             {
                 let soam_mode = soam_data.mode;

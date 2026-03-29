@@ -1,6 +1,6 @@
 use egui::Ui;
 
-use crate::frontend::egui::config::SpeedConfig;
+use crate::frontend::egui::config::AppConfig;
 use crate::frontend::egui::fps_counter::FpsCounter;
 use crate::frontend::egui::textures::EmuTextures;
 
@@ -8,14 +8,14 @@ use crate::frontend::egui::textures::EmuTextures;
 pub fn add_status_bar(
     ui: &mut Ui,
     fps_counter: &FpsCounter,
-    speed_config: &SpeedConfig,
+    config: &AppConfig,
     emu_textures: &EmuTextures,
 ) {
     egui::Panel::bottom("status_bar").show_inside(ui, |ui| {
         ui.horizontal(|ui| {
             ui.label(format!("FPS: {:.1}", fps_counter.fps()));
             ui.separator();
-            if speed_config.is_paused {
+            if config.is_effectively_paused() {
                 ui.label("Emulator: Paused");
             } else if emu_textures.current_frame.is_some() {
                 ui.label("Emulator: Running");

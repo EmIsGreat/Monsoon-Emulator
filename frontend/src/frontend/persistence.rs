@@ -311,6 +311,7 @@ impl From<&PersistentConfig> for AppConfig {
         Self {
             view_config: (&value.view_config).into(),
             speed_config: (&value.speed_config).into(),
+            auto_pause_state: Default::default(),
             user_config: (&value.user_config).into(),
             console_config: (&value.console_config).into(),
             pending_dialogs: Default::default(),

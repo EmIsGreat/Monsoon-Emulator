@@ -9,6 +9,7 @@ use monsoon_core::emulation::ppu_util::EmulatorFetchable;
 use monsoon_core::emulation::savestate;
 use monsoon_core::util::ToBytes;
 
+use crate::frontend::egui::config::AutoPauseReason;
 use crate::frontend::egui_frontend::EguiApp;
 use crate::frontend::messages::{AsyncFrontendMessage, LoadedRom, SavestateLoadContext};
 use crate::frontend::savestates::{
@@ -17,7 +18,7 @@ use crate::frontend::savestates::{
 };
 use crate::frontend::storage::{Storage, StorageKey};
 use crate::frontend::util::{
-    spawn_rom_picker, spawn_savestate_picker, try_parse_savestate, SavestateLoadError,
+    SavestateLoadError, spawn_rom_picker, spawn_savestate_picker, try_parse_savestate,
 };
 use crate::frontend::{storage, util};
 use crate::messages::{FrontendMessage, SaveType};
@@ -62,7 +63,6 @@ impl EguiApp {
                         }
                         util::FileType::Savestate => {
                             self.config.user_config.previous_savestate_save_dir = Some(dir);
-                            self.pause();
                         }
                         // Rom and All don't use save dialogs
                         _ => {}
@@ -123,8 +123,6 @@ impl EguiApp {
                     .send(FrontendMessage::CreateSaveState(SaveType::Quicksave));
             }
             AsyncFrontendMessage::LoadRom(loaded_rom) => {
-                self.pause();
-
                 if let Some(rom) = loaded_rom {
                     let _ = self
                         .to_emulator
@@ -138,11 +136,8 @@ impl EguiApp {
                     let _ = self.to_emulator.send(FrontendMessage::Power);
                     self.config.console_config.is_powered = true;
                 }
-
-                self.pause();
             }
             AsyncFrontendMessage::OpenSaveBrowser => {
-                self.pause();
                 self.handle_open_save_browser();
             }
             AsyncFrontendMessage::SaveBrowserLoaded(entries) => {
@@ -178,7 +173,8 @@ impl EguiApp {
                 let _ = self.to_emulator.send(FrontendMessage::Reset);
             }
             AsyncFrontendMessage::CreateSavestate => {
-                self.pause();
+                self.config
+                    .set_auto_pause_reason(AutoPauseReason::SavestateCreateSaveDialog, true);
                 let _ = self
                     .to_emulator
                     .send(FrontendMessage::CreateSaveState(SaveType::Manual));
@@ -241,6 +237,20 @@ impl EguiApp {
                 ctx.send_viewport_cmd(ViewportCommand::Close);
             }
             AsyncFrontendMessage::PauseEmulator => self.pause(),
+            AsyncFrontendMessage::AutoPauseSignal {
+                signal,
+                active,
+            } => {
+                let reason = match signal {
+                    crate::frontend::messages::AutoPauseSignal::SavestateLoadPicker => {
+                        AutoPauseReason::SavestateLoadPicker
+                    }
+                    crate::frontend::messages::AutoPauseSignal::SavestateCreateSaveDialog => {
+                        AutoPauseReason::SavestateCreateSaveDialog
+                    }
+                };
+                self.config.set_auto_pause_reason(reason, active);
+            }
             AsyncFrontendMessage::ChangeDebugPalette => {
                 self.config.user_config.debug_active_palette += 1;
                 self.config.user_config.debug_active_palette &= 7;
@@ -252,6 +262,7 @@ impl EguiApp {
                 );
             }
         }
+        self.config.sync_dialog_pause_reason();
     }
 
     fn handle_palette_loaded(&mut self, ctx: &Context, palette: RgbPalette) {

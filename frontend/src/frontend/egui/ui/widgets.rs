@@ -262,7 +262,7 @@ impl<'a> Widget for HotKeyButton<'a> {
         let response = ui.add_sized(desired_size, egui::Button::new(""));
 
         if response.clicked() {
-            self.action.get_callback_function()(&self.sender)
+            self.action.get_callback_function()(self.sender)
         }
 
         if ui.is_rect_visible(response.rect) {
