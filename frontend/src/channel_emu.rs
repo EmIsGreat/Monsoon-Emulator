@@ -103,6 +103,12 @@ impl ChannelEmulator {
 
     /// Run one frame of emulation and handle messages
     pub fn process_messages(&mut self) -> Result<(), String> {
+        // Controller input is provided by frontend each UI update for bindings
+        // currently held. Reset the bitfield once per update so held inputs
+        // persist across all frames executed this update, but release cleanly
+        // when not re-sent on the next update.
+        self.input = 0;
+
         // Check for messages from frontend
         while let Ok(msg) = self.from_frontend.try_recv() {
             match msg {
@@ -190,7 +196,6 @@ impl ChannelEmulator {
 
     pub fn execute_master_cycle(&mut self) -> Result<(), String> {
         self.nes.cpu_mem_init(0x4016, self.input);
-        self.input = 0;
 
         match self.nes.step() {
             Ok(_) => {
@@ -217,7 +222,6 @@ impl ChannelEmulator {
 
     pub fn execute_ppu_cycle(&mut self) -> Result<(), String> {
         self.nes.cpu_mem_init(0x4016, self.input);
-        self.input = 0;
 
         match self.nes.step_ppu_cycle() {
             Ok(_) => {
@@ -244,7 +248,6 @@ impl ChannelEmulator {
 
     pub fn execute_cpu_cycle(&mut self) -> Result<(), String> {
         self.nes.cpu_mem_init(0x4016, self.input);
-        self.input = 0;
 
         match self.nes.step_cpu_cycle() {
             Ok(_) => {
@@ -271,7 +274,6 @@ impl ChannelEmulator {
 
     pub fn execute_scanline(&mut self) -> Result<(), String> {
         self.nes.cpu_mem_init(0x4016, self.input);
-        self.input = 0;
 
         match self.nes.step_scanline() {
             Ok(_) => {
@@ -298,7 +300,6 @@ impl ChannelEmulator {
 
     pub fn execute_frame(&mut self) -> Result<(), String> {
         self.nes.cpu_mem_init(0x4016, self.input);
-        self.input = 0;
 
         match self.nes.step_frame() {
             Ok(_) => {

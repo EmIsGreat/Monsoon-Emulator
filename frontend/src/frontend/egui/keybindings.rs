@@ -99,6 +99,8 @@ impl Display for ModifierKey {
 /// standalone [`ModifierKey`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BindVariant {
+    /// Represents an intentionally cleared binding.
+    Unbound,
     Mouse(PointerButton),
     Keyboard(Key),
     /// A bare modifier key (e.g., Shift / Ctrl / Alt / Command / MacCmd) used
@@ -115,6 +117,7 @@ impl BindVariant {
     /// what controller inputs use.
     pub fn pressed(&self, input_state: &InputState) -> bool {
         match self {
+            BindVariant::Unbound => false,
             BindVariant::Mouse(mb) => input_state.events.iter().any(|e| {
                 matches!(e, Event::PointerButton {
                     button,
@@ -132,6 +135,7 @@ impl BindVariant {
     /// Returns true if the variant is down.
     pub fn down(&self, input_state: &InputState) -> bool {
         match self {
+            BindVariant::Unbound => false,
             BindVariant::Mouse(mb) => input_state.pointer.button_down(*mb),
             BindVariant::Keyboard(kb) => input_state.key_down(*kb),
             BindVariant::ModifierKey(mk) => mk.is_down(input_state),
@@ -150,6 +154,7 @@ impl From<Key> for BindVariant {
 impl Display for BindVariant {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
+            BindVariant::Unbound => f.write_str("None"),
             BindVariant::Mouse(pb) => f.write_str(match pb {
                 PointerButton::Primary => "M1",
                 PointerButton::Secondary => "M2",
@@ -460,6 +465,7 @@ impl Binding {
                     }
                 }
             }
+            BindVariant::Unbound => false,
             _ => {
                 modifiers_match(input_state.modifiers, self.modifiers, allow_extra_modifiers)
                     && self.variant.down(input_state)
@@ -527,10 +533,8 @@ impl HotkeyBinding for Binding {
     }
 
     fn clear(&mut self) {
-        panic!(
-            "Binding cannot be cleared directly. Use Option<Binding> wrapper type if clearing is \
-             needed, as Binding always requires a value."
-        );
+        self.variant = BindVariant::Unbound;
+        self.modifiers = Modifiers::NONE;
     }
 
     fn active(&self, input: &InputState) -> bool {
@@ -640,9 +644,13 @@ where
             } else {
                 let escape_pressed = ui.input(|i| i.key_pressed(Key::Escape));
                 if escape_pressed {
-                    // Escape cancels capture mode without mutating the current
-                    // binding; calling `clear` can panic for non-optional
-                    // bindings.
+                    self.binding.clear();
+                    ui.ctx().memory_mut(|memory| {
+                        memory
+                            .data
+                            .insert_temp(hotkey_just_set_this_frame_id(), true);
+                    });
+                    response.mark_changed();
                     expecting = false;
                     set_pending_modifier(ui, self.id, None);
                 } else {
