@@ -404,6 +404,23 @@ impl Binding {
 
     /// Returns true if the variant is down and input modifiers are matching.
     pub fn down(&self, input_state: &InputState) -> bool {
+        self.down_with_modifier_matching(input_state, false)
+    }
+
+    /// Returns true if the variant is down with permissive modifier matching.
+    ///
+    /// Required modifiers must be present, but extra modifiers are allowed.
+    /// This is used for continuous/controller inputs so overlapping binds do
+    /// not steal inputs from each other.
+    fn down_permissive(&self, input_state: &InputState) -> bool {
+        self.down_with_modifier_matching(input_state, true)
+    }
+
+    fn down_with_modifier_matching(
+        &self,
+        input_state: &InputState,
+        allow_extra_modifiers: bool,
+    ) -> bool {
         match &self.variant {
             // Modifier-only bindings check the modifier flag directly, but
             // we also ensure that *no other* modifiers are active.
@@ -421,30 +438,46 @@ impl Binding {
 
                 let mods = input_state.modifiers;
 
-                match mk {
-                    ModifierKey::Shift => {
-                        mods.shift && !mods.ctrl && !mods.alt && !mods.command && !mods.mac_cmd
-                    }
-                    ModifierKey::Ctrl => {
-                        mods.ctrl && !mods.shift && !mods.alt && !mods.command && !mods.mac_cmd
-                    }
-                    ModifierKey::Alt => {
-                        mods.alt && !mods.shift && !mods.ctrl && !mods.command && !mods.mac_cmd
-                    }
-                    ModifierKey::Command => {
-                        mods.command && !mods.shift && !mods.ctrl && !mods.alt && !mods.mac_cmd
-                    }
-                    ModifierKey::MacCmd => {
-                        mods.mac_cmd && !mods.shift && !mods.ctrl && !mods.alt && !mods.command
+                if allow_extra_modifiers {
+                    mk.is_down(input_state)
+                } else {
+                    match mk {
+                        ModifierKey::Shift => {
+                            mods.shift && !mods.ctrl && !mods.alt && !mods.command && !mods.mac_cmd
+                        }
+                        ModifierKey::Ctrl => {
+                            mods.ctrl && !mods.shift && !mods.alt && !mods.command && !mods.mac_cmd
+                        }
+                        ModifierKey::Alt => {
+                            mods.alt && !mods.shift && !mods.ctrl && !mods.command && !mods.mac_cmd
+                        }
+                        ModifierKey::Command => {
+                            mods.command && !mods.shift && !mods.ctrl && !mods.alt && !mods.mac_cmd
+                        }
+                        ModifierKey::MacCmd => {
+                            mods.mac_cmd && !mods.shift && !mods.ctrl && !mods.alt && !mods.command
+                        }
                     }
                 }
             }
             _ => {
-                input_state.modifiers.matches_logically(self.modifiers)
+                modifiers_match(input_state.modifiers, self.modifiers, allow_extra_modifiers)
                     && self.variant.down(input_state)
             }
         }
     }
+}
+
+fn modifiers_match(current: Modifiers, required: Modifiers, allow_extra_modifiers: bool) -> bool {
+    if !allow_extra_modifiers {
+        return current.matches_logically(required);
+    }
+
+    (!required.alt || current.alt)
+        && (!required.ctrl || current.ctrl)
+        && (!required.shift || current.shift)
+        && (!required.command || current.command)
+        && (!required.mac_cmd || current.mac_cmd)
 }
 
 // ============================================================================
@@ -494,7 +527,9 @@ impl HotkeyBinding for Binding {
     fn active(&self, input: &InputState) -> bool {
         match self.logical_bind.get_trigger_type() {
             TriggerType::Single => self.pressed(input),
-            TriggerType::Continuous => self.down(input),
+            // Controller actions are continuous; allow overlapping binds to
+            // trigger together instead of making one block the other.
+            TriggerType::Continuous => self.down_permissive(input),
         }
     }
 
@@ -607,8 +642,11 @@ where
             } else {
                 let escape_pressed = ui.input(|i| i.key_pressed(Key::Escape));
                 if escape_pressed {
-                    self.binding.clear();
+                    // Escape cancels capture mode without mutating the current
+                    // binding; calling `clear` can panic for non-optional
+                    // bindings.
                     expecting = false;
+                    set_pending_modifier(ui, self.id, None);
                 } else {
                     let keyboard = ui.input(|i| {
                         i.events.iter().find_map(|e| match e {
