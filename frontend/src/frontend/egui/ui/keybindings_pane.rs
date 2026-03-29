@@ -1,6 +1,6 @@
 //! Keybindings pane rendering
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use crate::frontend::egui::config::AppConfig;
 use crate::frontend::egui::keybindings::{Binding, Hotkey, KeybindCategory, OnKeyAction};
@@ -22,7 +22,7 @@ pub fn render_keybindings(ui: &mut egui::Ui, config: &mut AppConfig) -> bool {
 /// Render NES controller keybindings section
 fn render_controller_keybindings(
     ui: &mut egui::Ui,
-    keybinds: &mut HashMap<OnKeyAction, Binding>,
+    keybinds: &mut BTreeMap<OnKeyAction, Binding>,
 ) -> bool {
     let mut changed = false;
     ui.collapsing("Controller", |ui| {
@@ -47,7 +47,7 @@ fn render_controller_keybindings(
 /// Render emulation control keybindings section
 fn render_emulation_keybindings(
     ui: &mut egui::Ui,
-    keybinds: &mut HashMap<OnKeyAction, Binding>,
+    keybinds: &mut BTreeMap<OnKeyAction, Binding>,
 ) -> bool {
     let mut changed = false;
     ui.collapsing("Emulation Controls", |ui| {

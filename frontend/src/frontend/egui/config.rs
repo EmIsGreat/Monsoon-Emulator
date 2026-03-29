@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 use std::fmt::Debug;
 
 use egui::{Key, Modifiers};
@@ -195,7 +195,7 @@ impl Default for SpeedConfig {
 /// All keybindings for the emulator
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct KeybindingsConfig {
-    pub keybindings: HashMap<OnKeyAction, Binding>,
+    pub keybindings: BTreeMap<OnKeyAction, Binding>,
 }
 
 impl KeybindingsConfig {
@@ -205,48 +205,35 @@ impl KeybindingsConfig {
 
 impl Default for KeybindingsConfig {
     fn default() -> Self {
-        let mut bindings = Vec::new();
+        let bindings = vec![
+            Binding::key(Key::W, OnKeyAction::ControllerUp),
+            Binding::key(Key::S, OnKeyAction::ControllerDown),
+            Binding::key(Key::A, OnKeyAction::ControllerLeft),
+            Binding::key(Key::D, OnKeyAction::ControllerRight),
+            Binding::key(Key::Space, OnKeyAction::ControllerAButton),
+            Binding::new(
+                BindVariant::ModifierKey(ModifierKey::Shift),
+                Modifiers::NONE,
+                OnKeyAction::ControllerBButton,
+            ),
+            Binding::key(Key::Enter, OnKeyAction::ControllerStartButton),
+            Binding::key(Key::Tab, OnKeyAction::ControllerSelectButton),
+            Binding::key(Key::Comma, OnKeyAction::PauseEmulator),
+            Binding::key(Key::Period, OnKeyAction::StepFrame),
+            Binding::with_modifiers(Key::Period, Modifiers::CTRL, OnKeyAction::StepScanline),
+            Binding::key(Key::Slash, OnKeyAction::StepMasterCycle),
+            Binding::with_modifiers(Key::Slash, Modifiers::ALT, OnKeyAction::StepCpuCycle),
+            Binding::with_modifiers(Key::Slash, Modifiers::SHIFT, OnKeyAction::StepPpuCycle),
+            Binding::key(Key::R, OnKeyAction::Reset),
+            Binding::key(Key::F5, OnKeyAction::Quicksave),
+            Binding::key(Key::F8, OnKeyAction::Quickload),
+            Binding::key(Key::N, OnKeyAction::ChangeDebugPalette),
+        ];
 
-        bindings.push(Binding::key(Key::W, OnKeyAction::ControllerUp));
-        bindings.push(Binding::key(Key::S, OnKeyAction::ControllerDown));
-        bindings.push(Binding::key(Key::A, OnKeyAction::ControllerLeft));
-        bindings.push(Binding::key(Key::D, OnKeyAction::ControllerRight));
-        bindings.push(Binding::key(Key::Space, OnKeyAction::ControllerAButton));
-        bindings.push(Binding::new(
-            BindVariant::ModifierKey(ModifierKey::Shift),
-            Modifiers::NONE,
-            OnKeyAction::ControllerBButton,
-        ));
-        bindings.push(Binding::key(Key::Enter, OnKeyAction::ControllerStartButton));
-        bindings.push(Binding::key(Key::Tab, OnKeyAction::ControllerSelectButton));
-
-        bindings.push(Binding::key(Key::Comma, OnKeyAction::PauseEmulator));
-        bindings.push(Binding::key(Key::Period, OnKeyAction::StepFrame));
-        bindings.push(Binding::with_modifiers(
-            Key::Period,
-            Modifiers::CTRL,
-            OnKeyAction::StepScanline,
-        ));
-        bindings.push(Binding::key(Key::Slash, OnKeyAction::StepMasterCycle));
-        bindings.push(Binding::with_modifiers(
-            Key::Slash,
-            Modifiers::ALT,
-            OnKeyAction::StepCpuCycle,
-        ));
-        bindings.push(Binding::with_modifiers(
-            Key::Slash,
-            Modifiers::SHIFT,
-            OnKeyAction::StepPpuCycle,
-        ));
-        bindings.push(Binding::key(Key::R, OnKeyAction::Reset));
-        bindings.push(Binding::key(Key::F5, OnKeyAction::Quicksave));
-        bindings.push(Binding::key(Key::F8, OnKeyAction::Quickload));
-        bindings.push(Binding::key(Key::N, OnKeyAction::ChangeDebugPalette));
-
-        let mut map = HashMap::new();
+        let mut map = BTreeMap::new();
 
         for bind in bindings {
-            map.insert(bind.logical_bind, bind.clone());
+            map.insert(bind.logical_bind, bind);
         }
 
         KeybindingsConfig {

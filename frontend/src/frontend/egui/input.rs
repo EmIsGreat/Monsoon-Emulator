@@ -3,8 +3,8 @@ use egui::{Context, FocusDirection};
 
 use crate::frontend::egui::config::{AppConfig, KeybindingsConfig};
 use crate::frontend::egui::keybindings::{
-    hotkey_is_any_expecting, hotkey_take_just_set_this_frame, BindVariant, Binding, HotkeyBinding,
-    TriggerType,
+    BindVariant, Binding, HotkeyBinding, TriggerType, hotkey_is_any_expecting,
+    hotkey_take_just_set_this_frame,
 };
 use crate::frontend::messages::AsyncFrontendMessage;
 

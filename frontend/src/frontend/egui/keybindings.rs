@@ -14,7 +14,7 @@ use std::time::Instant;
 
 use crossbeam_channel::Sender;
 use egui::{
-    vec2, Event, Id, InputState, Key, Modifiers, PointerButton, Response, Sense, Ui, Widget,
+    Event, Id, InputState, Key, Modifiers, PointerButton, Response, Sense, Ui, Widget, vec2,
 };
 use serde::{Deserialize, Serialize};
 
@@ -134,7 +134,7 @@ impl BindVariant {
         match self {
             BindVariant::Mouse(mb) => input_state.pointer.button_down(*mb),
             BindVariant::Keyboard(kb) => input_state.key_down(*kb),
-            BindVariant::ModifierKey(mk) => mk.is_down(&input_state),
+            BindVariant::ModifierKey(mk) => mk.is_down(input_state),
         }
     }
 }
@@ -165,7 +165,7 @@ impl Display for BindVariant {
 
 type HotKeyCallback = dyn FnMut(&mut AppConfig, &Sender<AsyncFrontendMessage>) + Sync + Send;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Hash, Ord, PartialOrd)]
 pub enum OnKeyAction {
     ControllerUp,
     ControllerDown,
@@ -175,7 +175,6 @@ pub enum OnKeyAction {
     ControllerBButton,
     ControllerStartButton,
     ControllerSelectButton,
-    ChangeDebugPalette,
     PauseEmulator,
     StepFrame,
     StepScanline,
@@ -185,6 +184,7 @@ pub enum OnKeyAction {
     Reset,
     Quicksave,
     Quickload,
+    ChangeDebugPalette,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
