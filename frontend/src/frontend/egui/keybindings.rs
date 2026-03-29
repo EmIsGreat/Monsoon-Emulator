@@ -13,7 +13,7 @@ use std::hash::Hash;
 
 use crossbeam_channel::Sender;
 use egui::{
-    Event, Id, InputState, Key, Modifiers, PointerButton, Response, Sense, Ui, Widget, vec2,
+    vec2, Event, Id, InputState, Key, Modifiers, PointerButton, Response, Sense, Ui, Widget,
 };
 use serde::{Deserialize, Serialize};
 use strum::EnumIter;
@@ -228,6 +228,7 @@ pub enum OnKeyAction {
     BrowseSavestates,
     PowerCycle,
     PowerToggle,
+    Speedup,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -285,6 +286,7 @@ impl OnKeyAction {
             OnKeyAction::BrowseSavestates => "Browse Savestates",
             OnKeyAction::PowerCycle => "Power Cycle",
             OnKeyAction::PowerToggle => "Toggle Power",
+            OnKeyAction::Speedup => "Speedup",
         }
     }
 
@@ -298,7 +300,8 @@ impl OnKeyAction {
             | OnKeyAction::ControllerBButton
             | OnKeyAction::ControllerStartButton
             | OnKeyAction::ControllerSelectButton
-            | OnKeyAction::Reset => TriggerType::Continuous,
+            | OnKeyAction::Reset
+            | OnKeyAction::Speedup => TriggerType::Continuous,
             _ => TriggerType::Single,
         }
     }
@@ -321,7 +324,8 @@ impl OnKeyAction {
             | OnKeyAction::StepCpuCycle
             | OnKeyAction::Quicksave
             | OnKeyAction::Quickload
-            | OnKeyAction::ChangeDebugPalette => KeybindCategory::Debug,
+            | OnKeyAction::ChangeDebugPalette
+            | OnKeyAction::Speedup => KeybindCategory::Debug,
             OnKeyAction::LoadRom
             | OnKeyAction::Quit
             | OnKeyAction::LoadSavestate
@@ -333,7 +337,7 @@ impl OnKeyAction {
         }
     }
 
-    /// Returns `true` when this action should pass-through and co-trigger with
+    /// Returns `true` when this action should pass through and co-trigger with
     /// other active bindings.
     ///
     /// When enabled, overlapping bindings can activate simultaneously instead
@@ -393,6 +397,7 @@ impl OnKeyAction {
             OnKeyAction::BrowseSavestates => AsyncFrontendMessage::OpenSaveBrowser,
             OnKeyAction::PowerCycle => AsyncFrontendMessage::PowerCycle,
             OnKeyAction::PowerToggle => AsyncFrontendMessage::PowerToggle,
+            OnKeyAction::Speedup => {AsyncFrontendMessage::Speedup}
         }
     }
 

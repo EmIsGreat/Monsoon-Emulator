@@ -2,7 +2,7 @@ use crate::frontend::messages::{LoadedRom, SavestateLoadContext};
 use crate::frontend::storage::StorageKey;
 
 /// A single save entry for display in the save browser
-#[derive(Clone)]
+#[derive(Clone, Hash)]
 pub struct SaveEntry {
     /// Storage key to read this save
     pub key: StorageKey,
@@ -15,7 +15,7 @@ pub struct SaveEntry {
 }
 
 /// Type of save entry
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum SaveEntryType {
     Quicksave,
     Autosave,

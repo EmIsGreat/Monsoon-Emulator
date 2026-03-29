@@ -7,7 +7,7 @@ use crate::frontend::storage::StorageKey;
 use crate::frontend::util::{FileType, SavestateLoadError};
 use crate::messages::ControllerEvent;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Hash)]
 pub enum AutoPauseSignal {
     SavestateLoadPicker,
     SavestateCreateSaveDialog,
@@ -49,13 +49,13 @@ pub struct LoadedRom {
     pub directory: StorageKey,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct LoadedPalette {
     pub palette: RgbPalette,
     pub directory: StorageKey,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Hash)]
 /// Messages for async/deferred frontend operations.
 ///
 /// These messages are processed by EguiApp and allow UI components to request
@@ -148,10 +148,11 @@ pub enum AsyncFrontendMessage {
     ChangeDebugPalette,
     StartLoadSavestate,
     PowerCycle,
+    Speedup,
 }
 
 /// Context for the multistep savestate loading process
-#[derive(Clone)]
+#[derive(Clone, Hash)]
 pub struct SavestateLoadContext {
     pub savestate: SaveState,
     /// Savestate filename (without path)

@@ -18,12 +18,13 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::time::Duration;
 
+
 use crossbeam_channel::{Receiver, Sender};
 use eframe::Frame;
-use egui::{Context, Style, Ui, ViewportCommand, Visuals};
+use egui::{Context, Id, Style, Ui, ViewportCommand, Visuals};
 use monsoon_core::declare_renderers;
 use monsoon_core::emulation::nes::Nes;
-use monsoon_core::emulation::ppu_util::{EmulatorFetchable, PaletteData, TILE_COUNT, TileData};
+use monsoon_core::emulation::ppu_util::{EmulatorFetchable, PaletteData, TileData, TILE_COUNT};
 use monsoon_core::emulation::savestate::SaveState;
 use monsoon_core::emulation::screen_renderer::{
     NoneRenderer, RendererRegistration, ScreenRenderer,
@@ -40,7 +41,7 @@ use crate::frontend::egui::message_handlers::async_handler::extract_timestamp;
 use crate::frontend::egui::message_handlers::{AsyncMessageHandler, EmulatorMessageHandler};
 use crate::frontend::egui::textures::EmuTextures;
 use crate::frontend::egui::tiles::{
-    Pane, TreeBehavior, compute_required_fetches_from_tree, create_tree, find_pane,
+    compute_required_fetches_from_tree, create_tree, find_pane, Pane, TreeBehavior,
 };
 use crate::frontend::egui::ui::{
     add_menu_bar, add_status_bar, render_save_browser, render_savestate_dialogs,
@@ -48,7 +49,7 @@ use crate::frontend::egui::ui::{
 use crate::frontend::messages::{
     AsyncFrontendMessage, FrontendEvent, LoadedRom, SavestateLoadContext,
 };
-use crate::frontend::persistence::{PersistentConfig, get_egui_storage_path, load_config};
+use crate::frontend::persistence::{get_egui_storage_path, load_config, PersistentConfig};
 use crate::frontend::storage::{Storage, StorageKey};
 use crate::frontend::{storage, util};
 use crate::messages::{EmulatorMessage, FrontendMessage, SaveType};
@@ -445,7 +446,12 @@ impl EguiApp {
             self.emu_textures.last_frame_request = now;
 
             let frame_budget = self.get_frame_budget();
-            let is_uncapped = self.config.speed_config.app_speed == AppSpeed::Uncapped;
+            let is_uncapped = self.config.speed_config.app_speed == AppSpeed::Uncapped
+                || ctx.memory(|mem| {
+                    mem.data
+                        .get_temp(Id::new(AsyncFrontendMessage::Speedup))
+                        .unwrap_or(false)
+                });
 
             let max_emulation_time = Duration::from_millis(17);
 
@@ -591,17 +597,14 @@ impl eframe::App for EguiApp {
     /// `logic`, while `ui` stays focused on widget/layout rendering and UI
     /// interactions.
     fn logic(&mut self, ctx: &Context, _: &mut Frame) {
+        ctx.memory_mut(|mem| {
+            mem.data
+                .insert_temp::<bool>(Id::new(AsyncFrontendMessage::Speedup), false);
+        });
+
         // Handle keyboard input
         handle_keyboard_input(ctx, &self.async_sender, &mut self.config);
         self.config.sync_dialog_pause_reason();
-
-        if let Err(e) = self.channel_emu.process_messages() {
-            eprintln!("Emulator error: {}", e);
-            ctx.send_viewport_cmd(ViewportCommand::Close);
-            return;
-        }
-
-        self.update_emu_textures(ctx);
 
         // Process pending frontend, async, and emulator messages
         self.process_messages(ctx);
@@ -612,6 +615,14 @@ impl eframe::App for EguiApp {
         // Update required debug fetches based on visible panes
         self.config.view_config.required_debug_fetches =
             compute_required_fetches_from_tree(&self.tree, &self.config);
+
+        if let Err(e) = self.channel_emu.process_messages() {
+            eprintln!("Emulator error: {}", e);
+            ctx.send_viewport_cmd(ViewportCommand::Close);
+            return;
+        }
+
+        self.update_emu_textures(ctx);
 
         // Check autosave triggers
         self.check_periodic_autosave();
