@@ -25,7 +25,7 @@ fn sprite_hover_ui(
             "Bottom Tile: {}x{} (Pattern Table {})",
             (sprite.bottom_tile & 0xFF) % 16,
             (sprite.bottom_tile & 0xFF) / 16,
-            sprite.tile >> 8
+            sprite.bottom_tile >> 8
         ));
     }
 

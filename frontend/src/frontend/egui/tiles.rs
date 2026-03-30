@@ -61,8 +61,8 @@ impl Pane {
             Pane::Palettes => "Palettes",
             Pane::Keybindings => "Keybindings",
             Pane::Sprites => "Sprites",
-            Pane::SoamSprites => "Soam Sprites",
-            Pane::RomHeader => "Rom Header",
+            Pane::SoamSprites => "SOAM Sprites",
+            Pane::RomHeader => "ROM Header",
         }
     }
 }

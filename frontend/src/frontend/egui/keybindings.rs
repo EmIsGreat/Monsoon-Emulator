@@ -301,8 +301,8 @@ impl OnKeyAction {
             OnKeyAction::OpenPatternTableViewer => "Open Pattern Table Viewer",
             OnKeyAction::OpenNametableViewer => "Open Nametable Viewer",
             OnKeyAction::OpenSpriteViewer => "Open Sprite Viewer",
-            OnKeyAction::OpenSoamViewer => "Open Soam Viewer",
-            OnKeyAction::OpenRomHeaderViewer => "Open Rom Header Viewer",
+            OnKeyAction::OpenSoamViewer => "Open SOAM Viewer",
+            OnKeyAction::OpenRomHeaderViewer => "Open ROM Header Viewer",
         }
     }
 
