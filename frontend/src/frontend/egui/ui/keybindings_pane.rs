@@ -3,7 +3,7 @@
 use strum::IntoEnumIterator;
 
 use crate::frontend::egui::config::AppConfig;
-use crate::frontend::egui::keybindings::{Hotkey, KeybindCategory};
+use crate::frontend::egui::keybindings::{BindVariant, Binding, Hotkey, KeybindCategory, OnKeyAction};
 
 #[derive(Clone, Copy)]
 struct SharedLabelWidthCache {
@@ -17,7 +17,7 @@ fn get_shared_label_column_width(ui: &mut egui::Ui, config: &AppConfig) -> f32 {
 
     let cache_id = egui::Id::new("keybindings_shared_label_column_width");
     let pixels_per_point = ui.ctx().pixels_per_point();
-    let key_count = config.keybindings.keybindings.len();
+    let key_count = OnKeyAction::iter().count();
 
     if let Some(cache) = ui
         .ctx()
@@ -30,10 +30,7 @@ fn get_shared_label_column_width(ui: &mut egui::Ui, config: &AppConfig) -> f32 {
 
     let label_font_id = egui::TextStyle::Body.resolve(ui.style());
     let label_color = ui.visuals().text_color();
-    let width = config
-        .keybindings
-        .keybindings
-        .keys()
+    let width = OnKeyAction::iter()
         .map(|action| {
             ui.fonts_mut(|fonts| {
                 fonts
@@ -75,12 +72,18 @@ pub fn render_keybindings(ui: &mut egui::Ui, config: &mut AppConfig) -> bool {
                     .spacing([40.0, 4.0])
                     .striped(true)
                     .show(ui, |ui| {
-                        for (action, binding) in config
-                            .keybindings
-                            .keybindings
-                            .iter_mut()
-                            .filter(|(action, _)| action.get_category() == category)
+                        for action in OnKeyAction::iter()
+                            .filter(|action| action.get_category() == category)
                         {
+                            let binding = config
+                                .keybindings
+                                .keybindings
+                                .entry(action)
+                                .or_insert_with(|| Binding {
+                                    variant: BindVariant::Unbound,
+                                    modifiers: egui::Modifiers::NONE,
+                                    action,
+                                });
                             ui.add_sized(
                                 [shared_label_column_width, ui.spacing().interact_size.y],
                                 egui::Label::new(action.get_display_name()),
