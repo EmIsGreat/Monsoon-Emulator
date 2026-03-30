@@ -363,7 +363,8 @@ impl EguiApp {
     }
 
     fn is_soam_viewer_visible(&self) -> bool {
-        find_pane(&self.tree.tiles, &Pane::SoamSprites).is_some() && self.config.is_effectively_paused()
+        find_pane(&self.tree.tiles, &Pane::SoamSprites).is_some()
+            && self.config.is_effectively_paused()
     }
 
     /// Check if any viewer that needs tile textures is visible
