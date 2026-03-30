@@ -201,7 +201,9 @@ impl Display for BindVariant {
 
 type HotKeyCallback = dyn Fn(&Sender<AsyncFrontendMessage>);
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Hash, Ord, PartialOrd, EnumIter)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Hash, Ord, PartialOrd, EnumIter,
+)]
 pub enum OnKeyAction {
     ControllerUp,
     ControllerDown,

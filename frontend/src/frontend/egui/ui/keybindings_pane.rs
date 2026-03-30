@@ -3,7 +3,9 @@
 use strum::IntoEnumIterator;
 
 use crate::frontend::egui::config::AppConfig;
-use crate::frontend::egui::keybindings::{BindVariant, Binding, Hotkey, KeybindCategory, OnKeyAction};
+use crate::frontend::egui::keybindings::{
+    BindVariant, Binding, Hotkey, KeybindCategory, OnKeyAction,
+};
 
 #[derive(Clone, Copy)]
 struct SharedLabelWidthCache {
@@ -12,7 +14,7 @@ struct SharedLabelWidthCache {
     width: f32,
 }
 
-fn get_shared_label_column_width(ui: &mut egui::Ui, config: &AppConfig) -> f32 {
+fn get_shared_label_column_width(ui: &mut egui::Ui) -> f32 {
     const PIXELS_PER_POINT_CACHE_TOLERANCE: f32 = 0.01;
 
     let cache_id = egui::Id::new("keybindings_shared_label_column_width");
@@ -62,7 +64,7 @@ fn get_shared_label_column_width(ui: &mut egui::Ui, config: &AppConfig) -> f32 {
 /// Render the keybindings panel
 pub fn render_keybindings(ui: &mut egui::Ui, config: &mut AppConfig) -> bool {
     let mut changed = false;
-    let shared_label_column_width = get_shared_label_column_width(ui, config);
+    let shared_label_column_width = get_shared_label_column_width(ui);
 
     egui::ScrollArea::vertical().show(ui, |ui| {
         for category in KeybindCategory::iter() {
@@ -72,8 +74,8 @@ pub fn render_keybindings(ui: &mut egui::Ui, config: &mut AppConfig) -> bool {
                     .spacing([40.0, 4.0])
                     .striped(true)
                     .show(ui, |ui| {
-                        for action in OnKeyAction::iter()
-                            .filter(|action| action.get_category() == category)
+                        for action in
+                            OnKeyAction::iter().filter(|action| action.get_category() == category)
                         {
                             let binding = config
                                 .keybindings
