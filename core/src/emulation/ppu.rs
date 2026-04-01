@@ -1252,17 +1252,9 @@ impl Ppu {
             let x_pos = self.oam_snapshot((sprite_base_address + 3) as u8);
             let tile_byte = self.oam_snapshot((sprite_base_address + 1) as u8);
 
-            let tile = if sprite_mode == SpriteMode::SMALL {
-                (tile_byte as u16) | base_pattern_table
-            } else {
-                ((tile_byte & !1) as u16) | (((tile_byte & 1) as u16) << 8)
-            };
+            let tile = Self::get_top_tile(sprite_mode, base_pattern_table, tile_byte);
 
-            let bottom_tile = if sprite_mode == SpriteMode::SMALL {
-                0
-            } else {
-                ((tile_byte & !1) as u16 + 1) | (((tile_byte & 1) as u16) << 8)
-            };
+            let bottom_tile = Self::get_bottom_tile(sprite_mode, tile_byte);
 
             let attribute_byte = self.oam_snapshot((sprite_base_address + 2) as u8);
             let priority = (attribute_byte << 2) >> 7 == 0;
@@ -1306,17 +1298,9 @@ impl Ppu {
             let x_pos = self.secondary_oam_snapshot((sprite_base_address + 3) as u8);
             let tile_byte = self.secondary_oam_snapshot((sprite_base_address + 1) as u8);
 
-            let tile = if sprite_mode == SpriteMode::SMALL {
-                (tile_byte as u16) | base_pattern_table
-            } else {
-                ((tile_byte & !1) as u16) | (((tile_byte & 1) as u16) << 8)
-            };
+            let tile = Self::get_top_tile(sprite_mode, base_pattern_table, tile_byte);
 
-            let bottom_tile = if sprite_mode == SpriteMode::SMALL {
-                0
-            } else {
-                ((tile_byte & !1) as u16 + 1) | (((tile_byte & 1) as u16) << 8)
-            };
+            let bottom_tile = Self::get_bottom_tile(sprite_mode, tile_byte);
 
             let attribute_byte = self.secondary_oam_snapshot((sprite_base_address + 2) as u8);
             let priority = (attribute_byte << 2) >> 7 == 0;
@@ -1338,6 +1322,22 @@ impl Ppu {
         }
 
         EmulatorFetchable::SoamSprites(Some(Box::new(sprites)))
+    }
+
+    fn get_top_tile(sprite_mode: SpriteMode, base_pattern_table: u16, tile_byte: u8) -> u16 {
+        if sprite_mode == SpriteMode::SMALL {
+            (tile_byte as u16) | base_pattern_table
+        } else {
+            ((tile_byte & !1) as u16) | (((tile_byte & 1) as u16) << 8)
+        }
+    }
+
+    fn get_bottom_tile(sprite_mode: SpriteMode, tile_byte: u8) -> u16 {
+        if sprite_mode == SpriteMode::SMALL {
+            0
+        } else {
+            ((tile_byte & !1) as u16 + 1) | (((tile_byte & 1) as u16) << 8)
+        }
     }
 }
 

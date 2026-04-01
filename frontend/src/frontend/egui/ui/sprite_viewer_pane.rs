@@ -8,11 +8,7 @@ use crate::frontend::egui::ui::widgets::{
     PainterGridConfig, image_cell_dual_vert_flipped, image_cell_flipped,
 };
 
-fn sprite_hover_ui(
-    ui: &mut egui::Ui,
-    sprite: &Sprite,
-    mode: SpriteMode,
-) {
+fn sprite_hover_ui(ui: &mut egui::Ui, sprite: &Sprite, mode: SpriteMode) {
     ui.label(format!(
         "Tile: {}x{} (Pattern Table {})",
         (sprite.tile & 0xFF) % 16,
