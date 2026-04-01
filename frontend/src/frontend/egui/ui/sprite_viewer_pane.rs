@@ -1,6 +1,6 @@
 //! Pattern table viewer pane rendering
 
-use monsoon_core::emulation::ppu_util::SpriteMode;
+use monsoon_core::emulation::ppu_util::{Sprite, SpriteMode};
 
 use crate::frontend::egui::config::AppConfig;
 use crate::frontend::egui::textures::EmuTextures;
@@ -10,7 +10,7 @@ use crate::frontend::egui::ui::widgets::{
 
 fn sprite_hover_ui(
     ui: &mut egui::Ui,
-    sprite: &monsoon_core::emulation::ppu_util::Sprite,
+    sprite: &Sprite,
     mode: SpriteMode,
 ) {
     ui.label(format!(

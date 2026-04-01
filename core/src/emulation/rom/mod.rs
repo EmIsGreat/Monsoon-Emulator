@@ -11,6 +11,7 @@ mod formats;
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 
+use num_enum::{FromPrimitive, IntoPrimitive};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
@@ -76,7 +77,7 @@ pub trait RomParser: Debug {
 ///
 /// # let raw_bytes: &[u8] = &[];
 /// let rom = RomFile::load(raw_bytes, Some("my_game.nes".to_string())).expect("invalid ROM");
-/// println!("Mapper: {}", rom.mapper_number);
+/// println!("Mapper: {}", rom.mapper);
 /// ```
 ///
 /// # Constructing a ROM programmatically
@@ -92,22 +93,22 @@ pub struct RomFile {
     /// CHR (character/graphics) memory sizes.
     pub chr_memory: ChrMemory,
     /// iNES mapper number identifying the cartridge board hardware.
-    pub mapper_number: u16,
+    pub mapper: RomMapper,
     /// Default expansion device identifier (NES 2.0).
-    pub default_expansion_device: u8,
+    pub default_expansion_device: ExpansionDevice,
     /// Number of miscellaneous ROM areas (NES 2.0).
     pub misc_rom_count: u8,
     /// Extended console type (NES 2.0), if applicable.
-    pub extended_console_type: Option<u8>,
+    pub extended_console_type: Option<ExtendedConsoleType>,
     /// VS System hardware type, if applicable.
-    pub vs_system_hardware_type: Option<u8>,
+    pub vs_system_hardware_type: Option<VsHardwareType>,
     /// VS System PPU type, if applicable.
-    pub vs_system_ppu_type: Option<u8>,
+    pub vs_system_ppu_type: Option<VsSystemPpuType>,
     /// CPU/PPU timing mode (0 = NTSC, 1 = PAL, 2 = Multi-region, 3 = Dendy).
-    pub cpu_ppu_timing: u8,
+    pub timing_region: RomTimingRegion,
     /// Console type (0 = NES/Famicom, 1 = VS System, 2 = Playchoice-10, 3 =
     /// Extended).
-    pub console_type: u8,
+    pub console_type: ConsoleType,
     /// Nametable mirroring mode from header bit 0 (`true` = vertical, `false` =
     /// horizontal).
     pub hardwired_nametable_layout: bool,
@@ -125,6 +126,507 @@ pub struct RomFile {
     /// size.
     #[serde(skip)]
     pub data: Vec<u8>,
+}
+
+#[derive(
+    Debug,
+    Copy,
+    Clone,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    Hash,
+    FromPrimitive,
+    IntoPrimitive,
+    Serialize,
+    Deserialize,
+)]
+#[repr(u8)]
+pub enum ExpansionDevice {
+    Unspecified = 0,
+    StandardController = 1,
+    FourScore = 2,
+    FourScoreSimple = 3,
+    VsSystem1P4016 = 4,
+    VsSystem1P4017 = 5,
+    VsZapper = 7,
+    Zapper4017 = 8,
+    TwoZappers = 9,
+    BandaiHyperShotLightgun = 10,
+    PowerPadSideA = 11,
+    PowerPadSideB = 12,
+    FamilyTrainerSideA = 13,
+    FamilyTrainerSideB = 14,
+    ArkanoidVausNes = 15,
+    ArkanoidVausFamicom = 16,
+    TwoVausPlusDataRecorder = 17,
+    KonamiHyperShot = 18,
+    CoconutsPachinko = 19,
+    ExcitingBoxingPunchingBag = 20,
+    JissenMahjong = 21,
+    PartyTap = 22,
+    OekaKidsTablet = 23,
+    SunsoftBarcodeBattler = 24,
+    MiraclePianoKeyboard = 25,
+    PokkunMoguraaTapTapMat = 26,
+    TopRider = 27,
+    DoubleFisted = 28,
+    Famicom3dSystem = 29,
+    DoremikkoKeyboard = 30,
+    RobGyromite = 31,
+    FamicomDataRecorder = 32,
+    AsciiTurboFile = 33,
+    IgsStorageBattleBox = 34,
+    FamilyBasicKeyboardPlusDataRecorder = 35,
+    PecKeyboard = 36,
+    Bit79Keyboard = 37,
+    SuborKeyboard = 38,
+    SuborKeyboardPlusMacroWinnersMouse = 39,
+    SuborKeyboardPlusSuborMouse4016 = 40,
+    SnesMouse4016 = 41,
+    Multicart = 42,
+    TwoSnesControllers = 43,
+    RacerMateBicycle = 44,
+    UForce = 45,
+    RobStackUp = 46,
+    CityPatrolmanLightgun = 47,
+    SharpC1CasetteInterface = 48,
+    StandardControllerSwappedLayout = 49,
+    ExcaliburSudokuPad = 50,
+    AblPinball = 51,
+    GoldenNuggetCasinoExtraButtons = 52,
+    KedaKeyboard = 53,
+    SuborKeyboardPlusSuborMouse4017 = 54,
+    PortTestController = 55,
+    BandaiMultiGamePlayerGamepadButtons = 56,
+    VenomTvDanceMat = 57,
+    LgTvRemoteControl = 58,
+    FamicomNetworkController = 59,
+    KingFishingController = 60,
+    CroakyKaraokeController = 61,
+    KingwonKeyboard = 62,
+    ZechengKeyboard = 63,
+    SuborKeyboardPlusL90RotatedPs2Mouse4017 = 64,
+    Ps2KeyboardUM6578PlusPs2Mouse4017 = 65,
+    Ps2MouseUM6578 = 66,
+    YuxingMouse4016 = 67,
+    SuborKeyboardPlusYuxingMouse4016 = 68,
+    GiggleTvPump = 69,
+    BBKKeyboardPlusR90RotatedPs2Mouse4017 = 70,
+    MagicalCooking = 71,
+    SnesMouse4017 = 72,
+    Zapper4016 = 73,
+    ArkanoidVausControllerPrototype = 74,
+    TvMahjongGameController = 75,
+    MahjongGekitouDensetsuController = 76,
+    SuborKeyboardPlusXInvertedPs2Mouse4017 = 77,
+    IbmPcXtKeyboard = 78,
+    SuborKeyboardPlusMegaBookMouse = 79,
+    #[num_enum(catch_all)]
+    Unknown(u8),
+}
+
+impl Display for ExpansionDevice {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let str: &str = match self {
+            ExpansionDevice::Unspecified => "Unspecified",
+            ExpansionDevice::StandardController => "Standard NES/Famicom Controllers",
+            ExpansionDevice::FourScore => {
+                "NES Four Score/Satellite w/ two additional standard controllers"
+            }
+            ExpansionDevice::FourScoreSimple => {
+                "Famicom Four Player Adapter w/ two two additional standard controllers using the \
+                 \"simple\" protocol"
+            }
+            ExpansionDevice::VsSystem1P4016 => "Vs. System (One Player via Port 1)",
+            ExpansionDevice::VsSystem1P4017 => "Vs. System (One Player via Port 2)",
+            ExpansionDevice::VsZapper => "Vs. Zapper",
+            ExpansionDevice::Zapper4017 => "Zapper (via Port 2)",
+            ExpansionDevice::TwoZappers => "Two Zappers",
+            ExpansionDevice::BandaiHyperShotLightgun => "Bandai Hyper Shot Lightgun",
+            ExpansionDevice::PowerPadSideA => "Power Pad Side A",
+            ExpansionDevice::PowerPadSideB => "Power Pad Side B",
+            ExpansionDevice::FamilyTrainerSideA => "Family Trainer Side A",
+            ExpansionDevice::FamilyTrainerSideB => "Family Trainer Side B",
+            ExpansionDevice::ArkanoidVausNes => "Arkanoid Vaus Controller (NES)",
+            ExpansionDevice::ArkanoidVausFamicom => "Arkanoid Vaus Controller (Famicom)",
+            ExpansionDevice::TwoVausPlusDataRecorder => {
+                "Two Arkanoid Vaus Controllers + Famicom Data Recorder"
+            }
+            ExpansionDevice::KonamiHyperShot => "Konami Hyper Shot Controller",
+            ExpansionDevice::CoconutsPachinko => "Coconuts Pachinko Controller",
+            ExpansionDevice::ExcitingBoxingPunchingBag => "Exciting Boxing Punching Bag",
+            ExpansionDevice::JissenMahjong => "Jissen Mahjong Controller",
+            ExpansionDevice::PartyTap => "米澤 (Yonezawa) Party Tap",
+            ExpansionDevice::OekaKidsTablet => "Oeka Kids Tablet",
+            ExpansionDevice::SunsoftBarcodeBattler => "Sunsoft Barcode Battler",
+            ExpansionDevice::MiraclePianoKeyboard => "Miracle Piano Keyboard",
+            ExpansionDevice::PokkunMoguraaTapTapMat => "Pokkun Moguraa Tap-tap Mat1",
+            ExpansionDevice::TopRider => "Top Rider",
+            ExpansionDevice::DoubleFisted => "Double Fisted",
+            ExpansionDevice::Famicom3dSystem => "Famicom 3D System",
+            ExpansionDevice::DoremikkoKeyboard => "Doremikko Keyboard",
+            ExpansionDevice::RobGyromite => "R.O.B Gyromite",
+            ExpansionDevice::FamicomDataRecorder => "Famicom Data Recorder",
+            ExpansionDevice::AsciiTurboFile => "ASCII Turbo File",
+            ExpansionDevice::IgsStorageBattleBox => "IGS Storage Battle Box",
+            ExpansionDevice::FamilyBasicKeyboardPlusDataRecorder => {
+                "Family Basic Keyboard + Famicom Data Recorder"
+            }
+            ExpansionDevice::PecKeyboard => "东达 (Dōngdá) PEC Keyboard",
+            ExpansionDevice::Bit79Keyboard => "普澤 (Pǔzé, a.k.a. Bit Corp.) Bit-79 Keyboard",
+            ExpansionDevice::SuborKeyboard => "小霸王 (Xiǎobàwáng, a.k.a. Subor) Keyboard",
+            ExpansionDevice::SuborKeyboardPlusMacroWinnersMouse => {
+                "小霸王 (Xiǎobàwáng, a.k.a. Subor) Keyboard + Macro Winners Mouse"
+            }
+            ExpansionDevice::SuborKeyboardPlusSuborMouse4016 => {
+                "小霸王 (Xiǎobàwáng, a.k.a. Subor) Keyboard + Subor Mouse (via Port 1)"
+            }
+            ExpansionDevice::SnesMouse4016 => "SNES Mouse (via Port 1)",
+            ExpansionDevice::Multicart => "Multicart",
+            ExpansionDevice::TwoSnesControllers => "Two SNES Controllers",
+            ExpansionDevice::RacerMateBicycle => "RacerMate Bicycle",
+            ExpansionDevice::UForce => "U-Force",
+            ExpansionDevice::RobStackUp => "R.O.B Stack-Up",
+            ExpansionDevice::CityPatrolmanLightgun => "City Patrolman Lightgun",
+            ExpansionDevice::SharpC1CasetteInterface => "Sharp C1 Cassette Interface",
+            ExpansionDevice::StandardControllerSwappedLayout => {
+                "Standard Controller with swapped Left-Right/Up-Down/B-A"
+            }
+            ExpansionDevice::ExcaliburSudokuPad => "Excalibur Sudoku Pad",
+            ExpansionDevice::AblPinball => "ABL Pinball",
+            ExpansionDevice::GoldenNuggetCasinoExtraButtons => "Golden Nugget Casino Controller",
+            ExpansionDevice::KedaKeyboard => "科达 (Kēdá) Keyboard",
+            ExpansionDevice::SuborKeyboardPlusSuborMouse4017 => {
+                "小霸王 (Xiǎobàwáng, a.k.a. Subor) Keyboard + Subor Mouse (via Port 2)"
+            }
+            ExpansionDevice::PortTestController => "Port test controller",
+            ExpansionDevice::BandaiMultiGamePlayerGamepadButtons => {
+                "Bandai Multi Game Player Gamepad"
+            }
+            ExpansionDevice::VenomTvDanceMat => "Venom TV Dance Mat",
+            ExpansionDevice::LgTvRemoteControl => "LG TV Remote Control",
+            ExpansionDevice::FamicomNetworkController => "Famicom Network Controller",
+            ExpansionDevice::KingFishingController => "King Fishing Controller",
+            ExpansionDevice::CroakyKaraokeController => "Croaky Karaoke Controller",
+            ExpansionDevice::KingwonKeyboard => "科王 (Kēwáng, a.k.a. Kingwon) Keyboard",
+            ExpansionDevice::ZechengKeyboard => "泽诚 (Zéchéng) Keyboard",
+            ExpansionDevice::SuborKeyboardPlusL90RotatedPs2Mouse4017 => {
+                "小霸王 (Xiǎobàwáng, a.k.a. Subor) Keyboard + PS/2 mouse rotated left (via Port 2)"
+            }
+            ExpansionDevice::Ps2KeyboardUM6578PlusPs2Mouse4017 => {
+                "PS/2 Keyboard in UM6578 PS/2 port + PS/2 Mouse (via Port 2)"
+            }
+            ExpansionDevice::Ps2MouseUM6578 => "PS/2 Mouse in UM6578 PS/2 port",
+            ExpansionDevice::YuxingMouse4016 => "裕兴 (Yùxìng) Mouse (via Port 1)",
+            ExpansionDevice::SuborKeyboardPlusYuxingMouse4016 => {
+                "小霸王 (Xiǎobàwáng, a.k.a. Subor)Keyboard + 裕兴 (Yùxìng) Mouse mouse (via Port 1)"
+            }
+            ExpansionDevice::GiggleTvPump => "Giggle TV Pump",
+            ExpansionDevice::BBKKeyboardPlusR90RotatedPs2Mouse4017 => {
+                "步步高 (Bùbùgāo, a.k.a. BBK) Keyboard + PS/2 mouse rotated right (via Port 2)"
+            }
+            ExpansionDevice::MagicalCooking => "Magical Cooking",
+            ExpansionDevice::SnesMouse4017 => "SNES Mouse (via Port 2)",
+            ExpansionDevice::Zapper4016 => "Zapper (via Port 1)",
+            ExpansionDevice::ArkanoidVausControllerPrototype => {
+                "Arkanoid Vaus Controller (Prototype)"
+            }
+            ExpansionDevice::TvMahjongGameController => "TV 麻雀 Game (TV Mahjong Game) Controller",
+            ExpansionDevice::MahjongGekitouDensetsuController => {
+                "麻雀激闘伝説 (Mahjong Gekitou Densetsu) Controller"
+            }
+            ExpansionDevice::SuborKeyboardPlusXInvertedPs2Mouse4017 => {
+                "小霸王 (Xiǎobàwáng, a.k.a. Subor) Keyboard + X-inverted PS/2 mouse via (Port 2)"
+            }
+            ExpansionDevice::IbmPcXtKeyboard => "IBM PC/XT Keyboard",
+            ExpansionDevice::SuborKeyboardPlusMegaBookMouse => {
+                "小霸王 (Xiǎobàwáng, a.k.a. Subor) Keyboard + Mega Book Mouse"
+            }
+            ExpansionDevice::Unknown(_) => "Unknown Expansion Device",
+        };
+
+        let id: u8 = (*self).into();
+
+        write!(f, "{str} (Header: {})", id)
+    }
+}
+
+#[derive(
+    Debug,
+    Copy,
+    Clone,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    Hash,
+    FromPrimitive,
+    IntoPrimitive,
+    Serialize,
+    Deserialize,
+)]
+#[repr(u8)]
+pub enum ExtendedConsoleType {
+    NesFamicom = 0,
+    VsSystem = 1,
+    Playchoice10 = 2,
+    DecimalModeFamiclone = 3,
+    EPSMFamicom = 4,
+    VT01 = 5,
+    VT02 = 6,
+    VT03 = 7,
+    VT09 = 8,
+    VT32 = 9,
+    VT369 = 0xA,
+    UM6578 = 0xB,
+    FamicomNetworkSystem = 0xC,
+    #[num_enum(catch_all)]
+    Unknown(u8),
+}
+
+impl Display for ExtendedConsoleType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let str: &str = match self {
+            ExtendedConsoleType::NesFamicom => "Nes/Famicom/Dendy",
+            ExtendedConsoleType::VsSystem => "Nintendo Vs. System",
+            ExtendedConsoleType::Playchoice10 => "Nintendo Playchoice 10",
+            ExtendedConsoleType::DecimalModeFamiclone => "Famiclone w/ Decimal Mode CPU",
+            ExtendedConsoleType::EPSMFamicom => {
+                "Nes/Famicom/Dendy w/ EPSM module or plug-through Cartridge"
+            }
+            ExtendedConsoleType::VT01 => "V.R. Technology VT01 with red/cyan STN palette",
+            ExtendedConsoleType::VT02 => "V.R Technology VT02",
+            ExtendedConsoleType::VT03 => "V.R Technology VT03",
+            ExtendedConsoleType::VT09 => "V.R Technology VT09",
+            ExtendedConsoleType::VT32 => "V.R Technology VT32",
+            ExtendedConsoleType::VT369 => "V.R Technology VT369",
+            ExtendedConsoleType::UM6578 => "UMC UM6578",
+            ExtendedConsoleType::FamicomNetworkSystem => "Famicom Network System",
+            ExtendedConsoleType::Unknown(_) => "Unknown Extended Console Type",
+        };
+
+        let id: u8 = (*self).into();
+
+        write!(f, "{str} (Header: {})", id)
+    }
+}
+
+#[derive(
+    Debug,
+    Copy,
+    Clone,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    Hash,
+    FromPrimitive,
+    IntoPrimitive,
+    Serialize,
+    Deserialize,
+)]
+#[repr(u8)]
+pub enum VsHardwareType {
+    UniSystem = 0,
+    UnisystemRbiBaseball = 1,
+    UnisystemTkoBoxing = 2,
+    UnisystemSuperXevious = 3,
+    UnisystemVcIceClimberJapan = 4,
+    DualSystem = 5,
+    DualSystemRaidOnBungelingBay = 6,
+    #[num_enum(catch_all)]
+    Unknown(u8),
+}
+
+impl Display for VsHardwareType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let str: &str = match self {
+            VsHardwareType::UniSystem => "Vs. Unisystem (normal)",
+            VsHardwareType::UnisystemRbiBaseball => "Vs. Unisystem (RBI Baseball protection)",
+            VsHardwareType::UnisystemTkoBoxing => "Vs. Unisystem (TKO Boxing protection)",
+            VsHardwareType::UnisystemSuperXevious => "Vs. Unisystem (Super Xevious protection)",
+            VsHardwareType::UnisystemVcIceClimberJapan => {
+                "Vs. Unisystem (Vs. Ice Climber Japan protection)"
+            }
+            VsHardwareType::DualSystem => "Vs. Dual System (normal)",
+            VsHardwareType::DualSystemRaidOnBungelingBay => {
+                "Vs. Dual System (Raid on Bungeling Bay protection)"
+            }
+            VsHardwareType::Unknown(_) => "Unknown Vs. System hardware type",
+        };
+
+        let id: u8 = (*self).into();
+
+        write!(f, "{str} (Header: {})", id)
+    }
+}
+
+#[derive(
+    Debug,
+    Copy,
+    Clone,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    Hash,
+    FromPrimitive,
+    IntoPrimitive,
+    Serialize,
+    Deserialize,
+)]
+#[repr(u8)]
+pub enum VsSystemPpuType {
+    RP2C03 = 0,
+    RP2C04_0001 = 2,
+    RP2C04_0002 = 3,
+    RP2C04_0003 = 4,
+    RP2C04_0004 = 5,
+    RC2C05_01 = 8,
+    RC2C05_02 = 9,
+    RC2C05_03 = 0xA,
+    RC2C05_04 = 0xB,
+    #[num_enum(catch_all)]
+    Unknown(u8),
+}
+
+impl Display for VsSystemPpuType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let str: &str = match self {
+            VsSystemPpuType::RP2C03 => "Any RP2C03/RC2C03 Variant",
+            VsSystemPpuType::RP2C04_0001 => "RP2C04-0001",
+            VsSystemPpuType::RP2C04_0002 => "RP2C04-0002",
+            VsSystemPpuType::RP2C04_0003 => "RP2C04-0003",
+            VsSystemPpuType::RP2C04_0004 => "RP2C04-0004",
+            VsSystemPpuType::RC2C05_01 => "RC2C05-01",
+            VsSystemPpuType::RC2C05_02 => "RC2C05-02",
+            VsSystemPpuType::RC2C05_03 => "RC2C05-03",
+            VsSystemPpuType::RC2C05_04 => "RC2C05-04",
+            VsSystemPpuType::Unknown(_) => "Unknown Vs. System PPU",
+        };
+
+        let id: u8 = (*self).into();
+
+        write!(f, "{str} (Header: {})", id)
+    }
+}
+
+#[derive(
+    Debug,
+    Copy,
+    Clone,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    Hash,
+    FromPrimitive,
+    IntoPrimitive,
+    Serialize,
+    Deserialize,
+)]
+#[repr(u8)]
+pub enum ConsoleType {
+    NesFamicom = 0,
+    VsSystem = 1,
+    Playchoice10 = 2,
+    Extended = 3,
+    #[num_enum(catch_all)]
+    Unknown(u8),
+}
+
+impl Display for ConsoleType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let str: &str = match self {
+            ConsoleType::NesFamicom => "Nes/Famicom/Dendy",
+            ConsoleType::VsSystem => "Nintendo Vs. System",
+            ConsoleType::Playchoice10 => "Nintendo Playchoice 10",
+            ConsoleType::Extended => "Extended Console Type",
+            ConsoleType::Unknown(_) => "Unknown Console Type",
+        };
+
+        let id: u8 = (*self).into();
+
+        write!(f, "{str} (Header: {})", id)
+    }
+}
+
+#[derive(
+    Debug,
+    Copy,
+    Clone,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    Hash,
+    FromPrimitive,
+    IntoPrimitive,
+    Serialize,
+    Deserialize,
+)]
+#[repr(u8)]
+pub enum RomTimingRegion {
+    RP2C02 = 0,
+    RP2C07 = 1,
+    Multi = 2,
+    UA6538 = 3,
+    #[num_enum(catch_all)]
+    Unknown(u8),
+}
+
+impl Display for RomTimingRegion {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let str: &str = match self {
+            RomTimingRegion::RP2C02 => "NTSC/RP2C02",
+            RomTimingRegion::RP2C07 => "Licenced PAL/RP2C07",
+            RomTimingRegion::Multi => "Multiple Regions",
+            RomTimingRegion::UA6538 => "Dendy/UA6538",
+            RomTimingRegion::Unknown(_) => "Unknown Region",
+        };
+
+        let id: u8 = (*self).into();
+
+        write!(f, "{str} (Header: {})", id)
+    }
+}
+
+#[derive(
+    Debug,
+    Copy,
+    Clone,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    Hash,
+    FromPrimitive,
+    IntoPrimitive,
+    Serialize,
+    Deserialize,
+)]
+#[repr(u16)]
+pub enum RomMapper {
+    NRom = 0,
+    MMC1 = 1,
+    #[num_enum(catch_all)]
+    Unknown(u16),
+}
+
+impl Display for RomMapper {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let str: &str = match self {
+            RomMapper::NRom => "NROM",
+            RomMapper::MMC1 => "MMC1",
+            RomMapper::Unknown(_) => "Unknown Mapper",
+        };
+
+        let mapper_num: u16 = (*self).into();
+
+        write!(f, "{str} (INes Mapper {})", mapper_num)
+    }
 }
 
 /// PRG (program) memory size information from the ROM header.
@@ -382,7 +884,7 @@ impl From<&String> for RomFile {
 ///     .hardwired_nametable_layout(true) // vertical mirroring
 ///     .build();
 ///
-/// assert_eq!(rom.mapper_number, 0);
+/// assert_eq!(rom.mapper, 0);
 /// ```
 pub struct RomBuilder {
     name: Option<String>,
@@ -394,7 +896,7 @@ pub struct RomBuilder {
     extended_console_type: Option<u8>,
     vs_system_hardware_type: Option<u8>,
     vs_system_ppu_type: Option<u8>,
-    cpu_ppu_timing: u8,
+    rom_timing_region: u8,
     chr_nvram_size: u32,
     chr_ram_size: u32,
     prg_nvram_size: u32,
@@ -419,7 +921,7 @@ impl Default for RomBuilder {
             extended_console_type: None,
             vs_system_hardware_type: None,
             vs_system_ppu_type: None,
-            cpu_ppu_timing: 0,
+            rom_timing_region: 0,
             chr_nvram_size: 0,
             chr_ram_size: 0,
             prg_nvram_size: 0,
@@ -489,7 +991,7 @@ impl RomBuilder {
 
     /// Sets the CPU/PPU timing mode (0 = NTSC, 1 = PAL, 2 = Multi, 3 = Dendy).
     pub fn cpu_ppu_timing(mut self, timing: u8) -> Self {
-        self.cpu_ppu_timing = timing;
+        self.rom_timing_region = timing;
         self
     }
 
@@ -568,14 +1070,18 @@ impl RomBuilder {
             name: self.name,
             prg_memory: PrgMemory::new(self.prg_rom_size, self.prg_ram_size, self.prg_nvram_size),
             chr_memory: ChrMemory::new(self.chr_rom_size, self.chr_ram_size, self.chr_nvram_size),
-            mapper_number: self.mapper_number,
-            default_expansion_device: self.default_expansion_device,
+            mapper: RomMapper::from(self.mapper_number),
+            default_expansion_device: ExpansionDevice::from(self.default_expansion_device),
             misc_rom_count: self.misc_rom_count,
-            extended_console_type: self.extended_console_type,
-            vs_system_hardware_type: self.vs_system_hardware_type,
-            vs_system_ppu_type: self.vs_system_ppu_type,
-            cpu_ppu_timing: self.cpu_ppu_timing,
-            console_type: self.console_type,
+            extended_console_type: self
+                .extended_console_type
+                .map(|t| ExtendedConsoleType::from(t)),
+            vs_system_hardware_type: self
+                .vs_system_hardware_type
+                .map(|t| VsHardwareType::from(t)),
+            vs_system_ppu_type: self.vs_system_ppu_type.map(|t| VsSystemPpuType::from(t)),
+            timing_region: RomTimingRegion::from(self.rom_timing_region),
+            console_type: ConsoleType::from(self.console_type),
             hardwired_nametable_layout: self.hardwired_nametable_layout,
             is_battery_backed: self.is_battery_backed,
             trainer_present: self.trainer_present,

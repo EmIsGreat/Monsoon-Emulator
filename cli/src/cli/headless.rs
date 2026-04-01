@@ -182,7 +182,7 @@ pub fn print_rom_info(rom_path: &Path) -> Result<(), String> {
     if let Some(ref name) = rom.name {
         println!("  Name: {}", name);
     }
-    println!("  Mapper: {}", rom.mapper_number);
+    println!("  Mapper: {}", rom.mapper);
     println!("  PRG ROM: {} KB", rom.prg_memory.prg_rom_size / 1024);
     println!("  CHR ROM: {} KB", rom.chr_memory.chr_rom_size / 1024);
     println!(

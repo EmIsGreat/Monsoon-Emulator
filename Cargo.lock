@@ -2417,6 +2417,7 @@ dependencies = [
 name = "monsoon-core"
 version = "0.2.1"
 dependencies = [
+ "num_enum",
  "postcard",
  "serde",
  "serde_json",

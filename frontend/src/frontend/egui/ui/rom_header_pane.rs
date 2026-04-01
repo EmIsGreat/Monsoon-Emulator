@@ -1,7 +1,7 @@
 use crate::frontend::egui::config::AppConfig;
 
 fn format_bytes_human_readable(bytes: u32) -> String {
-    const UNITS: [&str; 5] = ["B", "KB", "MB", "GB", "TB"];
+    const UNITS: [&str; 3] = ["Bytes", "KB", "MB"];
 
     let mut value = bytes as f64;
     let mut unit_idx = 0usize;
@@ -13,7 +13,7 @@ fn format_bytes_human_readable(bytes: u32) -> String {
     if unit_idx == 0 {
         format!("{bytes} {}", UNITS[unit_idx])
     } else {
-        format!("{value:.2} {} ({bytes} B)", UNITS[unit_idx])
+        format!("{value:.2} {} ({bytes} Bytes)", UNITS[unit_idx])
     }
 }
 
@@ -27,12 +27,8 @@ pub fn render_rom_header(ui: &mut egui::Ui, config: &AppConfig) {
                 ui.label(&loaded_rom.name);
                 ui.end_row();
 
-                ui.label("Internal Name");
-                ui.label(rom.name.as_deref().unwrap_or("(none)"));
-                ui.end_row();
-
                 ui.label("Mapper");
-                ui.label(rom.mapper_number.to_string());
+                ui.label(rom.mapper.to_string());
                 ui.end_row();
 
                 ui.label("Submapper");
@@ -40,7 +36,7 @@ pub fn render_rom_header(ui: &mut egui::Ui, config: &AppConfig) {
                 ui.end_row();
 
                 ui.label("CPU/PPU Timing");
-                ui.label(rom.cpu_ppu_timing.to_string());
+                ui.label(rom.timing_region.to_string());
                 ui.end_row();
 
                 ui.label("Console Type");
