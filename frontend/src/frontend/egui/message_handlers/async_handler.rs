@@ -761,7 +761,11 @@ async fn list_save_entries(game_name: &str) -> Vec<SaveEntry> {
     entries
 }
 
-async fn add_save_entries(entries: &mut Vec<SaveEntry>, prefix: &StorageKey, save_type: SaveEntryType) {
+async fn add_save_entries(
+    entries: &mut Vec<SaveEntry>,
+    prefix: &StorageKey,
+    save_type: SaveEntryType,
+) {
     let storage_impl = storage::get_storage();
 
     if let Ok(storage_entries) = storage_impl.list(prefix).await {
