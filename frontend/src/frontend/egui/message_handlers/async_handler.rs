@@ -174,14 +174,9 @@ impl EguiApp {
                 }
             }
             AsyncFrontendMessage::Reset => {
-                // Only autosave on the rising edge (first press) to avoid spamming
-                // saves while the reset button is held continuously.
-                if !self.reset_held_prev_frame {
-                    let _ = self
-                        .to_emulator
-                        .send(FrontendMessage::CreateSaveState(SaveType::Autosave));
-                }
-                self.reset_held_this_frame = true;
+                let _ = self
+                    .to_emulator
+                    .send(FrontendMessage::CreateSaveState(SaveType::Autosave));
                 let _ = self.to_emulator.send(FrontendMessage::Reset);
             }
             AsyncFrontendMessage::CreateSavestate => {
