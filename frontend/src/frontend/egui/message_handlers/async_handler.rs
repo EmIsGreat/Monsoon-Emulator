@@ -733,3 +733,36 @@ fn parse_save_entry(key: storage::StorageKey, save_type: SaveEntryType) -> Optio
         save_type,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::parse_save_entry;
+    use crate::frontend::egui::config::SaveEntryType;
+    use crate::frontend::storage::{StorageCategory, StorageKey};
+
+    #[test]
+    fn parse_save_entry_uses_provided_save_type_for_quicksaves() {
+        let key = StorageKey {
+            category: StorageCategory::Data,
+            sub_path: "saves/game/quicksaves/quicksave_2024-01-15_14-30-00.sav".to_string(),
+        };
+
+        let entry = parse_save_entry(key, SaveEntryType::Quicksave).expect("valid quicksave entry");
+
+        assert!(matches!(entry.save_type, SaveEntryType::Quicksave));
+        assert_eq!(entry.display_name, "Quicksave");
+    }
+
+    #[test]
+    fn parse_save_entry_uses_provided_save_type_for_autosaves() {
+        let key = StorageKey {
+            category: StorageCategory::Data,
+            sub_path: "saves/game/autosaves/autosave_2024-01-15_14-30-00.sav".to_string(),
+        };
+
+        let entry = parse_save_entry(key, SaveEntryType::Autosave).expect("valid autosave entry");
+
+        assert!(matches!(entry.save_type, SaveEntryType::Autosave));
+        assert_eq!(entry.display_name, "Autosave");
+    }
+}
