@@ -830,7 +830,10 @@ where
                         response.mark_changed();
                         expecting = false;
                         set_pending_modifier(ui, self.id, None);
-                    } else if B::ACCEPT_KEYBOARD && self.accept_modifier_keys {
+                    } else if B::ACCEPT_KEYBOARD
+                        && self.accept_modifier_keys
+                        && modifier_only_capture_allowed(action)
+                    {
                         // No regular key or mouse event. For modifier-only
                         // bindings we defer commit until modifier release, so
                         // modifier-first combos (e.g. Ctrl+K) can be captured.
@@ -1021,5 +1024,25 @@ fn normalize_shifted_key(key: Key, shift_held: bool) -> Key {
         Key::Pipe => Key::Backslash,
         Key::Exclamationmark => Key::Num1,
         _ => key,
+    }
+}
+
+fn modifier_only_capture_allowed(action: OnKeyAction) -> bool {
+    action.get_trigger_type() == TriggerType::Continuous
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{OnKeyAction, modifier_only_capture_allowed};
+
+    #[test]
+    fn modifier_only_capture_disallowed_for_single_trigger_actions() {
+        assert!(!modifier_only_capture_allowed(OnKeyAction::PauseEmulator));
+    }
+
+    #[test]
+    fn modifier_only_capture_allowed_for_continuous_trigger_actions() {
+        assert!(modifier_only_capture_allowed(OnKeyAction::ControllerUp));
+        assert!(modifier_only_capture_allowed(OnKeyAction::Speedup));
     }
 }
