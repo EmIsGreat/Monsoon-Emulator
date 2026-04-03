@@ -750,24 +750,24 @@ async fn list_save_entries(game_name: &str) -> Vec<SaveEntry> {
 
     // List quicksaves
     let qs_prefix = storage::quicksaves_prefix(game_name);
-    add_save_entries(&mut entries, &qs_prefix).await;
+    add_save_entries(&mut entries, &qs_prefix, SaveEntryType::Quicksave).await;
 
     // List autosaves
     let as_prefix = storage::autosaves_prefix(game_name);
-    add_save_entries(&mut entries, &as_prefix).await;
+    add_save_entries(&mut entries, &as_prefix, SaveEntryType::Autosave).await;
 
     // Sort by timestamp descending (newest first)
     entries.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
     entries
 }
 
-async fn add_save_entries(entries: &mut Vec<SaveEntry>, qs_prefix: &StorageKey) {
+async fn add_save_entries(entries: &mut Vec<SaveEntry>, prefix: &StorageKey, save_type: SaveEntryType) {
     let storage_impl = storage::get_storage();
 
-    if let Ok(qs_entries) = storage_impl.list(qs_prefix).await {
-        for entry in qs_entries {
+    if let Ok(storage_entries) = storage_impl.list(prefix).await {
+        for entry in storage_entries {
             if entry.key.sub_path.ends_with(".sav")
-                && let Some(save_entry) = parse_save_entry(entry.key, SaveEntryType::Quicksave)
+                && let Some(save_entry) = parse_save_entry(entry.key, save_type)
             {
                 entries.push(save_entry);
             }
@@ -818,4 +818,24 @@ pub fn extract_timestamp(rest: &str) -> Option<(&str, &str)> {
         (rest, "0")
     };
     Some((timestamp_str, version))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_save_entry;
+    use crate::frontend::savestates::SaveEntryType;
+    use crate::frontend::storage::{StorageCategory, StorageKey};
+
+    #[test]
+    fn parse_save_entry_preserves_autosave_type() {
+        let key = StorageKey {
+            category: StorageCategory::Data,
+            sub_path: "saves/test/autosaves/autosaves_2024-01-15_14-30-00.sav".to_string(),
+        };
+
+        let entry = parse_save_entry(key, SaveEntryType::Autosave).expect("entry should parse");
+
+        assert_eq!(entry.display_name, "Autosave");
+        assert!(matches!(entry.save_type, SaveEntryType::Autosave));
+    }
 }
