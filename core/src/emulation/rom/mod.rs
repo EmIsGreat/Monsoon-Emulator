@@ -143,6 +143,7 @@ pub struct RomFile {
     Deserialize,
 )]
 #[repr(u8)]
+#[serde(into = "u8", from = "u8")]
 pub enum ExpansionDevice {
     Unspecified = 0,
     StandardController = 1,
@@ -368,6 +369,7 @@ impl Display for ExpansionDevice {
     Deserialize,
 )]
 #[repr(u8)]
+#[serde(into = "u8", from = "u8")]
 pub enum ExtendedConsoleType {
     NesFamicom = 0,
     VsSystem = 1,
@@ -428,6 +430,7 @@ impl Display for ExtendedConsoleType {
     Deserialize,
 )]
 #[repr(u8)]
+#[serde(into = "u8", from = "u8")]
 pub enum VsHardwareType {
     UniSystem = 0,
     UnisystemRbiBaseball = 1,
@@ -478,6 +481,7 @@ impl Display for VsHardwareType {
     Deserialize,
 )]
 #[repr(u8)]
+#[serde(into = "u8", from = "u8")]
 pub enum VsSystemPpuType {
     RP2C03 = 0,
     RP2C04_0001 = 2,
@@ -528,6 +532,7 @@ impl Display for VsSystemPpuType {
     Deserialize,
 )]
 #[repr(u8)]
+#[serde(into = "u8", from = "u8")]
 pub enum ConsoleType {
     NesFamicom = 0,
     VsSystem = 1,
@@ -568,6 +573,7 @@ impl Display for ConsoleType {
     Deserialize,
 )]
 #[repr(u8)]
+#[serde(into = "u8", from = "u8")]
 pub enum RomTimingRegion {
     RP2C02 = 0,
     RP2C07 = 1,
@@ -608,6 +614,7 @@ impl Display for RomTimingRegion {
     Deserialize,
 )]
 #[repr(u16)]
+#[serde(into = "u16", from = "u16")]
 pub enum RomMapper {
     NRom = 0,
     MMC1 = 1,
@@ -1086,5 +1093,53 @@ impl RomBuilder {
             data_checksum: [0; 32],
             data: Vec::new(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn repr_enums_serialize_as_numbers() {
+        let serialized = serde_json::to_string(&ExpansionDevice::StandardController)
+            .expect("failed to serialize expansion device");
+        assert_eq!(serialized, "1");
+
+        let serialized =
+            serde_json::to_string(&RomMapper::MMC1).expect("failed to serialize rom mapper");
+        assert_eq!(serialized, "1");
+    }
+
+    #[test]
+    fn repr_enums_deserialize_unknown_values() {
+        let expansion: ExpansionDevice =
+            serde_json::from_str("200").expect("failed to deserialize expansion device");
+        assert_eq!(expansion, ExpansionDevice::Unknown(200));
+
+        let mapper: RomMapper = serde_json::from_str("9999").expect("failed to deserialize mapper");
+        assert_eq!(mapper, RomMapper::Unknown(9999));
+    }
+
+    #[test]
+    fn rom_file_enum_fields_use_repr_values_in_json() {
+        let rom = RomBuilder::new()
+            .mapper_number(1)
+            .default_expansion_device(1)
+            .console_type(1)
+            .cpu_ppu_timing(2)
+            .vs_system_hardware_type(Some(5))
+            .vs_system_ppu_type(Some(3))
+            .extended_console_type(Some(0xC))
+            .build();
+
+        let json = serde_json::to_string(&rom).expect("failed to serialize rom");
+        assert!(json.contains("\"mapper\":1"));
+        assert!(json.contains("\"default_expansion_device\":1"));
+        assert!(json.contains("\"console_type\":1"));
+        assert!(json.contains("\"timing_region\":2"));
+        assert!(json.contains("\"vs_system_hardware_type\":5"));
+        assert!(json.contains("\"vs_system_ppu_type\":3"));
+        assert!(json.contains("\"extended_console_type\":12"));
     }
 }
