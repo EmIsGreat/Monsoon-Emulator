@@ -96,12 +96,6 @@ pub struct EguiApp {
     /// Track if window was focused last frame to detect focus loss
     was_focused: bool,
     was_effectively_paused: bool,
-    /// Whether the reset action was active last frame (for autosave edge
-    /// detection)
-    pub(crate) reset_held_prev_frame: bool,
-    /// Whether the reset action arrived this frame (swapped into prev at frame
-    /// start)
-    pub(crate) reset_held_this_frame: bool,
 }
 
 impl EguiApp {
@@ -145,8 +139,6 @@ impl EguiApp {
             last_autosave: Instant::now(),
             was_focused: true,
             was_effectively_paused: false,
-            reset_held_prev_frame: false,
-            reset_held_this_frame: false,
         }
     }
 
@@ -183,10 +175,6 @@ impl EguiApp {
     /// Process messages received from various sources
     fn process_messages(&mut self, ctx: &Context) {
         self.process_frontend_events(ctx);
-        // Advance reset-held tracking before processing messages so the async
-        // handler can detect the rising edge (first press vs. continued hold).
-        self.reset_held_prev_frame = self.reset_held_this_frame;
-        self.reset_held_this_frame = false;
         // Delegate to trait implementations in message_handlers module
         self.handle_async_messages(ctx);
         self.handle_emulator_messages(ctx);

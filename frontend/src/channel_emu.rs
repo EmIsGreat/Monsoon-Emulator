@@ -169,8 +169,8 @@ impl ChannelEmulator {
                         self.nes.rom_file.clone().map(|r| (r, rom)),
                     ));
                 }
-                FrontendMessage::Power(bool) => {
-                    if bool {
+                FrontendMessage::Power(is_powered) => {
+                    if is_powered {
                         self.nes.power();
                     } else {
                         self.nes.power_off()

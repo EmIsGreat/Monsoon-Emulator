@@ -291,6 +291,7 @@ pub struct PersistentConfig {
     pub view_config: PersistentViewConfig,
     pub speed_config: PersistentSpeedConfig,
     pub console_config: PersistentConsoleConfig,
+    #[serde(default)]
     pub keybindings: KeybindingsConfig,
 }
 
