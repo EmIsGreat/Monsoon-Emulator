@@ -1075,11 +1075,11 @@ impl RomBuilder {
             misc_rom_count: self.misc_rom_count,
             extended_console_type: self
                 .extended_console_type
-                .map(|t| ExtendedConsoleType::from(t)),
+                .map(ExtendedConsoleType::from),
             vs_system_hardware_type: self
                 .vs_system_hardware_type
-                .map(|t| VsHardwareType::from(t)),
-            vs_system_ppu_type: self.vs_system_ppu_type.map(|t| VsSystemPpuType::from(t)),
+                .map(VsHardwareType::from),
+            vs_system_ppu_type: self.vs_system_ppu_type.map(VsSystemPpuType::from),
             timing_region: RomTimingRegion::from(self.rom_timing_region),
             console_type: ConsoleType::from(self.console_type),
             hardwired_nametable_layout: self.hardwired_nametable_layout,
