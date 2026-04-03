@@ -435,12 +435,8 @@ impl OnKeyAction {
         }
     }
 
-    pub fn get_callback_function(&self) -> Box<HotKeyCallback> {
-        let message = self.get_associated_message();
-
-        Box::new(move |sender| {
-            let _ = sender.send(message.clone());
-        })
+    pub fn send(&self, sender: &Sender<AsyncFrontendMessage>) {
+        let _ = sender.send(self.get_associated_message());
     }
 }
 
