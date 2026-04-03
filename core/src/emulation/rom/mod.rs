@@ -1073,12 +1073,8 @@ impl RomBuilder {
             mapper: RomMapper::from(self.mapper_number),
             default_expansion_device: ExpansionDevice::from(self.default_expansion_device),
             misc_rom_count: self.misc_rom_count,
-            extended_console_type: self
-                .extended_console_type
-                .map(ExtendedConsoleType::from),
-            vs_system_hardware_type: self
-                .vs_system_hardware_type
-                .map(VsHardwareType::from),
+            extended_console_type: self.extended_console_type.map(ExtendedConsoleType::from),
+            vs_system_hardware_type: self.vs_system_hardware_type.map(VsHardwareType::from),
             vs_system_ppu_type: self.vs_system_ppu_type.map(VsSystemPpuType::from),
             timing_region: RomTimingRegion::from(self.rom_timing_region),
             console_type: ConsoleType::from(self.console_type),
