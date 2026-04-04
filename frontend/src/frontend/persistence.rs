@@ -434,6 +434,7 @@ pub struct PersistentUserConfig {
     #[serde(default)]
     pub previous_savestate_save_dir: Option<StorageKey>,
     pub pattern_edit_color: u8,
+    #[serde(default)]
     pub debug_active_palette: usize,
 }
 

@@ -377,6 +377,7 @@ pub fn spawn_savestate_picker(sender: &Sender<AsyncFrontendMessage>, dir: Option
             signal: AutoPauseSignal::SavestateLoadPicker,
             active: true,
         });
+
         let handle = pick_file(FileType::Savestate, dir.as_ref()).await;
 
         if let Some(handle) = handle {
@@ -392,7 +393,14 @@ pub fn spawn_savestate_picker(sender: &Sender<AsyncFrontendMessage>, dir: Option
             // Try to parse the savestate from the data
             let savestate = match try_parse_savestate(&sender, &data) {
                 Some(value) => value,
-                None => return,
+                None => {
+                    let _ = sender.send(AsyncFrontendMessage::AutoPauseSignal {
+                        signal: AutoPauseSignal::SavestateLoadPicker,
+                        active: false,
+                    });
+
+                    return;
+                },
             };
 
             let context = SavestateLoadContext {
@@ -404,6 +412,7 @@ pub fn spawn_savestate_picker(sender: &Sender<AsyncFrontendMessage>, dir: Option
             // Send context for next step - user will need to select ROM
             let _ = sender.send(AsyncFrontendMessage::SavestateLoaded(Box::new(context)));
         }
+
         let _ = sender.send(AsyncFrontendMessage::AutoPauseSignal {
             signal: AutoPauseSignal::SavestateLoadPicker,
             active: false,

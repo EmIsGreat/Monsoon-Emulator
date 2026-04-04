@@ -4,7 +4,7 @@
 //! multiple UI components to reduce code duplication.
 
 use crossbeam_channel::Sender;
-use egui::{Response, StrokeKind, Ui, Widget, vec2};
+use egui::{vec2, Response, StrokeKind, Ui, Widget};
 use monsoon_core::emulation::palette_util::RgbColor;
 
 use crate::frontend::egui::config::AppConfig;
@@ -262,7 +262,7 @@ impl<'a> Widget for HotKeyButton<'a> {
         let response = ui.add_sized(desired_size, egui::Button::new(""));
 
         if response.clicked() {
-            self.action.get_callback_function()(self.sender)
+            self.action.send(self.sender)
         }
 
         if ui.is_rect_visible(response.rect) {
