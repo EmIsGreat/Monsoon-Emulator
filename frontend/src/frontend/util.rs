@@ -400,7 +400,7 @@ pub fn spawn_savestate_picker(sender: &Sender<AsyncFrontendMessage>, dir: Option
                     });
 
                     return;
-                },
+                }
             };
 
             let context = SavestateLoadContext {
