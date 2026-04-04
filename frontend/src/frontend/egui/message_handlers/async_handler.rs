@@ -160,10 +160,6 @@ impl EguiApp {
 
                 self.config.console_config.is_powered = !self.config.console_config.is_powered;
 
-                let _ = self.to_emulator.send(FrontendMessage::Power(
-                    self.config.console_config.is_powered,
-                ));
-
                 if self.config.console_config.is_powered
                     && let Some((_, rom)) = &self.config.console_config.loaded_rom
                 {
@@ -172,6 +168,10 @@ impl EguiApp {
                         .to_emulator
                         .send(FrontendMessage::LoadRom((rom.clone(), name)));
                 }
+
+                let _ = self.to_emulator.send(FrontendMessage::Power(
+                    self.config.console_config.is_powered,
+                ));
             }
             AsyncFrontendMessage::Reset => {
                 let _ = self
