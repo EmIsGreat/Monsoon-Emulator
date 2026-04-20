@@ -2,7 +2,6 @@
 
 use std::convert::Into;
 use std::ops::RangeInclusive;
-
 use crate::emulation::cpu::{Cpu, INTERNAL_RAM_SIZE};
 use crate::emulation::mapper::{
     CpuReadResult, CpuWriteResult, Mapper, MapperLike, NoMapper, PpuReadResult,
@@ -51,7 +50,7 @@ pub trait PpuBus {
     fn get_ppu_open_bus(&self) -> &OpenBus;
 }
 
-impl CpuBus for Board {
+impl<'a> CpuBus for CpuBusView<'a> {
     #[inline]
     fn read(&mut self, addr: u16) -> u8 {
         let res = self.mapper.read(addr, &self.cpu_open_bus);
@@ -61,7 +60,12 @@ impl CpuBus for Board {
             CpuReadResult::Registered => match addr {
                 0..=INTERNAL_RAM_SIZE => self.cpu_ram.read(addr, &mut self.cpu_open_bus),
                 0x2000..=0x3FFF => self.read_ppu_reg(addr, 0),
-                0x4000..=0x401F => self.read_apu_io(addr, &self.cpu_open_bus),
+                0x4000..=0x401F => CpuBusView::read_apu_io(
+                    addr,
+                    &mut self.controller1,
+                    &mut self.controller2,
+                    &self.cpu_open_bus,
+                ),
                 _ => self.cpu_open_bus.read(),
             },
         }
@@ -118,13 +122,13 @@ impl CpuBus for Board {
     fn poll_nmi(&mut self) -> bool { self.ppu.poll_nmi() }
 
     #[inline]
-    fn poll_irq(&mut self) -> bool { self.irq }
+    fn poll_irq(&mut self) -> bool { *self.irq }
 
     #[inline]
-    fn set_irq(&mut self, val: bool) { self.irq = val }
+    fn set_irq(&mut self, val: bool) { *self.irq = val }
 }
 
-impl PpuBus for Board {
+impl<'a> PpuBus for PpuBusView<'a> {
     #[inline]
     fn read(&mut self, addr: u16) -> u8 {
         let res = self.mapper.ppu_read(addr, &self.cpu_open_bus);
@@ -156,6 +160,207 @@ impl PpuBus for Board {
     fn get_ppu_open_bus(&self) -> &OpenBus { &self.ppu_open_bus }
 }
 
+pub struct CpuBusView<'a> {
+    mapper: &'a mut Mapper,
+    cpu_open_bus: &'a mut OpenBus,
+    ppu_open_bus: &'a mut OpenBus,
+    cpu_ram: &'a mut Ram,
+    nametable_ram: &'a mut Ram,
+    palette_ram: &'a mut PaletteRam,
+    ppu: &'a mut Ppu,
+    irq: &'a mut bool,
+    controller1: &'a mut Option<Peripheral>,
+    controller2: &'a mut Option<Peripheral>,
+}
+
+impl<'a> CpuBusView<'a> {
+    pub fn from(
+        mapper: &'a mut Mapper,
+        cpu_open_bus: &'a mut OpenBus,
+        ppu_open_bus: &'a mut OpenBus,
+        cpu_ram: &'a mut Ram,
+        nametable_ram: &'a mut Ram,
+        palette_ram: &'a mut PaletteRam,
+        ppu: &'a mut Ppu,
+        irq: &'a mut bool,
+        controller1: &'a mut Option<Peripheral>,
+        controller2: &'a mut Option<Peripheral>,
+    ) -> CpuBusView<'a> {
+        CpuBusView {
+            mapper,
+            cpu_open_bus,
+            ppu_open_bus,
+            cpu_ram,
+            nametable_ram,
+            palette_ram,
+            ppu,
+            irq,
+            controller1,
+            controller2,
+        }
+    }
+
+    #[inline]
+    fn read_ppu_reg(&mut self, addr: u16, _: u8) -> u8 {
+        let mut bus = PpuBusView::from(
+            &mut self.mapper,
+            &mut self.cpu_open_bus,
+            &mut self.ppu_open_bus,
+            &mut self.nametable_ram,
+            &mut self.palette_ram,
+        );
+
+        match addr {
+            0x2 => {
+                let val = self.ppu.get_ppu_status();
+                bus.ppu_open_bus.set_masked(val, 0b1110_0000);
+            }
+            0x4 => {
+                let val = self.ppu.get_oam_at_addr(bus.ppu_open_bus);
+                bus.ppu_open_bus.set_masked(val, 0xFF);
+            }
+            0x7 => {
+                let val = self.ppu.get_vram_at_addr(&mut bus);
+
+                match self.ppu.v_register {
+                    PALETTE_RAM_START_ADDRESS..=PALETTE_RAM_END_ADDRESS => {
+                        bus.ppu_open_bus.set_masked(val, 0b0011_1111);
+                    }
+                    _ => {
+                        bus.ppu_open_bus.set_masked(val, 0xFF);
+                    }
+                }
+            }
+            _ => {}
+        };
+
+        bus.ppu_open_bus.read()
+    }
+
+    #[inline]
+    fn snapshot_apu_io(&self, addr: u16, open_bus: &OpenBus) -> u8 {
+        match addr {
+            0x4000..=0x4014 => open_bus.read(),
+            0x4016 => {
+                if let Some(controller) = &self.controller1 {
+                    controller.read_debug(open_bus)
+                } else {
+                    open_bus.read()
+                }
+            }
+            0x4017 => {
+                if let Some(controller) = &self.controller2 {
+                    controller.read_debug(open_bus)
+                } else {
+                    open_bus.read()
+                }
+            }
+            0x4018..=0x401F => open_bus.read(),
+            _ => open_bus.read(),
+        }
+    }
+
+    #[inline]
+    fn read_apu_io(
+        addr: u16,
+        mut controller1: &mut Option<Peripheral>,
+        mut controller2: &mut Option<Peripheral>,
+        open_bus: &OpenBus,
+    ) -> u8 {
+        match addr {
+            0x4000..=0x4014 => open_bus.read(),
+            0x4016 => {
+                if let Some(controller) = &mut controller1 {
+                    controller.read(open_bus)
+                } else {
+                    open_bus.read()
+                }
+            }
+            0x4017 => {
+                if let Some(controller) = &mut controller2 {
+                    controller.read(open_bus)
+                } else {
+                    open_bus.read()
+                }
+            }
+            0x4018..=0x401F => open_bus.read(),
+            _ => open_bus.read(),
+        }
+    }
+
+    #[inline]
+    fn snapshot_ppu_reg(&self, addr: u16, _: u8) -> u8 {
+        match addr {
+            0x2 => self.ppu.snapshot_ppu_status(),
+            0x4 => self.ppu.snapshot_oam_at_addr(&self.ppu_open_bus),
+            0x7 => self.ppu.snapshot_vram_at_addr(),
+            _ => 0,
+        }
+    }
+
+    #[inline]
+    fn write_ppu_reg(&mut self, addr: u16, data: u8) {
+        self.ppu_open_bus.set_masked(data, 0xFF);
+        match addr {
+            0x0 => {
+                self.ppu.set_ppu_ctrl(data);
+            }
+            0x1 => {
+                self.ppu.set_mask_register(data);
+            }
+            0x3 => {
+                self.ppu.set_oam_addr_register(data);
+            }
+            0x4 => {
+                self.ppu.write_oam(data);
+            }
+            0x5 => {
+                self.ppu.write_ppu_scroll(data);
+            }
+            0x6 => {
+                self.ppu.write_vram_addr(data);
+            }
+            0x7 => {
+                let mut bus = PpuBusView::from(
+                    &mut self.mapper,
+                    &mut self.cpu_open_bus,
+                    &mut self.ppu_open_bus,
+                    &mut self.nametable_ram,
+                    &mut self.palette_ram,
+                );
+                self.ppu.write_vram(data, &mut bus);
+            }
+            _ => (),
+        };
+    }
+}
+
+pub struct PpuBusView<'a> {
+    mapper: &'a mut Mapper,
+    cpu_open_bus: &'a mut OpenBus,
+    ppu_open_bus: &'a mut OpenBus,
+    nametable_ram: &'a mut Ram,
+    palette_ram: &'a mut PaletteRam,
+}
+
+impl<'a> PpuBusView<'a> {
+    pub fn from(
+        mapper: &'a mut Mapper,
+        cpu_open_bus: &'a mut OpenBus,
+        ppu_open_bus: &'a mut OpenBus,
+        nametable_ram: &'a mut Ram,
+        palette_ram: &'a mut PaletteRam,
+    ) -> PpuBusView<'a> {
+        PpuBusView {
+            mapper,
+            cpu_open_bus,
+            ppu_open_bus,
+            nametable_ram,
+            palette_ram,
+        }
+    }
+}
+
 impl Board {
     pub fn new(cpu: Cpu, ppu: Ppu, mapper: Mapper) -> Board {
         Board {
@@ -183,123 +388,6 @@ impl Board {
         self.controller2 = controller2;
 
         self.update_controllers()
-    }
-
-    #[inline]
-    fn snapshot_ppu_reg(&self, addr: u16, _: u8) -> u8 {
-        let open_bus = self.ppu_open_bus;
-        match addr {
-            0x2 => self.ppu.snapshot_ppu_status(),
-            0x4 => self.ppu.snapshot_oam_at_addr(&open_bus),
-            0x7 => self.ppu.snapshot_vram_at_addr(),
-            _ => 0,
-        }
-    }
-
-    #[inline]
-    fn read_ppu_reg(&mut self, addr: u16, _: u8) -> u8 {
-        let open_bus = self.ppu_open_bus;
-
-        match addr {
-            0x2 => {
-                let val = self.ppu.get_ppu_status();
-                self.ppu_open_bus.set_masked(val, 0b1110_0000);
-            }
-            0x4 => {
-                let val = self.ppu.get_oam_at_addr(&open_bus);
-                self.ppu_open_bus.set_masked(val, 0xFF);
-            }
-            0x7 => {
-                let val = self.ppu.get_vram_at_addr(self);
-
-                match self.ppu.v_register {
-                    PALETTE_RAM_START_ADDRESS..=PALETTE_RAM_END_ADDRESS => {
-                        self.ppu_open_bus.set_masked(val, 0b0011_1111);
-                    }
-                    _ => {
-                        self.ppu_open_bus.set_masked(val, 0xFF);
-                    }
-                }
-            }
-            _ => {}
-        };
-
-        self.ppu_open_bus.read()
-    }
-
-    #[inline]
-    fn write_ppu_reg(&mut self, addr: u16, data: u8) {
-        self.ppu_open_bus.set_masked(data, 0xFF);
-        match addr {
-            0x0 => {
-                self.ppu.set_ppu_ctrl(data);
-            }
-            0x1 => {
-                self.ppu.set_mask_register(data);
-            }
-            0x3 => {
-                self.ppu.set_oam_addr_register(data);
-            }
-            0x4 => {
-                self.ppu.write_oam(data);
-            }
-            0x5 => {
-                self.ppu.write_ppu_scroll(data);
-            }
-            0x6 => {
-                self.ppu.write_vram_addr(data);
-            }
-            0x7 => {
-                self.ppu.write_vram(data, self);
-            }
-            _ => (),
-        };
-    }
-
-    #[inline]
-    fn snapshot_apu_io(&self, addr: u16, open_bus: &OpenBus) -> u8 {
-        match addr {
-            0x4000..=0x4014 => open_bus.read(),
-            0x4016 => {
-                if let Some(controller) = &self.controller1 {
-                    controller.read_debug(open_bus)
-                } else {
-                    open_bus.read()
-                }
-            }
-            0x4017 => {
-                if let Some(controller) = &self.controller2 {
-                    controller.read_debug(open_bus)
-                } else {
-                    open_bus.read()
-                }
-            }
-            0x4018..=0x401F => open_bus.read(),
-            _ => open_bus.read(),
-        }
-    }
-
-    #[inline]
-    fn read_apu_io(&mut self, addr: u16, open_bus: &OpenBus) -> u8 {
-        match addr {
-            0x4000..=0x4014 => open_bus.read(),
-            0x4016 => {
-                if let Some(controller) = &mut self.controller1 {
-                    controller.read(open_bus)
-                } else {
-                    open_bus.read()
-                }
-            }
-            0x4017 => {
-                if let Some(controller) = &mut self.controller2 {
-                    controller.read(open_bus)
-                } else {
-                    open_bus.read()
-                }
-            }
-            0x4018..=0x401F => open_bus.read(),
-            _ => open_bus.read(),
-        }
     }
 
     #[inline]

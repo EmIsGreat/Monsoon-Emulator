@@ -2,7 +2,6 @@ use std::fmt::Debug;
 
 use serde::{Deserialize, Serialize};
 
-pub mod nametable_memory;
 pub mod palette_ram;
 
 pub trait MemoryDevice: Debug {

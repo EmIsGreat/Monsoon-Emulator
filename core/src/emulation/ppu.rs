@@ -957,7 +957,7 @@ impl Ppu {
     pub fn get_memory_debug(
         &self,
         range: Option<RangeInclusive<u16>>,
-        bus: &mut impl PpuBus,
+        bus: &impl PpuBus,
     ) -> Vec<u8> {
         let range = range.unwrap_or(0u16..=0x3FFF);
         let mut vec = Vec::with_capacity(range.len());

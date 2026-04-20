@@ -4,10 +4,13 @@ use std::hash::Hash;
 use enum_dispatch::enum_dispatch;
 use serde::{Deserialize, Serialize};
 
-use crate::emulation::mem::nametable_memory::NametableArrangement;
+use nametable_mapping::NametableArrangement;
 use crate::emulation::mem::{MemoryDevice, OpenBus, Ram, Rom};
 use crate::emulation::ppu::{PALETTE_RAM_SIZE, VRAM_SIZE};
 use crate::emulation::rom::{RomFile, RomMapper};
+
+pub mod nametable_mapping;
+
 #[enum_dispatch(MapperLike)]
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub enum Mapper {

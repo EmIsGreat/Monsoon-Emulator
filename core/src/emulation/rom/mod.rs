@@ -15,7 +15,7 @@ use num_enum::{FromPrimitive, IntoPrimitive};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-use crate::emulation::mem::nametable_memory::NametableArrangement;
+use crate::emulation::mapper::nametable_mapping::NametableArrangement;
 use crate::emulation::mem::{MemoryDevice, Ram, Rom};
 use crate::emulation::rom::formats::archaic_ines::ArchaicInes;
 use crate::emulation::rom::formats::ines::Ines;

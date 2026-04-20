@@ -1123,7 +1123,7 @@ impl Cpu {
     pub fn get_memory_debug(
         &self,
         range: Option<RangeInclusive<u16>>,
-        bus: &mut impl CpuBus,
+        bus: &impl CpuBus,
     ) -> Vec<u8> {
         let range = range.unwrap_or(0u16..=0xFFFF);
         let mut vec = Vec::with_capacity(range.len());

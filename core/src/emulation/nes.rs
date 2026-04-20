@@ -2,13 +2,14 @@ use std::fmt::Debug;
 use std::ops::RangeInclusive;
 use std::time::Duration;
 
-use crate::emulation::board::{Board, CpuBus, PpuBus};
+use crate::emulation::board::{Board, CpuBus, CpuBusView, PpuBus, PpuBusView};
 use crate::emulation::cpu::MicroOp;
 use crate::emulation::mem::MemoryDevice;
 use crate::emulation::ppu::EmulatorFetchable;
 use crate::emulation::rom::RomFile;
 use crate::emulation::savestate::{BoardState, SaveState, VERSION};
 use crate::trace::TraceLog;
+use crate::{cpu_bus_view, ppu_bus_view};
 
 /// Number of CPU cycles executed in a single NTSC frame (~29,780).
 pub const CPU_CYCLES_PER_FRAME: u16 = 29780;
@@ -204,10 +205,10 @@ impl Nes {
         vec![
             self.board
                 .cpu
-                .get_memory_debug(range.clone(), &mut self.board),
+                .get_memory_debug(range.clone(), &cpu_bus_view!(self)),
             self.board
                 .ppu
-                .get_memory_debug(range.clone(), &mut self.board),
+                .get_memory_debug(range.clone(), &ppu_bus_view!(self)),
         ]
     }
 
@@ -398,7 +399,7 @@ impl Nes {
         };
 
         if self.ppu_cycle_counter == 4 {
-            res = res.merge(ppu.step(&mut self.board));
+            res = res.merge(ppu.step(&mut ppu_bus_view!(self)));
             res.ppu_cycle_completed = true;
             self.ppu_cycle_counter = 0;
         }
@@ -410,7 +411,7 @@ impl Nes {
             let do_trace =
                 self.trace_log.is_some() && matches!(&cpu.current_op, &MicroOp::FetchOpcode);
 
-            let cpu_res = cpu.step(&mut self.board);
+            let cpu_res = cpu.step(&mut cpu_bus_view!(self));
 
             #[allow(clippy::question_mark)]
             if let Ok(cpu_res) = cpu_res {
@@ -496,23 +497,21 @@ impl Nes {
     pub fn is_rendering(&self) -> bool { self.board.ppu.is_rendering() }
 
     /// Returns debug palette data from the PPU.
-    pub fn get_palettes_debug(&self) -> EmulatorFetchable {
-        self.board.ppu.get_palettes_debug(&self.board)
+    pub fn get_palettes_debug(&mut self) -> EmulatorFetchable {
+        self.board.ppu.get_palettes_debug(&ppu_bus_view!(self))
     }
 
     /// Returns debug tile data from the PPU.
-    pub fn get_tiles_debug(&self) -> EmulatorFetchable { self.board.ppu.get_tiles_debug(&self
-        .board) }
+    pub fn get_tiles_debug(&mut self) -> EmulatorFetchable {
+        self.board.ppu.get_tiles_debug(&ppu_bus_view!(self))
+    }
 
     /// Returns debug nametable data from the PPU.
-    pub fn get_nametable_debug(&self) -> EmulatorFetchable {
-        self.board.ppu.get_nametable_debug(&self
-            .board)
+    pub fn get_nametable_debug(&mut self) -> EmulatorFetchable {
+        self.board.ppu.get_nametable_debug(&ppu_bus_view!(self))
     }
 
-    pub fn get_sprites_debug(&self) -> EmulatorFetchable {
-        self.board.ppu.get_sprites_debug()
-    }
+    pub fn get_sprites_debug(&self) -> EmulatorFetchable { self.board.ppu.get_sprites_debug() }
 
     pub fn get_soam_sprites_debug(&self) -> EmulatorFetchable {
         self.board.ppu.get_soam_sprites_debug()
@@ -526,7 +525,7 @@ impl Nes {
     /// Writes a value to CPU memory at the given address (for
     /// initialization/debugging).
     pub fn cpu_mem_write(&mut self, addr: u16, value: u8) {
-        CpuBus::write(&mut self.board, addr, value);
+        CpuBus::write(&mut cpu_bus_view!(self), addr, value);
     }
 
     /// Initializes CPU memory at the given address (for
@@ -536,7 +535,7 @@ impl Nes {
     /// Writes a value to PPU memory at the given address (for
     /// initialization/debugging).
     pub fn ppu_mem_write(&mut self, addr: u16, value: u8) {
-        PpuBus::write(&mut self.board, addr, value)
+        PpuBus::write(&mut ppu_bus_view!(self), addr, value)
     }
 
     /// Initializes PPU memory at the given address (for

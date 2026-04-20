@@ -95,3 +95,34 @@ pub(crate) fn compute_hash(data: &[u8]) -> u64 {
     }
     hash
 }
+
+#[macro_export]
+macro_rules! cpu_bus_view {
+    ($self:expr) => {
+        CpuBusView::from(
+            &mut $self.board.mapper,
+            &mut $self.board.cpu_open_bus,
+            &mut $self.board.ppu_open_bus,
+            &mut $self.board.cpu_ram,
+            &mut $self.board.nametable_ram,
+            &mut $self.board.palette_ram,
+            &mut $self.board.ppu,
+            &mut $self.board.irq,
+            &mut $self.board.controller1,
+            &mut $self.board.controller2,
+        )
+    };
+}
+
+#[macro_export]
+macro_rules! ppu_bus_view {
+    ($self:expr) => {
+        PpuBusView::from(
+            &mut $self.board.mapper,
+            &mut $self.board.cpu_open_bus,
+            &mut $self.board.ppu_open_bus,
+            &mut $self.board.nametable_ram,
+            &mut $self.board.palette_ram,
+        )
+    };
+}
