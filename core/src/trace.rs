@@ -1,7 +1,7 @@
 use crate::emulation::board::{Board, CpuBus, CpuBusView};
 use crate::emulation::cpu::{
-    OpType, Source, CARRY_BIT, DECIMAL_BIT, IRQ_BIT, NEGATIVE_BIT, OVERFLOW_BIT, UNUSED_BIT,
-    ZERO_BIT,
+    OpType, Source, UNUSED_BIT
+    ,
 };
 use crate::emulation::opcode;
 use crate::emulation::opcode::{get_opcode, OpCode};
@@ -86,51 +86,6 @@ impl TraceLog {
         )
         .as_str();
     }
-
-    #[allow(dead_code)]
-    fn status_as_string(status: u8) -> String {
-        let mut str = String::new();
-
-        if status & NEGATIVE_BIT != 0 {
-            str += "N"
-        } else {
-            str += "n"
-        }
-
-        if status & OVERFLOW_BIT != 0 {
-            str += "V"
-        } else {
-            str += "v"
-        }
-
-        str += "--";
-
-        if status & DECIMAL_BIT != 0 {
-            str += "D"
-        } else {
-            str += "d"
-        }
-
-        if status & IRQ_BIT != 0 {
-            str += "I"
-        } else {
-            str += "i"
-        }
-
-        if status & ZERO_BIT != 0 {
-            str += "Z"
-        } else {
-            str += "z"
-        }
-
-        if status & CARRY_BIT != 0 {
-            str += "C"
-        } else {
-            str += "c"
-        }
-
-        str
-    }
 }
 
 pub fn get_str_for_src(source: Source) -> String {
@@ -191,11 +146,7 @@ pub fn get_opcode_descriptor(opcode: OpCode, cpu: &CpuTraceState, bus: &impl Cpu
         }
         OpType::ZeroPageRead(..) | OpType::ZeroPageRMW(..) | OpType::ZeroPageWrite(..) => {
             let address = bus.read_debug(cpu.program_counter);
-            format!(
-                "${:02X} = {:02X}",
-                address,
-                bus.read_debug(address as u16)
-            )
+            format!("${:02X} = {:02X}", address, bus.read_debug(address as u16))
         }
         OpType::ZeroPageIndexRead(source, ..)
         | OpType::ZeroPageIndexRMW(source, ..)
@@ -226,9 +177,9 @@ pub fn get_opcode_descriptor(opcode: OpCode, cpu: &CpuTraceState, bus: &impl Cpu
             let address = bus.read_debug(cpu.program_counter);
 
             let effective_address = address.wrapping_add(cpu.x_register);
-            let lookup_addr =
-                ((bus.read_debug(effective_address.wrapping_add(1) as u16) as u16) << 8)
-                    | bus.read_debug(effective_address as u16) as u16;
+            let lookup_addr = ((bus.read_debug(effective_address.wrapping_add(1) as u16) as u16)
+                << 8)
+                | bus.read_debug(effective_address as u16) as u16;
 
             let val = bus.read_debug(lookup_addr);
 
@@ -242,9 +193,8 @@ pub fn get_opcode_descriptor(opcode: OpCode, cpu: &CpuTraceState, bus: &impl Cpu
         | OpType::IndirectIndexedWrite(..) => {
             let address = bus.read_debug(cpu.program_counter);
 
-            let effective_addr =
-                ((bus.read_debug(address.wrapping_add(1) as u16) as u16) << 8)
-                    | bus.read_debug(address as u16) as u16;
+            let effective_addr = ((bus.read_debug(address.wrapping_add(1) as u16) as u16) << 8)
+                | bus.read_debug(address as u16) as u16;
 
             let lookup_addr = effective_addr.wrapping_add(cpu.y_register as u16);
 

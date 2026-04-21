@@ -1,4 +1,5 @@
 use std::fmt::Debug;
+use std::fs;
 use std::ops::RangeInclusive;
 use std::time::Duration;
 
@@ -383,8 +384,6 @@ impl Nes {
         self.cpu_cycle_counter = self.cpu_cycle_counter.wrapping_add(1);
         self.ppu_cycle_counter = self.ppu_cycle_counter.wrapping_add(1);
 
-        // Only borrow PPU when vbl_clear_scheduled might be active
-        // This check is only relevant immediately after reading PPU status
         {
             if ppu.vbl_clear_scheduled.is_some() {
                 ppu.vbl_reset_counter += 1;
@@ -413,7 +412,6 @@ impl Nes {
 
             let cpu_res = cpu.step(&mut cpu_bus_view!(self));
 
-            #[allow(clippy::question_mark)]
             if let Ok(cpu_res) = cpu_res {
                 res = res.merge(cpu_res);
                 res.cpu_cycle_completed = true;
@@ -455,6 +453,12 @@ impl Nes {
             };
 
             trace.trace(state)
+        }
+    }
+
+    pub fn save_trace_to_file(&self) {
+        if let Some(log) = &self.trace_log {
+            let _ = fs::write("log.txt", &log.log);
         }
     }
 }

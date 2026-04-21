@@ -24,6 +24,8 @@ fn nestest() {
         .take(8980)
         .collect::<Vec<String>>();
 
+    log.iter().for_each(|s| println!("{s}"));
+
     let file = File::open("./tests/outputs-compare/nestest_headless_good.log")
         .expect("Error running test");
     let lines = io::BufReader::new(file)
