@@ -209,7 +209,7 @@ impl StopCondition {
             .collect()
     }
 
-    pub fn check(&self, emu: &Nes, cycles: u128, frames: u64) -> bool {
+    pub fn check(&self, emu: &mut Nes, cycles: u128, frames: u64) -> bool {
         match self {
             StopCondition::Cycles(target) => cycles >= *target,
             StopCondition::Frames(target) => frames >= *target,
@@ -285,7 +285,7 @@ impl StopCondition {
         }
     }
 
-    pub fn reason(&self, emu: &Nes, cycles: u128, frames: u64) -> StopReason {
+    pub fn reason(&self, emu: &mut Nes, cycles: u128, frames: u64) -> StopReason {
         match self {
             StopCondition::Cycles(_) => StopReason::CyclesReached(cycles),
             StopCondition::Frames(_) => StopReason::FramesReached(frames),
@@ -422,7 +422,7 @@ impl ExecutionConfig {
     }
 
     /// Check if any stop condition is met
-    fn check_conditions(&self, emu: &Nes, cycles: u128, frames: u64) -> Option<StopReason> {
+    fn check_conditions(&self, emu: &mut Nes, cycles: u128, frames: u64) -> Option<StopReason> {
         for cond in &self.stop_conditions {
             if cond.check(emu, cycles, frames) {
                 return Some(cond.reason(emu, cycles, frames));
@@ -694,7 +694,7 @@ impl ExecutionEngine {
             // Check stop conditions
             if let Some(reason) =
                 self.config
-                    .check_conditions(&self.emu, cycles_run, self.frame_count)
+                    .check_conditions(&mut self.emu, cycles_run, self.frame_count)
             {
                 break ExecutionResult {
                     stop_reason: reason,
@@ -775,7 +775,7 @@ impl ExecutionEngine {
                 // Calculate target cycle for this capture relative to frame start
                 // Using (capture_idx + 1) * MASTER_CYCLES_PER_FRAME / captures_per_frame
                 // ensures the final capture always aligns with the frame boundary
-                let odd_frame_offset = if self.emu.is_even_frame() && self.emu.is_rendering() {
+                let odd_frame_offset:i32 = if self.emu.is_even_frame() && self.emu.is_rendering() {
                     2
                 } else {
                     -2
@@ -824,7 +824,7 @@ impl ExecutionEngine {
             // Check stop conditions
             if let Some(reason) =
                 self.config
-                    .check_conditions(&self.emu, cycles_run, self.frame_count)
+                    .check_conditions(&mut self.emu, cycles_run, self.frame_count)
             {
                 self.write_trace_log()?;
                 return Ok(ExecutionResult {
@@ -853,7 +853,7 @@ impl ExecutionEngine {
     pub fn set_collect_frames(&mut self, collect: bool) { self.collect_frames = collect; }
 
     /// Get reference to the emulator
-    pub fn emulator(&self) -> &Nes { &self.emu }
+    pub fn emulator(&mut self) -> &mut Nes { &mut self.emu }
 
     /// Get mutable reference to the emulator
     pub fn emulator_mut(&mut self) -> &mut Nes { &mut self.emu }

@@ -48,7 +48,8 @@ pub struct ChannelEmulator {
     pub nes: Nes,
     to_frontend: Sender<EmulatorMessage>,
     from_frontend: Receiver<FrontendMessage>,
-    input: u8,
+    input_1: u8,
+    input_2: u8,
     /// Cached palette data for change detection
     last_palette_data: Option<PaletteData>,
     /// Cached hash of pattern table data for efficient change detection
@@ -93,7 +94,8 @@ impl ChannelEmulator {
             nes,
             to_frontend: tx_from_emu,
             from_frontend: rx_from_frontend,
-            input: 0,
+            input_1: 0,
+            input_2: 0,
             last_palette_data: None,
             last_pattern_table_hash: None,
         };
@@ -107,7 +109,8 @@ impl ChannelEmulator {
         // currently held. Reset the bitfield once per update so held inputs
         // persist across all frames executed this update, but release cleanly
         // when not re-sent on the next update.
-        self.input = 0;
+        self.input_1 = 0;
+        self.input_2 = 0;
 
         // Check for messages from frontend
         while let Ok(msg) = self.from_frontend.try_recv() {
@@ -130,8 +133,8 @@ impl ChannelEmulator {
                     // Execute one frame regardless of pause state
                     self.execute_frame()?;
                 }
-                FrontendMessage::ControllerInput(event) => {
-                    self.handle_controller_event(event);
+                FrontendMessage::ControllerInput(event, is_slot_one) => {
+                    self.handle_controller_event(event, is_slot_one);
                 }
                 FrontendMessage::RequestDebugData(fetchable) => match fetchable {
                     EmulatorFetchable::Palettes(_) => {
@@ -191,6 +194,9 @@ impl ChannelEmulator {
                 FrontendMessage::StepCpuCycle => self.execute_cpu_cycle()?,
                 FrontendMessage::StepMasterCycle => self.execute_master_cycle()?,
                 FrontendMessage::StepScanline => self.execute_scanline()?,
+                FrontendMessage::AttachPeripherals((peripheral1, peripheral2)) => {
+                    self.nes.attach_peripherals((peripheral1, peripheral2))
+                }
             }
         }
 
@@ -198,7 +204,7 @@ impl ChannelEmulator {
     }
 
     pub fn execute_master_cycle(&mut self) -> Result<(), String> {
-        self.nes.cpu_mem_init(0x4016, self.input);
+        self.nes.set_controller_input(self.input_1, self.input_2);
 
         match self.nes.step() {
             Ok(_) => {
@@ -224,7 +230,7 @@ impl ChannelEmulator {
     }
 
     pub fn execute_ppu_cycle(&mut self) -> Result<(), String> {
-        self.nes.cpu_mem_init(0x4016, self.input);
+        self.nes.set_controller_input(self.input_1, self.input_2);
 
         match self.nes.step_ppu_cycle() {
             Ok(_) => {
@@ -250,7 +256,7 @@ impl ChannelEmulator {
     }
 
     pub fn execute_cpu_cycle(&mut self) -> Result<(), String> {
-        self.nes.cpu_mem_init(0x4016, self.input);
+        self.nes.set_controller_input(self.input_1, self.input_2);
 
         match self.nes.step_cpu_cycle() {
             Ok(_) => {
@@ -276,7 +282,7 @@ impl ChannelEmulator {
     }
 
     pub fn execute_scanline(&mut self) -> Result<(), String> {
-        self.nes.cpu_mem_init(0x4016, self.input);
+        self.nes.set_controller_input(self.input_1, self.input_2);
 
         match self.nes.step_scanline() {
             Ok(_) => {
@@ -302,7 +308,7 @@ impl ChannelEmulator {
     }
 
     pub fn execute_frame(&mut self) -> Result<(), String> {
-        self.nes.cpu_mem_init(0x4016, self.input);
+        self.nes.set_controller_input(self.input_1, self.input_2);
 
         match self.nes.step_frame() {
             Ok(_) => {
@@ -369,16 +375,22 @@ impl ChannelEmulator {
         }
     }
 
-    fn handle_controller_event(&mut self, event: ControllerEvent) {
+    fn handle_controller_event(&mut self, event: ControllerEvent, is_slot_one: bool) {
+        let input_field = if is_slot_one {
+            &mut self.input_1
+        } else {
+            &mut self.input_2
+        };
+
         match event {
-            ControllerEvent::A => self.input |= 0x1,
-            ControllerEvent::B => self.input |= 0x2,
-            ControllerEvent::Select => self.input |= 0x4,
-            ControllerEvent::Start => self.input |= 0x8,
-            ControllerEvent::Up => self.input |= 0x10,
-            ControllerEvent::Down => self.input |= 0x20,
-            ControllerEvent::Left => self.input |= 0x40,
-            ControllerEvent::Right => self.input |= 0x80,
+            ControllerEvent::A => *input_field |= 0x1,
+            ControllerEvent::B => *input_field |= 0x2,
+            ControllerEvent::Select => *input_field |= 0x4,
+            ControllerEvent::Start => *input_field |= 0x8,
+            ControllerEvent::Up => *input_field |= 0x10,
+            ControllerEvent::Down => *input_field |= 0x20,
+            ControllerEvent::Left => *input_field |= 0x40,
+            ControllerEvent::Right => *input_field |= 0x80,
         }
     }
 

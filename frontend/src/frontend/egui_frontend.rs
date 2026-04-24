@@ -18,12 +18,14 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::time::Duration;
 
+
 use crossbeam_channel::{Receiver, Sender};
 use eframe::Frame;
 use egui::{Context, Id, Style, Ui, ViewportCommand, Visuals};
 use monsoon_core::declare_renderers;
 use monsoon_core::emulation::nes::Nes;
-use monsoon_core::emulation::ppu_util::{EmulatorFetchable, PaletteData, TILE_COUNT, TileData};
+use monsoon_core::emulation::ppu_util::{EmulatorFetchable, PaletteData, TileData, TILE_COUNT};
+use monsoon_core::emulation::rom::ExpansionDevice;
 use monsoon_core::emulation::savestate::SaveState;
 use monsoon_core::emulation::screen_renderer::{
     NoneRenderer, RendererRegistration, ScreenRenderer,
@@ -40,7 +42,7 @@ use crate::frontend::egui::message_handlers::async_handler::extract_timestamp;
 use crate::frontend::egui::message_handlers::{AsyncMessageHandler, EmulatorMessageHandler};
 use crate::frontend::egui::textures::EmuTextures;
 use crate::frontend::egui::tiles::{
-    Pane, TreeBehavior, compute_required_fetches_from_tree, create_tree, find_pane,
+    compute_required_fetches_from_tree, create_tree, find_pane, Pane, TreeBehavior,
 };
 use crate::frontend::egui::ui::{
     add_menu_bar, add_status_bar, render_save_browser, render_savestate_dialogs,
@@ -48,7 +50,7 @@ use crate::frontend::egui::ui::{
 use crate::frontend::messages::{
     AsyncFrontendMessage, FrontendEvent, LoadedRom, SavestateLoadContext,
 };
-use crate::frontend::persistence::{PersistentConfig, get_egui_storage_path, load_config};
+use crate::frontend::persistence::{get_egui_storage_path, load_config, PersistentConfig};
 use crate::frontend::storage::{Storage, StorageKey};
 use crate::frontend::{storage, util};
 use crate::messages::{EmulatorMessage, FrontendMessage, SaveType};
@@ -442,10 +444,9 @@ impl EguiApp {
 
         if !is_effectively_paused {
             let delta = now.duration_since(self.emu_textures.last_frame_request);
-            self.accumulator += delta;
             self.emu_textures.last_frame_request = now;
 
-            let mut frame_budget = self.get_frame_budget();
+            let frame_budget = self.get_frame_budget();
             let is_uncapped = self.config.speed_config.app_speed == AppSpeed::Uncapped
                 || ctx.memory(|mem| {
                     mem.data
@@ -453,8 +454,8 @@ impl EguiApp {
                         .unwrap_or(false)
                 });
 
-            if is_uncapped {
-                frame_budget = Duration::from_nanos((1_000_000_000.0 / f64::MAX) as u64)
+            if !is_uncapped {
+                self.accumulator += delta;
             }
 
             let max_emulation_time = Duration::from_millis(17);
@@ -463,14 +464,16 @@ impl EguiApp {
 
             // Effectively paused, so we skip
             if frame_budget < Duration::from_secs(5) {
-                while self.accumulator >= frame_budget {
+                while self.accumulator >= frame_budget || is_uncapped {
                     if let Err(e) = self.channel_emu.execute_frame() {
                         eprintln!("Emulator error: {}", e);
                         ctx.send_viewport_cmd(ViewportCommand::Close);
                         break;
                     }
 
-                    self.accumulator -= frame_budget;
+                    if !is_uncapped {
+                        self.accumulator -= frame_budget;
+                    }
 
                     // For uncapped mode, keep running frames until we hit our time budget
                     // For normal modes, check if we've spent too much time and need to drop frames
@@ -748,6 +751,11 @@ fn common_setup(rom: Option<PathBuf>) -> SetupResponse {
     } else {
         let _ = async_sender.send(AsyncFrontendMessage::LoadRom(None));
     }
+
+    let _ = to_emu.send(FrontendMessage::AttachPeripherals((
+        Some(ExpansionDevice::StandardController),
+        Some(ExpansionDevice::StandardController),
+    )));
 
     // Get the storage path for egui persistence
     let persistence_path = get_egui_storage_path();

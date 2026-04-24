@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::emulation::board::CpuBus;
 use crate::emulation::nes::ExecutionFinished;
 use crate::emulation::opcode;
-use crate::emulation::opcode::{OPCODES_MAP, OPCODES_TABLE, OpCode, get_opcode};
+use crate::emulation::opcode::{get_opcode, OpCode, OPCODES_MAP, OPCODES_TABLE};
 use crate::emulation::savestate::CpuState;
 use crate::util;
 
@@ -126,7 +126,7 @@ impl Cpu {
             self.dma_page = data;
         }
 
-        bus.write(addr, data);
+        bus.write(addr, data, self.cycle);
     }
 
     #[inline]
@@ -1132,7 +1132,10 @@ impl Cpu {
     }
 
     #[inline(always)]
-    pub fn step(&mut self, bus: &mut impl CpuBus) -> Result<ExecutionFinished, String> {
+    pub fn step(
+        &mut self,
+        bus: &mut impl CpuBus,
+    ) -> Result<ExecutionFinished, String> {
         self.cycle += 1;
 
         if self.is_halted {
@@ -1834,7 +1837,7 @@ impl Cpu {
         OPCODES_MAP.get_or_init(opcode::init);
         OPCODES_TABLE.get_or_init(opcode::init_lookup_table);
 
-        let cpu = Self {
+        Self {
             program_counter: state.program_counter,
             stack_pointer: state.stack_pointer,
             accumulator: state.accumulator,
@@ -1863,9 +1866,7 @@ impl Cpu {
             dma_page: state.dma_page,
             last_memory_access: None,
             cycle: state.cycle,
-        };
-
-        cpu
+        }
     }
 }
 

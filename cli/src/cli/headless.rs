@@ -568,7 +568,7 @@ pub fn save_video(
 // =============================================================================
 
 /// Output results based on CLI args using the output module abstraction.
-pub fn output_results(emu: &Nes, args: &CliArgs) -> Result<(), String> {
+pub fn output_results(emu: &mut Nes, args: &CliArgs) -> Result<(), String> {
     // Reset the output writer state for this run
     OutputWriter::reset();
 
@@ -609,14 +609,14 @@ pub fn output_results(emu: &Nes, args: &CliArgs) -> Result<(), String> {
 // =============================================================================
 
 /// Create a CPU memory dump from the emulator
-fn create_cpu_dump(emu: &Nes, range: &str) -> Result<MemoryDump, String> {
+fn create_cpu_dump(emu: &mut Nes, range: &str) -> Result<MemoryDump, String> {
     let (start, end) = parse_memory_range(range)?;
     let mem = &emu.get_memory_debug(Some(start..=end))[0];
     Ok(MemoryDump::new(MemoryType::Cpu, start, mem.to_vec()))
 }
 
 /// Create a PPU memory dump from the emulator
-fn create_ppu_dump(emu: &Nes, range: &str) -> Result<MemoryDump, String> {
+fn create_ppu_dump(emu: &mut Nes, range: &str) -> Result<MemoryDump, String> {
     let (start, end) = parse_memory_range(range)?;
     let mem = &emu.get_memory_debug(Some(start..=end))[1];
     Ok(MemoryDump::new(MemoryType::Ppu, start, mem.to_vec()))
@@ -629,13 +629,13 @@ fn create_oam_dump(emu: &Nes) -> MemoryDump {
 }
 
 /// Create a nametables memory dump from the emulator
-fn create_nametables_dump(emu: &Nes) -> MemoryDump {
+fn create_nametables_dump(emu: &mut Nes) -> MemoryDump {
     let mem = emu.get_memory_debug(Some(0x2000..=0x2FFF))[1].to_vec();
     MemoryDump::nametables(mem)
 }
 
 /// Create a palette RAM memory dump from the emulator
-fn create_palette_dump(emu: &Nes) -> MemoryDump {
+fn create_palette_dump(emu: &mut Nes) -> MemoryDump {
     // Palette RAM is at PPU addresses $3F00-$3F1F (32 bytes)
     let mem = emu.get_memory_debug(Some(0x3F00..=0x3F1F))[1].to_vec();
     MemoryDump::palette_ram(mem)

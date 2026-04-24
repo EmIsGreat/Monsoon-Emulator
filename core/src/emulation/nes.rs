@@ -5,8 +5,9 @@ use std::time::Duration;
 
 use crate::emulation::board::{Board, CpuBus, CpuBusView, PpuBus, PpuBusView};
 use crate::emulation::cpu::MicroOp;
+use crate::emulation::peripherals::Peripheral;
 use crate::emulation::ppu::EmulatorFetchable;
-use crate::emulation::rom::{RomFile, RomMapper};
+use crate::emulation::rom::{ExpansionDevice, RomFile, RomMapper};
 use crate::emulation::savestate::{BoardState, SaveState, VERSION};
 use crate::trace::TraceLog;
 use crate::{cpu_bus_view, ppu_bus_view};
@@ -104,7 +105,12 @@ impl Nes {
     /// After calling this, you must call [`load_rom()`](Nes::load_rom) and
     /// [`power()`](Nes::power) again before resuming emulation.
     pub fn power_off(&mut self) {
+        // Keep physically attached peripherals across power cycles.
+        let controller1 = self.board.controller1.clone();
+        let controller2 = self.board.controller2.clone();
+
         self.board = Board::default();
+        self.board.attach_controllers(controller1, controller2);
         self.total_cycles = 0;
         self.cpu_cycle_counter = 0;
         self.ppu_cycle_counter = 0;
@@ -325,7 +331,7 @@ impl Nes {
         );
 
         self.rom_file = Some(rom_file);
-        
+
         res
     }
 
@@ -468,6 +474,31 @@ impl Nes {
             let _ = fs::write("log.txt", &log.log);
         }
     }
+
+    pub fn attach_peripherals(
+        &mut self,
+        expansion_devices: (Option<ExpansionDevice>, Option<ExpansionDevice>),
+    ) {
+
+        let controller_1 = expansion_devices.0.map(Peripheral::from);
+        let controller_2 = expansion_devices.1.map(Peripheral::from);
+
+        self.board.attach_controllers(controller_1, controller_2)
+    }
+
+    pub fn set_controller_input(&mut self, input_1: u8, input_2: u8) {
+        if let Some(controller1) = &mut self.board.controller1 {
+            match controller1 {
+                Peripheral::StandardController(c) => c.input = input_1,
+            }
+        }
+
+        if let Some(controller2) = &mut self.board.controller2 {
+            match controller2 {
+                Peripheral::StandardController(c) => c.input = input_2,
+            }
+        }
+    }
 }
 
 impl Default for Nes {
@@ -536,7 +567,12 @@ impl Nes {
     /// Writes a value to CPU memory at the given address (for
     /// initialization/debugging).
     pub fn cpu_mem_write(&mut self, addr: u16, value: u8) {
-        CpuBus::write(&mut cpu_bus_view!(self), addr, value);
+        CpuBus::write(
+            &mut cpu_bus_view!(self),
+            addr,
+            value,
+            self.total_cycles / 12,
+        );
     }
 
     /// Initializes CPU memory at the given address (for
@@ -559,8 +595,9 @@ impl Nes {
 
     /// Writes a value to OAM (sprite memory) at the given address (for
     /// initialization/debugging).
-    pub fn oam_write(&mut self, addr: u16, value: u8) { self.board.ppu.oam.write(addr as u32, 
-                                                                                 value); }
+    pub fn oam_write(&mut self, addr: u16, value: u8) {
+        self.board.ppu.oam.write(addr as u32, value);
+    }
 
     /// Returns a reference to the trace log, if tracing is enabled.
     pub fn trace_log(&self) -> Option<&TraceLog> { self.trace_log.as_ref() }

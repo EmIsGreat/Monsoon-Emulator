@@ -1,11 +1,11 @@
-use crate::emulation::mem::{MemoryDevice, Rom};
+use crate::emulation::mem::{Memory};
 use crate::tests::cpu::Cpu;
 
 #[test]
 fn test_reset_vector() {
     let mut cpu = Cpu::new();
 
-    let mut rom = Rom::new(0x4000);
+    let mut rom = Memory::new(0x4000, false);
     // Set reset vector to $8000
     rom.init(0x3FFC, 0x00);
     rom.init(0x3FFD, 0x80);

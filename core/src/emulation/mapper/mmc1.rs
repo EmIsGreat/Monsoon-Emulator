@@ -8,7 +8,6 @@ use crate::emulation::mem::{Memory, OpenBus};
 use crate::emulation::ppu::VRAM_SIZE;
 use crate::emulation::rom::RomFile;
 
-const PRG_RAM_WINDOW_SIZE: u16 = 0x2000;
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct MMC1 {
     pub version: u8,
@@ -46,7 +45,7 @@ impl MapperLike for MMC1 {
                 }
 
                 if addr >= 0x8000 {
-                    if data & 0x80 == 1 {
+                    if data & 0x80 != 0 {
                         self.shift = 0;
                     } else {
                         if self.last_shift_write != cycle - 1 {
@@ -86,15 +85,14 @@ impl MapperLike for MMC1 {
                 0x6000..=0x7FFF => {
                     if let Some(prg_ram) = &self.prg_ram {
                         let addr = ((addr - 0x6000) + self.prg_ram_bank_offset) % self.prg_ram_size;
-                        prg_ram.read(addr as u32, &open_bus)
+                        prg_ram.read(addr as u32, open_bus)
                     } else {
                         open_bus.read()
                     }
                 }
-                0x8000..=0xFFFF => self.prg_rom.read(
-                    self.get_prg_rom_address(addr) % self.prg_rom_size,
-                    &open_bus,
-                ),
+                0x8000..=0xFFFF => self
+                    .prg_rom
+                    .read(self.get_prg_rom_address(addr) % self.prg_rom_size, open_bus),
                 _ => open_bus.read(),
             };
 

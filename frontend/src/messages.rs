@@ -1,5 +1,5 @@
 use monsoon_core::emulation::ppu_util::EmulatorFetchable;
-use monsoon_core::emulation::rom::RomFile;
+use monsoon_core::emulation::rom::{ExpansionDevice, RomFile};
 use monsoon_core::emulation::savestate::SaveState;
 
 use crate::frontend::messages::LoadedRom;
@@ -21,7 +21,7 @@ pub enum FrontendMessage {
     /// Request to quit the emulator
     Quit,
     /// Controller input events
-    ControllerInput(ControllerEvent),
+    ControllerInput(ControllerEvent, bool),
     /// Request to reset the console
     Reset,
     Power(bool),
@@ -36,6 +36,7 @@ pub enum FrontendMessage {
     StepCpuCycle,
     StepMasterCycle,
     StepScanline,
+    AttachPeripherals((Option<ExpansionDevice>, Option<ExpansionDevice>))
 }
 
 #[derive(Debug, Default, Eq, PartialEq, Copy, Clone, Hash)]

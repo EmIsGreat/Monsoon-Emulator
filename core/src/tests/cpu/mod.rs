@@ -2,7 +2,7 @@ use std::ops::{Deref, DerefMut, RangeInclusive};
 
 use crate::emulation::board::CpuBus;
 use crate::emulation::cpu::Cpu as CoreCpu;
-use crate::emulation::mem::{MemoryDevice, OpenBus, Rom};
+use crate::emulation::mem::{Memory, OpenBus};
 use crate::emulation::nes::ExecutionFinished;
 
 struct TestBus {
@@ -39,7 +39,7 @@ impl CpuBus for TestBus {
         addr.into_iter().map(|a| self.read_debug(a)).collect()
     }
 
-    fn write(&mut self, addr: u16, data: u8) {
+    fn write(&mut self, addr: u16, data: u8, _: u128) {
         if self.rom_mapped && addr >= 0x8000 {
             return;
         }
@@ -50,7 +50,7 @@ impl CpuBus for TestBus {
         }
     }
 
-    fn init(&mut self, addr: u16, data: u8) { self.write(addr, data); }
+    fn init(&mut self, addr: u16, data: u8) { self.write(addr, data, 0); }
 
     fn get_ppu_open_bus(&mut self) -> &mut OpenBus { &mut self.ppu_open_bus }
 
@@ -112,11 +112,13 @@ impl Cpu {
     }
 
     #[inline]
+    #[allow(unused_results)]
     pub(crate) fn step(&mut self) -> Result<ExecutionFinished, String> {
         self.with_bus(|cpu, bus| cpu.step(bus))
     }
 
-    pub(crate) fn attach_test_rom(&mut self, prg_rom: Rom) {
+    #[cfg(test)]
+    pub(crate) fn attach_test_rom(&mut self, prg_rom: Memory) {
         let prg_data = prg_rom.snapshot_all();
         if prg_data.is_empty() {
             return;

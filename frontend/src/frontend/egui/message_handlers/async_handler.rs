@@ -221,7 +221,7 @@ impl EguiApp {
             AsyncFrontendMessage::ControllerInput(event) => {
                 let _ = self
                     .to_emulator
-                    .send(FrontendMessage::ControllerInput(event));
+                    .send(FrontendMessage::ControllerInput(event, true));
             }
             AsyncFrontendMessage::StepPpuCycle => {
                 let _ = self.to_emulator.send(FrontendMessage::StepPpuCycle);

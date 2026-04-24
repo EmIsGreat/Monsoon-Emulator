@@ -1,4 +1,4 @@
-use crate::emulation::mem::{MemoryDevice, Rom};
+use crate::emulation::mem::{Memory};
 use crate::tests::cpu::Cpu;
 
 #[test]
@@ -6,7 +6,7 @@ fn test_brk_vector() {
     let mut cpu = Cpu::new();
 
     // Create and initialize new Rom
-    let mut rom = Rom::new(0x4000);
+    let mut rom = Memory::new(0x4000, false);
 
     // Set reset vector to $8000
     rom.init(0x3FFC, 0x00);

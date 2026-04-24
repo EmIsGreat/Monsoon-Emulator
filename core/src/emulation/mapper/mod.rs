@@ -43,7 +43,7 @@ impl Mapper {
 
         if prg_ram_size == 0 {
             if value.prg_memory.prg_nvram_size > 0 {
-                prg_ram_size = value.prg_memory.prg_ram_size;
+                prg_ram_size = value.prg_memory.prg_nvram_size;
             } else if value.prg_memory.prg_ram_size > 0 {
                 prg_ram_size = value.prg_memory.prg_ram_size;
             }
