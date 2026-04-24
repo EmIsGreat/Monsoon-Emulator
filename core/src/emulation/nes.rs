@@ -7,7 +7,7 @@ use crate::emulation::board::{Board, CpuBus, CpuBusView, PpuBus, PpuBusView};
 use crate::emulation::cpu::MicroOp;
 use crate::emulation::mem::MemoryDevice;
 use crate::emulation::ppu::EmulatorFetchable;
-use crate::emulation::rom::RomFile;
+use crate::emulation::rom::{RomFile, RomMapper};
 use crate::emulation::savestate::{BoardState, SaveState, VERSION};
 use crate::trace::TraceLog;
 use crate::{cpu_bus_view, ppu_bus_view};
@@ -313,13 +313,21 @@ impl Nes {
     /// let rom = RomFile::load(&data, None).unwrap();
     /// nes.load_rom(&rom);
     /// ```
-    pub fn load_rom<T>(&mut self, rom_get: &T)
+    pub fn load_rom<T>(&mut self, rom_get: &T) -> (bool, RomMapper)
     where
         for<'a> &'a T: Into<RomFile>,
     {
         let rom_file = rom_get.into();
         self.board.load_rom(&rom_file);
+
+        let res = (
+            !matches!(rom_file.mapper, RomMapper::Unknown(_)),
+            rom_file.mapper,
+        );
+
         self.rom_file = Some(rom_file);
+        
+        res
     }
 
     /// Captures the current emulator state as a [`SaveState`].

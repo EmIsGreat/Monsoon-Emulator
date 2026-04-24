@@ -256,7 +256,7 @@ impl<'a> CpuBusView<'a> {
             &mut self.palette_ram,
         );
 
-        match addr {
+        match addr % 8 {
             0x2 => {
                 let val = self.ppu.get_ppu_status();
                 bus.ppu_open_bus.set_masked(val, 0b1110_0000);
@@ -347,7 +347,7 @@ impl<'a> CpuBusView<'a> {
     #[inline]
     fn write_ppu_reg(&mut self, addr: u16, data: u8) {
         self.ppu_open_bus.set_masked(data, 0xFF);
-        match addr {
+        match addr % 8 {
             0x0 => {
                 self.ppu.set_ppu_ctrl(data);
             }

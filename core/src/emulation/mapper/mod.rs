@@ -51,7 +51,6 @@ impl From<&RomFile> for Mapper {
                     },
                 })
             }
-            RomMapper::MMC1 => Mapper::NoMapper(NoMapper {}),
             RomMapper::Unknown(_) => Mapper::NoMapper(NoMapper {}),
         }
     }

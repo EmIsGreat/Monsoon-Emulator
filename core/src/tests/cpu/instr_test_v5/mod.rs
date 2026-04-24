@@ -36,9 +36,18 @@ use crate::emulation::nes::{Nes, RunOptions};
 #[test]
 fn test_official_only() {
     let mut emu = Nes::default();
-    emu.load_rom(&String::from(
+    let loaded = emu.load_rom(&String::from(
         "./tests/nes-test-roms/instr_test-v5/official_only.nes",
     ));
+
+    if !loaded.0 {
+        assert!(
+            loaded.0,
+            "Mapper of Rom (id: {}) is not implemented... Aborting",
+            loaded.1
+        );
+    }
+
     emu.reset();
     emu.run_until(750_000_000, RunOptions::default())
         .expect("Error while running test");
@@ -58,9 +67,18 @@ fn test_official_only() {
 #[test]
 fn test_all_instrs() {
     let mut emu = Nes::default();
-    emu.load_rom(&String::from(
+    let loaded = emu.load_rom(&String::from(
         "./tests/nes-test-roms/instr_test-v5/all_instrs.nes",
     ));
+
+    if !loaded.0 {
+        assert!(
+            loaded.0,
+            "Mapper of Rom (id: {}) is not implemented... Aborting",
+            loaded.1
+        );
+    }
+
     emu.reset();
     emu.run_until(900_000_000, RunOptions::default())
         .expect("Error while running test");

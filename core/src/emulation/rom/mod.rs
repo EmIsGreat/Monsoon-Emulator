@@ -610,7 +610,6 @@ impl Display for RomTimingRegion {
 #[repr(u16)]
 pub enum RomMapper {
     NRom = 0,
-    MMC1 = 1,
     #[num_enum(catch_all)]
     Unknown(u16),
 }
@@ -619,7 +618,6 @@ impl Display for RomMapper {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let str: &str = match self {
             RomMapper::NRom => "NROM",
-            RomMapper::MMC1 => "MMC1",
             RomMapper::Unknown(_) => "Unknown Mapper",
         };
 
