@@ -51,7 +51,7 @@ impl PaletteRam {
     pub fn snapshot_all(&self) -> Vec<u8> {
         let range = 0..=0x20u16;
         let mut vec = Vec::with_capacity(range.len());
-        range.for_each(|addr| vec.push(self.read(addr, &mut OpenBus::new(0))));
+        range.for_each(|addr| vec.push(self.read(addr, &OpenBus::new(0))));
         vec
     }
 }

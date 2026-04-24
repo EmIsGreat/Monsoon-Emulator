@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+
 use crate::emulation::ppu::NAMETABLE_SIZE;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]

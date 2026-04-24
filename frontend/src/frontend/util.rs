@@ -342,7 +342,7 @@ pub fn color_radio<Value: PartialEq>(
             painter.rect_stroke(
                 rect,
                 2.0,
-                egui::Stroke::new(2.0f32, ui.visuals().selection.stroke.color),
+                egui::Stroke::new(2f32, ui.visuals().selection.stroke.color),
                 egui::StrokeKind::Inside,
             );
         }

@@ -199,14 +199,14 @@ impl MapperLike for Nrom {
                 0x6000..=0x7FFF => {
                     if let Some(prg_ram) = &self.prg_ram {
                         let addr = (addr - 0x6000) % self.prg_ram_size;
-                        prg_ram.read(addr as u32, &open_bus)
+                        prg_ram.read(addr as u32, open_bus)
                     } else {
                         open_bus.read()
                     }
                 }
                 0x8000..=0xFFFF => self
                     .prg_rom
-                    .read(((addr - 0x8000) % self.prg_rom_size) as u32, &open_bus),
+                    .read(((addr - 0x8000) % self.prg_rom_size) as u32, open_bus),
                 _ => open_bus.read(),
             };
 

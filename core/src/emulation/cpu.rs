@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::emulation::board::CpuBus;
 use crate::emulation::nes::ExecutionFinished;
 use crate::emulation::opcode;
-use crate::emulation::opcode::{get_opcode, OpCode, OPCODES_MAP, OPCODES_TABLE};
+use crate::emulation::opcode::{OPCODES_MAP, OPCODES_TABLE, OpCode, get_opcode};
 use crate::emulation::savestate::CpuState;
 use crate::util;
 
@@ -1132,10 +1132,7 @@ impl Cpu {
     }
 
     #[inline(always)]
-    pub fn step(
-        &mut self,
-        bus: &mut impl CpuBus,
-    ) -> Result<ExecutionFinished, String> {
+    pub fn step(&mut self, bus: &mut impl CpuBus) -> Result<ExecutionFinished, String> {
         self.cycle += 1;
 
         if self.is_halted {

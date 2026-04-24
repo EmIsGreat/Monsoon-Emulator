@@ -1,4 +1,4 @@
-use crate::emulation::mem::{Memory};
+use crate::emulation::mem::Memory;
 use crate::tests::cpu::Cpu;
 
 #[test]

@@ -775,7 +775,7 @@ impl ExecutionEngine {
                 // Calculate target cycle for this capture relative to frame start
                 // Using (capture_idx + 1) * MASTER_CYCLES_PER_FRAME / captures_per_frame
                 // ensures the final capture always aligns with the frame boundary
-                let odd_frame_offset:i32 = if self.emu.is_even_frame() && self.emu.is_rendering() {
+                let odd_frame_offset: i32 = if self.emu.is_even_frame() && self.emu.is_rendering() {
                     2
                 } else {
                     -2

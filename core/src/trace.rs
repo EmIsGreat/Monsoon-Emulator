@@ -1,10 +1,7 @@
 use crate::emulation::board::{Board, CpuBus, CpuBusView};
-use crate::emulation::cpu::{
-    OpType, Source, UNUSED_BIT
-    ,
-};
+use crate::emulation::cpu::{OpType, Source, UNUSED_BIT};
 use crate::emulation::opcode;
-use crate::emulation::opcode::{get_opcode, OpCode};
+use crate::emulation::opcode::{OpCode, get_opcode};
 use crate::emulation::savestate::SaveState;
 use crate::util::add_to_low_byte;
 

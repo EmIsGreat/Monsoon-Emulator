@@ -2,6 +2,7 @@
 
 use std::convert::Into;
 use std::ops::RangeInclusive;
+
 use crate::emulation::cpu::{Cpu, INTERNAL_RAM_SIZE};
 use crate::emulation::mapper::{
     CpuReadResult, CpuWriteResult, Mapper, MapperLike, NoMapper, PpuReadResult, PpuWriteResult,
@@ -10,8 +11,8 @@ use crate::emulation::mem::palette_ram::PaletteRam;
 use crate::emulation::mem::{Memory, OpenBus};
 use crate::emulation::peripherals::{Peripheral, PeripheralDevice};
 use crate::emulation::ppu::{
-    Ppu, OPEN_BUS_DECAY_DELAY, PALETTE_RAM_END_ADDRESS, PALETTE_RAM_SIZE,
-    PALETTE_RAM_START_ADDRESS, VRAM_SIZE,
+    OPEN_BUS_DECAY_DELAY, PALETTE_RAM_END_ADDRESS, PALETTE_RAM_SIZE, PALETTE_RAM_START_ADDRESS,
+    Ppu, VRAM_SIZE,
 };
 use crate::emulation::rom::RomFile;
 use crate::emulation::savestate::BoardState;
@@ -321,18 +322,14 @@ impl<'a> CpuBusView<'a> {
     fn read_apu_io(&mut self, addr: u16) -> u8 {
         match addr {
             0x4000..=0x4014 => self.cpu_open_bus.read(),
-            0x4016 => {
-                match self.controller1.as_mut() {
-                    Some(controller) => controller.read(self.cpu_open_bus),
-                    None => self.cpu_open_bus.read(),
-                }
-            }
-            0x4017 => {
-                match self.controller2.as_mut() {
-                    Some(controller) => controller.read(self.cpu_open_bus),
-                    None => self.cpu_open_bus.read(),
-                }
-            }
+            0x4016 => match self.controller1.as_mut() {
+                Some(controller) => controller.read(self.cpu_open_bus),
+                None => self.cpu_open_bus.read(),
+            },
+            0x4017 => match self.controller2.as_mut() {
+                Some(controller) => controller.read(self.cpu_open_bus),
+                None => self.cpu_open_bus.read(),
+            },
             0x4018..=0x401F => self.cpu_open_bus.read(),
             _ => self.cpu_open_bus.read(),
         }

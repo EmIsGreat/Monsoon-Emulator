@@ -19,8 +19,8 @@ use crate::emulation::mapper::nametable_mapping::NametableArrangement;
 use crate::emulation::mem::Memory;
 use crate::emulation::rom::formats::archaic_ines::ArchaicInes;
 use crate::emulation::rom::formats::ines::Ines;
-use crate::emulation::rom::formats::ines2::Ines2;
 use crate::emulation::rom::formats::ines_07::Ines07;
+use crate::emulation::rom::formats::ines2::Ines2;
 
 /// Errors that can occur while parsing a ROM file.
 #[derive(Debug, Clone)]
@@ -833,11 +833,10 @@ impl RomFile {
     /// nametable mirroring, as specified by the ROM header.
     #[doc(hidden)]
     pub fn get_nametable_memory(&self) -> NametableArrangement {
-        let mirroring = match self.hardwired_nametable_layout {
+        match self.hardwired_nametable_layout {
             true => NametableArrangement::Vertical,
             false => NametableArrangement::Horizontal,
-        };
-        mirroring
+        }
     }
 }
 
@@ -1077,13 +1076,9 @@ impl RomBuilder {
             mapper: RomMapper::from(self.mapper_number),
             default_expansion_device: ExpansionDevice::from(self.default_expansion_device),
             misc_rom_count: self.misc_rom_count,
-            extended_console_type: self
-                .extended_console_type
-                .map(|t| ExtendedConsoleType::from(t)),
-            vs_system_hardware_type: self
-                .vs_system_hardware_type
-                .map(|t| VsHardwareType::from(t)),
-            vs_system_ppu_type: self.vs_system_ppu_type.map(|t| VsSystemPpuType::from(t)),
+            extended_console_type: self.extended_console_type.map(ExtendedConsoleType::from),
+            vs_system_hardware_type: self.vs_system_hardware_type.map(VsHardwareType::from),
+            vs_system_ppu_type: self.vs_system_ppu_type.map(VsSystemPpuType::from),
             timing_region: RomTimingRegion::from(self.rom_timing_region),
             console_type: ConsoleType::from(self.console_type),
             hardwired_nametable_layout: self.hardwired_nametable_layout,

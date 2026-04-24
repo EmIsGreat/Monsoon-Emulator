@@ -123,7 +123,7 @@ pub fn draw_pattern_table(
                         painter.rect_stroke(
                             pixel_rect,
                             0.0,
-                            egui::Stroke::new(3.0f32, egui::Color32::WHITE),
+                            egui::Stroke::new(3f32, egui::Color32::WHITE),
                             egui::StrokeKind::Inside,
                         );
                     }

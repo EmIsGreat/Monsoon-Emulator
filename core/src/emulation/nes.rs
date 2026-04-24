@@ -479,7 +479,6 @@ impl Nes {
         &mut self,
         expansion_devices: (Option<ExpansionDevice>, Option<ExpansionDevice>),
     ) {
-
         let controller_1 = expansion_devices.0.map(Peripheral::from);
         let controller_2 = expansion_devices.1.map(Peripheral::from);
 

@@ -36,7 +36,7 @@ pub enum FrontendMessage {
     StepCpuCycle,
     StepMasterCycle,
     StepScanline,
-    AttachPeripherals((Option<ExpansionDevice>, Option<ExpansionDevice>))
+    AttachPeripherals((Option<ExpansionDevice>, Option<ExpansionDevice>)),
 }
 
 #[derive(Debug, Default, Eq, PartialEq, Copy, Clone, Hash)]

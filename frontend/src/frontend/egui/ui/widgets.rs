@@ -45,7 +45,7 @@ pub fn color_cell_rgb(
         painter.rect_stroke(
             rect,
             0.0,
-            egui::Stroke::new(3.0f32, egui::Color32::WHITE),
+            egui::Stroke::new(3f32, egui::Color32::WHITE),
             StrokeKind::Inside,
         );
     }
@@ -96,7 +96,7 @@ pub fn image_cell_flipped(
         painter.rect_stroke(
             rect,
             0.0,
-            egui::Stroke::new(3.0f32, egui::Color32::WHITE),
+            egui::Stroke::new(3f32, egui::Color32::WHITE),
             StrokeKind::Inside,
         );
     }
@@ -140,7 +140,7 @@ pub fn image_cell_dual_vert_flipped(
         painter.rect_stroke(
             rect,
             0.0,
-            egui::Stroke::new(3.0f32, egui::Color32::WHITE),
+            egui::Stroke::new(3f32, egui::Color32::WHITE),
             StrokeKind::Inside,
         );
     }

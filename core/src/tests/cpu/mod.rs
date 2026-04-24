@@ -130,7 +130,6 @@ impl Cpu {
             self.bus.memory[addr as usize] = prg_data[offset];
         }
     }
-
 }
 
 impl Deref for Cpu {
