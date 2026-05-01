@@ -11,11 +11,13 @@
 /// - `egui::textures`: Texture management
 /// - `egui::tiles`: Tile tree behavior and pane management
 /// - `egui::ui`: UI rendering components
+/// - `egui::wgpu_renderer`: GPU-accelerated palette-index renderer
 use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::fmt::{Debug, Formatter};
 use std::path::PathBuf;
 use std::rc::Rc;
+use std::sync::Arc;
 use std::time::Duration;
 
 use crossbeam_channel::{Receiver, Sender};
@@ -46,6 +48,7 @@ use crate::frontend::egui::tiles::{
 use crate::frontend::egui::ui::{
     add_menu_bar, add_status_bar, render_save_browser, render_savestate_dialogs,
 };
+use crate::frontend::egui::wgpu_renderer::NesWgpuRenderer;
 use crate::frontend::messages::{
     AsyncFrontendMessage, FrontendEvent, LoadedRom, SavestateLoadContext,
 };
@@ -97,6 +100,12 @@ pub struct EguiApp {
     /// Track if window was focused last frame to detect focus loss
     was_focused: bool,
     was_effectively_paused: bool,
+    /// GPU-accelerated palette-index renderer.
+    ///
+    /// `Some` when eframe is using the wgpu backend (native or WebGPU).
+    /// `None` when running on a non-wgpu backend (e.g. software renderer or
+    /// tests), in which case the CPU [`LookupPaletteRenderer`] path is used.
+    pub(crate) wgpu_nes_renderer: Option<Arc<NesWgpuRenderer>>,
 }
 
 impl EguiApp {
@@ -123,6 +132,26 @@ impl EguiApp {
             config = persistent_config.into();
         }
 
+        // Initialise the GPU renderer when the wgpu backend is available.
+        // On non-wgpu backends (e.g. software fallback or test harness) this
+        // is None and the CPU LookupPaletteRenderer path is used instead.
+        let wgpu_nes_renderer = cc.wgpu_render_state.as_ref().map(|rs| {
+            let renderer = NesWgpuRenderer::new(
+                &rs.device,
+                &rs.queue,
+                rs.target_format,
+                &config.view_config.palette_rgb_data,
+            );
+            let renderer = Arc::new(renderer);
+            // Register the renderer in egui_wgpu's CallbackResources so that
+            // WgpuFrameCallback::prepare/paint can retrieve it by type.
+            rs.renderer
+                .write()
+                .callback_resources
+                .insert(Arc::clone(&renderer));
+            renderer
+        });
+
         Self {
             channel_emu,
             to_emulator,
@@ -140,6 +169,7 @@ impl EguiApp {
             last_autosave: Instant::now(),
             was_focused: true,
             was_effectively_paused: false,
+            wgpu_nes_renderer,
         }
     }
 
@@ -648,8 +678,12 @@ impl eframe::App for EguiApp {
         #[cfg(target_arch = "wasm32")]
         let mut keybindings_changed = false;
         egui::CentralPanel::default().show_inside(ui, |ui| {
-            let mut behavior =
-                TreeBehavior::new(&mut self.config, &self.emu_textures, &self.async_sender);
+            let mut behavior = TreeBehavior::new(
+                &mut self.config,
+                &self.emu_textures,
+                &self.async_sender,
+                self.wgpu_nes_renderer.as_ref(),
+            );
             self.tree.ui(&mut behavior, ui);
             #[cfg(target_arch = "wasm32")]
             {

@@ -46,8 +46,14 @@ impl EguiApp {
                 );
                 self.emu_textures.has_received_frame = true;
                 self.fps_counter.update();
-                self.emu_textures
-                    .update_emulator_texture(ctx, &mut self.config.view_config.renderer);
+
+                // When the wgpu renderer is active, the GPU upload happens
+                // lazily in WgpuFrameCallback::prepare() during the paint
+                // phase. Skip the CPU-side texture upload in that case.
+                if self.wgpu_nes_renderer.is_none() {
+                    self.emu_textures
+                        .update_emulator_texture(ctx, &mut self.config.view_config.renderer);
+                }
             }
             EmulatorMessage::DebugData(data) => {
                 self.handle_debug_data(ctx, data);

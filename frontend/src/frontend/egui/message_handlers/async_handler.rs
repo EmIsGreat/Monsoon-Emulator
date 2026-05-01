@@ -312,9 +312,20 @@ impl EguiApp {
         self.config.view_config.palette_rgb_data = palette;
         // Update the renderer's palette
         self.config.view_config.renderer.set_palette(palette);
-        // Re-render the current frame with the new palette
-        self.emu_textures
-            .update_emulator_texture(ctx, &mut self.config.view_config.renderer);
+        // Update the GPU palette LUT when the wgpu renderer is active.
+        if let Some(ref wgpu_renderer) = self.wgpu_nes_renderer {
+            if let Some(rs) = ctx.data(|d| {
+                d.get_temp::<eframe::egui_wgpu::RenderState>(egui::Id::new("__eframe_wgpu_rs"))
+            }) {
+                wgpu_renderer.update_palette(&rs.queue, &palette);
+            }
+        }
+        // Re-render the current frame with the new palette (CPU path only;
+        // the GPU path picks up the new palette on the next paint).
+        if self.wgpu_nes_renderer.is_none() {
+            self.emu_textures
+                .update_emulator_texture(ctx, &mut self.config.view_config.renderer);
+        }
         if self.is_tile_viewer_visible() {
             self.emu_textures.update_tile_textures(
                 ctx,
@@ -499,9 +510,19 @@ impl EguiApp {
         self.config.view_config.palette_rgb_data = palette;
         // Update the renderer's palette
         self.config.view_config.renderer.set_palette(palette);
-        // Re-render the current frame with the new palette
-        self.emu_textures
-            .update_emulator_texture(ctx, &mut self.config.view_config.renderer);
+        // Update the GPU palette LUT when the wgpu renderer is active.
+        if let Some(ref wgpu_renderer) = self.wgpu_nes_renderer {
+            if let Some(rs) = ctx.data(|d| {
+                d.get_temp::<eframe::egui_wgpu::RenderState>(egui::Id::new("__eframe_wgpu_rs"))
+            }) {
+                wgpu_renderer.update_palette(&rs.queue, &palette);
+            }
+        }
+        // Re-render the current frame with the new palette (CPU path only).
+        if self.wgpu_nes_renderer.is_none() {
+            self.emu_textures
+                .update_emulator_texture(ctx, &mut self.config.view_config.renderer);
+        }
         if self.is_tile_viewer_visible() {
             self.emu_textures.update_tile_textures(
                 ctx,

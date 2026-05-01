@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::sync::Arc;
 
 use crossbeam_channel::Sender;
 use egui::WidgetText;
@@ -13,6 +14,7 @@ use crate::frontend::egui::ui::{
     render_emulator_output, render_keybindings, render_nametable, render_options, render_palettes,
     render_pattern_table, render_rom_header, render_soam_viewer, render_sprite_viewer,
 };
+use crate::frontend::egui::wgpu_renderer::NesWgpuRenderer;
 use crate::frontend::messages::AsyncFrontendMessage;
 
 /// The different pane types that can be displayed in the tile tree
@@ -73,6 +75,8 @@ pub struct TreeBehavior<'a> {
     pub emu_textures: &'a EmuTextures,
     pub async_sender: &'a Sender<AsyncFrontendMessage>,
     pub keybindings_changed: bool,
+    /// GPU palette renderer, present when the wgpu backend is active.
+    pub wgpu_nes_renderer: Option<&'a Arc<NesWgpuRenderer>>,
 }
 
 impl<'a> TreeBehavior<'a> {
@@ -80,12 +84,14 @@ impl<'a> TreeBehavior<'a> {
         config: &'a mut AppConfig,
         emu_textures: &'a EmuTextures,
         async_sender: &'a Sender<AsyncFrontendMessage>,
+        wgpu_nes_renderer: Option<&'a Arc<NesWgpuRenderer>>,
     ) -> Self {
         Self {
             config,
             emu_textures,
             async_sender,
             keybindings_changed: false,
+            wgpu_nes_renderer,
         }
     }
 }
@@ -94,7 +100,12 @@ impl Behavior<Pane> for TreeBehavior<'_> {
     fn pane_ui(&mut self, ui: &mut egui::Ui, _: TileId, pane: &mut Pane) -> UiResponse {
         match pane {
             Pane::EmulatorOutput => {
-                render_emulator_output(ui, self.emu_textures, self.config.is_effectively_paused());
+                render_emulator_output(
+                    ui,
+                    self.emu_textures,
+                    self.wgpu_nes_renderer,
+                    self.config.is_effectively_paused(),
+                );
             }
             Pane::Options => {
                 render_options(ui, self.config);

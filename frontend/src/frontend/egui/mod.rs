@@ -36,3 +36,4 @@ pub mod message_handlers;
 pub mod textures;
 pub mod tiles;
 pub mod ui;
+pub mod wgpu_renderer;
