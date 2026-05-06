@@ -2,6 +2,7 @@ use std::fmt::Debug;
 use std::hash::Hash;
 
 use serde::{Deserialize, Serialize};
+
 use crate::emulation::mem::OpenBus;
 use crate::emulation::rom::ExpansionDevice;
 

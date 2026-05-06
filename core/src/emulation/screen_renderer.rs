@@ -27,7 +27,6 @@
 //! impl ScreenRenderer for MyRenderer {
 //!     fn buffer_to_image(&mut self, buffer: &[u16]) -> &[RgbColor] {
 //!         // Convert palette indices to RGB colors
-//!         todo!()
 //!     }
 //!
 //!     fn set_palette(&mut self, palette: RgbPalette) { /* ... */
@@ -106,7 +105,7 @@ impl PartialEq for RendererRegistration {
 }
 
 /// Declares which
-/// [`ScreenRenderer`](crate::emulation::screen_renderer::ScreenRenderer)
+/// [`ScreenRenderer`](ScreenRenderer)
 /// implementations are available in a crate.
 ///
 /// This macro generates a `get_all_renderers()` function that returns a
