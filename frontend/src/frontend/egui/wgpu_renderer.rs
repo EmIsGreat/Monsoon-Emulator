@@ -372,7 +372,7 @@ impl egui_wgpu::CallbackTrait for WgpuFrameCallback {
         _egui_encoder: &mut wgpu::CommandEncoder,
         callback_resources: &mut egui_wgpu::CallbackResources,
     ) -> Vec<wgpu::CommandBuffer> {
-        if let Some(renderer) = callback_resources.get::<NesWgpuRenderer>() {
+        if let Some(renderer) = callback_resources.get::<Arc<NesWgpuRenderer>>() {
             renderer.update_frame(queue, &self.frame);
             renderer.update_palette(queue, &self.palette);
         }
@@ -385,7 +385,7 @@ impl egui_wgpu::CallbackTrait for WgpuFrameCallback {
         render_pass: &mut wgpu::RenderPass<'static>,
         callback_resources: &egui_wgpu::CallbackResources,
     ) {
-        if let Some(renderer) = callback_resources.get::<NesWgpuRenderer>() {
+        if let Some(renderer) = callback_resources.get::<Arc<NesWgpuRenderer>>() {
             let vp = info.viewport_in_pixels();
             // wgpu 29 / egui 0.34: ViewportInPixels uses width_px/height_px,
             // not right_px/bottom_px.
