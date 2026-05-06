@@ -116,9 +116,9 @@ impl MapperLike for MMC1 {
                     PpuReadResult::Registered
                 }
             }
-            0x2000..=0x3EFF => PpuReadResult::Nametable(
-                self.nametable_arrangement.resolve_address(addr),
-            ),
+            0x2000..=0x3EFF => {
+                PpuReadResult::Nametable(self.nametable_arrangement.resolve_address(addr))
+            }
             _ => PpuReadResult::Registered,
         }
     }
@@ -133,10 +133,9 @@ impl MapperLike for MMC1 {
                 }
                 PpuWriteResult::Handled
             }
-            0x2000..=0x3EFF => PpuWriteResult::Nametable(
-                self.nametable_arrangement
-                    .resolve_address(addr),
-            ),
+            0x2000..=0x3EFF => {
+                PpuWriteResult::Nametable(self.nametable_arrangement.resolve_address(addr))
+            }
             _ => PpuWriteResult::Registered,
         }
     }
@@ -214,22 +213,21 @@ impl MMC1 {
             0xC000..=0xDFFF => {
                 println!("chr bank 1: {}", self.shift);
                 self.chr_bank_1 = self.shift
-            },
-            0xE000..=0xFFFF =>
-                {
-                    println!("prg bank: {}", self.prg_bank);
-                    self.prg_bank = self.shift
-                },
+            }
+            0xE000..=0xFFFF => {
+                println!("prg bank: {}", self.prg_bank);
+                self.prg_bank = self.shift
+            }
             _ => {}
         }
     }
 
     fn set_ctrl(&mut self) {
         println!("Setting ctrl");
-        
+
         let nametable = self.shift & 0b11;
         println!("Nametable: {}", nametable);
-        
+
         match nametable {
             0 => self.nametable_arrangement = NametableArrangement::SingleScreenLower,
             1 => self.nametable_arrangement = NametableArrangement::SingleScreenUpper,
@@ -240,7 +238,7 @@ impl MMC1 {
 
         self.prg_rom_bank_mode = self.shift & 0b1100;
         self.chr_rom_bank_mode = self.shift & 0b10000;
-        
+
         println!("prg rom mode: {}", self.prg_rom_bank_mode);
         println!("chr rom mode: {}", self.chr_rom_bank_mode);
     }

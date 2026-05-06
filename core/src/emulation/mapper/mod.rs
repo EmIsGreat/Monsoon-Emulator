@@ -3,6 +3,7 @@ use std::hash::Hash;
 
 use nametable_mapping::NametableArrangement;
 use serde::{Deserialize, Serialize};
+
 use crate::emulation::mapper::mmc1::MMC1;
 use crate::emulation::mem::{Memory, OpenBus};
 use crate::emulation::ppu::VRAM_SIZE;

@@ -425,6 +425,8 @@ impl Nes {
 
             let cpu_res = cpu.step(&mut cpu_bus_view!(self));
 
+
+            #[allow(clippy::question_mark)]
             if let Ok(cpu_res) = cpu_res {
                 res = res.merge(cpu_res);
                 res.cpu_cycle_completed = true;
