@@ -2,6 +2,8 @@
 
 use std::sync::Arc;
 
+use eframe::egui_wgpu;
+use monsoon_core::emulation::palette_util::RgbPalette;
 use monsoon_core::emulation::ppu_util::{TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH};
 
 use crate::frontend::egui::textures::EmuTextures;
@@ -17,6 +19,7 @@ pub fn render_emulator_output(
     ui: &mut egui::Ui,
     emu_textures: &EmuTextures,
     wgpu_nes_renderer: Option<&Arc<NesWgpuRenderer>>,
+    palette: &RgbPalette,
     is_paused: bool,
 ) {
     if !emu_textures.has_received_frame {
@@ -39,7 +42,7 @@ pub fn render_emulator_output(
 
     let response = if wgpu_nes_renderer.is_some() {
         // GPU path: allocate the rect, then add a PaintCallback that uploads
-        // the front-buffer and runs the WGSL palette shader inside it.
+        // the front-buffer and palette, then runs the WGSL palette shader.
         let (response, painter) = ui.allocate_painter(image_size, egui::Sense::hover());
         let rect = response.rect;
 
@@ -47,6 +50,7 @@ pub fn render_emulator_output(
             rect,
             WgpuFrameCallback {
                 frame: Arc::new(emu_textures.front_buffer.clone()),
+                palette: *palette,
             },
         );
         painter.add(callback);

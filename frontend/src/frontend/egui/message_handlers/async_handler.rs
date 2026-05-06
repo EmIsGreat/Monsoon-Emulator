@@ -310,18 +310,11 @@ impl EguiApp {
 
     fn handle_palette_loaded(&mut self, ctx: &Context, palette: RgbPalette) {
         self.config.view_config.palette_rgb_data = palette;
-        // Update the renderer's palette
+        // Update the CPU renderer's palette
         self.config.view_config.renderer.set_palette(palette);
-        // Update the GPU palette LUT when the wgpu renderer is active.
-        if let Some(ref wgpu_renderer) = self.wgpu_nes_renderer {
-            if let Some(rs) = ctx.data(|d| {
-                d.get_temp::<eframe::egui_wgpu::RenderState>(egui::Id::new("__eframe_wgpu_rs"))
-            }) {
-                wgpu_renderer.update_palette(&rs.queue, &palette);
-            }
-        }
         // Re-render the current frame with the new palette (CPU path only;
-        // the GPU path picks up the new palette on the next paint).
+        // the GPU path picks up the new palette automatically on the next
+        // paint via WgpuFrameCallback::prepare).
         if self.wgpu_nes_renderer.is_none() {
             self.emu_textures
                 .update_emulator_texture(ctx, &mut self.config.view_config.renderer);
@@ -508,17 +501,11 @@ impl EguiApp {
 
     fn handle_set_palette(&mut self, ctx: &Context, palette: RgbPalette) {
         self.config.view_config.palette_rgb_data = palette;
-        // Update the renderer's palette
+        // Update the CPU renderer's palette
         self.config.view_config.renderer.set_palette(palette);
-        // Update the GPU palette LUT when the wgpu renderer is active.
-        if let Some(ref wgpu_renderer) = self.wgpu_nes_renderer {
-            if let Some(rs) = ctx.data(|d| {
-                d.get_temp::<eframe::egui_wgpu::RenderState>(egui::Id::new("__eframe_wgpu_rs"))
-            }) {
-                wgpu_renderer.update_palette(&rs.queue, &palette);
-            }
-        }
-        // Re-render the current frame with the new palette (CPU path only).
+        // Re-render the current frame with the new palette (CPU path only;
+        // the GPU path picks up the new palette automatically on the next
+        // paint via WgpuFrameCallback::prepare).
         if self.wgpu_nes_renderer.is_none() {
             self.emu_textures
                 .update_emulator_texture(ctx, &mut self.config.view_config.renderer);

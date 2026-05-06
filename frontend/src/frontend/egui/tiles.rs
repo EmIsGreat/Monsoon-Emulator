@@ -104,6 +104,7 @@ impl Behavior<Pane> for TreeBehavior<'_> {
                     ui,
                     self.emu_textures,
                     self.wgpu_nes_renderer,
+                    &self.config.view_config.palette_rgb_data,
                     self.config.is_effectively_paused(),
                 );
             }

@@ -163,10 +163,12 @@ impl NesWgpuRenderer {
             });
 
         // ---- Pipeline layout ---------------------------------------------
+        // wgpu 29: bind_group_layouts takes &[Option<&BindGroupLayout>]; no
+        // push_constant_ranges field (replaced by immediate_size).
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("nes_renderer_pl"),
-            bind_group_layouts: &[&bind_group_layout],
-            push_constant_ranges: &[],
+            bind_group_layouts: &[Some(&bind_group_layout)],
+            immediate_size: 0,
         });
 
         // ---- Render pipeline ---------------------------------------------
@@ -195,7 +197,8 @@ impl NesWgpuRenderer {
                     write_mask: wgpu::ColorWrites::ALL,
                 })],
             }),
-            multiview: None,
+            // wgpu 29: field is `multiview_mask` (not `multiview`)
+            multiview_mask: None,
             cache: None,
         });
 
@@ -249,7 +252,7 @@ impl NesWgpuRenderer {
             ],
         });
 
-        let mut renderer = Self {
+        let renderer = Self {
             pipeline,
             index_texture,
             palette_texture,
@@ -384,12 +387,14 @@ impl egui_wgpu::CallbackTrait for WgpuFrameCallback {
     ) {
         if let Some(renderer) = callback_resources.get::<NesWgpuRenderer>() {
             let vp = info.viewport_in_pixels();
+            // wgpu 29 / egui 0.34: ViewportInPixels uses width_px/height_px,
+            // not right_px/bottom_px.
             renderer.paint_into(
                 render_pass,
                 vp.left_px as f32,
                 vp.top_px as f32,
-                (vp.right_px - vp.left_px) as f32,
-                (vp.bottom_px - vp.top_px) as f32,
+                vp.width_px as f32,
+                vp.height_px as f32,
             );
         }
     }
