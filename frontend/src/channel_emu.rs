@@ -219,8 +219,7 @@ impl ChannelEmulator {
             Ok(_) => {
                 // Copy (not swap) so the PPU's accumulated mid-frame render is
                 // preserved in the work buffer for subsequent debug steps.
-                self.back_buffer
-                    .copy_from_slice(self.nes.get_pixel_buffer());
+                self.back_buffer.copy_from_slice(self.nes.get_pixel_buffer());
                 if self.to_frontend.send(EmulatorMessage::FrameReady).is_err() {
                     return Err("Frontend disconnected".to_string());
                 }
@@ -241,8 +240,7 @@ impl ChannelEmulator {
             Ok(_) => {
                 // Copy (not swap) so the PPU's accumulated mid-frame render is
                 // preserved in the work buffer for subsequent debug steps.
-                self.back_buffer
-                    .copy_from_slice(self.nes.get_pixel_buffer());
+                self.back_buffer.copy_from_slice(self.nes.get_pixel_buffer());
                 if self.to_frontend.send(EmulatorMessage::FrameReady).is_err() {
                     return Err("Frontend disconnected".to_string());
                 }
@@ -263,8 +261,7 @@ impl ChannelEmulator {
             Ok(_) => {
                 // Copy (not swap) so the PPU's accumulated mid-frame render is
                 // preserved in the work buffer for subsequent debug steps.
-                self.back_buffer
-                    .copy_from_slice(self.nes.get_pixel_buffer());
+                self.back_buffer.copy_from_slice(self.nes.get_pixel_buffer());
                 if self.to_frontend.send(EmulatorMessage::FrameReady).is_err() {
                     return Err("Frontend disconnected".to_string());
                 }
@@ -285,8 +282,7 @@ impl ChannelEmulator {
             Ok(_) => {
                 // Copy (not swap) so the PPU's accumulated mid-frame render is
                 // preserved in the work buffer for subsequent debug steps.
-                self.back_buffer
-                    .copy_from_slice(self.nes.get_pixel_buffer());
+                self.back_buffer.copy_from_slice(self.nes.get_pixel_buffer());
                 if self.to_frontend.send(EmulatorMessage::FrameReady).is_err() {
                     return Err("Frontend disconnected".to_string());
                 }

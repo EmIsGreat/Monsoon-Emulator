@@ -2,7 +2,7 @@ use egui::{ColorImage, Context, TextureHandle, TextureOptions};
 use monsoon_core::emulation::palette_util::{RgbColor, RgbPalette};
 use monsoon_core::emulation::ppu_util::{
     NametableData, PALETTE_COUNT, PaletteData, SoamData, SpriteData, TILE_COUNT, TILE_SIZE,
-    TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH, TileData,
+    TileData, TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH,
 };
 use monsoon_core::emulation::screen_renderer::ScreenRenderer;
 use web_time::Instant;

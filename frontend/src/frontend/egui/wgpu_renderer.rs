@@ -28,12 +28,13 @@
 //! * [`WgpuFrameCallback`] is constructed once per UI frame (in
 //!   `render_emulator_output`) carrying the current front-buffer and palette
 //!   snapshot. Its [`prepare`](egui_wgpu::CallbackTrait::prepare) method
-//!   uploads both to the GPU; its [`paint`](egui_wgpu::CallbackTrait::paint)
-//!   method draws the result.
+//!   uploads both to the GPU; its
+//!   [`paint`](egui_wgpu::CallbackTrait::paint) method draws the result.
 
 use std::sync::Arc;
 
-use eframe::{egui_wgpu, wgpu};
+use eframe::egui_wgpu;
+use eframe::wgpu;
 use monsoon_core::emulation::palette_util::RgbPalette;
 use monsoon_core::emulation::ppu_util::{TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH};
 
@@ -132,35 +133,34 @@ impl NesWgpuRenderer {
         });
 
         // ---- Bind-group layout -------------------------------------------
-        let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("nes_renderer_bgl"),
-            entries: &[
-                // binding 0: index texture (R32Uint, integer sampling)
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Uint,
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        multisampled: false,
-                    },
-                    count: None,
-                },
-                // binding 1: palette texture (Rgba8Unorm, float sampling)
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float {
-                            filterable: false,
+        let bind_group_layout =
+            device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                label: Some("nes_renderer_bgl"),
+                entries: &[
+                    // binding 0: index texture (R32Uint, integer sampling)
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Uint,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
                         },
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        multisampled: false,
+                        count: None,
                     },
-                    count: None,
-                },
-            ],
-        });
+                    // binding 1: palette texture (Rgba8Unorm, float sampling)
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Texture {
+                            sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            multisampled: false,
+                        },
+                        count: None,
+                    },
+                ],
+            });
 
         // ---- Pipeline layout ---------------------------------------------
         // wgpu 29: bind_group_layouts takes &[Option<&BindGroupLayout>]; no
@@ -405,16 +405,13 @@ impl egui_wgpu::CallbackTrait for WgpuFrameCallback {
 //
 // SAFETY requirements (all statically guaranteed for u32):
 //   • u8 has alignment 1, so any u32 pointer is also valid as a u8 pointer.
-//   • u32 has no invalid bit patterns, so every byte of the slice is a valid
-// u8.   • The resulting byte count (len * 4) cannot overflow usize on any
-// platform     where len*4 is computed, since len is bounded by the texture
-// dimensions     (256*240 = 61 440 elements → 245 760 bytes, well within
-// usize::MAX).
+//   • u32 has no invalid bit patterns, so every byte of the slice is a valid u8.
+//   • The resulting byte count (len * 4) cannot overflow usize on any platform
+//     where len*4 is computed, since len is bounded by the texture dimensions
+//     (256*240 = 61 440 elements → 245 760 bytes, well within usize::MAX).
 // ---------------------------------------------------------------------------
 fn cast_u32_slice_to_u8(data: &[u32]) -> &[u8] {
-    let byte_len = data
-        .len()
-        .checked_mul(std::mem::size_of::<u32>())
+    let byte_len = data.len().checked_mul(std::mem::size_of::<u32>())
         .expect("byte length overflow in cast_u32_slice_to_u8");
     // SAFETY: see comment above; u8 alignment ≤ u32 alignment, all bytes valid.
     unsafe { std::slice::from_raw_parts(data.as_ptr().cast::<u8>(), byte_len) }
