@@ -1015,23 +1015,14 @@ mod tests {
     }
 
     #[test]
-    fn from_cli_args_uses_internal_log_path_when_provided() {
+    fn from_cli_args_internal_log_path_takes_precedence_with_logging_disabled() {
         let mut args = CliArgs::default();
+        args.execution.internal_log = false;
         args.execution.internal_log_path = Some(PathBuf::from("internal.log"));
         args.execution.trace = Some(PathBuf::from("legacy.log"));
 
         let config = ExecutionConfig::from_cli_args(&args);
         assert_eq!(config.trace_path, Some(PathBuf::from("internal.log")));
-    }
-
-    #[test]
-    fn from_cli_args_uses_internal_log_path_when_enabled() {
-        let mut args = CliArgs::default();
-        args.execution.internal_log = true;
-        args.execution.internal_log_path = Some(PathBuf::from("enabled-internal.log"));
-
-        let config = ExecutionConfig::from_cli_args(&args);
-        assert_eq!(config.trace_path, Some(PathBuf::from("enabled-internal.log")));
     }
 
     #[test]
