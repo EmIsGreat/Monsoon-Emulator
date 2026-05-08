@@ -41,7 +41,7 @@ default = ["default_renderers"]
 default_renderers = ["monsoon-default-renderers"]
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tokio = { version = "1.52", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1.51", features = ["rt-multi-thread", "macros"] }
 
 # Web-only dependencies
 [target.'cfg(target_arch = "wasm32")'.dependencies]
