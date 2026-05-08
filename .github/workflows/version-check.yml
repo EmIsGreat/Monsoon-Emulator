@@ -19,7 +19,7 @@ jobs:
       - name: Check version increment
         run: |
           PR_VERSION=$(grep -m1 '^version = ' Cargo.toml | sed 's/version = "\(.*\)"/\1/')
-          MAIN_VERSION=$(git show origin/main:Cargo.toml | grep -m1 '^version = ' | sed 's/version = "\(.*\)"/\1/')
+          MAIN_VERSION=$(git show origin/release:Cargo.toml | grep -m1 '^version = ' | sed 's/version = "\(.*\)"/\1/')
 
           echo "PR version: $PR_VERSION"
           echo "Main version: $MAIN_VERSION"
