@@ -1025,6 +1025,16 @@ mod tests {
     }
 
     #[test]
+    fn from_cli_args_uses_internal_log_path_when_enabled() {
+        let mut args = CliArgs::default();
+        args.execution.internal_log = true;
+        args.execution.internal_log_path = Some(PathBuf::from("enabled-internal.log"));
+
+        let config = ExecutionConfig::from_cli_args(&args);
+        assert_eq!(config.trace_path, Some(PathBuf::from("enabled-internal.log")));
+    }
+
+    #[test]
     fn from_cli_args_supports_legacy_trace_path() {
         let mut args = CliArgs::default();
         args.execution.trace = Some(PathBuf::from("legacy.log"));
