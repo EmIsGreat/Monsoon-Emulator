@@ -277,6 +277,14 @@ pub struct ExecutionArgs {
     #[arg(long, value_parser = value_parser!(PathBuf), value_hint = clap::ValueHint::FilePath)]
     pub trace: Option<PathBuf>,
 
+    /// Enable internal emulator trace logging (core/trace.rs)
+    #[arg(long, default_value_t = false)]
+    pub internal_log: bool,
+
+    /// Output path for internal emulator trace logging
+    #[arg(long, value_parser = value_parser!(PathBuf), value_hint = clap::ValueHint::FilePath)]
+    pub internal_log_path: Option<PathBuf>,
+
     /// Set breakpoint at PC address (can be specified multiple times)
     #[arg(long, value_parser = parse_hex_u16, action = clap::ArgAction::Append)]
     pub breakpoint: Vec<u16>,

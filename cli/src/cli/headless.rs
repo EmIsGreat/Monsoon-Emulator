@@ -170,6 +170,23 @@ fn handle_rom_info(args: &CliArgs) -> Result<(), String> {
     print_rom_info(rom_path)
 }
 
+fn format_bytes_human_readable(bytes: u32) -> String {
+    const UNITS: [&str; 3] = ["Bytes", "KB", "MB"];
+
+    let mut value = bytes as f64;
+    let mut unit_idx = 0usize;
+    while value >= 1024.0 && unit_idx < UNITS.len() - 1 {
+        value /= 1024.0;
+        unit_idx += 1;
+    }
+
+    if unit_idx == 0 {
+        format!("{bytes} {}", UNITS[unit_idx])
+    } else {
+        format!("{value:.2} {} ({bytes} Bytes)", UNITS[unit_idx])
+    }
+}
+
 /// Print ROM information to stdout.
 pub fn print_rom_info(rom_path: &Path) -> Result<(), String> {
     let path_str = rom_path.to_string_lossy().to_string();
@@ -179,24 +196,77 @@ pub fn print_rom_info(rom_path: &Path) -> Result<(), String> {
 
     println!("ROM Information:");
     println!("  File: {}", rom_path.display());
+    println!(
+        "  Filename: {}",
+        rom_path
+            .file_name()
+            .map(|name| name.to_string_lossy().to_string())
+            .unwrap_or_else(|| "(unknown)".to_string())
+    );
     if let Some(ref name) = rom.name {
         println!("  Name: {}", name);
     }
     println!("  Mapper: {}", rom.mapper);
-    println!("  PRG ROM: {} KB", rom.prg_memory.prg_rom_size / 1024);
-    println!("  CHR ROM: {} KB", rom.chr_memory.chr_rom_size / 1024);
+    println!("  Submapper: {}", rom.submapper_number);
+    println!("  CPU/PPU Timing: {}", rom.timing_region);
+    println!("  Console Type: {}", rom.console_type);
     println!(
-        "  PRG RAM: {} KB (battery-backed: {})",
-        rom.prg_memory.prg_ram_size / 1024,
-        if rom.is_battery_backed { "yes" } else { "no" }
+        "  PRG ROM Size: {}",
+        format_bytes_human_readable(rom.prg_memory.prg_rom_size)
     );
     println!(
-        "  Mirroring: {}",
+        "  PRG RAM Size: {}",
+        format_bytes_human_readable(rom.prg_memory.prg_ram_size)
+    );
+    println!(
+        "  PRG NVRAM Size: {}",
+        format_bytes_human_readable(rom.prg_memory.prg_nvram_size)
+    );
+    println!(
+        "  CHR ROM Size: {}",
+        format_bytes_human_readable(rom.chr_memory.chr_rom_size)
+    );
+    println!(
+        "  CHR RAM Size: {}",
+        format_bytes_human_readable(rom.chr_memory.chr_ram_size)
+    );
+    println!(
+        "  CHR NVRAM Size: {}",
+        format_bytes_human_readable(rom.chr_memory.chr_nvram_size)
+    );
+    println!(
+        "  Hardwired Nametable Layout: {}",
         if rom.hardwired_nametable_layout {
             "Vertical"
         } else {
             "Horizontal"
         }
+    );
+    println!("  Battery Backed: {}", rom.is_battery_backed);
+    println!("  Trainer Present: {}", rom.trainer_present);
+    println!("  Alternative Nametables: {}", rom.alternative_nametables);
+    println!(
+        "  Default Expansion Device: {}",
+        rom.default_expansion_device
+    );
+    println!("  Misc ROM Count: {}", rom.misc_rom_count);
+    println!(
+        "  Extended Console Type: {}",
+        rom.extended_console_type
+            .map(|v| v.to_string())
+            .unwrap_or_else(|| "(none)".to_string())
+    );
+    println!(
+        "  VS System Hardware Type: {}",
+        rom.vs_system_hardware_type
+            .map(|v| v.to_string())
+            .unwrap_or_else(|| "(none)".to_string())
+    );
+    println!(
+        "  VS System PPU Type: {}",
+        rom.vs_system_ppu_type
+            .map(|v| v.to_string())
+            .unwrap_or_else(|| "(none)".to_string())
     );
     println!(
         "  Checksum (SHA-256): {}",

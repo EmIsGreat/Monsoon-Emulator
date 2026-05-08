@@ -106,8 +106,8 @@ impl Nes {
     /// 1. The PPU renders into its internal *work* buffer.
     /// 2. On frame completion the caller swaps the work buffer with the *back*
     ///    buffer (`swap_pixel_buffer`), making the freshly rendered frame
-    ///    available while the PPU immediately starts filling the buffer it
-    ///    just received.
+    ///    available while the PPU immediately starts filling the buffer it just
+    ///    received.
     /// 3. Before displaying, the frontend swaps the back buffer with the
     ///    *front* buffer so it always reads from a stable, fully-rendered
     ///    frame.
@@ -451,7 +451,6 @@ impl Nes {
                 self.trace_log.is_some() && matches!(&cpu.current_op, &MicroOp::FetchOpcode);
 
             let cpu_res = cpu.step(&mut cpu_bus_view!(self));
-
 
             #[allow(clippy::question_mark)]
             if let Ok(cpu_res) = cpu_res {

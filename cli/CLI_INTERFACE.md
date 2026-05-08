@@ -274,7 +274,9 @@ Examples:
 |      | `--until-opcode` | Run until specific opcode executes    | u8       |
 |      | `--until-mem`    | Run until memory condition            | String   |
 |      | `--until-hlt`    | Run until HLT instruction             | bool     |
-|      | `--trace`        | Enable instruction trace              | PathBuf  |
+|      | `--trace`        | Enable instruction trace with output path (legacy) | PathBuf  |
+|      | `--internal-log` | Enable internal emulator trace logging | bool     |
+|      | `--internal-log-path` | Output path for internal emulator trace log | PathBuf  |
 |      | `--breakpoint`   | Set breakpoint at PC address          | Vec<u16> |
 |      | `--watch-mem`    | Watch memory for access (read/write)  | Vec<String> |
 
@@ -320,14 +322,26 @@ The `--rom-info` flag should output:
 ```
 ROM Information:
   File: game.nes
-  Name: Super Mario Bros.
-  Format: iNES 2.0
+  Filename: game.nes
   Mapper: 0 (NROM)
-  PRG ROM: 32 KB
-  CHR ROM: 8 KB
-  PRG RAM: 8 KB (battery-backed: no)
-  Mirroring: Horizontal
+  Submapper: 0
+  CPU/PPU Timing: NTSC
   Console Type: NES/Famicom
+  PRG ROM Size: 32.00 KB (32768 Bytes)
+  PRG RAM Size: 8.00 KB (8192 Bytes)
+  PRG NVRAM Size: 0 Bytes
+  CHR ROM Size: 8.00 KB (8192 Bytes)
+  CHR RAM Size: 0 Bytes
+  CHR NVRAM Size: 0 Bytes
+  Hardwired Nametable Layout: Horizontal
+  Battery Backed: false
+  Trainer Present: false
+  Alternative Nametables: false
+  Default Expansion Device: Unspecified
+  Misc ROM Count: 0
+  Extended Console Type: (none)
+  VS System Hardware Type: (none)
+  VS System PPU Type: (none)
   Checksum (SHA-256): abc123...
 ```
 

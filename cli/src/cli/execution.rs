@@ -345,6 +345,10 @@ pub struct ExecutionConfig {
     pub verbose: bool,
 }
 
+/// Default output path for internal trace logs when tracing is enabled without
+/// an explicit output path.
+const DEFAULT_INTERNAL_TRACE_LOG_PATH: &str = "trace.log";
+
 impl ExecutionConfig {
     /// Create a new empty execution config
     pub fn new() -> Self { Self::default() }
@@ -943,7 +947,15 @@ impl ExecutionConfig {
         }
 
         // Add trace
-        config.trace_path = args.execution.trace.clone();
+        config.trace_path = args
+            .execution
+            .internal_log_path
+            .clone()
+            .or_else(|| args.execution.trace.clone());
+
+        if args.execution.internal_log && config.trace_path.is_none() {
+            config.trace_path = Some(PathBuf::from(DEFAULT_INTERNAL_TRACE_LOG_PATH));
+        }
 
         // Set verbose
         config.verbose = args.verbose;
@@ -980,5 +992,44 @@ impl SavestateConfig {
         config.format = args.savestate.state_format;
 
         config
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use super::{DEFAULT_INTERNAL_TRACE_LOG_PATH, ExecutionConfig};
+    use crate::cli::CliArgs;
+
+    #[test]
+    fn from_cli_args_enables_internal_log_with_default_path() {
+        let mut args = CliArgs::default();
+        args.execution.internal_log = true;
+
+        let config = ExecutionConfig::from_cli_args(&args);
+        assert_eq!(
+            config.trace_path,
+            Some(PathBuf::from(DEFAULT_INTERNAL_TRACE_LOG_PATH))
+        );
+    }
+
+    #[test]
+    fn from_cli_args_uses_internal_log_path_when_provided() {
+        let mut args = CliArgs::default();
+        args.execution.internal_log_path = Some(PathBuf::from("internal.log"));
+        args.execution.trace = Some(PathBuf::from("legacy.log"));
+
+        let config = ExecutionConfig::from_cli_args(&args);
+        assert_eq!(config.trace_path, Some(PathBuf::from("internal.log")));
+    }
+
+    #[test]
+    fn from_cli_args_supports_legacy_trace_path() {
+        let mut args = CliArgs::default();
+        args.execution.trace = Some(PathBuf::from("legacy.log"));
+
+        let config = ExecutionConfig::from_cli_args(&args);
+        assert_eq!(config.trace_path, Some(PathBuf::from("legacy.log")));
     }
 }

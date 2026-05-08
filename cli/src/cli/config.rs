@@ -146,6 +146,8 @@ pub struct ExecutionConfig {
     pub until_mem: Option<Vec<String>>,
     pub until_hlt: Option<bool>,
     pub trace: Option<PathBuf>,
+    pub internal_log: Option<bool>,
+    pub internal_log_path: Option<PathBuf>,
     #[serde(default)]
     pub breakpoints: Vec<String>,
     /// Memory watchpoints (format: "ADDR" or "ADDR:r" or "ADDR:w" or "ADDR:rw")
@@ -348,6 +350,12 @@ impl ConfigFile {
         }
         if cli.execution.trace.is_none() {
             cli.execution.trace = self.execution.trace.clone();
+        }
+        if !cli.execution.internal_log {
+            cli.execution.internal_log = self.execution.internal_log.unwrap_or(false);
+        }
+        if cli.execution.internal_log_path.is_none() {
+            cli.execution.internal_log_path = self.execution.internal_log_path.clone();
         }
         if cli.execution.breakpoint.is_empty() {
             for bp in &self.execution.breakpoints {
