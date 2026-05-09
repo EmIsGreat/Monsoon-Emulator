@@ -7,7 +7,6 @@
 //! For programmatic ROM construction (e.g., in tests), use [`RomBuilder`].
 
 mod formats;
-pub mod rom_db;
 
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
@@ -20,8 +19,8 @@ use crate::emulation::mem::nametable_memory::{NametableArrangement, NametableMem
 use crate::emulation::mem::{Memory, MemoryDevice, Ram, Rom};
 use crate::emulation::rom::formats::archaic_ines::ArchaicInes;
 use crate::emulation::rom::formats::ines::Ines;
-use crate::emulation::rom::formats::ines_07::Ines07;
 use crate::emulation::rom::formats::ines2::Ines2;
+use crate::emulation::rom::formats::ines_07::Ines07;
 
 /// Errors that can occur while parsing a ROM file.
 #[derive(Debug, Clone)]
@@ -123,6 +122,7 @@ pub struct RomFile {
     pub submapper_number: u8,
     /// SHA-256 checksum of the raw ROM data.
     pub data_checksum: [u8; 32],
+    pub checksum_headerless: [u8; 32],
     /// Raw ROM file bytes. Skipped during serialization to reduce save state
     /// size.
     #[serde(skip)]
@@ -744,14 +744,22 @@ impl RomFile {
     /// - The header declares sizes larger than the file
     ///   ([`ParseError::SizeBiggerThanFile`]).
     pub fn load(data: &[u8], name: Option<String>) -> Result<RomFile, ParseError> {
+        let rom_type = RomFile::get_rom_type(data)?;
+        let mut rom_file = rom_type.parse(data, name)?;
+        rom_file.data = data.to_vec();
+
         let mut hasher = Sha256::new();
         hasher.update(data);
         let hash: [u8; 32] = hasher.finalize().into();
 
-        let rom_type = RomFile::get_rom_type(data)?;
-        let mut rom_file = rom_type.parse(data, name)?;
-        rom_file.data = data.to_vec();
         rom_file.data_checksum = hash;
+
+        let mut hasher = Sha256::new();
+        hasher.update(&data[17..]);
+        let headerless_hash: [u8; 32] = hasher.finalize().into();
+
+        rom_file.checksum_headerless = headerless_hash;
+
         Ok(rom_file)
     }
 
@@ -1092,6 +1100,7 @@ impl RomBuilder {
             alternative_nametables: self.alternative_nametables,
             submapper_number: self.submapper_number,
             data_checksum: [0; 32],
+            checksum_headerless: [0; 32],
             data: Vec::new(),
         }
     }

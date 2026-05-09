@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
-use monsoon_core::emulation::rom::rom_db::{DbParseError, RomDb};
+use monsoon_core::rom_db::{DbParseError, RomDb};
 
 #[derive(Default)]
 pub struct DbProvider {
@@ -20,7 +20,7 @@ pub struct DbProviderBuilder {
     #[cfg(feature = "online")]
     update_url: Option<String>,
     local_path: Option<PathBuf>,
-    direct_string: Option<String>,
+    fallback_string: Option<String>,
 }
 
 impl DbProviderBuilder {
@@ -36,8 +36,8 @@ impl DbProviderBuilder {
     }
 
     #[allow(clippy::wrong_self_convention)]
-    pub fn from_string(mut self, string: &str) -> Self {
-        self.direct_string = Some(string.to_string());
+    pub fn with_fallback(mut self, string: &str) -> Self {
+        self.fallback_string = Some(string.to_string());
         self
     }
 
@@ -91,7 +91,7 @@ impl DbProviderBuilder {
             });
         };
 
-        let direct = if let Some(direct_string) = self.direct_string {
+        let direct = if let Some(direct_string) = self.fallback_string {
             RomDb::from_xml(direct_string.as_str())
         } else {
             Err(DbParseError::NotSet)

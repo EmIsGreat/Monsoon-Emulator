@@ -10,7 +10,7 @@ use crate::emulation::mem::mirror_memory::MirrorMemory;
 use crate::emulation::mem::ppu_registers::PpuRegisters;
 use crate::emulation::mem::Memory;
 use crate::emulation::ppu::{EmulatorFetchable, Ppu};
-use crate::emulation::rom::rom_db::RomDb;
+use crate::rom_db::RomDb;
 use crate::emulation::rom::RomFile;
 use crate::emulation::savestate::{CpuState, PpuState, SaveState, VERSION};
 use crate::trace::TraceLog;
