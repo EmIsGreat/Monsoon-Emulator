@@ -26,14 +26,13 @@ use eframe::{AppCreator, CreationContext, Frame};
 use egui::{Context, Id, Style, Ui, ViewportCommand, Visuals};
 use monsoon_core::declare_renderers;
 use monsoon_core::emulation::nes::Nes;
-use monsoon_core::emulation::ppu_util::{EmulatorFetchable, PaletteData, TILE_COUNT, TileData};
+use monsoon_core::emulation::ppu_util::{EmulatorFetchable, PaletteData, TileData, TILE_COUNT};
 use monsoon_core::emulation::rom::ExpansionDevice;
 use monsoon_core::emulation::savestate::SaveState;
 use monsoon_core::emulation::screen_renderer::{
     NoneRenderer, RendererRegistration, ScreenRenderer,
 };
 use monsoon_core::util::ToBytes;
-use monsoon_db::db_provider::DbProvider;
 use monsoon_default_renderers::LookupPaletteRenderer;
 use web_time::Instant;
 
