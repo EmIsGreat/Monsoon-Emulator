@@ -1,0 +1,26 @@
+[package]
+name = "monsoon-db"
+description = "Helper crate for frontends using the monsoon-core crate as an emulation backend. Assist in updating the included rom file database in order to provide more accurate emulation"
+readme = "README.md"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[lib]
+name = "monsoon_db"
+path = "src/lib.rs"
+
+[dependencies]
+monsoon-core = { workspace = true }
+reqwest = { version = "0.13.3", features = ["brotli"], optional = true }
+directories = { version = "6.0.0", optional = true }
+
+[features]
+default = []
+
+online = ["reqwest"]
+native-cache = ["directories"]
+wasm-cache = []

@@ -2,13 +2,15 @@ use std::cell::RefCell;
 use std::fmt::Debug;
 use std::ops::{Deref, RangeInclusive};
 use std::rc::Rc;
+use std::sync::LazyLock;
 use std::time::Duration;
 
 use crate::emulation::cpu::{Cpu, MicroOp};
-use crate::emulation::mem::Memory;
 use crate::emulation::mem::mirror_memory::MirrorMemory;
 use crate::emulation::mem::ppu_registers::PpuRegisters;
+use crate::emulation::mem::Memory;
 use crate::emulation::ppu::{EmulatorFetchable, Ppu};
+use crate::emulation::rom::rom_db::RomDb;
 use crate::emulation::rom::RomFile;
 use crate::emulation::savestate::{CpuState, PpuState, SaveState, VERSION};
 use crate::trace::TraceLog;
@@ -25,6 +27,11 @@ pub const FRAME_DURATION: Duration = Duration::from_nanos(16_666_667);
 /// the PPU divides it by 4, so one master cycle is the finest timing
 /// granularity.
 pub const MASTER_CYCLES_PER_FRAME: u32 = 357366;
+
+static BUILTIN_DB: LazyLock<RomDb> = LazyLock::new(|| {
+    RomDb::from_xml(include_str!("../../assets/no-intro-db.xml"))
+        .expect("invalid builtin rom database")
+});
 
 /// The top-level NES emulator.
 ///
@@ -496,6 +503,8 @@ impl Nes {
             trace.trace(state)
         }
     }
+
+    pub fn builtin_rom_database() -> &'static RomDb { &BUILTIN_DB }
 }
 
 impl Default for Nes {

@@ -2,7 +2,6 @@ use std::process::ExitCode;
 
 use clap::value_parser;
 
-#[cfg(feature = "default_renderers")]
 mod renderers {
     extern crate monsoon_default_renderers;
 }

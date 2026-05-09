@@ -7,6 +7,7 @@
 //! For programmatic ROM construction (e.g., in tests), use [`RomBuilder`].
 
 mod formats;
+pub mod rom_db;
 
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
