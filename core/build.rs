@@ -38,9 +38,9 @@ fn merge_rom_db() -> Result<(), Box<dyn std::error::Error>> {
     println!("cargo:rerun-if-changed=../xtask/assets/no-intro-db-alt-names.xml");
     println!("cargo:rerun-if-changed=../Cargo.lock");
 
-    let headered_file = include_str!("../xtask/assets/no-intro-db.xml");
-    let headerless_file = include_str!("../xtask/assets/no-intro-db-headerless.xml");
-    let alt_name_file = include_str!("../xtask/assets/no-intro-db-alt-names.xml");
+    let headered_file = include_str!("./assets/no-intro-db.xml");
+    let headerless_file = include_str!("./assets/no-intro-db-headerless.xml");
+    let alt_name_file = include_str!("./assets/no-intro-db-alt-names.xml");
 
     let mut headered_reader = Reader::from_str(headered_file);
     let mut headerless_reader = Reader::from_str(headerless_file);

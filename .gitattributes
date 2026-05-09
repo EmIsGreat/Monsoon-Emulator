@@ -1,3 +1,4 @@
 core/tests/** linguist-vendored
+core/assets/** linguist-vendored
 wiki-clone/** linguist-vendored
 pally/** linguist-vendored

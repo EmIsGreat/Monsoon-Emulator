@@ -181,5 +181,6 @@ fabric.properties
 /core/tests/outputs/*.log
 /log
 /frontend/dist/
+core/assets/rom-info-db.bin
 
 .idea
