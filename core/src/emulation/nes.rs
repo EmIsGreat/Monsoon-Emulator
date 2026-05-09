@@ -28,7 +28,7 @@ pub const FRAME_DURATION: Duration = Duration::from_nanos(16_666_667);
 pub const MASTER_CYCLES_PER_FRAME: u32 = 357366;
 
 static BUILTIN_DB: LazyLock<RomDb> = LazyLock::new(|| {
-    RomDb::from_xml(include_str!("../../assets/no-intro-db.xml"))
+    RomDb::from_xml("d")
         .expect("invalid builtin rom database")
 });
 

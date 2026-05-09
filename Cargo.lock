@@ -2721,8 +2721,10 @@ name = "monsoon-core"
 version = "0.2.2"
 dependencies = [
  "enum_delegate",
+ "hex",
  "num_enum",
  "postcard",
+ "quick-xml",
  "serde",
  "serde_json",
  "sha2",
@@ -2774,6 +2776,16 @@ dependencies = [
  "wasm-bindgen-futures",
  "web-sys",
  "web-time",
+]
+
+[[package]]
+name = "monsoon-xtasks"
+version = "0.2.2"
+dependencies = [
+ "hex",
+ "postcard",
+ "quick-xml",
+ "serde",
 ]
 
 [[package]]

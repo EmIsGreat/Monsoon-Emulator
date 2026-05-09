@@ -14,13 +14,13 @@ use monsoon_core::emulation::nes::Nes;
 use monsoon_core::emulation::palette_util::RgbColor;
 use monsoon_core::emulation::ppu_util::{TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH};
 use monsoon_core::emulation::rom::RomFile;
-use monsoon_core::emulation::screen_renderer::{ScreenRenderer, create_renderer};
+use monsoon_core::emulation::screen_renderer::{create_renderer, ScreenRenderer};
 
 use crate::cli::{
-    CliArgs, ExecutionConfig, ExecutionEngine, ExecutionResult, FpsConfig, MemoryDump, MemoryInit,
-    MemoryInitConfig, MemoryType, OutputWriter, SavestateConfig, StopReason, StreamingVideoEncoder,
-    VideoFormat, VideoResolution, apply_memory_init, apply_memory_init_config, is_ffmpeg_available,
-    parse_memory_range,
+    apply_memory_init, apply_memory_init_config, is_ffmpeg_available, parse_memory_range, CliArgs, ExecutionConfig, ExecutionEngine,
+    ExecutionResult, FpsConfig, MemoryDump, MemoryInit, MemoryInitConfig, MemoryType,
+    OutputWriter, SavestateConfig, StopReason, StreamingVideoEncoder, VideoFormat,
+    VideoResolution,
 };
 
 // =============================================================================
@@ -206,6 +206,10 @@ pub fn print_rom_info(rom_path: &Path) -> Result<(), String> {
     if let Some(ref name) = rom.name {
         println!("  Name: {}", name);
     }
+    println!(
+        "  File Size: {}",
+        format_bytes_human_readable(rom.data.len() as u32)
+    );
     println!("  Mapper: {}", rom.mapper);
     println!("  Submapper: {}", rom.submapper_number);
     println!("  CPU/PPU Timing: {}", rom.timing_region);
@@ -271,6 +275,13 @@ pub fn print_rom_info(rom_path: &Path) -> Result<(), String> {
     println!(
         "  Checksum (SHA-256): {}",
         rom.data_checksum
+            .iter()
+            .map(|b| format!("{:02x}", b))
+            .collect::<String>()
+    );
+    println!(
+        "  Headerless Checksum (SHA-256): {}",
+        rom.checksum_headerless
             .iter()
             .map(|b| format!("{:02x}", b))
             .collect::<String>()

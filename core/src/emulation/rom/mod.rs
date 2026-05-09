@@ -755,7 +755,7 @@ impl RomFile {
         rom_file.data_checksum = hash;
 
         let mut hasher = Sha256::new();
-        hasher.update(&data[17..]);
+        hasher.update(&data[16..]);
         let headerless_hash: [u8; 32] = hasher.finalize().into();
 
         rom_file.checksum_headerless = headerless_hash;
