@@ -88,3 +88,4 @@ pub mod emulation;
 mod tests;
 pub mod trace;
 pub mod util;
+pub mod rom_db;

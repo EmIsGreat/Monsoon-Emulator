@@ -1,7 +1,7 @@
 cargo-features = ["profile-rustflags"]
 
 [workspace]
-members = ["core", "frontend", "cli", "renderer"]
+members = ["core", "frontend", "cli", "renderer", "db"]
 default-members = ["frontend"]
 resolver = "3"
 
@@ -16,6 +16,7 @@ categories = ["emulators", "game-development"]
 [workspace.dependencies]
 monsoon-core = { version = "0.2.2", path = "core" }
 monsoon-default-renderers = { version = "0.2.2", path = "renderer" }
+monsoon-db = {version = "0.2.2", path = "db" }
 
 [profile.release]
 strip = true
