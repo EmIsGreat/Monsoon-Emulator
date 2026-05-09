@@ -38,7 +38,7 @@ pub fn handle_keyboard_input(
 
             // Now no borrow of `config.keybindings` is active
             for action in actions {
-                action.get_callback_function()(async_sender);
+                action.send(async_sender);
             }
 
             // Consume key events for non-controller active keybindings so that

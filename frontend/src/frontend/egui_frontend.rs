@@ -21,7 +21,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use crossbeam_channel::{Receiver, Sender};
-use eframe::Frame;
+use eframe::{AppCreator, CreationContext, Frame};
 use egui::{Context, Id, Style, Ui, ViewportCommand, Visuals};
 use monsoon_core::declare_renderers;
 use monsoon_core::emulation::nes::Nes;
@@ -110,7 +110,7 @@ pub struct EguiApp {
 
 impl EguiApp {
     pub fn new(
-        cc: &eframe::CreationContext<'_>,
+        cc: &CreationContext<'_>,
         loaded_config: Option<PersistentConfig>,
         channel_emu: ChannelEmulator,
         to_emulator: Sender<FrontendMessage>,
@@ -834,35 +834,38 @@ async fn run_internal(res: SetupResponse) -> Result<(), Box<dyn std::error::Erro
             .with_app_id("monsoon-emulator"),
         vsync: false, // Disable vsync for uncapped performance
         // Enable persistence with custom storage path
-        persistence_path: res.persistence_path,
+        persistence_path: res.persistence_path.clone(),
         renderer: eframe::Renderer::Wgpu,
         ..Default::default()
     };
 
     // Run the application
-    eframe::run_native(
-        "Monsoon",
-        options,
-        Box::new(move |cc| {
-            let style = Style {
-                visuals: Visuals::dark(),
-                ..Default::default()
-            };
-            cc.egui_ctx.set_global_style(style);
-            cc.egui_ctx.set_theme(egui::Theme::Dark);
-            Ok(Box::new(EguiApp::new(
-                cc,
-                loaded_config,
-                res.emu,
-                res.to_emu,
-                res.from_emu,
-                res.async_sender,
-                res.from_async,
-            )))
-        }),
-    )?;
+    eframe::run_native("Monsoon", options, get_app_config(res, loaded_config))?;
 
     Ok(())
+}
+
+fn get_app_config(
+    res: SetupResponse,
+    loaded_config: Option<PersistentConfig>,
+) -> AppCreator<'static> {
+    Box::new(move |cc: &CreationContext| {
+        let style = Style {
+            visuals: Visuals::dark(),
+            ..Default::default()
+        };
+        cc.egui_ctx.set_global_style(style);
+        cc.egui_ctx.set_theme(egui::Theme::Dark);
+        Ok(Box::new(EguiApp::new(
+            cc,
+            loaded_config,
+            res.emu,
+            res.to_emu,
+            res.from_emu,
+            res.async_sender,
+            res.from_async,
+        )))
+    })
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -893,27 +896,7 @@ fn run_internal_wasm(res: SetupResponse) -> Result<(), Box<dyn std::error::Error
         };
 
         eframe::WebRunner::new()
-            .start(
-                canvas,
-                options,
-                Box::new(move |cc| {
-                    let style = Style {
-                        visuals: Visuals::dark(),
-                        ..Default::default()
-                    };
-                    cc.egui_ctx.set_style(style);
-                    cc.egui_ctx.set_theme(egui::Theme::Dark);
-                    Ok(Box::new(EguiApp::new(
-                        cc,
-                        loaded_config,
-                        res.emu,
-                        res.to_emu,
-                        res.from_emu,
-                        res.async_sender,
-                        res.from_async,
-                    )))
-                }),
-            )
+            .start(canvas, options, get_app_config(res, loaded_config))
             .await
             .unwrap()
     });

@@ -1,54 +1,53 @@
 name: Lint
 
 on:
-  pull_request:
-    branches: [main]
+    pull_request:
+        branches: [ release ]
+
+    workflow_dispatch:
 
 permissions:
-  contents: write
+    contents: write
 
 jobs:
-  format:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+    format:
+        runs-on: ubuntu-latest
+        steps:
+            -   name: Checkout code
+                uses: actions/checkout@v4
+                with:
+                    ref: ${{ github.head_ref }}
+                    token: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: dtolnay/rust-toolchain@nightly
-        with:
-          components: rustfmt
+            -   uses: dtolnay/rust-toolchain@nightly
+                with:
+                    components: rustfmt
 
-      - name: Run cargo fmt --all
-        run: cargo fmt --all
+            -   name: Run cargo fmt --all
+                run: cargo fmt --all
 
-      - name: Commit formatting fixes
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "style: auto-format with cargo fmt --all"
+            -   name: Commit formatting fixes
+                uses: stefanzweifel/git-auto-commit-action@v5
+                with:
+                    commit_message: "style: auto-format with cargo fmt --all"
 
-  clippy:
-    needs: format
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+    clippy:
+        needs: format
+        runs-on: ubuntu-latest
+        steps:
+            -   name: Checkout code
+                uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@nightly
-        with:
-          components: clippy
-          target: wasm32-unknown-unknown
+            -   uses: dtolnay/rust-toolchain@nightly
+                with:
+                    components: clippy
+                    target: wasm32-unknown-unknown
 
-      - name: Cache Cargo
-        uses: Swatinem/rust-cache@v2
+            -   name: Cache Cargo
+                uses: Swatinem/rust-cache@v2
 
-      - name: Run clippy on workspace
-        run: cargo clippy --workspace -- -D warnings
+            -   name: Run clippy on workspace
+                run: cargo clippy --workspace -- -D warnings
 
-      - name: Run clippy for WASM target
-        run: cargo clippy -p monsoon-frontend --target wasm32-unknown-unknown -- -D warnings
-
-      - name: Run clippy on CLI crate
-        run: cargo clippy -p monsoon-cli -- -D warnings
+            -   name: Run clippy for WASM target
+                run: cargo clippy --workspace --target wasm32-unknown-unknown --exclude monsoon-cli -- -D warnings
