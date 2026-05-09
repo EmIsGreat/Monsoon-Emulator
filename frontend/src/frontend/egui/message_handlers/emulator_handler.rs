@@ -65,7 +65,7 @@ impl EguiApp {
                 self.handle_savestate(s, t);
             }
             EmulatorMessage::RomLoaded(rom) => {
-                self.config.console_config.loaded_rom = rom;
+                self.config.console_config.loaded_rom = *rom;
             }
         }
     }

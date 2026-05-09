@@ -70,5 +70,5 @@ pub enum EmulatorMessage {
     Stopped,
     DebugData(EmulatorFetchable),
     SaveState(Box<SaveState>, SaveType),
-    RomLoaded(Option<(RomFile, LoadedRom)>),
+    RomLoaded(Box<Option<(RomFile, LoadedRom)>>),
 }

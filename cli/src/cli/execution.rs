@@ -811,7 +811,7 @@ impl ExecutionEngine {
                 // Write frame directly to encoder (with upscaling if configured)
                 // This captures the current pixel buffer state, which may be mid-render
                 let frame = self.emu.get_pixel_buffer();
-                let rgb_frame = renderer.buffer_to_image(&frame);
+                let rgb_frame = renderer.buffer_to_image(frame);
                 encoder
                     .write_frame(rgb_frame)
                     .map_err(|e| format!("Video encoding error: {}", e))?;

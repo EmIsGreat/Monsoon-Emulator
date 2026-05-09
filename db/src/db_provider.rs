@@ -20,7 +20,7 @@ pub struct DbProviderBuilder {
     #[cfg(feature = "online")]
     update_url: Option<String>,
     local_path: Option<PathBuf>,
-    fallback_string: Option<String>,
+    fallback_string: Option<Vec<u8>>,
 }
 
 impl DbProviderBuilder {
@@ -36,21 +36,21 @@ impl DbProviderBuilder {
     }
 
     #[allow(clippy::wrong_self_convention)]
-    pub fn with_fallback(mut self, string: &str) -> Self {
-        self.fallback_string = Some(string.to_string());
+    pub fn with_fallback(mut self, data: Vec<u8>) -> Self {
+        self.fallback_string = Some(data);
         self
     }
 
     pub async fn build(self) -> Result<DbProvider, DbParseError> {
         #[cfg(feature = "online")]
         let url = if let Some(url) = self.update_url {
-            let resp = reqwest::get(url).await;
+            let resp = reqwest::get(&url).await;
 
             if let Ok(resp) = resp {
-                let data = resp.text().await;
+                let data = resp.bytes().await;
 
                 if let Ok(data) = data {
-                    RomDb::from_xml(data.as_str())
+                    RomDb::deserialize(&data[..])
                 } else {
                     Err(DbParseError::IOError)
                 }
@@ -66,15 +66,17 @@ impl DbProviderBuilder {
             return Ok(DbProvider {
                 db,
             });
+        } else {
+            eprintln!("URL deserialization failed: {:?}", url.unwrap_err())
         };
 
         let local = if let Some(path) = self.local_path {
-            let file = File::open(path);
+            let file = File::open(&path);
 
             if let Ok(mut file) = file {
-                let mut content = String::new();
-                if file.read_to_string(&mut content).is_ok() {
-                    RomDb::from_xml(content.as_str())
+                let mut buf = Vec::new();
+                if file.read(&mut buf).is_ok() {
+                    RomDb::deserialize(&buf)
                 } else {
                     Err(DbParseError::IOError)
                 }
@@ -89,10 +91,12 @@ impl DbProviderBuilder {
             return Ok(DbProvider {
                 db,
             });
+        } else {
+            println!("{:?}", local.unwrap_err())
         };
 
-        let direct = if let Some(direct_string) = self.fallback_string {
-            RomDb::from_xml(direct_string.as_str())
+        let direct = if let Some(fallback) = self.fallback_string {
+            RomDb::deserialize(&fallback)
         } else {
             Err(DbParseError::NotSet)
         };
@@ -101,6 +105,8 @@ impl DbProviderBuilder {
             return Ok(DbProvider {
                 db,
             });
+        } else {
+            println!("{:?}", direct.unwrap_err())
         };
 
         Err(DbParseError::AllOptionsFailed)

@@ -27,10 +27,7 @@ pub const FRAME_DURATION: Duration = Duration::from_nanos(16_666_667);
 /// granularity.
 pub const MASTER_CYCLES_PER_FRAME: u32 = 357366;
 
-static BUILTIN_DB: LazyLock<RomDb> = LazyLock::new(|| {
-    RomDb::from_xml("d")
-        .expect("invalid builtin rom database")
-});
+static BUILTIN_DB: LazyLock<RomDb> = LazyLock::new(RomDb::default);
 
 /// The top-level NES emulator.
 ///

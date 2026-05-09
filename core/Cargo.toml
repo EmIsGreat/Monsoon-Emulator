@@ -2,6 +2,7 @@
 name = "monsoon-core"
 description = "Core NES emulation library — cycle-accurate MOS 6502 CPU, 2C02 PPU, memory subsystem, ROM parsing, and save states"
 readme = "README.md"
+build = "build.rs"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -23,5 +24,11 @@ sha2 = { version = "0.11.0" }
 num_enum = { version = "0.7.6" }
 enum_delegate = "0.2.0"
 static_assertions = "1.1.0"
+quick-xml = { version = "0.39.4" }
+hex = { version = "0.4.3" }
+
+[build-dependencies]
+serde = { version = "1.0", features = ["derive"] }
+postcard = { version = "1.1", features = ["use-std"] }
 quick-xml = { version = "0.39.4" }
 hex = { version = "0.4.3" }

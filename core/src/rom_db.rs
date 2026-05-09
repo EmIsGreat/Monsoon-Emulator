@@ -1,37 +1,44 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct RomDb {
     pub version: String,
-    pub data: HashMap<[u8; 32], Arc<RomDbEntry>>,
+    pub data: HashMap<[u8; 32], RomDbEntry>,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct RomDbEntry {
     pub name: String,
-    pub full_rom_hash: [u8; 32],
-    pub headerless_hash: [u8; 32],
-    pub header: [u8; 16],
+    pub orig_name: Option<String>,
+    pub headered_sha256: Option<[u8; 32]>,
+    pub unheadered_sha256: Option<[u8; 32]>,
+    pub header: Option<Vec<u8>>,
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum DbParseError {
     Invalid,
     IOError,
     AllOptionsFailed,
     NotSet,
+    DeserializationError(postcard::Error),
+}
+
+impl From<postcard::Error> for DbParseError {
+    fn from(value: postcard::Error) -> Self { DbParseError::DeserializationError(value) }
 }
 
 impl RomDb {
-    pub fn from_xml(main: &str) -> Result<Self, DbParseError> {
-        Ok(RomDb {
-            data: HashMap::new(),
-            version: "1".to_string(),
-        })
+    pub fn deserialize(data: &[u8]) -> Result<Self, DbParseError> {
+        postcard::from_bytes::<RomDb>(data).map_err(DbParseError::from)
     }
 }
 
 impl Default for RomDb {
-    fn default() -> Self { RomDb::from_xml(include_str!("../../xtask/assets/no-intro-db.xml")).unwrap() }
+    fn default() -> Self {
+        postcard::from_bytes::<RomDb>(include_bytes!("../assets/rom-info-db.bin"))
+            .expect("Error deserializing built-in rom db")
+    }
 }

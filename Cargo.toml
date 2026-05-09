@@ -1,8 +1,8 @@
 cargo-features = ["profile-rustflags"]
 
 [workspace]
-members = ["core", "frontend", "cli", "renderer", "db", "xtask"]
-default-members = ["frontend", "xtask"]
+members = ["core", "frontend", "cli", "renderer", "db"]
+default-members = ["frontend"]
 resolver = "3"
 
 [workspace.package]

@@ -39,7 +39,7 @@ monsoon-default-renderers = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { version = "1.52", features = ["rt-multi-thread", "macros"] }
-monsoon-db = { workspace = true, features = ["native-cache"] }
+monsoon-db = { workspace = true, features = ["online", "native-cache"] }
 
 # Web-only dependencies
 [target.'cfg(target_arch = "wasm32")'.dependencies]

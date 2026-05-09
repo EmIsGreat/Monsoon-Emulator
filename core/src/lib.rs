@@ -84,8 +84,8 @@
 extern crate core;
 #[allow(clippy::upper_case_acronyms)]
 pub mod emulation;
+pub mod rom_db;
 #[cfg(test)]
 mod tests;
 pub mod trace;
 pub mod util;
-pub mod rom_db;
