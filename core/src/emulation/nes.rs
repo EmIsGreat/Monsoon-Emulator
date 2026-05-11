@@ -27,7 +27,7 @@ pub const FRAME_DURATION: Duration = Duration::from_nanos(16_666_667);
 /// granularity.
 pub const MASTER_CYCLES_PER_FRAME: u32 = 357366;
 
-static BUILTIN_DB: LazyLock<Arc<RomDb>> = LazyLock::new(|| Arc::new(RomDb::default()));
+static ROM_DB: LazyLock<Arc<RomDb>> = LazyLock::new(|| Arc::new(RomDb::default()));
 
 /// The top-level NES emulator.
 ///
@@ -531,7 +531,7 @@ impl Nes {
         }
     }
 
-    pub fn builtin_rom_database() -> &'static RomDb { &BUILTIN_DB }
+    pub fn builtin_rom_database() -> &'static RomDb { &ROM_DB }
 }
 
 impl Default for Nes {

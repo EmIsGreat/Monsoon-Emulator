@@ -20,7 +20,7 @@ impl DbProvider {
 pub struct DbProviderBuilder {
     #[cfg(feature = "online")]
     update_url: Option<String>,
-    local_path: Option<PathBuf>,
+    cache_path: Option<PathBuf>,
     fallback: Option<Arc<RomDb>>,
 }
 
@@ -31,8 +31,8 @@ impl DbProviderBuilder {
         self
     }
 
-    pub fn with_local_path(mut self, path: &Path) -> Self {
-        self.local_path = Some(path.to_path_buf());
+    pub fn with_cache_path(mut self, path: &Path) -> Self {
+        self.cache_path = Some(path.to_path_buf());
         self
     }
 
@@ -70,7 +70,7 @@ impl DbProviderBuilder {
             eprintln!("URL deserialization failed: {:?}", url.unwrap_err())
         };
 
-        let local = if let Some(path) = self.local_path {
+        let cache = if let Some(path) = self.cache_path {
             let file = File::open(&path);
 
             if let Ok(mut file) = file {
@@ -87,12 +87,12 @@ impl DbProviderBuilder {
             Err(DbParseError::NotSet)
         };
 
-        if let Ok(db) = local {
+        if let Ok(db) = cache {
             return Ok(DbProvider {
                 db: Arc::new(db),
             });
         } else {
-            println!("{:?}", local.unwrap_err())
+            println!("{:?}", cache.unwrap_err())
         };
 
         if let Some(fallback) = self.fallback.clone() {
