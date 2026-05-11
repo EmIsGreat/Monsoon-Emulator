@@ -49,6 +49,9 @@ impl EguiApp {
                 self.config.user_config.previous_palette_load_dir = Some(loaded.directory);
                 self.handle_palette_loaded(ctx, loaded.palette);
             }
+            AsyncFrontendMessage::RomDbReady(db) => {
+                let _ = self.to_emulator.send(FrontendMessage::UpdateRomDb(db));
+            }
             AsyncFrontendMessage::FileSaveCompleted {
                 error,
                 directory,

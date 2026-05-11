@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
 
 use serde::{Deserialize, Serialize};
 
@@ -8,13 +9,28 @@ pub struct RomDb {
     pub data: HashMap<[u8; 32], RomDbEntry>,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct RomDbEntry {
     pub name: String,
     pub orig_name: Option<String>,
     pub headered_sha256: Option<[u8; 32]>,
     pub unheadered_sha256: Option<[u8; 32]>,
     pub header: Option<Vec<u8>>,
+}
+
+impl Hash for RomDb {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.version.hash(state);
+
+        let mut keys: Vec<_> = self.data.keys().collect();
+        keys.sort_unstable();
+        for key in keys {
+            key.hash(state);
+            if let Some(entry) = self.data.get(key) {
+                entry.hash(state);
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

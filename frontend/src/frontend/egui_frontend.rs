@@ -31,7 +31,9 @@ use monsoon_core::emulation::savestate::SaveState;
 use monsoon_core::emulation::screen_renderer::{
     NoneRenderer, RendererRegistration, ScreenRenderer,
 };
+use monsoon_core::rom_db::RomDb;
 use monsoon_core::util::ToBytes;
+use monsoon_db::db_provider::DbProvider;
 use monsoon_default_renderers::LookupPaletteRenderer;
 use web_time::Instant;
 
@@ -762,6 +764,27 @@ fn common_setup(rom: Option<PathBuf>) -> SetupResponse {
     // Create channel-based emulator wrapper
     let (emu, to_emu, from_emu) = ChannelEmulator::new(console);
     let (async_sender, from_async) = crossbeam_channel::unbounded();
+
+    {
+        let async_sender = async_sender.clone();
+        crate::frontend::util::spawn_async(async move {
+            let mut builder = DbProvider::builder().with_fallback(Arc::new(RomDb::default()));
+
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                if let Some(cache_path) =
+                    crate::frontend::persistence::get_cache_file_path("rom-info-db.bin")
+                {
+                    builder = builder.with_cache_path(&cache_path);
+                }
+                builder = builder.with_update_url("https://updates.gemderbent.dev/manifest.json");
+            }
+
+            if let Ok(provider) = builder.build().await {
+                let _ = async_sender.send(AsyncFrontendMessage::RomDbReady(provider.database()));
+            }
+        });
+    }
 
     if rom.is_some() {
         // Setup Emulator State via messages - read ROM file if provided

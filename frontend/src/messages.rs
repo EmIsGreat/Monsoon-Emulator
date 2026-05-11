@@ -1,6 +1,9 @@
+use std::sync::Arc;
+
 use monsoon_core::emulation::ppu_util::EmulatorFetchable;
 use monsoon_core::emulation::rom::{ExpansionDevice, RomFile};
 use monsoon_core::emulation::savestate::SaveState;
+use monsoon_core::rom_db::RomDb;
 
 use crate::frontend::messages::LoadedRom;
 
@@ -37,6 +40,7 @@ pub enum FrontendMessage {
     StepMasterCycle,
     StepScanline,
     AttachPeripherals((Option<ExpansionDevice>, Option<ExpansionDevice>)),
+    UpdateRomDb(Arc<RomDb>),
 }
 
 #[derive(Debug, Default, Eq, PartialEq, Copy, Clone, Hash)]

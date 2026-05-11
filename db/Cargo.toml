@@ -17,10 +17,12 @@ path = "src/lib.rs"
 monsoon-core = { workspace = true }
 reqwest = { version = "0.13.3", features = ["brotli"], optional = true }
 directories = { version = "6.0.0", optional = true }
+serde = { version = "1.0", features = ["derive"], optional = true }
+serde_json = { version = "1.0", optional = true }
 
 [features]
 default = []
 
-online = ["reqwest"]
+online = ["reqwest", "serde", "serde_json"]
 native-cache = ["directories"]
 wasm-cache = []
