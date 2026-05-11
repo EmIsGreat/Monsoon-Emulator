@@ -938,7 +938,7 @@ fn run_internal_wasm(res: SetupResponse) -> Result<(), Box<dyn std::error::Error
                 if let Ok((provider, bytes_to_cache)) = builder.build().await {
                     // Persist freshly-fetched bytes for the next run.
                     if let Some(bytes) = bytes_to_cache {
-                        let _ = WasmStorage::new().set(&cache_key, bytes).await;
+                        let _ = wasm_storage.set(&cache_key, bytes).await;
                     }
                     let _ = db_async_sender
                         .send(AsyncFrontendMessage::RomDbReady(provider.database()));
