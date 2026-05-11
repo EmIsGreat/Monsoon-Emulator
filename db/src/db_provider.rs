@@ -3,9 +3,9 @@ use std::sync::Arc;
 
 use monsoon_core::rom_db::{DbParseError, RomDb};
 
-use crate::manifest::is_newer;
 #[cfg(feature = "online")]
 use crate::manifest::Manifest;
+use crate::manifest::is_newer;
 
 #[derive(Clone)]
 enum Source {
@@ -87,7 +87,9 @@ impl DbProviderBuilder {
             candidates.push(Candidate {
                 version: db.version,
                 preference: 1,
-                source: Source::Local { bytes },
+                source: Source::Local {
+                    bytes,
+                },
             });
         }
 
@@ -98,7 +100,9 @@ impl DbProviderBuilder {
             candidates.push(Candidate {
                 version,
                 preference: 2,
-                source: Source::Remote { url: db_url },
+                source: Source::Remote {
+                    url: db_url,
+                },
             });
         }
 
@@ -120,7 +124,11 @@ impl DbProviderBuilder {
 
         for candidate in candidates {
             match try_load_source(candidate.source, cache_path.as_deref()).await {
-                Ok(db) => return Ok(DbProvider { db }),
+                Ok(db) => {
+                    return Ok(DbProvider {
+                        db,
+                    });
+                }
                 Err(err) => last_error = err,
             }
         }
@@ -129,12 +137,19 @@ impl DbProviderBuilder {
     }
 }
 
-async fn try_load_source(source: Source, cache_path: Option<&Path>) -> Result<Arc<RomDb>, DbParseError> {
+async fn try_load_source(
+    source: Source,
+    cache_path: Option<&Path>,
+) -> Result<Arc<RomDb>, DbParseError> {
     match source {
         Source::BuiltIn(db) => Ok(db),
-        Source::Local { bytes } => RomDb::deserialize(&bytes).map(Arc::new),
+        Source::Local {
+            bytes,
+        } => RomDb::deserialize(&bytes).map(Arc::new),
         #[cfg(feature = "online")]
-        Source::Remote { url } => {
+        Source::Remote {
+            url,
+        } => {
             let response = reqwest::get(url).await.map_err(|_| DbParseError::IOError)?;
             let bytes = response.bytes().await.map_err(|_| DbParseError::IOError)?;
             let db = RomDb::deserialize(&bytes)?;
@@ -157,7 +172,10 @@ async fn fetch_manifest_info(update_url: &str) -> Option<(String, String)> {
     let response = reqwest::get(update_url).await.ok()?;
     let text = response.text().await.ok()?;
     let manifest: Manifest = serde_json::from_str(&text).ok()?;
-    let db_url = manifest_url.join(&manifest.rom_info_db.url).ok()?.to_string();
+    let db_url = manifest_url
+        .join(&manifest.rom_info_db.url)
+        .ok()?
+        .to_string();
 
     Some((manifest.rom_info_db.version, db_url))
 }
