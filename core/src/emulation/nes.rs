@@ -4,6 +4,8 @@ use std::ops::RangeInclusive;
 use std::sync::{Arc, LazyLock};
 use std::time::Duration;
 
+use arc_swap::ArcSwap;
+
 use crate::emulation::board::{Board, CpuBus, CpuBusView, PpuBus, PpuBusView};
 use crate::emulation::cpu::MicroOp;
 use crate::emulation::peripherals::Peripheral;
@@ -27,7 +29,11 @@ pub const FRAME_DURATION: Duration = Duration::from_nanos(16_666_667);
 /// granularity.
 pub const MASTER_CYCLES_PER_FRAME: u32 = 357366;
 
-static ROM_DB: LazyLock<Arc<RomDb>> = LazyLock::new(|| Arc::new(RomDb::default()));
+static ROM_DB: LazyLock<ArcSwap<RomDb>> = LazyLock::new(|| ArcSwap::from_pointee(RomDb::default()));
+
+pub fn rom_db() -> Arc<RomDb> { ROM_DB.load_full() }
+
+pub fn set_rom_db(db: Arc<RomDb>) { ROM_DB.store(db); }
 
 /// The top-level NES emulator.
 ///
@@ -531,7 +537,7 @@ impl Nes {
         }
     }
 
-    pub fn builtin_rom_database() -> &'static RomDb { &ROM_DB }
+    pub fn builtin_rom_database() -> Arc<RomDb> { rom_db() }
 }
 
 impl Default for Nes {

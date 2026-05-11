@@ -206,6 +206,9 @@ impl ChannelEmulator {
                 FrontendMessage::AttachPeripherals((peripheral1, peripheral2)) => {
                     self.nes.attach_peripherals((peripheral1, peripheral2))
                 }
+                FrontendMessage::UpdateRomDb(db) => {
+                    monsoon_core::emulation::nes::set_rom_db(db);
+                }
             }
         }
 

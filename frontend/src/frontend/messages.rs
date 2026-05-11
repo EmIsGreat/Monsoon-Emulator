@@ -1,5 +1,8 @@
+use std::sync::Arc;
+
 use monsoon_core::emulation::palette_util::RgbPalette;
 use monsoon_core::emulation::savestate::SaveState;
+use monsoon_core::rom_db::RomDb;
 use serde::{Deserialize, Serialize};
 
 use crate::frontend::savestates::SaveEntry;
@@ -65,6 +68,7 @@ pub enum AsyncFrontendMessage {
     /// Palette file was loaded asynchronously - includes the parsed palette
     /// data and directory
     PaletteLoaded(LoadedPalette),
+    RomDbReady(Arc<RomDb>),
     /// User has selected a savestate file, now need to verify/select ROM
     SavestateLoaded(Box<SavestateLoadContext>),
     /// Show dialog asking if user wants to load the found matching ROM (native
