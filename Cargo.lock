@@ -2745,7 +2745,6 @@ dependencies = [
 name = "monsoon-db"
 version = "0.2.2"
 dependencies = [
- "directories",
  "monsoon-core",
  "reqwest",
  "serde",

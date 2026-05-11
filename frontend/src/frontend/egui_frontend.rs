@@ -830,19 +830,22 @@ async fn run_internal(res: SetupResponse) -> Result<(), Box<dyn std::error::Erro
     {
         let async_sender = res.async_sender.clone();
         crate::frontend::util::spawn_async(async move {
+            let cache_key = storage::db_cache_key();
+            let cache_bytes = storage::read_sync(&cache_key).ok();
+
             let mut builder = DbProvider::builder().with_fallback(Arc::new(RomDb::default()));
 
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                if let Some(cache_path) =
-                    crate::frontend::persistence::get_cache_file_path("rom-info-db.bin")
-                {
-                    builder = builder.with_cache_path(&cache_path);
-                }
-                builder = builder.with_update_url("https://updates.gemderbent.dev/manifest.json");
+            if let Some(bytes) = cache_bytes {
+                builder = builder.with_cache_bytes(bytes);
             }
 
-            if let Ok(provider) = builder.build().await {
+            builder = builder.with_update_url("https://updates.gemderbent.dev/manifest.json");
+
+            if let Ok((provider, bytes_to_cache)) = builder.build().await {
+                // Persist freshly-fetched remote bytes so they're available next run.
+                if let Some(bytes) = bytes_to_cache {
+                    let _ = storage::write_sync(&cache_key, &bytes);
+                }
                 let _ = async_sender.send(AsyncFrontendMessage::RomDbReady(provider.database()));
             }
         });
@@ -911,6 +914,37 @@ fn run_internal_wasm(res: SetupResponse) -> Result<(), Box<dyn std::error::Error
 
         // Load configuration before starting eframe (we're in an async context)
         let loaded_config = load_config().await;
+
+        // Kick off DB initialisation using IndexedDB-backed storage.
+        {
+            let db_async_sender = res.async_sender.clone();
+            wasm_bindgen_futures::spawn_local(async move {
+                use storage::WasmStorage;
+
+                let cache_key = storage::db_cache_key();
+                let wasm_storage = WasmStorage::new();
+                let cache_bytes = wasm_storage.get(&cache_key).await.ok();
+
+                let mut builder =
+                    DbProvider::builder().with_fallback(Arc::new(RomDb::default()));
+
+                if let Some(bytes) = cache_bytes {
+                    builder = builder.with_cache_bytes(bytes);
+                }
+
+                builder =
+                    builder.with_update_url("https://updates.gemderbent.dev/manifest.json");
+
+                if let Ok((provider, bytes_to_cache)) = builder.build().await {
+                    // Persist freshly-fetched bytes for the next run.
+                    if let Some(bytes) = bytes_to_cache {
+                        let _ = WasmStorage::new().set(&cache_key, bytes).await;
+                    }
+                    let _ = db_async_sender
+                        .send(AsyncFrontendMessage::RomDbReady(provider.database()));
+                }
+            });
+        }
 
         // Configure eframe options
         // Disable vsync to allow uncapped frame rates - emulator handles its own timing

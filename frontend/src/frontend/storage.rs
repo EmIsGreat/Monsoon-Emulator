@@ -120,32 +120,40 @@ pub struct StorageKey {
 
 impl Display for StorageKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}/{}", self.category.prefix(), self.sub_path)
+        match self.category {
+            // Root keys have no category prefix — emit sub_path directly so
+            // the string round-trips correctly through From<&String>.
+            StorageCategory::Root => write!(f, "{}", self.sub_path),
+            _ => write!(f, "{}/{}", self.category.prefix(), self.sub_path),
+        }
     }
 }
 
 impl From<&String> for StorageKey {
     fn from(value: &String) -> Self {
-        let (prefix, mut sub) = value.split_once("/").unzip();
-        let valid_prefixes = [
+        let valid_categories = [
             StorageCategory::Config,
             StorageCategory::Data,
             StorageCategory::Cache,
         ];
 
-        let category = if let Some(prefix) = prefix {
-            valid_prefixes
-                .iter()
-                .find(|p| p.prefix() == prefix)
-                .unwrap_or(&StorageCategory::Root)
-        } else {
-            sub = Some(value.as_str());
-            &StorageCategory::Root
-        };
+        // Try to match a known "category/sub_path" prefix.
+        if let Some((prefix, sub)) = value.split_once('/') {
+            if let Some(&category) =
+                valid_categories.iter().find(|c| c.prefix() == prefix)
+            {
+                return StorageKey {
+                    category,
+                    sub_path: sub.to_string(),
+                };
+            }
+        }
 
+        // No recognised prefix — treat the whole string as a Root sub_path.
+        // This preserves absolute paths (e.g. "/home/user/rom.nes") unchanged.
         StorageKey {
-            category: *category,
-            sub_path: sub.unwrap_or("").to_string(),
+            category: StorageCategory::Root,
+            sub_path: value.clone(),
         }
     }
 }
@@ -157,7 +165,8 @@ impl StorageCategory {
             StorageCategory::Config => "config",
             StorageCategory::Data => "data",
             StorageCategory::Cache => "cache",
-            StorageCategory::Root => "/",
+            // Root has no prefix; paths are emitted as-is via Display.
+            StorageCategory::Root => "",
         }
     }
 }
@@ -411,7 +420,12 @@ mod wasm {
 
         /// Convert StorageKey to the string key used in IndexedDB
         fn key_string(key: &StorageKey) -> String {
-            format!("{}/{}", key.category.prefix(), key.sub_path)
+            match key.category {
+                // Root keys carry no category prefix — use sub_path verbatim
+                // so the value round-trips through StorageKey::from correctly.
+                StorageCategory::Root => key.sub_path.clone(),
+                _ => format!("{}/{}", key.category.prefix(), key.sub_path),
+            }
         }
     }
 
@@ -590,7 +604,7 @@ pub fn quicksave_key(game_name: &str, timestamp: &str) -> StorageKey {
 
 /// Generate a storage key for an autosave
 pub fn autosave_key(game_name: &str, timestamp: &str) -> StorageKey {
-    let sub = format!("saves/{}/autosaves/autosaves_{}.sav", game_name, timestamp);
+    let sub = format!("saves/{}/autosaves/autosave_{}.sav", game_name, timestamp);
 
     StorageKey {
         category: StorageCategory::Data,
@@ -655,6 +669,14 @@ pub fn uploaded_savestate_key(filename: &str) -> StorageKey {
     StorageKey {
         category: StorageCategory::Data,
         sub_path: format!("uploads/savestates/{}", filename),
+    }
+}
+
+/// Generate a storage key for the cached ROM-info database binary
+pub fn db_cache_key() -> StorageKey {
+    StorageKey {
+        category: StorageCategory::Cache,
+        sub_path: "rom-info-db.bin".to_string(),
     }
 }
 
