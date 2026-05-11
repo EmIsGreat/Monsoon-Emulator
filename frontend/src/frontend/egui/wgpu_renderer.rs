@@ -270,8 +270,12 @@ impl NesWgpuRenderer {
     /// Each `u16` is widened to `u32` for the `R32Uint` texture format.
     pub fn update_frame(&self, queue: &wgpu::Queue, buffer: &[u16]) {
         // Widen u16 → u32 (4 bytes per texel for R32Uint).
-        let data: Vec<u32> = buffer.iter().map(|&v| v as u32).collect();
-        let bytes = cast_u32_slice_to_u8(&data);
+        let data: Vec<u8> = buffer
+            .iter()
+            .map(|v| *v as u32)
+            .map(|v| v.to_ne_bytes())
+            .flat_map(|b| b.into_iter())
+            .collect();
 
         queue.write_texture(
             wgpu::TexelCopyTextureInfo {
@@ -280,7 +284,7 @@ impl NesWgpuRenderer {
                 origin: wgpu::Origin3d::ZERO,
                 aspect: wgpu::TextureAspect::All,
             },
-            bytes,
+            &data,
             wgpu::TexelCopyBufferLayout {
                 offset: 0,
                 bytes_per_row: Some(TOTAL_OUTPUT_WIDTH as u32 * 4), // 4 bytes per R32Uint texel
@@ -398,24 +402,4 @@ impl egui_wgpu::CallbackTrait for WgpuFrameCallback {
             );
         }
     }
-}
-
-// ---------------------------------------------------------------------------
-// Byte-view helper: reinterpret &[u32] as &[u8] for queue.write_texture.
-//
-// SAFETY requirements (all statically guaranteed for u32):
-//   • u8 has alignment 1, so any u32 pointer is also valid as a u8 pointer.
-//   • u32 has no invalid bit patterns, so every byte of the slice is a valid
-// u8.   • The resulting byte count (len * 4) cannot overflow usize on any
-// platform     where len*4 is computed, since len is bounded by the texture
-// dimensions     (256*240 = 61 440 elements → 245 760 bytes, well within
-// usize::MAX).
-// ---------------------------------------------------------------------------
-fn cast_u32_slice_to_u8(data: &[u32]) -> &[u8] {
-    let byte_len = data
-        .len()
-        .checked_mul(std::mem::size_of::<u32>())
-        .expect("byte length overflow in cast_u32_slice_to_u8");
-    // SAFETY: see comment above; u8 alignment ≤ u32 alignment, all bytes valid.
-    unsafe { std::slice::from_raw_parts(data.as_ptr().cast::<u8>(), byte_len) }
 }

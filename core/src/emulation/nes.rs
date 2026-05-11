@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 use std::fs;
 use std::ops::RangeInclusive;
-use std::sync::LazyLock;
+use std::sync::{Arc, LazyLock};
 use std::time::Duration;
 
 use crate::emulation::board::{Board, CpuBus, CpuBusView, PpuBus, PpuBusView};
@@ -27,7 +27,7 @@ pub const FRAME_DURATION: Duration = Duration::from_nanos(16_666_667);
 /// granularity.
 pub const MASTER_CYCLES_PER_FRAME: u32 = 357366;
 
-static BUILTIN_DB: LazyLock<RomDb> = LazyLock::new(RomDb::default);
+static BUILTIN_DB: LazyLock<Arc<RomDb>> = LazyLock::new(|| Arc::new(RomDb::default()));
 
 /// The top-level NES emulator.
 ///

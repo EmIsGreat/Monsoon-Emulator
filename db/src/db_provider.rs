@@ -1,12 +1,13 @@
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use monsoon_core::rom_db::{DbParseError, RomDb};
 
 #[derive(Default)]
 pub struct DbProvider {
-    db: RomDb,
+    db: Arc<RomDb>,
 }
 
 impl DbProvider {
@@ -20,7 +21,7 @@ pub struct DbProviderBuilder {
     #[cfg(feature = "online")]
     update_url: Option<String>,
     local_path: Option<PathBuf>,
-    fallback_string: Option<Vec<u8>>,
+    fallback: Option<Arc<RomDb>>,
 }
 
 impl DbProviderBuilder {
@@ -35,9 +36,8 @@ impl DbProviderBuilder {
         self
     }
 
-    #[allow(clippy::wrong_self_convention)]
-    pub fn with_fallback(mut self, data: Vec<u8>) -> Self {
-        self.fallback_string = Some(data);
+    pub fn with_fallback(mut self, data: Arc<RomDb>) -> Self {
+        self.fallback = Some(data);
         self
     }
 
@@ -64,7 +64,7 @@ impl DbProviderBuilder {
         #[cfg(feature = "online")]
         if let Ok(db) = url {
             return Ok(DbProvider {
-                db,
+                db: Arc::new(db),
             });
         } else {
             eprintln!("URL deserialization failed: {:?}", url.unwrap_err())
@@ -89,25 +89,17 @@ impl DbProviderBuilder {
 
         if let Ok(db) = local {
             return Ok(DbProvider {
-                db,
+                db: Arc::new(db),
             });
         } else {
             println!("{:?}", local.unwrap_err())
         };
 
-        let direct = if let Some(fallback) = self.fallback_string {
-            RomDb::deserialize(&fallback)
-        } else {
-            Err(DbParseError::NotSet)
-        };
-
-        if let Ok(db) = direct {
+        if let Some(fallback) = self.fallback.clone() {
             return Ok(DbProvider {
-                db,
+                db: fallback,
             });
-        } else {
-            println!("{:?}", direct.unwrap_err())
-        };
+        }
 
         Err(DbParseError::AllOptionsFailed)
     }
