@@ -1,3 +1,4 @@
+use std::mem::discriminant;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -7,7 +8,7 @@ use monsoon_core::rom_db::{DbParseError, RomDb};
 use crate::manifest::Manifest;
 use crate::manifest::is_newer;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 enum Source {
     BuiltIn(Arc<RomDb>),
     Local {
@@ -123,7 +124,7 @@ impl DbProviderBuilder {
         let mut last_error = DbParseError::AllOptionsFailed;
 
         for candidate in candidates {
-            match try_load_source(candidate.source, cache_path.as_deref()).await {
+            match try_load_source(candidate.source.clone(), cache_path.as_deref()).await {
                 Ok(db) => {
                     return Ok(DbProvider {
                         db,

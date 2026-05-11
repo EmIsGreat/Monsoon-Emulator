@@ -31,11 +31,11 @@ fn main() {
 }
 
 fn merge_rom_db() -> Result<(), Box<dyn std::error::Error>> {
-    println!("cargo:rerun-if-changed=../xtask/src/bin/main.rs");
-    println!("cargo:rerun-if-changed=../xtask/Cargo.toml");
-    println!("cargo:rerun-if-changed=../xtask/assets/no-intro-db.xml");
-    println!("cargo:rerun-if-changed=../xtask/assets/no-intro-db-headerless.xml");
-    println!("cargo:rerun-if-changed=../xtask/assets/no-intro-db-alt-names.xml");
+    println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=../Cargo.toml");
+    println!("cargo:rerun-if-changed=./assets/no-intro-db.xml");
+    println!("cargo:rerun-if-changed=./assets/no-intro-db-headerless.xml");
+    println!("cargo:rerun-if-changed=./assets/no-intro-db-alt-names.xml");
     println!("cargo:rerun-if-changed=../Cargo.lock");
 
     let headered_file = include_str!("./assets/no-intro-db.xml");

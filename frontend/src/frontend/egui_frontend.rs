@@ -765,27 +765,6 @@ fn common_setup(rom: Option<PathBuf>) -> SetupResponse {
     let (emu, to_emu, from_emu) = ChannelEmulator::new(console);
     let (async_sender, from_async) = crossbeam_channel::unbounded();
 
-    {
-        let async_sender = async_sender.clone();
-        crate::frontend::util::spawn_async(async move {
-            let mut builder = DbProvider::builder().with_fallback(Arc::new(RomDb::default()));
-
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                if let Some(cache_path) =
-                    crate::frontend::persistence::get_cache_file_path("rom-info-db.bin")
-                {
-                    builder = builder.with_cache_path(&cache_path);
-                }
-                builder = builder.with_update_url("https://updates.gemderbent.dev/manifest.json");
-            }
-
-            if let Ok(provider) = builder.build().await {
-                let _ = async_sender.send(AsyncFrontendMessage::RomDbReady(provider.database()));
-            }
-        });
-    }
-
     if rom.is_some() {
         // Setup Emulator State via messages - read ROM file if provided
         let loaded_rom = rom.as_ref().and_then(|path| {
@@ -847,6 +826,27 @@ pub fn run(_: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
 async fn run_internal(res: SetupResponse) -> Result<(), Box<dyn std::error::Error>> {
     // Load configuration before starting eframe (we're in an async context)
     let loaded_config = load_config().await;
+
+    {
+        let async_sender = res.async_sender.clone();
+        crate::frontend::util::spawn_async(async move {
+            let mut builder = DbProvider::builder().with_fallback(Arc::new(RomDb::default()));
+
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                if let Some(cache_path) =
+                    crate::frontend::persistence::get_cache_file_path("rom-info-db.bin")
+                {
+                    builder = builder.with_cache_path(&cache_path);
+                }
+                builder = builder.with_update_url("https://updates.gemderbent.dev/manifest.json");
+            }
+
+            if let Ok(provider) = builder.build().await {
+                let _ = async_sender.send(AsyncFrontendMessage::RomDbReady(provider.database()));
+            }
+        });
+    }
 
     // Configure eframe options
     // Disable vsync to allow uncapped frame rates - emulator handles its own timing
