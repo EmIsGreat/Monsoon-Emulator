@@ -1,5 +1,3 @@
-use std::mem::discriminant;
-use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use monsoon_core::rom_db::{DbParseError, RomDb};
@@ -38,11 +36,19 @@ impl DbProvider {
     pub fn database(&self) -> Arc<RomDb> { Arc::clone(&self.db) }
 }
 
+/// Builder for [`DbProvider`].
+///
+/// Cache I/O is now the caller's responsibility:
+/// - Supply previously-cached bytes via [`with_cache_bytes`].
+/// - After a successful [`build`], check the returned `Option<Vec<u8>>`.  If
+///   `Some`, those are freshly-fetched remote bytes that the caller should
+///   persist for next time.
 #[derive(Debug, Default)]
 pub struct DbProviderBuilder {
     #[cfg(feature = "online")]
     update_url: Option<String>,
-    cache_path: Option<PathBuf>,
+    /// Bytes read from the cache by the caller before invoking `build`.
+    cache_bytes: Option<Vec<u8>>,
     fallback: Option<Arc<RomDb>>,
 }
 
@@ -53,8 +59,10 @@ impl DbProviderBuilder {
         self
     }
 
-    pub fn with_cache_path(mut self, path: &Path) -> Self {
-        self.cache_path = Some(path.to_path_buf());
+    /// Supply previously-cached database bytes.  The bytes will be parsed and,
+    /// if valid, treated as a `Local` candidate during selection.
+    pub fn with_cache_bytes(mut self, bytes: Vec<u8>) -> Self {
+        self.cache_bytes = Some(bytes);
         self
     }
 
@@ -63,11 +71,16 @@ impl DbProviderBuilder {
         self
     }
 
-    pub async fn build(self) -> Result<DbProvider, DbParseError> {
+    /// Build the provider.
+    ///
+    /// Returns `(provider, bytes_to_cache)`.  When `bytes_to_cache` is
+    /// `Some(bytes)`, the caller should persist those bytes so they are
+    /// available as cache input on the next run.
+    pub async fn build(self) -> Result<(DbProvider, Option<Vec<u8>>), DbParseError> {
         let DbProviderBuilder {
             #[cfg(feature = "online")]
             update_url,
-            cache_path,
+            cache_bytes,
             fallback,
         } = self;
 
@@ -81,8 +94,7 @@ impl DbProviderBuilder {
             });
         }
 
-        if let Some(path) = cache_path.as_ref()
-            && let Ok(bytes) = std::fs::read(path)
+        if let Some(bytes) = cache_bytes
             && let Ok(db) = RomDb::deserialize(&bytes)
         {
             candidates.push(Candidate {
@@ -124,11 +136,9 @@ impl DbProviderBuilder {
         let mut last_error = DbParseError::AllOptionsFailed;
 
         for candidate in candidates {
-            match try_load_source(candidate.source.clone(), cache_path.as_deref()).await {
-                Ok(db) => {
-                    return Ok(DbProvider {
-                        db,
-                    });
+            match try_load_source(candidate.source.clone()).await {
+                Ok((db, bytes_to_cache)) => {
+                    return Ok((DbProvider { db }, bytes_to_cache));
                 }
                 Err(err) => last_error = err,
             }
@@ -138,31 +148,25 @@ impl DbProviderBuilder {
     }
 }
 
+/// Returns `(db, bytes_to_cache)`.  `bytes_to_cache` is `Some` only when the
+/// data was fetched from a remote source and should be persisted by the caller.
 async fn try_load_source(
     source: Source,
-    cache_path: Option<&Path>,
-) -> Result<Arc<RomDb>, DbParseError> {
+) -> Result<(Arc<RomDb>, Option<Vec<u8>>), DbParseError> {
     match source {
-        Source::BuiltIn(db) => Ok(db),
+        Source::BuiltIn(db) => Ok((db, None)),
         Source::Local {
             bytes,
-        } => RomDb::deserialize(&bytes).map(Arc::new),
+        } => RomDb::deserialize(&bytes).map(|db| (Arc::new(db), None)),
         #[cfg(feature = "online")]
         Source::Remote {
             url,
         } => {
             let response = reqwest::get(url).await.map_err(|_| DbParseError::IOError)?;
             let bytes = response.bytes().await.map_err(|_| DbParseError::IOError)?;
-            let db = RomDb::deserialize(&bytes)?;
-
-            if let Some(path) = cache_path {
-                if let Some(parent) = path.parent() {
-                    let _ = std::fs::create_dir_all(parent);
-                }
-                let _ = std::fs::write(path, &bytes);
-            }
-
-            Ok(Arc::new(db))
+            let bytes_vec = bytes.to_vec();
+            let db = RomDb::deserialize(&bytes_vec)?;
+            Ok((Arc::new(db), Some(bytes_vec)))
         }
     }
 }
