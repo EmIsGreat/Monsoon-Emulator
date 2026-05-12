@@ -4,7 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Monsoon</title>
-    <link data-trunk rel="rust" data-wasm-opt="4" />
+    <link data-trunk rel="rust" data-wasm-opt="4" data-reference-types data-weak-refs
+          data-wasm-opt-params="--enable-bulk-memory --enable-nontrapping-float-to-int --enable-sign-ext --enable-reference-types --enable-multivalue --enable-mutable-globals --enable-simd" />
     <style>
         html, body {
             margin: 0;
