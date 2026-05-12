@@ -36,6 +36,7 @@ impl MapperLike for MMC1 {
     fn write(&mut self, addr: u16, data: u8, cycle: u128) -> CpuWriteResult {
         match addr {
             0x4020..=0xFFFF => {
+                #[allow(clippy::collapsible_if)]
                 if (6000..=0x7FFF).contains(&addr) {
                     if let Some(prg_ram) = &mut self.prg_ram {
                         let addr = ((addr - 0x6000) + self.prg_ram_bank_offset) % self.prg_ram_size;

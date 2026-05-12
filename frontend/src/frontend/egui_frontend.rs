@@ -925,23 +925,21 @@ fn run_internal_wasm(res: SetupResponse) -> Result<(), Box<dyn std::error::Error
                 let wasm_storage = WasmStorage::new();
                 let cache_bytes = wasm_storage.get(&cache_key).await.ok();
 
-                let mut builder =
-                    DbProvider::builder().with_fallback(Arc::new(RomDb::default()));
+                let mut builder = DbProvider::builder().with_fallback(Arc::new(RomDb::default()));
 
                 if let Some(bytes) = cache_bytes {
                     builder = builder.with_cache_bytes(bytes);
                 }
 
-                builder =
-                    builder.with_update_url("https://updates.gemderbent.dev/manifest.json");
+                builder = builder.with_update_url("https://updates.gemderbent.dev/manifest.json");
 
                 if let Ok((provider, bytes_to_cache)) = builder.build().await {
                     // Persist freshly-fetched bytes for the next run.
                     if let Some(bytes) = bytes_to_cache {
                         let _ = wasm_storage.set(&cache_key, bytes).await;
                     }
-                    let _ = db_async_sender
-                        .send(AsyncFrontendMessage::RomDbReady(provider.database()));
+                    let _ =
+                        db_async_sender.send(AsyncFrontendMessage::RomDbReady(provider.database()));
                 }
             });
         }

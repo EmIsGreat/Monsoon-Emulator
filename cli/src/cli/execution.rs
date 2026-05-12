@@ -599,7 +599,7 @@ impl ExecutionEngine {
     /// Load ROM from path
     pub fn load_rom(&mut self, path: &Path) -> Result<(), String> {
         let path_str = path.to_string_lossy().to_string();
-        self.emu.load_rom(&path_str);
+        self.emu.load_rom((&path_str, true));
         Ok(())
     }
 

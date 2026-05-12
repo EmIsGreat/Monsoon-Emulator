@@ -379,6 +379,7 @@ impl<'a> CpuBusView<'a> {
 
     #[inline]
     fn write_apu_io(&mut self, addr: u16, data: u8) {
+        #[allow(clippy::single_match)]
         match addr {
             0x4016 => {
                 *self.joystick_strobe_data = data & 0b111;

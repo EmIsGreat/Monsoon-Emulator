@@ -138,18 +138,16 @@ impl From<&String> for StorageKey {
         ];
 
         // Try to match a known "category/sub_path" prefix.
-        if let Some((prefix, sub)) = value.split_once('/') {
-            if let Some(&category) =
-                valid_categories.iter().find(|c| c.prefix() == prefix)
-            {
-                return StorageKey {
-                    category,
-                    sub_path: sub.to_string(),
-                };
-            }
+        if let Some((prefix, sub)) = value.split_once('/')
+            && let Some(&category) = valid_categories.iter().find(|c| c.prefix() == prefix)
+        {
+            return StorageKey {
+                category,
+                sub_path: sub.to_string(),
+            };
         }
 
-        // No recognised prefix — treat the whole string as a Root sub_path.
+        // No recognized prefix — treat the whole string as a Root sub_path.
         // This preserves absolute paths (e.g. "/home/user/rom.nes") unchanged.
         StorageKey {
             category: StorageCategory::Root,

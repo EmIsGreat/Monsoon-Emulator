@@ -4,9 +4,9 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::PathBuf;
 
-use quick_xml::Reader;
 use quick_xml::events::Event;
 use quick_xml::events::attributes::Attribute;
+use quick_xml::{Reader, XmlVersion};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -284,7 +284,7 @@ fn merge_rom_db() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn attr_to_string(attr: &Attribute) -> Result<String, Box<dyn std::error::Error>> {
-    Ok(attr.unescape_value()?.into_owned())
+    Ok(attr.normalized_value(XmlVersion::Explicit1_1)?.to_string())
 }
 
 fn normalize_hex_string(value: &str) -> String {

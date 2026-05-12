@@ -20,8 +20,8 @@ use crate::emulation::mem::Memory;
 use crate::emulation::nes::Nes;
 use crate::emulation::rom::formats::archaic_ines::ArchaicInes;
 use crate::emulation::rom::formats::ines::Ines;
-use crate::emulation::rom::formats::ines2::Ines2;
 use crate::emulation::rom::formats::ines_07::Ines07;
+use crate::emulation::rom::formats::ines2::Ines2;
 
 /// Errors that can occur while parsing a ROM file.
 #[derive(Debug, Clone)]

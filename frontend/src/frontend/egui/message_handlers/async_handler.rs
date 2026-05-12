@@ -10,7 +10,7 @@ use monsoon_core::emulation::savestate;
 use monsoon_core::util::ToBytes;
 
 use crate::frontend::egui::config::AutoPauseReason;
-use crate::frontend::egui::tiles::{add_pane_if_missing, Pane};
+use crate::frontend::egui::tiles::{Pane, add_pane_if_missing};
 use crate::frontend::egui_frontend::EguiApp;
 use crate::frontend::messages::{AsyncFrontendMessage, LoadedRom, SavestateLoadContext};
 use crate::frontend::savestates::{
@@ -19,7 +19,7 @@ use crate::frontend::savestates::{
 };
 use crate::frontend::storage::{Storage, StorageKey};
 use crate::frontend::util::{
-    spawn_rom_picker, spawn_savestate_picker, try_parse_savestate, SavestateLoadError,
+    SavestateLoadError, spawn_rom_picker, spawn_savestate_picker, try_parse_savestate,
 };
 use crate::frontend::{storage, util};
 use crate::messages::{FrontendMessage, SaveType};

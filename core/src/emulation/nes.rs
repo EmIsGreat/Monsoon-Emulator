@@ -359,7 +359,7 @@ impl Nes {
     where
         T: Into<RomFile>,
     {
-        let rom_file:RomFile = rom_get.into();
+        let rom_file: RomFile = rom_get.into();
         self.board.load_rom(&rom_file);
 
         let res = (

@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::emulation::board::CpuBus;
 use crate::emulation::nes::ExecutionFinished;
 use crate::emulation::opcode;
-use crate::emulation::opcode::{OPCODES_MAP, OPCODES_TABLE, OpCode, get_opcode};
+use crate::emulation::opcode::{get_opcode, OpCode, OPCODES_MAP, OPCODES_TABLE};
 use crate::emulation::savestate::CpuState;
 use crate::util;
 
@@ -147,8 +147,8 @@ impl Cpu {
 
     #[inline]
     pub fn stack_pop(&mut self, bus: &mut impl CpuBus) -> u8 {
-        self.stack_pointer = self.stack_pointer.wrapping_add(1);
         let val = self.mem_read(STACK_START_ADDRESS + self.stack_pointer as u16, bus);
+        self.stack_pointer = self.stack_pointer.wrapping_add(1);
         val
     }
 

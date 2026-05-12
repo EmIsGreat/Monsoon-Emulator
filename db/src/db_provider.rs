@@ -138,7 +138,12 @@ impl DbProviderBuilder {
         for candidate in candidates {
             match try_load_source(candidate.source.clone()).await {
                 Ok((db, bytes_to_cache)) => {
-                    return Ok((DbProvider { db }, bytes_to_cache));
+                    return Ok((
+                        DbProvider {
+                            db,
+                        },
+                        bytes_to_cache,
+                    ));
                 }
                 Err(err) => last_error = err,
             }
@@ -150,9 +155,7 @@ impl DbProviderBuilder {
 
 /// Returns `(db, bytes_to_cache)`.  `bytes_to_cache` is `Some` only when the
 /// data was fetched from a remote source and should be persisted by the caller.
-async fn try_load_source(
-    source: Source,
-) -> Result<(Arc<RomDb>, Option<Vec<u8>>), DbParseError> {
+async fn try_load_source(source: Source) -> Result<(Arc<RomDb>, Option<Vec<u8>>), DbParseError> {
     match source {
         Source::BuiltIn(db) => Ok((db, None)),
         Source::Local {

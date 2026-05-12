@@ -2734,7 +2734,7 @@ dependencies = [
  "hex",
  "num_enum",
  "postcard",
- "quick-xml",
+ "quick-xml 0.40.0",
  "serde",
  "serde_json",
  "sha2",
@@ -3649,6 +3649,15 @@ checksum = "cdcc8dd4e2f670d309a5f0e83fe36dfdc05af317008fea29144da1a2ac858e5e"
 dependencies = [
  "memchr",
  "serde",
+]
+
+[[package]]
+name = "quick-xml"
+version = "0.40.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b7315c86b26aaef0321fba33c9dcc160da659c6a9d278f0f6a5656d6561c03b"
+dependencies = [
+ "memchr",
 ]
 
 [[package]]
@@ -5363,7 +5372,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c324a910fd86ebdc364a3e61ec1f11737d3b1d6c273c0239ee8ff4bc0d24b4a"
 dependencies = [
  "proc-macro2",
- "quick-xml",
+ "quick-xml 0.39.4",
  "quote",
 ]
 
@@ -6247,7 +6256,7 @@ version = "5.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8067892e940ed1727dea64690378601603b31d62dfde019a5335fbb7c0e0ed9"
 dependencies = [
- "quick-xml",
+ "quick-xml 0.39.4",
  "serde",
  "zbus_names",
  "zvariant",
