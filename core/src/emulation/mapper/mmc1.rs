@@ -54,11 +54,10 @@ impl MapperLike for MMC1 {
                             self.shift_count += 1;
 
                             if self.shift_count == 5 {
-                                self.copy_shift(addr)
+                                self.copy_shift(addr);
+                                self.shift_count = 0;
+                                self.shift = 0;
                             }
-
-                            self.shift_count = 0;
-                            self.shift = 0;
                         }
 
                         self.last_shift_write = cycle
