@@ -48,4 +48,3 @@ wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 rexie = { version = "0.6" }
 js-sys = "0.3"
-monsoon-db = { workspace = true, features = ["online"] }
