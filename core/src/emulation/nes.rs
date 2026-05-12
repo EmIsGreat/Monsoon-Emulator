@@ -355,11 +355,11 @@ impl Nes {
     /// let rom = RomFile::load(&data, None).unwrap();
     /// nes.load_rom(&rom);
     /// ```
-    pub fn load_rom<T>(&mut self, rom_get: &T) -> (bool, RomMapper)
+    pub fn load_rom<T>(&mut self, rom_get: T) -> (bool, RomMapper)
     where
-        for<'a> &'a T: Into<RomFile>,
+        T: Into<RomFile>,
     {
-        let rom_file = rom_get.into();
+        let rom_file:RomFile = rom_get.into();
         self.board.load_rom(&rom_file);
 
         let res = (

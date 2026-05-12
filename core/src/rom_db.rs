@@ -6,7 +6,26 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct RomDb {
     pub version: String,
-    pub data: HashMap<[u8; 32], RomDbEntry>,
+    data: HashMap<[u8; 32], RomDbEntry>,
+}
+
+impl RomDb {
+    pub fn get_entry(&self, full_hash: &[u8; 32]) -> Option<&RomDbEntry> {
+        self.data.get(full_hash)
+    }
+
+    pub fn get_entry_by_headerless(&self, headerless_hash: &[u8; 32]) -> Option<&RomDbEntry> {
+        self.data
+            .iter()
+            .find(|(_, i)| {
+                if let Some(hash) = i.unheadered_sha256 {
+                    hash == *headerless_hash
+                } else {
+                    false
+                }
+            })
+            .map(|(_, r)| r)
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]

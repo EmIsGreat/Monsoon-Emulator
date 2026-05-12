@@ -153,6 +153,7 @@ pub struct UserConfig {
     pub previous_palette_load_dir: Option<StorageKey>,
     pub debug_active_palette: usize,
     pub pattern_edit_color: u8,
+    pub use_rom_db: bool
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

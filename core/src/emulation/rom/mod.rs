@@ -17,10 +17,11 @@ use sha2::{Digest, Sha256};
 
 use crate::emulation::mapper::nametable_mapping::NametableArrangement;
 use crate::emulation::mem::Memory;
+use crate::emulation::nes::Nes;
 use crate::emulation::rom::formats::archaic_ines::ArchaicInes;
 use crate::emulation::rom::formats::ines::Ines;
-use crate::emulation::rom::formats::ines_07::Ines07;
 use crate::emulation::rom::formats::ines2::Ines2;
+use crate::emulation::rom::formats::ines_07::Ines07;
 
 /// Errors that can occur while parsing a ROM file.
 #[derive(Debug, Clone)]
@@ -61,7 +62,7 @@ impl Error for ParseError {}
 /// instead, which auto-detects the format.
 #[doc(hidden)]
 pub trait RomParser: Debug {
-    fn parse(&self, rom: &[u8], name: Option<String>) -> Result<RomFile, ParseError>;
+    fn parse(&self, rom: &[u8], name: Option<&String>) -> Result<RomFile, ParseError>;
 }
 
 /// A parsed NES ROM file.
@@ -743,21 +744,47 @@ impl RomFile {
     /// - The ROM format is not recognized ([`ParseError::UnsupportedFormat`]).
     /// - The header declares sizes larger than the file
     ///   ([`ParseError::SizeBiggerThanFile`]).
-    pub fn load(data: &[u8], name: Option<String>) -> Result<RomFile, ParseError> {
-        let rom_type = RomFile::get_rom_type(data)?;
-        let mut rom_file = rom_type.parse(data, name)?;
-        rom_file.data = data.to_vec();
-
+    pub fn load(
+        data: &mut [u8],
+        name: Option<&String>,
+        use_db: bool,
+    ) -> Result<RomFile, ParseError> {
         let mut hasher = Sha256::new();
-        hasher.update(data);
-        let hash: [u8; 32] = hasher.finalize().into();
-
-        rom_file.data_checksum = hash;
+        hasher.update(&data);
+        let full_hash: [u8; 32] = hasher.finalize().into();
 
         let mut hasher = Sha256::new();
         hasher.update(&data[16..]);
         let headerless_hash: [u8; 32] = hasher.finalize().into();
 
+        if use_db {
+            let rom_db = Nes::builtin_rom_database();
+            let primary_lookup = rom_db.get_entry(&full_hash);
+
+            if let Some(lookup) = primary_lookup {
+                println!("Found matching Rom in db: {:?}", lookup);
+            } else if let Some(lookup) = rom_db.get_entry_by_headerless(&headerless_hash) {
+                println!("Found matching Rom with diff. Header in db: {:?}", lookup);
+                if let Some(header) = &lookup.header {
+                    println!("Incorrect header of passed Rom: {:0X?}", &data[..16]);
+                    println!("DB Header used instead:         {:0X?}", header);
+                    data[..header.len()].copy_from_slice(header);
+                } else {
+                    println!(
+                        "Rom header doesn't match db header, but db doesn't provider \
+                         alternativeheader... falling back to original rom"
+                    );
+                }
+            } else {
+                println!("Rom not found in db");
+            };
+        }
+
+        let rom_type = RomFile::get_rom_type(data)?;
+        let mut rom_file = rom_type.parse(data, name)?;
+        rom_file.data = data.to_vec();
+
+        rom_file.data_checksum = full_hash;
         rom_file.checksum_headerless = headerless_hash;
 
         Ok(rom_file)
@@ -860,19 +887,21 @@ impl From<&RomFile> for RomFile {
     fn from(rom: &RomFile) -> Self { rom.clone() }
 }
 
-impl From<&[u8]> for RomFile {
-    fn from(data: &[u8]) -> Self { RomFile::load(data, None).expect("Failed to parse ROM data") }
+impl From<&mut [u8]> for RomFile {
+    fn from(data: &mut [u8]) -> Self {
+        RomFile::load(data, None, true).expect("Failed to parse ROM data")
+    }
 }
 
-impl From<&(&[u8], String)> for RomFile {
-    fn from((data, name): &(&[u8], String)) -> Self {
-        RomFile::load(data, Some(name.clone())).expect("Failed to parse ROM data")
+impl From<(&mut [u8], &String, bool)> for RomFile {
+    fn from((data, name, use_db): (&mut [u8], &String, bool)) -> Self {
+        RomFile::load(data, Some(name), use_db).expect("Failed to parse ROM data")
     }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-impl From<&String> for RomFile {
-    fn from(path: &String) -> Self {
+impl From<(&String, bool)> for RomFile {
+    fn from((path, use_db): (&String, bool)) -> Self {
         use std::fs::File;
         use std::io::Read;
 
@@ -882,7 +911,7 @@ impl From<&String> for RomFile {
             .read_to_end(&mut data)
             .unwrap_or_else(|e| panic!("Failed to read ROM file '{}': {}", path, e));
 
-        RomFile::load(&data, Some(path.clone())).expect("Failed to parse ROM data")
+        RomFile::load(&mut data, Some(path), use_db).expect("Failed to parse ROM data")
     }
 }
 

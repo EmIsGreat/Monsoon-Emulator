@@ -14,11 +14,11 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::{fs, thread};
 
-use crossbeam_channel::{Receiver, bounded};
+use crossbeam_channel::{bounded, Receiver};
 use directories::ProjectDirs;
 use monsoon_core::emulation::palette_util::RgbPalette;
 use monsoon_core::emulation::ppu_util::EmulatorFetchable;
-use monsoon_core::emulation::screen_renderer::{NoneRenderer, ScreenRenderer, create_renderer};
+use monsoon_core::emulation::screen_renderer::{create_renderer, NoneRenderer, ScreenRenderer};
 use serde::{Deserialize, Serialize};
 
 use crate::frontend::egui::config::{
@@ -33,6 +33,10 @@ use crate::frontend::storage::{Storage, StorageKey};
 const APP_QUALIFIER: &str = "com";
 const APP_ORGANIZATION: &str = "Lightsong";
 const APP_NAME: &str = "MonsoonEmulator";
+
+const fn default_true() -> bool {
+    true
+}
 
 /// Singleton for project directories.
 ///
@@ -436,6 +440,8 @@ pub struct PersistentUserConfig {
     pub pattern_edit_color: u8,
     #[serde(default)]
     pub debug_active_palette: usize,
+    #[serde(default = "default_true")]
+    use_rom_db: bool,
 }
 
 impl From<&UserConfig> for PersistentUserConfig {
@@ -451,6 +457,7 @@ impl From<&UserConfig> for PersistentUserConfig {
             previous_savestate_save_dir: config.previous_savestate_save_dir.clone(),
             pattern_edit_color: config.pattern_edit_color,
             debug_active_palette: config.debug_active_palette,
+            use_rom_db: config.use_rom_db,
         }
     }
 }
@@ -468,6 +475,7 @@ impl From<&PersistentUserConfig> for UserConfig {
             previous_savestate_save_dir: config.previous_savestate_save_dir.clone(),
             pattern_edit_color: config.pattern_edit_color,
             debug_active_palette: config.debug_active_palette,
+            use_rom_db: config.use_rom_db,
         }
     }
 }

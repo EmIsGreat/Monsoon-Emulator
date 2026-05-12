@@ -46,6 +46,7 @@ impl MapperLike for MMC1 {
                 if addr >= 0x8000 {
                     if data & 0x80 != 0 {
                         self.shift = 0;
+                        self.ctrl_reg |= 0x0C
                     } else {
                         if self.last_shift_write != cycle - 1 {
                             self.shift = (self.shift >> 1) | ((data & 1) << 4);
@@ -236,8 +237,8 @@ impl MMC1 {
             _ => unreachable!(),
         }
 
-        self.prg_rom_bank_mode = self.shift & 0b1100;
-        self.chr_rom_bank_mode = self.shift & 0b10000;
+        self.prg_rom_bank_mode = (self.shift >> 2) & 0b11;
+        self.chr_rom_bank_mode = (self.shift >> 4) & 0b1;
 
         println!("prg rom mode: {}", self.prg_rom_bank_mode);
         println!("chr rom mode: {}", self.chr_rom_bank_mode);

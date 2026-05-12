@@ -236,7 +236,7 @@ impl EguiApp {
         }
     }
 
-    pub(crate) fn load_rom(&mut self, data: LoadedRom) {
+    pub(crate) fn load_rom(&mut self, data: LoadedRom, use_db: bool) {
         let name = data.name.clone();
 
         let _ = self
@@ -245,7 +245,7 @@ impl EguiApp {
 
         let _ = self
             .to_emulator
-            .send(FrontendMessage::LoadRom((data, name.clone())));
+            .send(FrontendMessage::LoadRom((data, name.clone(), use_db)));
 
         // Extract stem for window title
         let stem = name.rsplit_once('.').map(|(s, _)| s).unwrap_or(&name);
@@ -276,7 +276,7 @@ impl EguiApp {
 
         // First power off, load ROM, power on
         let _ = self.to_emulator.send(FrontendMessage::Power(false));
-        self.load_rom(rom);
+        self.load_rom(rom, self.config.user_config.use_rom_db);
         let _ = self.to_emulator.send(FrontendMessage::Power(true));
 
         // Then load the savestate

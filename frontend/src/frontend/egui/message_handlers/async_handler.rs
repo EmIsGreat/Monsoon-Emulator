@@ -10,7 +10,7 @@ use monsoon_core::emulation::savestate;
 use monsoon_core::util::ToBytes;
 
 use crate::frontend::egui::config::AutoPauseReason;
-use crate::frontend::egui::tiles::{Pane, add_pane_if_missing};
+use crate::frontend::egui::tiles::{add_pane_if_missing, Pane};
 use crate::frontend::egui_frontend::EguiApp;
 use crate::frontend::messages::{AsyncFrontendMessage, LoadedRom, SavestateLoadContext};
 use crate::frontend::savestates::{
@@ -19,7 +19,7 @@ use crate::frontend::savestates::{
 };
 use crate::frontend::storage::{Storage, StorageKey};
 use crate::frontend::util::{
-    SavestateLoadError, spawn_rom_picker, spawn_savestate_picker, try_parse_savestate,
+    spawn_rom_picker, spawn_savestate_picker, try_parse_savestate, SavestateLoadError,
 };
 use crate::frontend::{storage, util};
 use crate::messages::{FrontendMessage, SaveType};
@@ -136,7 +136,7 @@ impl EguiApp {
                     // Save directory for next file picker
                     self.config.user_config.previous_rom_load_dir = Some(rom.directory.clone());
 
-                    self.load_rom(rom);
+                    self.load_rom(rom, self.config.user_config.use_rom_db);
                     let _ = self.to_emulator.send(FrontendMessage::Power(true));
                     self.config.console_config.is_powered = true;
                 }
@@ -167,9 +167,11 @@ impl EguiApp {
                     && let Some((_, rom)) = &self.config.console_config.loaded_rom
                 {
                     let name = rom.name.clone();
-                    let _ = self
-                        .to_emulator
-                        .send(FrontendMessage::LoadRom((rom.clone(), name)));
+                    let _ = self.to_emulator.send(FrontendMessage::LoadRom((
+                        rom.clone(),
+                        name,
+                        self.config.user_config.use_rom_db,
+                    )));
                 }
 
                 let _ = self.to_emulator.send(FrontendMessage::Power(
