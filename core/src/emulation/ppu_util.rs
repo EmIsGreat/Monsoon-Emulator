@@ -128,17 +128,7 @@ pub enum EmulatorFetchable {
 }
 
 impl Hash for EmulatorFetchable {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        let discriminant = match self {
-            EmulatorFetchable::Palettes(_) => 0u8,
-            EmulatorFetchable::Tiles(_) => 1,
-            EmulatorFetchable::Nametables(_) => 2,
-            EmulatorFetchable::Sprites(_) => 3,
-            EmulatorFetchable::SoamSprites(_) => 4,
-            EmulatorFetchable::Registers(_) => 5,
-        };
-        discriminant.hash(state);
-    }
+    fn hash<H: Hasher>(&self, state: &mut H) { std::mem::discriminant(self).hash(state); }
 }
 
 impl EmulatorFetchable {

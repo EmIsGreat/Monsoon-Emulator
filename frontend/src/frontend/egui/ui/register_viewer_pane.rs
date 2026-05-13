@@ -2,7 +2,11 @@ use monsoon_core::emulation::ppu_util::RegisterMap;
 
 use crate::frontend::egui::textures::EmuTextures;
 
-fn render_register_table(ui: &mut egui::Ui, table_id: &str, registers: &RegisterMap) {
+fn render_register_table(
+    ui: &mut egui::Ui,
+    table_id: impl std::hash::Hash,
+    registers: &RegisterMap,
+) {
     let mut rows = registers.iter().collect::<Vec<_>>();
     rows.sort_by(|(left, _), (right, _)| left.cmp(right));
 
@@ -43,7 +47,7 @@ pub fn render_register_viewer(ui: &mut egui::Ui, emu_textures: &EmuTextures) {
                     .show(ui, |ui| {
                         render_register_table(
                             ui,
-                            &format!("register_viewer_mapper_{table_name}"),
+                            ("register_viewer_mapper", table_name),
                             table_registers,
                         );
                     });
