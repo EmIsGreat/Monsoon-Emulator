@@ -8,7 +8,7 @@ mod renderers {
 
 #[cfg(feature = "dhat-heap")]
 #[global_allocator]
-static ALLOC: dhat::Alloc = dhat::Alloc;
+static ALLOC:dhat::Alloc = dhat::Alloc;
 
 const EXIT_SUCCESS: u8 = 0;
 const EXIT_GENERAL_ERROR: u8 = 1;

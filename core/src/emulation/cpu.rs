@@ -6,7 +6,7 @@ use serde_big_array::BigArray;
 use crate::emulation::board::CpuBus;
 use crate::emulation::nes::ExecutionFinished;
 use crate::emulation::opcode;
-use crate::emulation::opcode::{OPCODES_MAP, OPCODES_TABLE, OpCode, get_opcode};
+use crate::emulation::opcode::{get_opcode, OpCode, OPCODES_MAP, OPCODES_TABLE};
 use crate::emulation::savestate::CpuState;
 use crate::util;
 

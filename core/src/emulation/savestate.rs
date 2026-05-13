@@ -91,7 +91,7 @@ pub struct CpuState {
     /// Previous NMI line state (for edge detection).
     pub(crate) prev_nmi: bool,
     pub cycle: u128,
-    pub remaining_dma_cycles: u16,
+    pub remaining_dma_cycles: u16
 }
 
 impl From<&Cpu> for CpuState {
