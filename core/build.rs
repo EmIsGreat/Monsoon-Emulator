@@ -271,7 +271,7 @@ fn merge_rom_db() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let output = postcard::to_stdvec(&db)?;
-    let out_path = PathBuf::from(env::var("CARGO_MANIFEST_DIR")?).join("assets/rom-info-db.bin");
+    let out_path = PathBuf::from(env::var("OUT_DIR")?).join("rom-info-db.bin");
 
     let mut file = OpenOptions::new()
         .create(true)

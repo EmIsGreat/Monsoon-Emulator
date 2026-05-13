@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::env;
 use std::hash::{Hash, Hasher};
 
 use serde::{Deserialize, Serialize};
@@ -73,7 +74,7 @@ impl RomDb {
 
 impl Default for RomDb {
     fn default() -> Self {
-        postcard::from_bytes::<RomDb>(include_bytes!("../assets/rom-info-db.bin"))
+        postcard::from_bytes::<RomDb>(include_bytes!(concat!(env!("OUT_DIR"), "/rom-info-db.bin")))
             .expect("Error deserializing built-in rom db")
     }
 }
