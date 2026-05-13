@@ -3,8 +3,9 @@ use crate::emulation::nes::{Nes, RunOptions};
 #[test]
 fn test_10_even_odd_timing() {
     let mut emu = Nes::default();
-    emu.load_rom(&String::from(
-        "./tests/nes-test-roms/ppu_vbl_nmi/rom_singles/10-even_odd_timing.nes",
+    emu.load_rom((
+        &String::from("./tests/nes-test-roms/ppu_vbl_nmi/rom_singles/10-even_odd_timing.nes"),
+        false,
     ));
     emu.power();
     emu.run_until(75341973, RunOptions::default())

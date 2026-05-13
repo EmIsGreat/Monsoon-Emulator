@@ -3,8 +3,9 @@ use crate::emulation::nes::{Nes, RunOptions};
 #[test]
 fn test_08_nmi_off_timing() {
     let mut emu = Nes::default();
-    emu.load_rom(&String::from(
-        "./tests/nes-test-roms/ppu_vbl_nmi/rom_singles/08-nmi_off_timing.nes",
+    emu.load_rom((
+        &String::from("./tests/nes-test-roms/ppu_vbl_nmi/rom_singles/08-nmi_off_timing.nes"),
+        false,
     ));
     emu.power();
     emu.run_until(85341973, RunOptions::default())

@@ -58,8 +58,8 @@ pub fn set_rom_db(db: Arc<RomDb>) { ROM_DB.store(db); }
 /// use monsoon_core::emulation::rom::RomFile;
 ///
 /// let mut nes = Nes::default();
-/// let rom_bytes = std::fs::read("game.nes").unwrap();
-/// let rom = RomFile::load(&rom_bytes, None).unwrap();
+/// let mut rom_bytes = std::fs::read("game.nes").unwrap();
+/// let rom = RomFile::load(&mut rom_bytes, None, false).unwrap();
 /// nes.load_rom(&rom);
 /// nes.power();
 ///
@@ -367,8 +367,8 @@ impl Nes {
     /// use monsoon_core::emulation::rom::RomFile;
     ///
     /// let mut nes = Nes::default();
-    /// let data = std::fs::read("game.nes").unwrap();
-    /// let rom = RomFile::load(&data, None).unwrap();
+    /// let mut data = std::fs::read("game.nes").unwrap();
+    /// let rom = RomFile::load(&mut data, None, false).unwrap();
     /// nes.load_rom(&rom);
     /// ```
     pub fn load_rom<T>(&mut self, rom_get: T) -> (bool, RomMapper)

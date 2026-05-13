@@ -3,8 +3,9 @@ use crate::emulation::nes::{Nes, RunOptions};
 #[test]
 fn test_06_absolute() {
     let mut emu = Nes::default();
-    emu.load_rom(&String::from(
-        "./tests/nes-test-roms/instr_test-v5/rom_singles/06-absolute.nes",
+    emu.load_rom((
+        &String::from("./tests/nes-test-roms/instr_test-v5/rom_singles/06-absolute.nes"),
+        false,
     ));
     emu.reset();
     emu.run_until(89949793, RunOptions::default())

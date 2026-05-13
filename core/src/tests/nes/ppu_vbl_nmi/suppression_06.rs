@@ -3,8 +3,9 @@ use crate::emulation::nes::{Nes, RunOptions};
 #[test]
 fn test_06_suppression() {
     let mut emu = Nes::default();
-    emu.load_rom(&String::from(
-        "./tests/nes-test-roms/ppu_vbl_nmi/rom_singles/06-suppression.nes",
+    emu.load_rom((
+        &String::from("./tests/nes-test-roms/ppu_vbl_nmi/rom_singles/06-suppression.nes"),
+        false,
     ));
     emu.power();
     emu.run_until(85341973, RunOptions::default())

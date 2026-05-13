@@ -3,8 +3,9 @@ use crate::emulation::nes::{Nes, RunOptions};
 #[test]
 fn test_03_vbl_clear_time() {
     let mut emu = Nes::default();
-    emu.load_rom(&String::from(
-        "./tests/nes-test-roms/ppu_vbl_nmi/rom_singles/03-vbl_clear_time.nes",
+    emu.load_rom((
+        &String::from("./tests/nes-test-roms/ppu_vbl_nmi/rom_singles/03-vbl_clear_time.nes"),
+        false,
     ));
     emu.power();
     emu.run_until(76_843_511, RunOptions::default())

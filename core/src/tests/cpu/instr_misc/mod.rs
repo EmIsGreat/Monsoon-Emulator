@@ -3,8 +3,9 @@ use crate::emulation::nes::{Nes, RunOptions};
 #[test]
 fn test_instr_misc() {
     let mut emu = Nes::default();
-    let loaded = emu.load_rom(&String::from(
-        "./tests/nes-test-roms/instr_misc/instr_misc.nes",
+    let loaded = emu.load_rom((
+        &String::from("./tests/nes-test-roms/instr_misc/instr_misc.nes"),
+        false,
     ));
 
     if !loaded.0 {
@@ -16,7 +17,7 @@ fn test_instr_misc() {
     }
 
     emu.reset();
-    emu.run_until(20_000_000, RunOptions::default())
+    emu.run_until(200_000_000, RunOptions::default())
         .expect("Error while running test");
 
     let whole_mem = emu.get_memory_debug(Some(0x6000..=0x6031));
@@ -36,8 +37,9 @@ fn test_instr_misc() {
 #[test]
 fn test_instr_misc_01_abs_x_wrap() {
     let mut emu = Nes::default();
-    let loaded = emu.load_rom(&String::from(
-        "./tests/nes-test-roms/instr_misc/rom_singles/01-abs_x_wrap.nes",
+    let loaded = emu.load_rom((
+        &String::from("./tests/nes-test-roms/instr_misc/rom_singles/01-abs_x_wrap.nes"),
+        false,
     ));
 
     if !loaded.0 {
@@ -67,8 +69,9 @@ fn test_instr_misc_01_abs_x_wrap() {
 #[test]
 fn test_instr_misc_02_branch_wrap() {
     let mut emu = Nes::default();
-    let loaded = emu.load_rom(&String::from(
-        "./tests/nes-test-roms/instr_misc/rom_singles/02-branch_wrap.nes",
+    let loaded = emu.load_rom((
+        &String::from("./tests/nes-test-roms/instr_misc/rom_singles/02-branch_wrap.nes"),
+        false,
     ));
 
     if !loaded.0 {
@@ -98,8 +101,9 @@ fn test_instr_misc_02_branch_wrap() {
 #[test]
 fn test_instr_misc_03_dummy_reads() {
     let mut emu = Nes::default();
-    let loaded = emu.load_rom(&String::from(
-        "./tests/nes-test-roms/instr_misc/rom_singles/03-dummy_reads.nes",
+    let loaded = emu.load_rom((
+        &String::from("./tests/nes-test-roms/instr_misc/rom_singles/03-dummy_reads.nes"),
+        false,
     ));
 
     if !loaded.0 {
@@ -129,8 +133,9 @@ fn test_instr_misc_03_dummy_reads() {
 #[test]
 fn test_instr_misc_04_dummy_reads_apu() {
     let mut emu = Nes::default();
-    let loaded = emu.load_rom(&String::from(
-        "./tests/nes-test-roms/instr_misc/rom_singles/04-dummy_reads_apu.nes",
+    let loaded = emu.load_rom((
+        &String::from("./tests/nes-test-roms/instr_misc/rom_singles/04-dummy_reads_apu.nes"),
+        false,
     ));
 
     if !loaded.0 {

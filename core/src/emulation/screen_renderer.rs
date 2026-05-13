@@ -17,7 +17,7 @@
 //! use monsoon_core::emulation::screen_renderer::ScreenRenderer;
 //!
 //! struct MyRenderer {
-//!     // ...
+//!     buffer: [RgbColor],
 //! }
 //!
 //! impl Debug for MyRenderer {
@@ -27,6 +27,7 @@
 //! impl ScreenRenderer for MyRenderer {
 //!     fn buffer_to_image(&mut self, buffer: &[u16]) -> &[RgbColor] {
 //!         // Convert palette indices to RGB colors
+//!         return &self.buffer;
 //!     }
 //!
 //!     fn set_palette(&mut self, palette: RgbPalette) { /* ... */

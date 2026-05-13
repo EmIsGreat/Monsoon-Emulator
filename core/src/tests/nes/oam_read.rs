@@ -3,7 +3,10 @@ use crate::emulation::nes::{Nes, RunOptions};
 #[test]
 fn test_oam_read() {
     let mut emu = Nes::default();
-    emu.load_rom(&String::from("./tests/nes-test-roms/oam_read/oam_read.nes"));
+    emu.load_rom((
+        &String::from("./tests/nes-test-roms/oam_read/oam_read.nes"),
+        false,
+    ));
     emu.power();
 
     emu.run_until(400_000_000, RunOptions::default())
@@ -11,6 +14,8 @@ fn test_oam_read() {
 
     let whole_mem = emu.get_memory_debug(Some(0x6000..=0x6127));
     let cpu_mem = whole_mem[0].as_slice();
+
+    println!("{cpu_mem:02X?}");
 
     let expected = [
         0x00, 0xDE, 0xB0, 0x61, 0x2D, 0x2D, 0x2D, 0x2D, 0x2D, 0x2D, 0x2D, 0x2D, 0x2D, 0x2D, 0x2D,

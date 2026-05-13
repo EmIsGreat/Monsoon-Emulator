@@ -36,8 +36,9 @@ use crate::emulation::nes::{Nes, RunOptions};
 #[test]
 fn test_official_only() {
     let mut emu = Nes::default();
-    let loaded = emu.load_rom(&String::from(
-        "./tests/nes-test-roms/instr_test-v5/official_only.nes",
+    let loaded = emu.load_rom((
+        &String::from("./tests/nes-test-roms/instr_test-v5/official_only.nes"),
+        false,
     ));
 
     if !loaded.0 {
@@ -67,8 +68,9 @@ fn test_official_only() {
 #[test]
 fn test_all_instrs() {
     let mut emu = Nes::default();
-    let loaded = emu.load_rom(&String::from(
-        "./tests/nes-test-roms/instr_test-v5/all_instrs.nes",
+    let loaded = emu.load_rom((
+        &String::from("./tests/nes-test-roms/instr_test-v5/all_instrs.nes"),
+        false,
     ));
 
     if !loaded.0 {
@@ -83,7 +85,7 @@ fn test_all_instrs() {
     emu.run_until(900_000_000, RunOptions::default())
         .expect("Error while running test");
 
-    let whole_mem = emu.get_memory_debug(Some(0x6000..=0x601C));
+    let whole_mem = emu.get_memory_debug(Some(0x6000..=0x60C0));
     let cpu_mem = whole_mem[0].as_slice();
 
     let expected = [

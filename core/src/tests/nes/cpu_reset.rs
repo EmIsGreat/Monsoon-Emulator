@@ -3,8 +3,9 @@ use crate::emulation::nes::Nes;
 #[test]
 fn test_ram_after_reset() {
     let mut emu = Nes::default();
-    emu.load_rom(&String::from(
-        "./tests/nes-test-roms/cpu_reset/ram_after_reset.nes",
+    emu.load_rom((
+        &String::from("./tests/nes-test-roms/cpu_reset/ram_after_reset.nes"),
+        false,
     ));
     emu.reset();
 
@@ -42,8 +43,9 @@ fn test_ram_after_reset() {
 #[test]
 fn test_registers() {
     let mut emu = Nes::default();
-    emu.load_rom(&String::from(
-        "./tests/nes-test-roms/cpu_reset/registers.nes",
+    emu.load_rom((
+        &String::from("./tests/nes-test-roms/cpu_reset/registers.nes"),
+        false,
     ));
     emu.reset();
 

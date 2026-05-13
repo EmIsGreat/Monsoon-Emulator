@@ -8,7 +8,10 @@ use crate::emulation::nes::{Nes, RunOptions};
 fn nestest() {
     let mut emu = Nes::default();
     emu.enable_trace();
-    emu.load_rom(&String::from("./tests/nes-test-roms/nestest_headless.nes"));
+    emu.load_rom((
+        &String::from("./tests/nes-test-roms/nestest_headless.nes"),
+        false,
+    ));
     emu.power();
 
     // Stops after reaching terminating hlt instruction

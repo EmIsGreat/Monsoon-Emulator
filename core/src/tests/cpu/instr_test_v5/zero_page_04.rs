@@ -3,8 +3,9 @@ use crate::emulation::nes::{Nes, RunOptions};
 #[test]
 fn test_04_zero_page() {
     let mut emu = Nes::default();
-    emu.load_rom(&String::from(
-        "./tests/nes-test-roms/instr_test-v5/rom_singles/04-zero_page.nes",
+    emu.load_rom((
+        &String::from("./tests/nes-test-roms/instr_test-v5/rom_singles/04-zero_page.nes"),
+        false,
     ));
     emu.reset();
     emu.run_until(51428549, RunOptions::default())

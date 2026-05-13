@@ -3,8 +3,9 @@ use crate::emulation::nes::{Nes, RunOptions};
 #[test]
 fn test_05_zp_xy() {
     let mut emu = Nes::default();
-    emu.load_rom(&String::from(
-        "./tests/nes-test-roms/instr_test-v5/rom_singles/05-zp_xy.nes",
+    emu.load_rom((
+        &String::from("./tests/nes-test-roms/instr_test-v5/rom_singles/05-zp_xy.nes"),
+        false,
     ));
     emu.reset();
     emu.run_until(102889553, RunOptions::default())

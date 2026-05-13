@@ -76,8 +76,11 @@ pub trait RomParser: Debug {
 /// ```rust,no_run
 /// use monsoon_core::emulation::rom::RomFile;
 ///
-/// # let raw_bytes: &[u8] = &[];
-/// let rom = RomFile::load(raw_bytes, Some("my_game.nes".to_string())).expect("invalid ROM");
+/// # let mut raw_bytes: &[u8] = &[];
+/// let rom = RomFile::load(&mut raw_bytes, Some(&"my_game.nes".to_string()), false).expect(
+///     "invalid
+/// ROM",
+/// );
 /// println!("Mapper: {}", rom.mapper);
 /// ```
 ///
@@ -761,23 +764,12 @@ impl RomFile {
             let rom_db = Nes::builtin_rom_database();
             let primary_lookup = rom_db.get_entry(&full_hash);
 
-            if let Some(lookup) = primary_lookup {
-                println!("Found matching Rom in db: {:?}", lookup);
-            } else if let Some(lookup) = rom_db.get_entry_by_headerless(&headerless_hash) {
-                println!("Found matching Rom with diff. Header in db: {:?}", lookup);
-                if let Some(header) = &lookup.header {
-                    println!("Incorrect header of passed Rom: {:0X?}", &data[..16]);
-                    println!("DB Header used instead:         {:0X?}", header);
-                    data[..header.len()].copy_from_slice(header);
-                } else {
-                    println!(
-                        "Rom header doesn't match db header, but db doesn't provider \
-                         alternativeheader... falling back to original rom"
-                    );
-                }
-            } else {
-                println!("Rom not found in db");
-            };
+            if primary_lookup.is_none()
+                && let Some(lookup) = rom_db.get_entry_by_headerless(&headerless_hash)
+                && let Some(header) = &lookup.header
+            {
+                data[..header.len()].copy_from_slice(header);
+            }
         }
 
         let rom_type = RomFile::get_rom_type(data)?;
@@ -1140,7 +1132,7 @@ impl RomBuilder {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use crate::emulation::rom::{ExpansionDevice, RomBuilder, RomMapper};
 
     #[test]
     fn repr_enums_serialize_as_numbers() {

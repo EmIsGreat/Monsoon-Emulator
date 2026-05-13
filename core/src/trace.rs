@@ -79,7 +79,7 @@ impl TraceLog {
             cpu.y_register,
             cpu.processor_status | UNUSED_BIT,
             cpu.stack_pointer,
-            nes.total_cycles / 12 + 1
+            nes.total_cycles / 12
         )
         .as_str();
     }

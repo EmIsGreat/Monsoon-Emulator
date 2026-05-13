@@ -17,8 +17,8 @@
 //! let mut nes = Nes::default();
 //!
 //! // Load a ROM from raw bytes
-//! let rom_data = std::fs::read("game.nes").unwrap();
-//! let rom = RomFile::load(&rom_data, None).unwrap();
+//! let mut rom_data = std::fs::read("game.nes").unwrap();
+//! let rom = RomFile::load(&mut rom_data, None, false).unwrap();
 //! nes.load_rom(&rom);
 //!
 //! // Power on and run a single frame

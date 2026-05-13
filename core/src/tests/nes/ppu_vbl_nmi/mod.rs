@@ -1,4 +1,4 @@
-use crate::emulation::nes::{Nes, RunOptions};
+use crate::emulation::nes::{Nes, NesConfig, RunOptions};
 
 #[cfg(test)]
 mod even_odd_frames_09;
@@ -23,9 +23,12 @@ mod vbl_set_time_02;
 
 #[test]
 fn test_ppu_vbl_nmi() {
-    let mut emu = Nes::default();
-    let loaded = emu.load_rom(&String::from(
-        "./tests/nes-test-roms/ppu_vbl_nmi/ppu_vbl_nmi.nes",
+    let mut emu = Nes::with_config(NesConfig {
+        alignment: 1,
+    });
+    let loaded = emu.load_rom((
+        &String::from("./tests/nes-test-roms/ppu_vbl_nmi/ppu_vbl_nmi.nes"),
+        false,
     ));
 
     if !loaded.0 {
@@ -43,6 +46,8 @@ fn test_ppu_vbl_nmi() {
     let whole_mem = emu.get_memory_debug(Some(0x6000..=0x6079));
     let cpu_mem = whole_mem[0].as_slice();
 
+    println!("{:02X?}", cpu_mem);
+
     let expected = [
         0x00, 0xDE, 0xB0, 0x61, 0x54, 0x2B, 0x20, 0x31, 0x20, 0x32, 0x0A, 0x30, 0x30, 0x20, 0x2D,
         0x20, 0x56, 0x0A, 0x30, 0x31, 0x20, 0x2D, 0x20, 0x56, 0x0A, 0x30, 0x32, 0x20, 0x2D, 0x20,
@@ -54,6 +59,8 @@ fn test_ppu_vbl_nmi() {
         0x20, 0x74, 0x65, 0x73, 0x74, 0x73, 0x20, 0x70, 0x61, 0x73, 0x73, 0x65, 0x64, 0x0A, 0x0A,
         0x0A, 0x00,
     ];
+
+    println!("{:02X?}", expected);
 
     assert_eq!(cpu_mem[0], 0);
     assert_eq!(&cpu_mem[..expected.len()], &expected);

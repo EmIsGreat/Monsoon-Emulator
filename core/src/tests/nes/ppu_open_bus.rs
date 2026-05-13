@@ -3,8 +3,9 @@ use crate::emulation::nes::{Nes, RunOptions};
 #[test]
 fn test_ppu_open_bus() {
     let mut emu = Nes::default();
-    emu.load_rom(&String::from(
-        "./tests/nes-test-roms/ppu_open_bus/ppu_open_bus.nes",
+    emu.load_rom((
+        &String::from("./tests/nes-test-roms/ppu_open_bus/ppu_open_bus.nes"),
+        false,
     ));
     emu.power();
 
