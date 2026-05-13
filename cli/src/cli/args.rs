@@ -5,7 +5,7 @@
 
 use std::path::PathBuf;
 
-use clap::{Args, Parser, ValueEnum, value_parser};
+use clap::{value_parser, Args, Parser, ValueEnum};
 use serde::Deserialize;
 
 /// NES Emulator CLI - A cycle-accurate NES emulator with comprehensive CLI
@@ -50,6 +50,15 @@ pub struct CliArgs {
 
     #[command(flatten)]
     pub output: OutputArgs,
+
+    #[command(flatten)]
+    pub console: ConsoleArgs,
+}
+
+#[derive(Args, Debug, Clone, Default)]
+pub struct ConsoleArgs {
+    #[arg(long, default_value_t = 2)]
+    pub alignment: u8,
 }
 
 /// ROM loading arguments
@@ -279,11 +288,11 @@ pub struct ExecutionArgs {
 
     /// Enable internal emulator trace logging (core/trace.rs)
     #[arg(long, default_value_t = false)]
-    pub internal_log: bool,
+    pub trace_log: bool,
 
     /// Output path for internal emulator trace logging
     #[arg(long, value_parser = value_parser!(PathBuf), value_hint = clap::ValueHint::FilePath)]
-    pub internal_log_path: Option<PathBuf>,
+    pub trace_log_path: Option<PathBuf>,
 
     /// Set breakpoint at PC address (can be specified multiple times)
     #[arg(long, value_parser = parse_hex_u16, action = clap::ArgAction::Append)]

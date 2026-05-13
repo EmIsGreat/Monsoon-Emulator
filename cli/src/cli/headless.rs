@@ -10,17 +10,17 @@
 use std::path::Path;
 use std::time::Instant;
 
-use monsoon_core::emulation::nes::Nes;
+use monsoon_core::emulation::nes::{Nes, NesConfig};
 use monsoon_core::emulation::palette_util::RgbColor;
 use monsoon_core::emulation::ppu_util::{TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH};
 use monsoon_core::emulation::rom::RomFile;
-use monsoon_core::emulation::screen_renderer::{ScreenRenderer, create_renderer};
+use monsoon_core::emulation::screen_renderer::{create_renderer, ScreenRenderer};
 
 use crate::cli::{
-    CliArgs, ExecutionConfig, ExecutionEngine, ExecutionResult, FpsConfig, MemoryDump, MemoryInit,
-    MemoryInitConfig, MemoryType, OutputWriter, SavestateConfig, StopReason, StreamingVideoEncoder,
-    VideoFormat, VideoResolution, apply_memory_init, apply_memory_init_config, is_ffmpeg_available,
-    parse_memory_range,
+    apply_memory_init, apply_memory_init_config, is_ffmpeg_available, parse_memory_range, CliArgs, ExecutionConfig, ExecutionEngine,
+    ExecutionResult, FpsConfig, MemoryDump, MemoryInit, MemoryInitConfig, MemoryType,
+    OutputWriter, SavestateConfig, StopReason, StreamingVideoEncoder, VideoFormat,
+    VideoResolution,
 };
 
 // =============================================================================
@@ -85,12 +85,14 @@ pub fn run_headless(args: &CliArgs) -> Result<(), String> {
     // Build execution and savestate configs from CLI args
     let exec_config = ExecutionConfig::from_cli_args(args);
     let savestate_config = SavestateConfig::from_cli_args(args);
+    let nes_config: NesConfig = NesConfig {
+        alignment: args.console.alignment,
+    };
 
     // Create and configure the execution engine
-    let mut engine = ExecutionEngine::new()
+    let mut engine = ExecutionEngine::new(nes_config)
         .with_config(exec_config)
         .with_savestate_config(savestate_config);
-
     // Load ROM
     if let Some(ref rom_path) = args.rom.rom {
         engine.load_rom(rom_path)?;

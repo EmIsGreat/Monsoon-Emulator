@@ -124,6 +124,7 @@ impl Cpu {
         if addr == DMA_ADDRESS {
             self.dma_triggered = true;
             self.dma_page = data;
+            return;
         }
 
         bus.write(addr, data, self.cycle);

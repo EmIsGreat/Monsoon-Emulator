@@ -81,6 +81,7 @@ pub struct Nes {
     pub(crate) cpu_cycle_counter: u8,
     /// Internal PPU clock divider counter (0-4).
     pub(crate) ppu_cycle_counter: u8,
+    pub alignment: u8,
 }
 
 impl Nes {
@@ -310,13 +311,27 @@ impl Nes {
     }
 }
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct NesConfig {
+    // Cpu-ppu cycle offset: 0-3
+    pub alignment: u8,
+}
+
+impl Default for NesConfig {
+    fn default() -> Self {
+        NesConfig {
+            alignment: 2,
+        }
+    }
+}
+
 impl Nes {
     /// Creates a new `Nes` instance with the given CPU and PPU.
     ///
     /// For most use cases, prefer [`Nes::default()`] which creates a standard
     /// NES configuration. Use this constructor when you need to supply a
     /// pre-configured CPU or PPU (e.g., for testing).
-    pub fn new(board: Board) -> Self {
+    pub fn new(board: Board, config: NesConfig) -> Self {
         Self {
             board,
             rom_file: None,
@@ -324,6 +339,7 @@ impl Nes {
             total_cycles: 0,
             cpu_cycle_counter: 0,
             ppu_cycle_counter: 0,
+            alignment: 8 + config.alignment,
         }
     }
 
@@ -455,7 +471,7 @@ impl Nes {
 
         // Check if CPU should step (every 12th master cycle, offset by 2)
         // cpu_cycle_counter + 2 == 12  means cpu_cycle_counter == 10
-        if self.cpu_cycle_counter == 10 {
+        if self.cpu_cycle_counter == self.alignment {
             // Only check trace_log when actually needed
             let do_trace =
                 self.trace_log.is_some() && matches!(&cpu.current_op, &MicroOp::FetchOpcode);
@@ -543,7 +559,14 @@ impl Nes {
 impl Default for Nes {
     fn default() -> Self {
         let board = Board::default();
-        Nes::new(board)
+        Nes::new(board, NesConfig::default())
+    }
+}
+
+impl Nes {
+    pub fn with_config(nes_config: NesConfig) -> Self {
+        let board = Board::default();
+        Nes::new(board, nes_config)
     }
 }
 

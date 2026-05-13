@@ -13,8 +13,8 @@
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
-use monsoon_core::emulation::nes::{MASTER_CYCLES_PER_FRAME, Nes, RunOptions};
-use monsoon_core::emulation::savestate::{SaveState, try_load_state_from_bytes};
+use monsoon_core::emulation::nes::{Nes, NesConfig, RunOptions, MASTER_CYCLES_PER_FRAME};
+use monsoon_core::emulation::savestate::{try_load_state_from_bytes, SaveState};
 use monsoon_core::util::ToBytes;
 
 use crate::cli::args::parse_hex_u8;
@@ -343,6 +343,7 @@ pub struct ExecutionConfig {
     pub trace_path: Option<PathBuf>,
     /// Verbose output
     pub verbose: bool,
+    pub alignment: u8,
 }
 
 /// Default output path for internal trace logs when tracing is enabled without
@@ -478,7 +479,7 @@ pub enum SavestateDestination {
 
 // Re-export SavestateFormat from args for use in this module
 pub use crate::cli::args::SavestateFormat;
-use crate::cli::{CliArgs, parse_hex_u16};
+use crate::cli::{parse_hex_u16, CliArgs};
 
 /// Configuration for savestate operations
 #[derive(Debug, Clone, Default)]
@@ -561,9 +562,9 @@ pub struct ExecutionEngine {
 
 impl ExecutionEngine {
     /// Create a new execution engine with default emulator
-    pub fn new() -> Self {
+    pub fn new(nes_config: NesConfig) -> Self {
         Self {
-            emu: Nes::default(),
+            emu: Nes::with_config(nes_config),
             config: ExecutionConfig::new(),
             savestate_config: SavestateConfig::new(),
             frames: vec![],
@@ -875,7 +876,7 @@ impl ExecutionEngine {
 }
 
 impl Default for ExecutionEngine {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self { Self::new(NesConfig::default()) }
 }
 
 // =============================================================================
@@ -949,11 +950,11 @@ impl ExecutionConfig {
         // Add trace
         config.trace_path = args
             .execution
-            .internal_log_path
+            .trace_log_path
             .clone()
             .or_else(|| args.execution.trace.clone());
 
-        if args.execution.internal_log && config.trace_path.is_none() {
+        if args.execution.trace_log && config.trace_path.is_none() {
             config.trace_path = Some(PathBuf::from(DEFAULT_INTERNAL_TRACE_LOG_PATH));
         }
 
@@ -999,13 +1000,13 @@ impl SavestateConfig {
 mod tests {
     use std::path::PathBuf;
 
-    use super::{DEFAULT_INTERNAL_TRACE_LOG_PATH, ExecutionConfig};
+    use super::{ExecutionConfig, DEFAULT_INTERNAL_TRACE_LOG_PATH};
     use crate::cli::CliArgs;
 
     #[test]
     fn from_cli_args_enables_internal_log_with_default_path() {
         let mut args = CliArgs::default();
-        args.execution.internal_log = true;
+        args.execution.trace_log = true;
 
         let config = ExecutionConfig::from_cli_args(&args);
         assert_eq!(
@@ -1017,8 +1018,8 @@ mod tests {
     #[test]
     fn from_cli_args_internal_log_path_takes_precedence_with_logging_disabled() {
         let mut args = CliArgs::default();
-        args.execution.internal_log = false;
-        args.execution.internal_log_path = Some(PathBuf::from("internal.log"));
+        args.execution.trace_log = false;
+        args.execution.trace_log_path = Some(PathBuf::from("internal.log"));
         args.execution.trace = Some(PathBuf::from("legacy.log"));
 
         let config = ExecutionConfig::from_cli_args(&args);

@@ -47,7 +47,7 @@ impl MapperLike for MMC1 {
                 if addr >= 0x8000 {
                     if data & 0x80 != 0 {
                         self.shift = 0;
-                        self.ctrl_reg |= 0x0C
+                        self.set_ctrl(self.ctrl_reg | 0x0C)
                     } else {
                         if self.last_shift_write != cycle - 1 {
                             self.shift = (self.shift >> 1) | ((data & 1) << 4);
@@ -162,7 +162,7 @@ impl MMC1 {
         // were in 16kb mode, so the half determines what logic gets used
         let is_in_first_half = addr / KB_16 == 0;
 
-        match self.prg_rom_bank_mode {
+        let res = match self.prg_rom_bank_mode {
             2 => {
                 if is_in_first_half {
                     addr
@@ -174,21 +174,22 @@ impl MMC1 {
                 if is_in_first_half {
                     (bank as u32 * KB_16) + addr
                 } else {
-                    addr + (15 * KB_16)
+                    addr + (6 * KB_16)
                 }
             }
             _ => {
                 unreachable!()
             }
-        }
+        };
+
+        res
     }
 
     #[inline]
     fn get_chr_rom_address(&self, addr: u16) -> u32 {
         let addr = addr as u32;
-        let is_8kb_mode = self.ctrl_reg & 0b10000 == 0;
 
-        if is_8kb_mode {
+        if self.chr_rom_bank_mode == 0 {
             (self.chr_bank_0 as u32 >> 1) * 0x2000 + addr
         } else {
             let is_in_first_half = addr / 0x1000 == 0;
@@ -198,36 +199,29 @@ impl MMC1 {
                 self.chr_bank_1
             };
 
-            (0x2000 * bank as u32) + addr
+            (0x1000 * bank as u32) + addr
         }
     }
 
     fn copy_shift(&mut self, addr: u16) {
-        println!("Copy shift");
-
         match addr {
-            0x8000..=0x9FFF => self.set_ctrl(),
+            0x8000..=0x9FFF => self.set_ctrl(self.shift),
             0xA000..=0xBFFF => {
-                println!("chr bank 0: {}", self.shift);
                 self.chr_bank_0 = self.shift;
             }
-            0xC000..=0xDFFF => {
-                println!("chr bank 1: {}", self.shift);
-                self.chr_bank_1 = self.shift
-            }
-            0xE000..=0xFFFF => {
-                println!("prg bank: {}", self.prg_bank);
-                self.prg_bank = self.shift
-            }
+            0xC000..=0xDFFF => self.chr_bank_1 = self.shift,
+            0xE000..=0xFFFF => self.prg_bank = self.shift,
             _ => {}
         }
     }
 
-    fn set_ctrl(&mut self) {
-        println!("Setting ctrl");
+    fn set_ctrl(&mut self, val: u8) {
+        self.ctrl_reg = val;
+        self.process_ctrl_change()
+    }
 
-        let nametable = self.shift & 0b11;
-        println!("Nametable: {}", nametable);
+    fn process_ctrl_change(&mut self) {
+        let nametable = self.ctrl_reg & 0b11;
 
         match nametable {
             0 => self.nametable_arrangement = NametableArrangement::SingleScreenLower,
@@ -237,11 +231,8 @@ impl MMC1 {
             _ => unreachable!(),
         }
 
-        self.prg_rom_bank_mode = (self.shift >> 2) & 0b11;
-        self.chr_rom_bank_mode = (self.shift >> 4) & 0b1;
-
-        println!("prg rom mode: {}", self.prg_rom_bank_mode);
-        println!("chr rom mode: {}", self.chr_rom_bank_mode);
+        self.prg_rom_bank_mode = (self.ctrl_reg >> 2) & 0b11;
+        self.chr_rom_bank_mode = (self.ctrl_reg >> 4) & 0b1;
     }
 }
 
@@ -250,7 +241,7 @@ impl From<&RomFile> for MMC1 {
         let prg_ram_size = Mapper::get_likely_correct_ram_size(value);
         let battery_backed = value.is_battery_backed || value.prg_memory.prg_nvram_size > 0;
 
-        MMC1 {
+        let mut mmc1 = MMC1 {
             version: 0,
             submapper: value.submapper_number,
             prg_ram_size: prg_ram_size as u16,
@@ -269,12 +260,16 @@ impl From<&RomFile> for MMC1 {
             last_shift_write: u128::MAX,
             shift: 0,
             shift_count: 0,
-            ctrl_reg: 0,
+            ctrl_reg: 0x0C,
             chr_bank_0: 0,
             chr_bank_1: 0,
             prg_bank: 0,
             prg_rom_bank_mode: 0,
             chr_rom_bank_mode: 0,
-        }
+        };
+
+        mmc1.process_ctrl_change();
+
+        mmc1
     }
 }

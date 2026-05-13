@@ -56,6 +56,15 @@ pub struct ConfigFile {
     /// Output configuration
     #[serde(default)]
     pub output: OutputConfig,
+
+    #[serde(default)]
+    pub console_config: ConsoleConfig,
+}
+
+#[derive(Debug, Copy, Clone, Deserialize, Default)]
+#[serde(default)]
+pub struct ConsoleConfig {
+    pub alignment: Option<u8>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -146,8 +155,8 @@ pub struct ExecutionConfig {
     pub until_mem: Option<Vec<String>>,
     pub until_hlt: Option<bool>,
     pub trace: Option<PathBuf>,
-    pub internal_log: Option<bool>,
-    pub internal_log_path: Option<PathBuf>,
+    pub trace_log: Option<bool>,
+    pub trace_log_path: Option<PathBuf>,
     #[serde(default)]
     pub breakpoints: Vec<String>,
     /// Memory watchpoints (format: "ADDR" or "ADDR:r" or "ADDR:w" or "ADDR:rw")
@@ -156,6 +165,7 @@ pub struct ExecutionConfig {
     /// Alternative: stop_conditions as array of strings
     #[serde(default)]
     pub stop_conditions: Vec<String>,
+    pub alignment: Option<u8>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -181,8 +191,11 @@ impl ConfigFile {
     /// Merge config file values with CLI arguments.
     /// CLI arguments take precedence over config file values.
     pub fn merge_with_cli(&self, cli: &mut CliArgs) {
-        // Global options
+        if cli.console.alignment == 2 {
+            cli.console.alignment = self.console_config.alignment.unwrap_or(2)
+        }
 
+        // Global options
         if !cli.quiet {
             cli.quiet = self.global.quiet.unwrap_or(false);
         }
@@ -351,11 +364,11 @@ impl ConfigFile {
         if cli.execution.trace.is_none() {
             cli.execution.trace = self.execution.trace.clone();
         }
-        if !cli.execution.internal_log {
-            cli.execution.internal_log = self.execution.internal_log.unwrap_or(false);
+        if !cli.execution.trace_log {
+            cli.execution.trace_log = self.execution.trace_log.unwrap_or(false);
         }
-        if cli.execution.internal_log_path.is_none() {
-            cli.execution.internal_log_path = self.execution.internal_log_path.clone();
+        if cli.execution.trace_log_path.is_none() {
+            cli.execution.trace_log_path = self.execution.trace_log_path.clone();
         }
         if cli.execution.breakpoint.is_empty() {
             for bp in &self.execution.breakpoints {
