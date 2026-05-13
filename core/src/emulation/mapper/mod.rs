@@ -7,6 +7,9 @@ use serde::{Deserialize, Serialize};
 use crate::emulation::mapper::mmc1::MMC1;
 use crate::emulation::mem::{Memory, OpenBus};
 use crate::emulation::ppu::VRAM_SIZE;
+use crate::emulation::ppu_util::{
+    MapperRegisterTables, RegisterEntry, RegisterFormat, RegisterMap, RegisterValue,
+};
 use crate::emulation::rom::{RomFile, RomMapper};
 
 pub mod mmc1;
@@ -62,6 +65,7 @@ pub trait MapperLike {
     fn ppu_read_debug(&self, addr: u16, open_bus: &OpenBus) -> PpuReadResult;
     fn ppu_write(&mut self, addr: u16, data: u8) -> PpuWriteResult;
     fn ppu_init(&mut self, addr: u16, data: u8) -> PpuWriteResult;
+    fn get_registers_debug(&self) -> MapperRegisterTables;
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -148,6 +152,20 @@ impl MapperLike for NoMapper {
             0..=0x3FFF => PpuWriteResult::Handled,
             _ => PpuWriteResult::Registered,
         }
+    }
+
+    fn get_registers_debug(&self) -> MapperRegisterTables {
+        let mut state = RegisterMap::new();
+        state.insert(
+            "name".to_string(),
+            RegisterEntry::new(
+                RegisterValue::Text("NoMapper".to_string()),
+                RegisterFormat::Text,
+            ),
+        );
+        let mut tables = MapperRegisterTables::new();
+        tables.insert("General".to_string(), state);
+        tables
     }
 }
 
@@ -256,6 +274,49 @@ impl MapperLike for Nrom {
 
     #[inline]
     fn ppu_init(&mut self, addr: u16, data: u8) -> PpuWriteResult { self.ppu_write(addr, data) }
+
+    fn get_registers_debug(&self) -> MapperRegisterTables {
+        let mut state = RegisterMap::new();
+        state.insert(
+            "name".to_string(),
+            RegisterEntry::new(
+                RegisterValue::Text("NROM".to_string()),
+                RegisterFormat::Text,
+            ),
+        );
+        state.insert(
+            "prg_ram_size".to_string(),
+            RegisterEntry::new(
+                RegisterValue::U16(self.prg_ram_size),
+                RegisterFormat::Decimal,
+            ),
+        );
+        state.insert(
+            "prg_rom_size".to_string(),
+            RegisterEntry::new(
+                RegisterValue::U16(self.prg_rom_size),
+                RegisterFormat::Decimal,
+            ),
+        );
+        state.insert(
+            "prg_ram_battery_backed".to_string(),
+            RegisterEntry::new(
+                RegisterValue::Bool(self.prg_ram_battery_backed),
+                RegisterFormat::Bool,
+            ),
+        );
+        state.insert(
+            "nametable_arrangement".to_string(),
+            RegisterEntry::new(
+                RegisterValue::Text(format!("{:?}", self.nametable_arrangement)),
+                RegisterFormat::Text,
+            ),
+        );
+
+        let mut tables = MapperRegisterTables::new();
+        tables.insert("General".to_string(), state);
+        tables
+    }
 }
 
 impl From<&RomFile> for Nrom {

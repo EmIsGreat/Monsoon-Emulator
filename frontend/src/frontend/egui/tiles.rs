@@ -12,7 +12,8 @@ use crate::frontend::egui::config::AppConfig;
 use crate::frontend::egui::textures::EmuTextures;
 use crate::frontend::egui::ui::{
     render_emulator_output, render_keybindings, render_nametable, render_options, render_palettes,
-    render_pattern_table, render_rom_header, render_soam_viewer, render_sprite_viewer,
+    render_pattern_table, render_register_viewer, render_rom_header, render_soam_viewer,
+    render_sprite_viewer,
 };
 use crate::frontend::egui::wgpu_renderer::NesWgpuRenderer;
 use crate::frontend::messages::AsyncFrontendMessage;
@@ -33,6 +34,7 @@ pub enum Pane {
     Sprites,
     SoamSprites,
     RomHeader,
+    Registers,
     /// Keybindings configuration - closeable, can be reopened via menu
     Keybindings,
 }
@@ -49,7 +51,8 @@ impl Pane {
             | Pane::Keybindings
             | Pane::Sprites
             | Pane::SoamSprites
-            | Pane::RomHeader => true,
+            | Pane::RomHeader
+            | Pane::Registers => true,
         }
     }
 
@@ -65,6 +68,7 @@ impl Pane {
             Pane::Sprites => "Sprites",
             Pane::SoamSprites => "SOAM Sprites",
             Pane::RomHeader => "ROM Header",
+            Pane::Registers => "Registers",
         }
     }
 }
@@ -126,6 +130,7 @@ impl Behavior<Pane> for TreeBehavior<'_> {
             Pane::Sprites => render_sprite_viewer(ui, self.emu_textures),
             Pane::SoamSprites => render_soam_viewer(ui, self.config, self.emu_textures),
             Pane::RomHeader => render_rom_header(ui, self.config),
+            Pane::Registers => render_register_viewer(ui, self.emu_textures),
         }
         UiResponse::None
     }
@@ -241,6 +246,10 @@ pub fn compute_required_fetches_from_tree(
 
     if find_pane(&tree.tiles, &Pane::SoamSprites).is_some() && config.is_effectively_paused() {
         explicit_fetches.insert(EmulatorFetchable::SoamSprites(None));
+    }
+
+    if find_pane(&tree.tiles, &Pane::Registers).is_some() {
+        explicit_fetches.insert(EmulatorFetchable::Registers(None));
     }
 
     if !explicit_fetches.is_empty() {

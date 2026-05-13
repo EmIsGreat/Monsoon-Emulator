@@ -1,8 +1,8 @@
 use egui::{ColorImage, Context, TextureHandle, TextureOptions};
 use monsoon_core::emulation::palette_util::{RgbColor, RgbPalette};
 use monsoon_core::emulation::ppu_util::{
-    NametableData, PALETTE_COUNT, PaletteData, SoamData, SpriteData, TILE_COUNT, TILE_SIZE,
-    TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH, TileData,
+    NametableData, PALETTE_COUNT, PaletteData, RegisterDebugData, SoamData, SpriteData, TILE_COUNT,
+    TILE_SIZE, TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH, TileData,
 };
 use monsoon_core::emulation::screen_renderer::ScreenRenderer;
 use web_time::Instant;
@@ -28,6 +28,7 @@ pub struct EmuTextures {
     pub nametable_data: Option<Box<NametableData>>,
     pub sprite_data: Option<Box<SpriteData>>,
     pub soam_data: Option<Box<SoamData>>,
+    pub register_data: Option<Box<RegisterDebugData>>,
 }
 
 impl Default for EmuTextures {
@@ -44,6 +45,7 @@ impl Default for EmuTextures {
             nametable_data: None,
             sprite_data: None,
             soam_data: None,
+            register_data: None,
         }
     }
 }

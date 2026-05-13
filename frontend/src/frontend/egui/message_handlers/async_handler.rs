@@ -303,6 +303,9 @@ impl EguiApp {
             AsyncFrontendMessage::OpenRomHeaderViewer => {
                 add_pane_if_missing(&mut self.tree, Pane::RomHeader);
             }
+            AsyncFrontendMessage::OpenRegistersViewer => {
+                add_pane_if_missing(&mut self.tree, Pane::Registers);
+            }
             AsyncFrontendMessage::Speedup => {
                 ctx.memory_mut(|mem| {
                     mem.data
