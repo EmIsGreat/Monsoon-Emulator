@@ -125,13 +125,9 @@ impl MapperLike for MMC1 {
     }
 
     #[inline]
-    fn ppu_write(&mut self, addr: u16, data: u8) -> PpuWriteResult {
+    fn ppu_write(&mut self, addr: u16, _: u8) -> PpuWriteResult {
         match addr {
             0..=0x1FFF => {
-                let address = self.get_chr_rom_address(addr);
-                if let Some(rom) = &mut self.chr_rom {
-                    rom.write(address, data)
-                }
                 PpuWriteResult::Handled
             }
             0x2000..=0x3EFF => {
@@ -199,7 +195,7 @@ impl MMC1 {
                 self.chr_bank_1
             };
 
-            (0x1000 * bank as u32) + addr
+            (0x1000 * bank as u32) + (addr & 0x0FFF)
         }
     }
 
