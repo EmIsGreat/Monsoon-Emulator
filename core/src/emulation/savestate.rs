@@ -11,13 +11,11 @@
 //! by a 1-byte format version (`0` = binary/postcard, `1` = JSON), then the
 //! payload.
 
-use std::collections::VecDeque;
-
 use serde::{Deserialize, Serialize};
 use static_assertions::assert_impl_all;
 
 use crate::emulation::board::Board;
-use crate::emulation::cpu::{Cpu, MicroOp};
+use crate::emulation::cpu::{Cpu, MicroOp, OpQueue};
 use crate::emulation::mapper::Mapper;
 use crate::emulation::mem::OpenBus;
 use crate::emulation::peripherals::Peripheral;
@@ -59,7 +57,7 @@ pub struct CpuState {
     /// Current micro-operation being executed.
     pub(crate) current_op: MicroOp,
     /// Queue of pending micro-operations.
-    pub(crate) op_queue: VecDeque<MicroOp>,
+    pub(crate) op_queue: OpQueue<8>,
     /// Opcode byte of the instruction currently being executed.
     pub(crate) current_opcode: Option<u8>,
     /// CPU data bus / last-fetched data byte.
@@ -93,6 +91,7 @@ pub struct CpuState {
     /// Previous NMI line state (for edge detection).
     pub(crate) prev_nmi: bool,
     pub cycle: u128,
+    pub remaining_dma_cycles: u16
 }
 
 impl From<&Cpu> for CpuState {
@@ -125,6 +124,7 @@ impl From<&Cpu> for CpuState {
             nmi_pending: cpu.nmi_pending,
             prev_nmi: cpu.prev_nmi,
             cycle: cpu.cycle,
+            remaining_dma_cycles: cpu.remaining_dma_cycles,
         }
     }
 }

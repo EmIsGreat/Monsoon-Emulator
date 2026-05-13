@@ -6,6 +6,10 @@ mod renderers {
     extern crate monsoon_default_renderers;
 }
 
+#[cfg(feature = "dhat-heap")]
+#[global_allocator]
+static ALLOC:dhat::Alloc = dhat::Alloc;
+
 const EXIT_SUCCESS: u8 = 0;
 const EXIT_GENERAL_ERROR: u8 = 1;
 // const EXIT_ROM_LOAD_FAILED: u8 = 3;  // Reserved for future use
@@ -28,6 +32,9 @@ pub struct CliArgs {
 }
 
 fn main() -> ExitCode {
+    #[cfg(feature = "dhat-heap")]
+    let _profiler = dhat::Profiler::new_heap();
+
     let args = CliArgs::parse();
 
     let result = run_gui(&args);

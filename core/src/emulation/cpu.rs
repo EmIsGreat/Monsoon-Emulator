@@ -1,12 +1,12 @@
-use std::collections::VecDeque;
 use std::ops::RangeInclusive;
 
 use serde::{Deserialize, Serialize};
+use serde_big_array::BigArray;
 
 use crate::emulation::board::CpuBus;
 use crate::emulation::nes::ExecutionFinished;
 use crate::emulation::opcode;
-use crate::emulation::opcode::{OPCODES_MAP, OPCODES_TABLE, OpCode, get_opcode};
+use crate::emulation::opcode::{get_opcode, OpCode, OPCODES_MAP, OPCODES_TABLE};
 use crate::emulation::savestate::CpuState;
 use crate::util;
 
@@ -27,6 +27,53 @@ pub const UPPER_BYTE: u16 = 0xFF00;
 pub const LOWER_BYTE: u16 = 0x00FF;
 pub const DMA_ADDRESS: u16 = 0x4014;
 pub const OAM_REG_ADDRESS: u16 = 0x2004;
+pub const RING_BUFFER_SIZE: usize = 8;
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize)]
+pub struct OpQueue<const N: usize> {
+    #[serde(with = "BigArray")]
+    data: [Option<MicroOp>; N],
+    head: usize,
+    len: usize,
+}
+
+impl<const N: usize> OpQueue<N> {
+    const MASK: usize = N - 1;
+
+    fn new() -> Self {
+        Self {
+            data: [const { None }; N],
+            head: 0,
+            len: 0,
+        }
+    }
+
+    #[inline(always)]
+    pub fn push_back(&mut self, value: MicroOp) {
+        assert!(self.len < N);
+        assert!(N.is_power_of_two());
+
+        let tail = (self.head + self.len) & Self::MASK;
+        self.data[tail] = Some(value);
+        self.len += 1;
+    }
+
+    #[inline(always)]
+    pub fn pop_front(&mut self) -> Option<MicroOp> {
+        if self.len == 0 {
+            return None;
+        }
+
+        let value = self.data[self.head].take();
+
+        assert!(N.is_power_of_two());
+
+        self.head = (self.head + 1) & Self::MASK;
+        self.len -= 1;
+
+        value
+    }
+}
 
 pub struct Cpu {
     pub program_counter: u16,
@@ -38,7 +85,8 @@ pub struct Cpu {
     pub lo: u8,
     pub hi: u8,
     pub current_op: MicroOp,
-    pub op_queue: VecDeque<MicroOp>,
+    pub op_queue: OpQueue<RING_BUFFER_SIZE>,
+    pub remaining_dma_cycles: u16,
     pub current_opcode: Option<OpCode>,
     pub data_bus: u8,
     pub ane_constant: u8,
@@ -76,7 +124,8 @@ impl Default for Cpu {
             lo: 0,
             hi: 0,
             current_op: MicroOp::FetchOpcode,
-            op_queue: VecDeque::with_capacity(8),
+            op_queue: OpQueue::new(),
+            remaining_dma_cycles: 0,
             current_opcode: None,
             data_bus: 0,
             ane_constant: 0xEE,
@@ -334,7 +383,6 @@ impl Cpu {
 
     #[inline]
     fn get_instructions_for_op_type(&mut self) {
-        self.op_queue.clear();
         let Some(op) = self.current_opcode else {
             return;
         };
@@ -991,8 +1039,8 @@ impl Cpu {
     }
 
     #[inline]
-    fn get_instructions_for_irq(&mut self) -> VecDeque<MicroOp> {
-        let mut instructions = VecDeque::with_capacity(7);
+    fn get_instructions_for_irq(&mut self) -> OpQueue<8> {
+        let mut instructions = OpQueue::new();
 
         instructions.push_back(MicroOp::ReadWithOffsetFromU16AndAddSomething(
             AddressSource::PC,
@@ -1040,8 +1088,8 @@ impl Cpu {
     }
 
     #[inline]
-    fn get_instructions_for_reset(&mut self) -> VecDeque<MicroOp> {
-        let mut instructions = VecDeque::with_capacity(7);
+    fn get_instructions_for_reset(&mut self) -> OpQueue<8> {
+        let mut instructions = OpQueue::new();
 
         instructions.push_back(MicroOp::ReadWithOffsetFromU16AndAddSomething(
             AddressSource::PC,
@@ -1087,7 +1135,6 @@ impl Cpu {
 
         self.is_in_irq = true;
 
-        debug_assert!(!seq.is_empty());
         if let Some(next) = seq.pop_front() {
             self.current_op = next;
         }
@@ -1100,7 +1147,6 @@ impl Cpu {
 
         self.is_in_irq = true;
 
-        debug_assert!(!seq.is_empty());
         if let Some(next) = seq.pop_front() {
             self.current_op = next;
         }
@@ -1144,6 +1190,16 @@ impl Cpu {
         }
 
         self.dma_read = !self.dma_read;
+
+        if self.remaining_dma_cycles > 0 {
+            self.process_dma(bus);
+            self.remaining_dma_cycles -= 1;
+
+            return Ok(ExecutionFinished {
+                cycle_completed: true,
+                ..Default::default()
+            });
+        }
 
         let op = self.current_op;
 
@@ -1575,50 +1631,67 @@ impl Cpu {
     pub fn trigger_oam_dma(&mut self) {
         self.dma_triggered = false;
         self.is_in_irq = true;
-        let mut instr = VecDeque::new();
+        self.remaining_dma_cycles = 514
+    }
 
-        instr.push_back(MicroOp::Read(
-            AddressSource::None,
-            Target::None,
-            MicroOpCallback::None,
-        ));
-
-        if !self.dma_read {
-            instr.push_back(MicroOp::Read(
-                AddressSource::AddressLatch,
-                Target::None,
-                MicroOpCallback::None,
-            ))
+    #[inline]
+    pub fn process_dma(&mut self, bus: &mut impl CpuBus) {
+        if self.remaining_dma_cycles == 514 {
+            return;
         }
 
-        for oam_addr in 0x00u8..0xFFu8 {
-            instr.push_back(MicroOp::Read(
-                AddressSource::Address((self.dma_page as u16) << 8 | oam_addr as u16),
-                Target::DataBus,
-                MicroOpCallback::None,
-            ));
-            instr.push_back(MicroOp::Write(
-                Target::OamWrite,
-                Source::DataBus,
-                false,
-                MicroOpCallback::None,
-            ))
+        if self.remaining_dma_cycles == 513 {
+            if !self.dma_read {
+                self.execute_micro_op(
+                    MicroOp::Read(
+                        AddressSource::AddressLatch,
+                        Target::None,
+                        MicroOpCallback::None,
+                    ),
+                    bus,
+                );
+                return;
+            } else {
+                self.remaining_dma_cycles -= 1;
+            }
         }
 
-        instr.push_back(MicroOp::Read(
-            AddressSource::Address(((self.dma_page as u16) << 8) | 0xFFu16),
-            Target::DataBus,
-            MicroOpCallback::None,
-        ));
-        instr.push_back(MicroOp::Write(
-            Target::OamWrite,
-            Source::DataBus,
-            false,
-            MicroOpCallback::ExitIrq,
-        ));
+        if self.remaining_dma_cycles <= 512 && self.remaining_dma_cycles > 1 {
+            let address = 0xFF - self.remaining_dma_cycles.div_ceil(2);
+            if self.remaining_dma_cycles & 1 == 0 {
+                self.execute_micro_op(
+                    MicroOp::Read(
+                        AddressSource::Address((self.dma_page as u16) << 8 | address),
+                        Target::DataBus,
+                        MicroOpCallback::None,
+                    ),
+                    bus,
+                )
+            } else {
+                self.execute_micro_op(
+                    MicroOp::Write(
+                        Target::OamWrite,
+                        Source::DataBus,
+                        false,
+                        MicroOpCallback::None,
+                    ),
+                    bus,
+                )
+            }
+            return;
+        }
 
-        instr.append(&mut self.op_queue);
-        self.op_queue = instr;
+        if self.remaining_dma_cycles == 1 {
+            self.execute_micro_op(
+                MicroOp::Write(
+                    Target::OamWrite,
+                    Source::DataBus,
+                    false,
+                    MicroOpCallback::ExitIrq,
+                ),
+                bus,
+            );
+        }
     }
 }
 
@@ -1845,7 +1918,8 @@ impl Cpu {
             lo: state.lo,
             hi: state.hi,
             current_op: state.current_op,
-            op_queue: state.op_queue.clone(),
+            op_queue: state.op_queue,
+            remaining_dma_cycles: state.remaining_dma_cycles,
             current_opcode: state.current_opcode.and_then(get_opcode),
             data_bus: state.data_bus,
             ane_constant: state.ane_constant,
