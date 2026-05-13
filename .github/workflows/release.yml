@@ -61,7 +61,6 @@ jobs:
     release:
         needs:
             - build
-            - publish-crates
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout code
