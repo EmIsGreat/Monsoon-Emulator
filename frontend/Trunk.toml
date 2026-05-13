@@ -1,3 +1,0 @@
-[build]
-release = true
-minify = "on_release"

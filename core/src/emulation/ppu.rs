@@ -314,6 +314,14 @@ impl Ppu {
             }
         }
 
+        if !self.is_rendering()
+            && (self.scanline < VISIBLE_SCANLINES + 1 && self.dot >= 0x01 && self.dot <= 256)
+        {
+            self.pixel_buffer
+                [self.scanline as usize * SCREEN_RENDER_WIDTH + (self.dot - 1) as usize] =
+                bus.read(PALETTE_RAM_START_ADDRESS) as u16;
+        }
+
         if self.scanline == VBL_START_SCANLINE && self.dot == 1 {
             self.set_vbl_bit();
         }

@@ -127,9 +127,7 @@ impl MapperLike for MMC1 {
     #[inline]
     fn ppu_write(&mut self, addr: u16, _: u8) -> PpuWriteResult {
         match addr {
-            0..=0x1FFF => {
-                PpuWriteResult::Handled
-            }
+            0..=0x1FFF => PpuWriteResult::Handled,
             0x2000..=0x3EFF => {
                 PpuWriteResult::Nametable(self.nametable_arrangement.resolve_address(addr))
             }
@@ -158,7 +156,7 @@ impl MMC1 {
         // were in 16kb mode, so the half determines what logic gets used
         let is_in_first_half = addr / KB_16 == 0;
 
-        let res = match self.prg_rom_bank_mode {
+        match self.prg_rom_bank_mode {
             2 => {
                 if is_in_first_half {
                     addr
@@ -176,9 +174,7 @@ impl MMC1 {
             _ => {
                 unreachable!()
             }
-        };
-
-        res
+        }
     }
 
     #[inline]

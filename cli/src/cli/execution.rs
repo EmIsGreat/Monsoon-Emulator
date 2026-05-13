@@ -13,8 +13,8 @@
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
-use monsoon_core::emulation::nes::{Nes, NesConfig, RunOptions, MASTER_CYCLES_PER_FRAME};
-use monsoon_core::emulation::savestate::{try_load_state_from_bytes, SaveState};
+use monsoon_core::emulation::nes::{MASTER_CYCLES_PER_FRAME, Nes, NesConfig, RunOptions};
+use monsoon_core::emulation::savestate::{SaveState, try_load_state_from_bytes};
 use monsoon_core::util::ToBytes;
 
 use crate::cli::args::parse_hex_u8;
@@ -479,7 +479,7 @@ pub enum SavestateDestination {
 
 // Re-export SavestateFormat from args for use in this module
 pub use crate::cli::args::SavestateFormat;
-use crate::cli::{parse_hex_u16, CliArgs};
+use crate::cli::{CliArgs, parse_hex_u16};
 
 /// Configuration for savestate operations
 #[derive(Debug, Clone, Default)]
@@ -1000,7 +1000,7 @@ impl SavestateConfig {
 mod tests {
     use std::path::PathBuf;
 
-    use super::{ExecutionConfig, DEFAULT_INTERNAL_TRACE_LOG_PATH};
+    use super::{DEFAULT_INTERNAL_TRACE_LOG_PATH, ExecutionConfig};
     use crate::cli::CliArgs;
 
     #[test]

@@ -14,13 +14,13 @@ use monsoon_core::emulation::nes::{Nes, NesConfig};
 use monsoon_core::emulation::palette_util::RgbColor;
 use monsoon_core::emulation::ppu_util::{TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH};
 use monsoon_core::emulation::rom::RomFile;
-use monsoon_core::emulation::screen_renderer::{create_renderer, ScreenRenderer};
+use monsoon_core::emulation::screen_renderer::{ScreenRenderer, create_renderer};
 
 use crate::cli::{
-    apply_memory_init, apply_memory_init_config, is_ffmpeg_available, parse_memory_range, CliArgs, ExecutionConfig, ExecutionEngine,
-    ExecutionResult, FpsConfig, MemoryDump, MemoryInit, MemoryInitConfig, MemoryType,
-    OutputWriter, SavestateConfig, StopReason, StreamingVideoEncoder, VideoFormat,
-    VideoResolution,
+    CliArgs, ExecutionConfig, ExecutionEngine, ExecutionResult, FpsConfig, MemoryDump, MemoryInit,
+    MemoryInitConfig, MemoryType, OutputWriter, SavestateConfig, StopReason, StreamingVideoEncoder,
+    VideoFormat, VideoResolution, apply_memory_init, apply_memory_init_config, is_ffmpeg_available,
+    parse_memory_range,
 };
 
 // =============================================================================
