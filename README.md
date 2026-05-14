@@ -1,5 +1,7 @@
 # Monsoon Emulator
 
+Time spent since 09 February 2026:&nbsp;&nbsp;[![wakatime](https://wakatime.com/badge/user/c71acca9-7c34-4e24-94f2-b52a92e4673e/project/eb026d79-1ad1-4546-93a5-241f7054b420.svg)](https://wakatime.com/badge/user/c71acca9-7c34-4e24-94f2-b52a92e4673e/project/eb026d79-1ad1-4546-93a5-241f7054b420) * ~1.3
+
 A cycle-accurate NES (Nintendo Entertainment System) emulator written in Rust. Monsoon aims for maximum hardware accuracy on hard timing limits while allowing customizability for soft limits and hardware variables that cannot be perfectly emulated.
 
 ## Project Structure
@@ -8,7 +10,7 @@ Monsoon is organized as a Cargo workspace with four crates:
 
 | Crate                    | Package Name                | Description                                                                   |
 |--------------------------|-----------------------------|-------------------------------------------------------------------------------|
-| [`core`](core)         | `monsoon-core`              | Core emulation library — CPU, PPU, memory, ROM parsing, save states           |
+| [`core`](core)           | `monsoon-core`              | Core emulation library — CPU, PPU, memory, ROM parsing, save states           |
 | [`renderer`](./renderer) | `monsoon-default-renderers` | Default screen renderer implementations (lookup table-based palette renderer) |
 | [`cli`](./cli)           | `monsoon-cli`               | Headless command-line interface for scripted/batch emulation                  |
 | [`frontend`](./frontend) | `monsoon-frontend`          | GUI application built with [egui](https://github.com/emilk/egui)              |
@@ -267,13 +269,13 @@ cargo test -p monsoon-core --doc
 
 ## Build Profiles
 
-| Profile | Command | Description |
-|---------|---------|-------------|
-| `dev` | `cargo build` | Debug build, no optimizations |
-| `release` | `cargo build --release` | Optimized, stripped, abort on panic |
-| `full_release` | `cargo build --profile full_release` | Release + LTO + single codegen unit |
-| `max_performance` | `cargo build --profile max_performance` | Full release + native CPU targeting |
-| `profiling` | `cargo build --profile profiling` | Release with debug symbols for profiling |
+| Profile           | Command                                 | Description                              |
+|-------------------|-----------------------------------------|------------------------------------------|
+| `dev`             | `cargo build`                           | Debug build, no optimizations            |
+| `release`         | `cargo build --release`                 | Optimized, stripped, abort on panic      |
+| `full_release`    | `cargo build --profile full_release`    | Release + LTO + single codegen unit      |
+| `max_performance` | `cargo build --profile max_performance` | Full release + native CPU targeting      |
+| `profiling`       | `cargo build --profile profiling`       | Release with debug symbols for profiling |
 
 ## License
 
