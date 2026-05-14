@@ -136,6 +136,9 @@ jobs:
                     publish_crate monsoon-core
                     wait_for_crate monsoon-core "$VERSION"
                     
+                    publish_crate monsoon-db
+                    wait_for_crate monsoon-db "$VERSION"
+                    
                     publish_crate monsoon-default-renderers
                     wait_for_crate monsoon-default-renderers "$VERSION"
                     
