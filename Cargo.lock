@@ -2781,7 +2781,7 @@ dependencies = [
 
 [[package]]
 name = "monsoon-cli"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "clap",
  "image",
@@ -2795,7 +2795,7 @@ dependencies = [
 
 [[package]]
 name = "monsoon-core"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "arc-swap",
  "enum_delegate",
@@ -2812,7 +2812,7 @@ dependencies = [
 
 [[package]]
 name = "monsoon-db"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "monsoon-core",
  "reqwest",
@@ -2822,7 +2822,7 @@ dependencies = [
 
 [[package]]
 name = "monsoon-default-renderers"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "monsoon-core",
  "serde",
@@ -2831,7 +2831,7 @@ dependencies = [
 
 [[package]]
 name = "monsoon-frontend"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "async-trait",
  "chrono",

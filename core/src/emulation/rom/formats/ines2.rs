@@ -22,7 +22,7 @@ impl RomParser for Ines2 {
         let alternative_nametables = rom[6] & 0b00001000 != 0;
         let trainer_present = rom[6] & 0b00000100 != 0;
         let battery_backed = rom[6] & 0b00000010 != 0;
-        let hard_wired_nametable_layout = rom[6] & 0b0000001 != 0;
+        let hard_wired_nametable_layout = rom[6] & 1 != 0;
 
         let console_type = rom[7] & 0b00000011;
 

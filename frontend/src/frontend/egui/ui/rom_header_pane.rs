@@ -69,9 +69,9 @@ pub fn render_rom_header(ui: &mut egui::Ui, config: &AppConfig) {
 
                 ui.label("Hardwired Nametable Layout");
                 ui.label(if rom.hardwired_nametable_layout {
-                    "Vertical"
+                    "Horizontal"
                 } else {
-                    "Horizontal/Mapper Controlled"
+                    "Vertical/Mapper Controlled"
                 });
                 ui.end_row();
 

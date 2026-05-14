@@ -106,7 +106,7 @@ impl From<&Cpu> for CpuState {
             lo: cpu.lo,
             hi: cpu.hi,
             current_op: cpu.current_op,
-            op_queue: cpu.op_queue.clone(),
+            op_queue: cpu.op_queue,
             current_opcode: cpu.current_opcode.map(|c| c.opcode),
             data_bus: cpu.data_bus,
             ane_constant: cpu.ane_constant,
