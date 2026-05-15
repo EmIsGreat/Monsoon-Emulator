@@ -1,8 +1,8 @@
 use egui::{ColorImage, Context, TextureHandle, TextureOptions};
 use monsoon_core::emulation::palette_util::{RgbColor, RgbPalette};
 use monsoon_core::emulation::ppu_util::{
-    NametableData, PALETTE_COUNT, PaletteData, SoamData, SpriteData, TILE_COUNT, TILE_SIZE,
-    TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH, TileData,
+    NametableData, PaletteData, SoamData, SpriteData, TileData, PALETTE_COUNT, TILE_COUNT,
+    TILE_SIZE, TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH,
 };
 use monsoon_core::emulation::screen_renderer::ScreenRenderer;
 use web_time::Instant;
@@ -101,7 +101,9 @@ impl EmuTextures {
     pub fn get_texture_for_tile(
         tile: &TileData,
         palette: &[u8; 4],
+        backdrop: u8,
         rgb_palette_map: &RgbPalette,
+        emph: u8,
         ctx: &Context,
     ) -> TextureHandle {
         let mut data: [RgbColor; 64] = [RgbColor::default(); 64];
@@ -113,7 +115,11 @@ impl EmuTextures {
             let hi = ((tile.plane_1 >> bit) & 1) as usize;
 
             let color_index = lo | (hi << 1);
-            *color = rgb_palette_map.colors[0][palette[color_index] as usize];
+            if color_index != 0 {
+                *color = rgb_palette_map.colors[emph as usize][palette[color_index] as usize];
+            } else {
+                *color = rgb_palette_map.colors[emph as usize][backdrop as usize]
+            }
         }
 
         let image = Self::rgb_to_color_image(data.as_ref(), TILE_SIZE, TILE_SIZE);
@@ -160,6 +166,7 @@ impl EmuTextures {
 
             // Determine which palettes to update
             let palette_range: Box<dyn Iterator<Item = usize>> = match palette_index {
+                Some(idx) if idx == 0 => Box::new(0..palettes.colors.len()),
                 Some(idx) if idx < palettes.colors.len() => Box::new(std::iter::once(idx)),
                 _ => Box::new(0..palettes.colors.len()),
             };
@@ -177,7 +184,9 @@ impl EmuTextures {
                     let texture = Self::get_texture_for_tile(
                         &tiles[tile_idx],
                         &palette,
+                        palettes.colors[0][0],
                         rgb_palette_map,
+                        0,
                         ctx,
                     );
                     tile_textures[palette_idx][tile_idx] = texture;
