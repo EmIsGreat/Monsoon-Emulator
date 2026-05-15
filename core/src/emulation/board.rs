@@ -45,6 +45,12 @@ impl ReadResult {
         self.mask = mask;
         self
     }
+
+    #[inline(always)]
+    pub fn with_update(mut self, update: bool) -> Self {
+        self.update_open_bus = update;
+        self
+    }
 }
 
 pub struct Board {
@@ -89,20 +95,26 @@ impl<'a> CpuBus for CpuBusView<'a> {
         let res = self.mapper.read(addr, self.cpu_open_bus);
 
         let res = match res {
-            CpuReadResult::Handled(data) => data.into(),
+            CpuReadResult::Handled(data, update) => ReadResult::from(data).with_update(update),
             CpuReadResult::Registered => match addr {
                 0..=0x1FFF => self.cpu_ram.read(addr as u32, self.cpu_open_bus).into(),
                 0x2000..=0x3FFF => self.read_ppu_reg(addr),
                 0x4000..=0x401F => self.read_apu_io(addr),
-                _ => self.cpu_open_bus.read().into(),
+                _ => ReadResult::from(self.cpu_open_bus.read()).to_false(),
             },
         };
+
+        let changed = res.mask != 0xFF;
 
         if res.update_open_bus {
             self.cpu_open_bus.set_masked(res.value, res.mask);
         }
 
-        res.value
+        if changed {
+            self.cpu_open_bus.read()
+        } else {
+            res.value
+        }
     }
 
     #[inline]
@@ -110,7 +122,7 @@ impl<'a> CpuBus for CpuBusView<'a> {
         let res = self.mapper.read_debug(addr, self.cpu_open_bus);
 
         match res {
-            CpuReadResult::Handled(data) => data,
+            CpuReadResult::Handled(data, _) => data,
             CpuReadResult::Registered => match addr {
                 0..=0x1FFF => self.cpu_ram.snapshot(addr as u32, self.cpu_open_bus),
                 0x2000..=0x3FFF => self.snapshot_ppu_reg(addr, 0),
@@ -178,44 +190,51 @@ impl<'a> CpuBus for CpuBusView<'a> {
 impl<'a> PpuBus for PpuBusView<'a> {
     #[inline]
     fn read(&mut self, addr: u16) -> u8 {
-        let res = self.mapper.ppu_read(addr, self.ppu_open_bus);
+        let res = self.mapper.ppu_read(addr, self.ppu_io_open_bus);
 
         let res = match res {
-            PpuReadResult::Handled(data) => data.into(),
-            PpuReadResult::Nametable(addr) => self
-                .nametable_ram
-                .read(addr as u32, self.ppu_open_bus)
-                .into(),
+            PpuReadResult::Handled(data, update) => ReadResult::from(data).with_update(update),
+            PpuReadResult::Nametable(addr) => {
+                ReadResult::from(self.nametable_ram.read(addr as u32, self.ppu_io_open_bus))
+                    .to_false()
+            }
             PpuReadResult::Registered => match addr {
-                0x3F00..=0x3FFF => self
-                    .palette_ram
-                    .read((addr - 0x3F00) % PALETTE_RAM_SIZE, self.ppu_open_bus)
-                    .into(),
-                _ => ReadResult::from(self.ppu_open_bus.read()).to_false(),
+                0x3F00..=0x3FFF => ReadResult::from(
+                    self.palette_ram
+                        .read((addr - 0x3F00) % PALETTE_RAM_SIZE, self.ppu_io_open_bus),
+                )
+                .to_false(),
+                _ => ReadResult::from(self.ppu_io_open_bus.read()).to_false(),
             },
         };
 
+        let changed = res.mask != 0xFF;
+
         if res.update_open_bus {
-            self.ppu_open_bus.set_masked(res.value, res.mask);
+            self.ppu_io_open_bus.set_masked(res.value, res.mask);
         }
 
-        res.value
+        if changed {
+            self.ppu_io_open_bus.read()
+        } else {
+            res.value
+        }
     }
 
     #[inline]
     fn read_debug(&self, addr: u16) -> u8 {
-        let res = self.mapper.ppu_read_debug(addr, self.ppu_open_bus);
+        let res = self.mapper.ppu_read_debug(addr, self.ppu_io_open_bus);
 
         match res {
-            PpuReadResult::Handled(data) => data,
-            PpuReadResult::Nametable(addr) => {
-                self.nametable_ram.snapshot(addr as u32, self.ppu_open_bus)
-            }
+            PpuReadResult::Handled(data, _) => data,
+            PpuReadResult::Nametable(addr) => self
+                .nametable_ram
+                .snapshot(addr as u32, self.ppu_io_open_bus),
             PpuReadResult::Registered => match addr {
                 0x3F00..=0x3FFF => self
                     .palette_ram
-                    .snapshot((addr - 0x3F00) % PALETTE_RAM_SIZE, self.ppu_open_bus),
-                _ => self.ppu_open_bus.read(),
+                    .snapshot((addr - 0x3F00) % PALETTE_RAM_SIZE, self.ppu_io_open_bus),
+                _ => self.ppu_io_open_bus.read(),
             },
         }
     }
@@ -231,11 +250,11 @@ impl<'a> PpuBus for PpuBusView<'a> {
                 0x3F00..=0x3FFF => self
                     .palette_ram
                     .write((addr - 0x3F00) % PALETTE_RAM_SIZE, data),
-                _ => self.ppu_open_bus.set_masked(data, 0xFF),
+                _ => self.ppu_io_open_bus.set_masked(data, 0xFF),
             },
         }
 
-        self.ppu_open_bus.set_masked(data, 0xFF);
+        self.ppu_io_open_bus.set_masked(data, 0xFF);
     }
 
     #[inline]
@@ -257,7 +276,7 @@ impl<'a> PpuBus for PpuBusView<'a> {
     }
 
     #[inline]
-    fn get_ppu_open_bus(&self) -> &OpenBus { self.ppu_open_bus }
+    fn get_ppu_open_bus(&self) -> &OpenBus { self.ppu_io_open_bus }
 }
 
 pub struct CpuBusView<'a> {
@@ -314,18 +333,24 @@ impl<'a> CpuBusView<'a> {
         );
 
         match addr % 8 {
-            0x2 => ReadResult::from(self.ppu.get_ppu_status()).with_mask(0b1110_0000),
-            0x4 => self.ppu.get_oam_at_addr(bus.ppu_open_bus).into(),
+            0x2 => {
+                self.ppu_open_bus
+                    .set_masked(self.ppu.get_ppu_status(), 0b1110_0000);
+                self.ppu_open_bus.read().into()
+            }
+            0x4 => self.ppu.get_oam_at_addr(bus.ppu_io_open_bus).into(),
             0x7 => {
-                let val: ReadResult = self.ppu.get_vram_at_addr(&mut bus).into();
+                let val = self.ppu.get_vram_at_addr(&mut bus);
 
                 if (PALETTE_RAM_START_ADDRESS..=PALETTE_RAM_END_ADDRESS)
                     .contains(&self.ppu.v_register)
                 {
-                    val.with_mask(0b0011_1111);
+                    self.ppu_open_bus.set_masked(val, 0b0011_1111);
+                } else {
+                    self.ppu_open_bus.set_masked(val, 0xFF)
                 }
 
-                val
+                val.into()
             }
             _ => ReadResult::from(self.ppu_open_bus.read()),
         }
@@ -357,21 +382,21 @@ impl<'a> CpuBusView<'a> {
     #[inline]
     fn read_apu_io(&mut self, addr: u16) -> ReadResult {
         match addr {
-            0x4000..=0x4014 => ReadResult::from(self.cpu_open_bus.read()),
+            0x4000..=0x4014 => ReadResult::from(self.cpu_open_bus.read()).to_false(),
             0x4016 => match self.controller1.as_mut() {
                 Some(controller) => {
                     ReadResult::from(controller.read(self.cpu_open_bus)).with_mask(!0b111)
                 }
-                None => ReadResult::from(self.cpu_open_bus.read()),
+                None => ReadResult::from(self.cpu_open_bus.read()).to_false(),
             },
             0x4017 => match self.controller2.as_mut() {
                 Some(controller) => {
                     ReadResult::from(controller.read(self.cpu_open_bus)).with_mask(!0b111)
                 }
-                None => ReadResult::from(self.cpu_open_bus.read()),
+                None => ReadResult::from(self.cpu_open_bus.read()).to_false(),
             },
-            0x4018..=0x401F => ReadResult::from(self.cpu_open_bus.read()),
-            _ => ReadResult::from(self.cpu_open_bus.read()),
+            0x4018..=0x401F => ReadResult::from(self.cpu_open_bus.read()).to_false(),
+            _ => ReadResult::from(self.cpu_open_bus.read()).to_false(),
         }
     }
 
@@ -439,7 +464,7 @@ impl<'a> CpuBusView<'a> {
 
 pub struct PpuBusView<'a> {
     mapper: &'a mut Mapper,
-    ppu_open_bus: &'a mut OpenBus,
+    ppu_io_open_bus: &'a mut OpenBus,
     nametable_ram: &'a mut Memory,
     palette_ram: &'a mut PaletteRam,
 }
@@ -453,7 +478,7 @@ impl<'a> PpuBusView<'a> {
     ) -> PpuBusView<'a> {
         PpuBusView {
             mapper,
-            ppu_open_bus,
+            ppu_io_open_bus: ppu_open_bus,
             nametable_ram,
             palette_ram,
         }

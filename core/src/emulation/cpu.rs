@@ -1638,18 +1638,14 @@ impl Cpu {
 
     #[inline]
     pub fn process_dma(&mut self, bus: &mut impl CpuBus) {
-        // println!("Processing DMA at: {}", self.cycle);
 
         if self.remaining_dma_cycles == 514 {
-            // println!("  Init cycle");
             return;
         }
 
         if self.remaining_dma_cycles == 513 {
-            // println!("  Optional Align");
 
             if !self.dma_read {
-                // println!("  Aligning");
                 self.execute_micro_op(
                     MicroOp::Read(
                         AddressSource::AddressLatch,
@@ -1660,17 +1656,13 @@ impl Cpu {
                 );
                 return;
             } else {
-                // println!("  Already aligned");
                 self.remaining_dma_cycles -= 1;
             }
         }
 
         if self.remaining_dma_cycles <= 512 && self.remaining_dma_cycles > 1 {
-            // println!("  In main dma loop. Loop {}", 512 - self.remaining_dma_cycles);
-            let address = 0xFF - self.remaining_dma_cycles.div_ceil(2) + 1;
-            // println!("  OAM addr: {address:02X}");
+            let address = 0x100 - self.remaining_dma_cycles.div_ceil(2);
             if self.remaining_dma_cycles & 1 == 0 {
-                // println!("  Read cycle");
                 self.execute_micro_op(
                     MicroOp::Read(
                         AddressSource::Address((self.dma_page as u16) << 8 | address),
@@ -1680,7 +1672,6 @@ impl Cpu {
                     bus,
                 )
             } else {
-                // println!("  Write cycle");
                 self.execute_micro_op(
                     MicroOp::Write(
                         Target::OamWrite,
@@ -1695,7 +1686,6 @@ impl Cpu {
         }
 
         if self.remaining_dma_cycles == 1 {
-            // println!("  Final Cycle, exiting IRQ");
             self.execute_micro_op(
                 MicroOp::Write(
                     Target::OamWrite,

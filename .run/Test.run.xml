@@ -1,7 +1,7 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Test" type="CargoCommandRunConfiguration" factoryName="Cargo Command" nameIsGenerated="true">
     <option name="buildProfileId" value="release" />
-    <option name="command" value="test --package monsoon-core --profile release" />
+    <option name="command" value="test --package monsoon-core" />
     <option name="workingDirectory" value="file://$PROJECT_DIR$" />
     <envs />
     <option name="emulateTerminal" value="true" />

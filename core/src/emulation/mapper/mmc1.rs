@@ -81,22 +81,24 @@ impl MapperLike for MMC1 {
     #[inline]
     fn read_debug(&self, addr: u16, open_bus: &OpenBus) -> CpuReadResult {
         if (0x4000..=0x4014).contains(&addr) || addr >= 0x4018 {
-            let value = match addr {
+            let (value, update) = match addr {
                 0x6000..=0x7FFF => {
                     if let Some(prg_ram) = &self.prg_ram {
                         let addr = ((addr - 0x6000) + self.prg_ram_bank_offset) % self.prg_ram_size;
-                        prg_ram.read(addr as u32, open_bus)
+                        (prg_ram.read(addr as u32, open_bus), true)
                     } else {
-                        open_bus.read()
+                        (open_bus.read(), false)
                     }
                 }
-                0x8000..=0xFFFF => self
-                    .prg_rom
-                    .read(self.get_prg_rom_address(addr) % self.prg_rom_size, open_bus),
-                _ => open_bus.read(),
+                0x8000..=0xFFFF => (
+                    self.prg_rom
+                        .read(self.get_prg_rom_address(addr) % self.prg_rom_size, open_bus),
+                    true,
+                ),
+                _ => (open_bus.read(), false),
             };
 
-            return CpuReadResult::Handled(value);
+            return CpuReadResult::Handled(value, update);
         }
 
         CpuReadResult::Registered
@@ -112,7 +114,7 @@ impl MapperLike for MMC1 {
         match addr {
             0..=0x1FFF => {
                 if let Some(rom) = &self.chr_rom {
-                    PpuReadResult::Handled(rom.read(self.get_chr_rom_address(addr), open_bus))
+                    PpuReadResult::Handled(rom.read(self.get_chr_rom_address(addr), open_bus), true)
                 } else {
                     PpuReadResult::Registered
                 }

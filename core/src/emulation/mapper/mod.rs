@@ -66,7 +66,7 @@ pub trait MapperLike {
 
 #[derive(Debug, Clone, Copy)]
 pub enum CpuReadResult {
-    Handled(u8),
+    Handled(u8, bool),
     Registered,
 }
 
@@ -78,7 +78,7 @@ pub enum CpuWriteResult {
 
 #[derive(Debug, Clone, Copy)]
 pub enum PpuReadResult {
-    Handled(u8),
+    Handled(u8, bool),
     Nametable(u16),
     Registered,
 }
@@ -110,7 +110,7 @@ impl MapperLike for NoMapper {
 
     fn read(&mut self, addr: u16, open_bus: &OpenBus) -> CpuReadResult {
         if (0x4000..=0x4014).contains(&addr) || addr >= 0x4018 {
-            return CpuReadResult::Handled(open_bus.read());
+            return CpuReadResult::Handled(open_bus.read(), false);
         }
 
         CpuReadResult::Registered
@@ -118,7 +118,7 @@ impl MapperLike for NoMapper {
 
     fn read_debug(&self, addr: u16, open_bus: &OpenBus) -> CpuReadResult {
         if (0x4000..=0x4014).contains(&addr) || addr >= 0x4018 {
-            return CpuReadResult::Handled(open_bus.read());
+            return CpuReadResult::Handled(open_bus.read(), false);
         }
 
         CpuReadResult::Registered
@@ -130,7 +130,7 @@ impl MapperLike for NoMapper {
 
     fn ppu_read_debug(&self, addr: u16, open_bus: &OpenBus) -> PpuReadResult {
         match addr {
-            0..=0x1FFF => PpuReadResult::Handled(open_bus.read()),
+            0..=0x1FFF => PpuReadResult::Handled(open_bus.read(), false),
             0x2000..=0x3EFF => PpuReadResult::Nametable((addr - 0x2000) % VRAM_SIZE),
             _ => PpuReadResult::Registered,
         }
@@ -195,22 +195,24 @@ impl MapperLike for Nrom {
 
     fn read_debug(&self, addr: u16, open_bus: &OpenBus) -> CpuReadResult {
         if (0x4000..=0x4014).contains(&addr) || addr >= 0x4018 {
-            let value = match addr {
+            let (val, update) = match addr {
                 0x6000..=0x7FFF => {
                     if let Some(prg_ram) = &self.prg_ram {
                         let addr = (addr - 0x6000) % self.prg_ram_size;
-                        prg_ram.read(addr as u32, open_bus)
+                        (prg_ram.read(addr as u32, open_bus), true)
                     } else {
-                        open_bus.read()
+                        (open_bus.read(), false)
                     }
                 }
-                0x8000..=0xFFFF => self
-                    .prg_rom
-                    .read(((addr - 0x8000) % self.prg_rom_size) as u32, open_bus),
-                _ => open_bus.read(),
+                0x8000..=0xFFFF => (
+                    self.prg_rom
+                        .read(((addr - 0x8000) % self.prg_rom_size) as u32, open_bus),
+                    true,
+                ),
+                _ => (open_bus.read(), false),
             };
 
-            return CpuReadResult::Handled(value);
+            return CpuReadResult::Handled(val, update);
         }
 
         CpuReadResult::Registered
@@ -226,9 +228,9 @@ impl MapperLike for Nrom {
         match addr {
             0..=0x1FFF => {
                 if let Some(rom) = &self.chr_rom {
-                    PpuReadResult::Handled(rom.read(addr as u32, open_bus))
+                    PpuReadResult::Handled(rom.read(addr as u32, open_bus), true)
                 } else {
-                    PpuReadResult::Handled(open_bus.read())
+                    PpuReadResult::Handled(open_bus.read(), false)
                 }
             }
             0x2000..=0x3EFF => {
