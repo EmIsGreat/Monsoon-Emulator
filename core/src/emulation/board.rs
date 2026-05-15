@@ -9,11 +9,43 @@ use crate::emulation::mem::palette_ram::PaletteRam;
 use crate::emulation::mem::{Memory, OpenBus};
 use crate::emulation::peripherals::{Peripheral, PeripheralDevice};
 use crate::emulation::ppu::{
-    OPEN_BUS_DECAY_DELAY, PALETTE_RAM_END_ADDRESS, PALETTE_RAM_SIZE, PALETTE_RAM_START_ADDRESS,
-    Ppu, VRAM_SIZE,
+    Ppu, OPEN_BUS_DECAY_DELAY, PALETTE_RAM_END_ADDRESS, PALETTE_RAM_SIZE,
+    PALETTE_RAM_START_ADDRESS, VRAM_SIZE,
 };
 use crate::emulation::rom::RomFile;
 use crate::emulation::savestate::BoardState;
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct ReadResult {
+    value: u8,
+    update_open_bus: bool,
+    mask: u8,
+}
+
+impl From<u8> for ReadResult {
+    #[inline(always)]
+    fn from(value: u8) -> Self {
+        ReadResult {
+            value,
+            update_open_bus: true,
+            mask: 0xFF,
+        }
+    }
+}
+
+impl ReadResult {
+    #[inline(always)]
+    pub fn to_false(mut self) -> Self {
+        self.update_open_bus = false;
+        self
+    }
+
+    #[inline(always)]
+    pub fn with_mask(mut self, mask: u8) -> Self {
+        self.mask = mask;
+        self
+    }
+}
 
 pub struct Board {
     pub cpu: Cpu,
@@ -56,15 +88,21 @@ impl<'a> CpuBus for CpuBusView<'a> {
     fn read(&mut self, addr: u16) -> u8 {
         let res = self.mapper.read(addr, self.cpu_open_bus);
 
-        match res {
-            CpuReadResult::Handled(data) => data,
+        let res = match res {
+            CpuReadResult::Handled(data) => data.into(),
             CpuReadResult::Registered => match addr {
-                0..=0x1FFF => self.cpu_ram.read(addr as u32, self.cpu_open_bus),
-                0x2000..=0x3FFF => self.read_ppu_reg(addr, 0),
+                0..=0x1FFF => self.cpu_ram.read(addr as u32, self.cpu_open_bus).into(),
+                0x2000..=0x3FFF => self.read_ppu_reg(addr),
                 0x4000..=0x401F => self.read_apu_io(addr),
-                _ => self.cpu_open_bus.read(),
+                _ => self.cpu_open_bus.read().into(),
             },
+        };
+
+        if res.update_open_bus {
+            self.cpu_open_bus.set_masked(res.value, res.mask);
         }
+
+        res.value
     }
 
     #[inline]
@@ -92,10 +130,10 @@ impl<'a> CpuBus for CpuBusView<'a> {
     #[inline]
     fn write(&mut self, addr: u16, data: u8, cycle: u128) {
         let res = self.mapper.write(addr, data, cycle);
+        self.cpu_open_bus.set_masked(data, 0xFF);
 
         match res {
             CpuWriteResult::Handled => {}
-
             CpuWriteResult::Registered => match addr {
                 0..=0x1FFF => {
                     self.cpu_ram.write(addr as u32, data);
@@ -142,18 +180,26 @@ impl<'a> PpuBus for PpuBusView<'a> {
     fn read(&mut self, addr: u16) -> u8 {
         let res = self.mapper.ppu_read(addr, self.ppu_open_bus);
 
-        match res {
-            PpuReadResult::Handled(data) => data,
-            PpuReadResult::Nametable(addr) => {
-                self.nametable_ram.read(addr as u32, self.ppu_open_bus)
-            }
+        let res = match res {
+            PpuReadResult::Handled(data) => data.into(),
+            PpuReadResult::Nametable(addr) => self
+                .nametable_ram
+                .read(addr as u32, self.ppu_open_bus)
+                .into(),
             PpuReadResult::Registered => match addr {
                 0x3F00..=0x3FFF => self
                     .palette_ram
-                    .read((addr - 0x3F00) % PALETTE_RAM_SIZE, self.ppu_open_bus),
-                _ => self.ppu_open_bus.read(),
+                    .read((addr - 0x3F00) % PALETTE_RAM_SIZE, self.ppu_open_bus)
+                    .into(),
+                _ => ReadResult::from(self.ppu_open_bus.read()).to_false(),
             },
+        };
+
+        if res.update_open_bus {
+            self.ppu_open_bus.set_masked(res.value, res.mask);
         }
+
+        res.value
     }
 
     #[inline]
@@ -188,6 +234,8 @@ impl<'a> PpuBus for PpuBusView<'a> {
                 _ => self.ppu_open_bus.set_masked(data, 0xFF),
             },
         }
+
+        self.ppu_open_bus.set_masked(data, 0xFF);
     }
 
     #[inline]
@@ -257,7 +305,7 @@ impl<'a> CpuBusView<'a> {
     }
 
     #[inline]
-    fn read_ppu_reg(&mut self, addr: u16, _: u8) -> u8 {
+    fn read_ppu_reg(&mut self, addr: u16) -> ReadResult {
         let mut bus = PpuBusView::from(
             self.mapper,
             self.ppu_open_bus,
@@ -266,30 +314,21 @@ impl<'a> CpuBusView<'a> {
         );
 
         match addr % 8 {
-            0x2 => {
-                let val = self.ppu.get_ppu_status();
-                bus.ppu_open_bus.set_masked(val, 0b1110_0000);
-            }
-            0x4 => {
-                let val = self.ppu.get_oam_at_addr(bus.ppu_open_bus);
-                bus.ppu_open_bus.set_masked(val, 0xFF);
-            }
+            0x2 => ReadResult::from(self.ppu.get_ppu_status()).with_mask(0b1110_0000),
+            0x4 => self.ppu.get_oam_at_addr(bus.ppu_open_bus).into(),
             0x7 => {
-                let val = self.ppu.get_vram_at_addr(&mut bus);
+                let val: ReadResult = self.ppu.get_vram_at_addr(&mut bus).into();
 
-                match self.ppu.v_register {
-                    PALETTE_RAM_START_ADDRESS..=PALETTE_RAM_END_ADDRESS => {
-                        bus.ppu_open_bus.set_masked(val, 0b0011_1111);
-                    }
-                    _ => {
-                        bus.ppu_open_bus.set_masked(val, 0xFF);
-                    }
+                if (PALETTE_RAM_START_ADDRESS..=PALETTE_RAM_END_ADDRESS)
+                    .contains(&self.ppu.v_register)
+                {
+                    val.with_mask(0b0011_1111);
                 }
-            }
-            _ => {}
-        };
 
-        bus.ppu_open_bus.read()
+                val
+            }
+            _ => ReadResult::from(self.ppu_open_bus.read()),
+        }
     }
 
     #[inline]
@@ -316,19 +355,23 @@ impl<'a> CpuBusView<'a> {
     }
 
     #[inline]
-    fn read_apu_io(&mut self, addr: u16) -> u8 {
+    fn read_apu_io(&mut self, addr: u16) -> ReadResult {
         match addr {
-            0x4000..=0x4014 => self.cpu_open_bus.read(),
+            0x4000..=0x4014 => ReadResult::from(self.cpu_open_bus.read()),
             0x4016 => match self.controller1.as_mut() {
-                Some(controller) => controller.read(self.cpu_open_bus),
-                None => self.cpu_open_bus.read(),
+                Some(controller) => {
+                    ReadResult::from(controller.read(self.cpu_open_bus)).with_mask(!0b111)
+                }
+                None => ReadResult::from(self.cpu_open_bus.read()),
             },
             0x4017 => match self.controller2.as_mut() {
-                Some(controller) => controller.read(self.cpu_open_bus),
-                None => self.cpu_open_bus.read(),
+                Some(controller) => {
+                    ReadResult::from(controller.read(self.cpu_open_bus)).with_mask(!0b111)
+                }
+                None => ReadResult::from(self.cpu_open_bus.read()),
             },
-            0x4018..=0x401F => self.cpu_open_bus.read(),
-            _ => self.cpu_open_bus.read(),
+            0x4018..=0x401F => ReadResult::from(self.cpu_open_bus.read()),
+            _ => ReadResult::from(self.cpu_open_bus.read()),
         }
     }
 

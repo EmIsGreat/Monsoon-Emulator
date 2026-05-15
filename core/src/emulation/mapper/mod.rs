@@ -131,7 +131,7 @@ impl MapperLike for NoMapper {
     fn ppu_read_debug(&self, addr: u16, open_bus: &OpenBus) -> PpuReadResult {
         match addr {
             0..=0x1FFF => PpuReadResult::Handled(open_bus.read()),
-            0x2000..=0x3EFF => PpuReadResult::Nametable((addr - 0x2000) % (VRAM_SIZE as u16)),
+            0x2000..=0x3EFF => PpuReadResult::Nametable((addr - 0x2000) % VRAM_SIZE),
             _ => PpuReadResult::Registered,
         }
     }
