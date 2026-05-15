@@ -425,7 +425,7 @@ impl Board {
             cpu_open_bus: OpenBus::new(OPEN_BUS_DECAY_DELAY),
             ppu_open_bus: OpenBus::new(OPEN_BUS_DECAY_DELAY),
             cpu_ram: Memory::new(INTERNAL_RAM_SIZE as usize, true),
-            nametable_ram: Memory::new(VRAM_SIZE, true),
+            nametable_ram: Memory::new(VRAM_SIZE as usize, true),
             palette_ram: PaletteRam::default(),
             controller1: None,
             controller2: None,

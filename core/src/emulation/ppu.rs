@@ -22,7 +22,7 @@ pub const VRAM_ADDR_COARSE_X_SCROLL_MASK: u16 = 0x1F;
 pub const VRAM_ADDR_COARSE_Y_SCROLL_MASK: u16 = 0x3E0;
 pub const VRAM_ADDR_FINE_Y_SCROLL_MASK: u16 = 0x7000;
 pub const PALETTE_RAM_SIZE: u16 = 0x20;
-pub const VRAM_SIZE: usize = 0x800;
+pub const VRAM_SIZE: u16 = 0x800;
 pub const DOTS_PER_SCANLINE: u16 = 340;
 pub const OPEN_BUS_DECAY_DELAY: u32 = 420_000;
 pub const SPRITE_OVERFLOW_FLAG: u8 = 0b0010_0000;
@@ -882,7 +882,7 @@ impl Ppu {
             let mut y = ((self.v_register & 0x03E0) >> 5) as u8;
             if y == 29 {
                 y = 0;
-                self.v_register ^= VRAM_SIZE as u16;
+                self.v_register ^= VRAM_SIZE;
             } else if y == 31 {
                 y = 0;
             } else {
