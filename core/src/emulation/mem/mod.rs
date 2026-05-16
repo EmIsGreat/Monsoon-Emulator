@@ -50,23 +50,16 @@ impl Memory {
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct OpenBus {
-    bits: [BitState; 8],
+    bits: [bool; 8],
+    timers: [u32; 8],
     decay_time: u32,
-}
-
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
-pub struct BitState {
-    set: bool,
-    decay_timer: u32,
 }
 
 impl OpenBus {
     pub fn new(decay_time: u32) -> Self {
         Self {
-            bits: [BitState {
-                set: false,
-                decay_timer: 0,
-            }; 8],
+            bits: [false; 8],
+            timers: [decay_time; 8],
             decay_time,
         }
     }
@@ -77,8 +70,8 @@ impl OpenBus {
             let bit_mask = 1 << bit;
             if mask & bit_mask != 0 {
                 let val = (value & bit_mask) != 0;
-                self.bits[bit].set = val;
-                self.bits[bit].decay_timer = 0;
+                self.bits[bit] = val;
+                self.timers[bit] = 0;
             }
         }
     }
@@ -86,21 +79,28 @@ impl OpenBus {
     #[inline]
     pub fn tick(&mut self, times: u8) {
         let times = times as u32;
-        for bit in &mut self.bits {
-            bit.decay_timer += times;
-            if bit.decay_timer > self.decay_time {
-                bit.set = false;
-                bit.decay_timer = 0
+        for (i, bit) in &mut self.bits.iter_mut().enumerate() {
+            self.timers[i] += times;
+            if self.timers[i] > self.decay_time {
+                *bit = false;
+                self.timers[i] = 0
             }
         }
     }
 
     #[inline]
-    pub fn read(&self) -> u8 {
-        self.bits
-            .iter()
-            .enumerate()
-            .fold(0u8, |acc, (i, b)| acc | ((b.set as u8) << i))
+    pub fn read(&self) -> u8 { Self::bools_to_u8(self.bits) }
+
+    #[inline(always)]
+    fn bools_to_u8(bits: [bool; 8]) -> u8 {
+        (bits[0] as u8) << 0
+            | (bits[1] as u8) << 1
+            | (bits[2] as u8) << 2
+            | (bits[3] as u8) << 3
+            | (bits[4] as u8) << 4
+            | (bits[5] as u8) << 5
+            | (bits[6] as u8) << 6
+            | (bits[7] as u8) << 7
     }
 }
 

@@ -3,7 +3,6 @@ use std::hash::Hash;
 
 use serde::{Deserialize, Serialize};
 
-use crate::emulation::mem::OpenBus;
 use crate::emulation::rom::ExpansionDevice;
 
 #[enum_delegate::implement(PeripheralDevice)]
@@ -18,8 +17,8 @@ impl Default for Peripheral {
 
 #[enum_delegate::register]
 pub trait PeripheralDevice {
-    fn read(&mut self, open_bus: &OpenBus) -> u8;
-    fn read_debug(&self, open_bus: &OpenBus) -> u8;
+    fn read(&mut self) -> u8;
+    fn read_debug(&self) -> u8;
     fn handle_strobe_data(&mut self, data: u8);
 }
 
@@ -48,23 +47,23 @@ pub struct StandardController {
 
 impl PeripheralDevice for StandardController {
     #[inline]
-    fn read(&mut self, open_bus: &OpenBus) -> u8 {
+    fn read(&mut self) -> u8 {
         if self.strobe {
             self.shift = self.input
         }
 
-        self.poll(open_bus.read())
+        self.poll()
     }
 
     #[inline]
-    fn read_debug(&self, open_bus: &OpenBus) -> u8 {
+    fn read_debug(&self) -> u8 {
         let mut shift = self.shift;
 
         if self.strobe {
             shift = self.input;
         }
 
-        self.poll_with_shift(shift, open_bus.read())
+        self.poll_with_shift(shift)
     }
 
     #[inline]
@@ -78,12 +77,12 @@ impl PeripheralDevice for StandardController {
 
 impl StandardController {
     #[inline]
-    fn poll(&mut self, open_bus: u8) -> u8 {
-        let res = (open_bus & !0b111) | (self.shift & 1);
+    fn poll(&mut self) -> u8 {
+        let res = self.shift & 1;
         self.shift = (self.shift >> 1) | 0x80;
         res
     }
 
     #[inline]
-    fn poll_with_shift(&self, shift: u8, open_bus: u8) -> u8 { (open_bus & !0b111) | (shift & 1) }
+    fn poll_with_shift(&self, shift: u8) -> u8 { shift & 1 }
 }
