@@ -105,6 +105,11 @@ pub fn add_menu_bar(
                     config,
                     async_sender,
                 ));
+                ui.add(HotKeyButton::for_action(
+                    OnKeyAction::OpenRegistersViewer,
+                    config,
+                    async_sender,
+                ));
             });
         });
     });

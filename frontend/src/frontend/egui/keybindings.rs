@@ -236,6 +236,7 @@ pub enum OnKeyAction {
     OpenSpriteViewer,
     OpenSoamViewer,
     OpenRomHeaderViewer,
+    OpenRegistersViewer,
     Speedup,
 }
 
@@ -303,6 +304,7 @@ impl OnKeyAction {
             OnKeyAction::OpenSpriteViewer => "Open Sprite Viewer",
             OnKeyAction::OpenSoamViewer => "Open SOAM Viewer",
             OnKeyAction::OpenRomHeaderViewer => "Open ROM Header Viewer",
+            OnKeyAction::OpenRegistersViewer => "Open Register Viewer",
         }
     }
 
@@ -346,6 +348,7 @@ impl OnKeyAction {
             | OnKeyAction::OpenSpriteViewer
             | OnKeyAction::OpenSoamViewer
             | OnKeyAction::OpenRomHeaderViewer
+            | OnKeyAction::OpenRegistersViewer
             | OnKeyAction::ChangeDebugPalette
             | OnKeyAction::Speedup => KeybindCategory::Debug,
             OnKeyAction::LoadRom
@@ -429,6 +432,7 @@ impl OnKeyAction {
             OnKeyAction::OpenSpriteViewer => AsyncFrontendMessage::OpenSpriteViewer,
             OnKeyAction::OpenSoamViewer => AsyncFrontendMessage::OpenSoamViewer,
             OnKeyAction::OpenRomHeaderViewer => AsyncFrontendMessage::OpenRomHeaderViewer,
+            OnKeyAction::OpenRegistersViewer => AsyncFrontendMessage::OpenRegistersViewer,
             OnKeyAction::Speedup => AsyncFrontendMessage::Speedup,
         }
     }

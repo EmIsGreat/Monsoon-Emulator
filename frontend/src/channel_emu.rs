@@ -171,6 +171,11 @@ impl ChannelEmulator {
                             self.nes.get_soam_sprites_debug(),
                         ));
                     }
+                    EmulatorFetchable::Registers(_) => {
+                        let _ = self
+                            .to_frontend
+                            .send(EmulatorMessage::DebugData(self.nes.get_registers_debug()));
+                    }
                 },
                 FrontendMessage::WritePpu(address, data) => self.nes.ppu_mem_init(address, data),
                 FrontendMessage::WriteCpu(address, data) => self.nes.cpu_mem_init(address, data),

@@ -8,8 +8,9 @@ use crate::emulation::nes::ExecutionFinished;
 // with short names.
 pub use crate::emulation::ppu_util::{
     EmulatorFetchable, NAMETABLE_COLS, NAMETABLE_COUNT, NAMETABLE_ROWS, NametableData,
-    PALETTE_RAM_END_ADDRESS, PALETTE_RAM_START_ADDRESS, PaletteData, SPRITE_COUNT, SoamData,
-    Sprite, SpriteData, SpriteMode, TILE_SIZE, TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH, TileData,
+    PALETTE_RAM_END_ADDRESS, PALETTE_RAM_START_ADDRESS, PaletteData, RegisterEntry, RegisterFormat,
+    RegisterMap, RegisterValue, SPRITE_COUNT, SoamData, Sprite, SpriteData, SpriteMode, TILE_SIZE,
+    TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH, TileData,
 };
 use crate::emulation::savestate::PpuState;
 
@@ -1073,6 +1074,135 @@ impl Ppu {
 }
 
 impl Ppu {
+    pub fn get_registers_debug(&self) -> RegisterMap {
+        let mut registers = RegisterMap::new();
+        registers.insert(
+            "PPUCTRL".to_string(),
+            RegisterEntry::new(
+                RegisterValue::U8(self.ctrl_register),
+                RegisterFormat::Binary,
+            ),
+        );
+        registers.insert(
+            "PPUMASK".to_string(),
+            RegisterEntry::new(
+                RegisterValue::U8(self.mask_register),
+                RegisterFormat::Binary,
+            ),
+        );
+        registers.insert(
+            "PPUSTATUS".to_string(),
+            RegisterEntry::new(
+                RegisterValue::U8(self.status_register),
+                RegisterFormat::Binary,
+            ),
+        );
+        registers.insert(
+            "OAMADDR".to_string(),
+            RegisterEntry::new(
+                RegisterValue::U8(self.oam_addr_register),
+                RegisterFormat::Hex,
+            ),
+        );
+        registers.insert(
+            "v_register".to_string(),
+            RegisterEntry::new(RegisterValue::U16(self.v_register), RegisterFormat::Hex),
+        );
+        registers.insert(
+            "t_register".to_string(),
+            RegisterEntry::new(RegisterValue::U16(self.t_register), RegisterFormat::Hex),
+        );
+        registers.insert(
+            "fine_x_scroll".to_string(),
+            RegisterEntry::new(
+                RegisterValue::U8(self.fine_x_scroll),
+                RegisterFormat::Decimal,
+            ),
+        );
+        registers.insert(
+            "write_latch".to_string(),
+            RegisterEntry::new(RegisterValue::Bool(self.write_latch), RegisterFormat::Bool),
+        );
+        registers.insert(
+            "ppu_data_buffer".to_string(),
+            RegisterEntry::new(RegisterValue::U8(self.ppu_data_buffer), RegisterFormat::Hex),
+        );
+        registers.insert(
+            "scanline".to_string(),
+            RegisterEntry::new(RegisterValue::U16(self.scanline), RegisterFormat::Decimal),
+        );
+        registers.insert(
+            "dot".to_string(),
+            RegisterEntry::new(RegisterValue::U16(self.dot), RegisterFormat::Decimal),
+        );
+        registers.insert(
+            "dot_counter".to_string(),
+            RegisterEntry::new(
+                RegisterValue::U64(self.dot_counter as u64),
+                RegisterFormat::Decimal,
+            ),
+        );
+        registers.insert(
+            "nmi_requested".to_string(),
+            RegisterEntry::new(
+                RegisterValue::Bool(self.nmi_requested),
+                RegisterFormat::Bool,
+            ),
+        );
+        registers.insert(
+            "even_frame".to_string(),
+            RegisterEntry::new(RegisterValue::Bool(self.even_frame), RegisterFormat::Bool),
+        );
+        registers.insert(
+            "address_bus".to_string(),
+            RegisterEntry::new(RegisterValue::U16(self.address_bus), RegisterFormat::Hex),
+        );
+        registers.insert(
+            "address_latch".to_string(),
+            RegisterEntry::new(RegisterValue::U8(self.address_latch), RegisterFormat::Hex),
+        );
+        registers.insert(
+            "shift_pattern_lo".to_string(),
+            RegisterEntry::new(
+                RegisterValue::U16(self.shift_pattern_lo),
+                RegisterFormat::Hex,
+            ),
+        );
+        registers.insert(
+            "shift_pattern_hi".to_string(),
+            RegisterEntry::new(
+                RegisterValue::U16(self.shift_pattern_hi),
+                RegisterFormat::Hex,
+            ),
+        );
+        registers.insert(
+            "shift_attr_lo".to_string(),
+            RegisterEntry::new(
+                RegisterValue::U8(self.shift_attr_lo),
+                RegisterFormat::Binary,
+            ),
+        );
+        registers.insert(
+            "shift_attr_hi".to_string(),
+            RegisterEntry::new(
+                RegisterValue::U8(self.shift_attr_hi),
+                RegisterFormat::Binary,
+            ),
+        );
+        registers.insert(
+            "vbl_clear_scheduled".to_string(),
+            RegisterEntry::new(
+                RegisterValue::Text(
+                    self.vbl_clear_scheduled
+                        .map(|value| value.to_string())
+                        .unwrap_or_else(|| "None".to_string()),
+                ),
+                RegisterFormat::Text,
+            ),
+        );
+        registers
+    }
+
     pub fn get_palettes_debug(&self, bus: &impl PpuBus) -> EmulatorFetchable {
         EmulatorFetchable::Palettes(Some(Box::new(PaletteData {
             colors: self.load_palette_colors(bus),

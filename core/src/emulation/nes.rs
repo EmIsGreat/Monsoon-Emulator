@@ -8,8 +8,10 @@ use arc_swap::ArcSwap;
 
 use crate::emulation::board::{Board, CpuBus, CpuBusView, PpuBus, PpuBusView};
 use crate::emulation::cpu::MicroOp;
+use crate::emulation::mapper::MapperLike;
 use crate::emulation::peripherals::Peripheral;
 use crate::emulation::ppu::EmulatorFetchable;
+use crate::emulation::ppu_util::{RegisterDebugData, RegisterEntry, RegisterFormat, RegisterValue};
 use crate::emulation::rom::{ExpansionDevice, RomFile, RomMapper};
 use crate::emulation::savestate::{BoardState, SaveState, VERSION};
 use crate::rom_db::RomDb;
@@ -619,6 +621,38 @@ impl Nes {
 
     pub fn get_soam_sprites_debug(&self) -> EmulatorFetchable {
         self.board.ppu.get_soam_sprites_debug()
+    }
+
+    pub fn get_registers_debug(&mut self) -> EmulatorFetchable {
+        let ppu = self.board.ppu.get_registers_debug();
+
+        let mut apu = std::collections::HashMap::new();
+        for addr in 0x4000..=0x4017 {
+            let value = CpuBus::read_debug(&cpu_bus_view!(self), addr);
+            apu.insert(
+                format!("${addr:04X}"),
+                RegisterEntry::new(RegisterValue::U8(value), RegisterFormat::Hex),
+            );
+        }
+        apu.insert(
+            "joystick_strobe_data".to_string(),
+            RegisterEntry::new(
+                RegisterValue::U8(self.board.joystick_strobe_data),
+                RegisterFormat::Binary,
+            ),
+        );
+        apu.insert(
+            "irq".to_string(),
+            RegisterEntry::new(RegisterValue::Bool(self.board.irq), RegisterFormat::Bool),
+        );
+
+        let mapper = self.board.mapper.get_registers_debug();
+
+        EmulatorFetchable::Registers(Some(Box::new(RegisterDebugData {
+            ppu,
+            apu,
+            mapper,
+        })))
     }
 
     /// Returns OAM (sprite memory) contents for debugging.

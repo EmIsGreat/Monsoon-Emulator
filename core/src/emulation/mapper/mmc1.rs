@@ -5,6 +5,9 @@ use crate::emulation::mapper::{
     CpuReadResult, CpuWriteResult, Mapper, MapperLike, PpuReadResult, PpuWriteResult,
 };
 use crate::emulation::mem::{Memory, OpenBus};
+use crate::emulation::ppu_util::{
+    MapperRegisterTables, RegisterEntry, RegisterFormat, RegisterMap, RegisterValue,
+};
 use crate::emulation::rom::RomFile;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
@@ -139,6 +142,119 @@ impl MapperLike for MMC1 {
 
     #[inline]
     fn ppu_init(&mut self, addr: u16, data: u8) -> PpuWriteResult { self.ppu_write(addr, data) }
+
+    fn get_registers_debug(&self) -> MapperRegisterTables {
+        let mut general = RegisterMap::new();
+        general.insert(
+            "name".to_string(),
+            RegisterEntry::new(
+                RegisterValue::Text("MMC1".to_string()),
+                RegisterFormat::Text,
+            ),
+        );
+        general.insert(
+            "version".to_string(),
+            RegisterEntry::new(RegisterValue::U8(self.version), RegisterFormat::Decimal),
+        );
+        general.insert(
+            "submapper".to_string(),
+            RegisterEntry::new(RegisterValue::U8(self.submapper), RegisterFormat::Decimal),
+        );
+        general.insert(
+            "prg_ram_size".to_string(),
+            RegisterEntry::new(
+                RegisterValue::U16(self.prg_ram_size),
+                RegisterFormat::Decimal,
+            ),
+        );
+        general.insert(
+            "prg_ram_bank_offset".to_string(),
+            RegisterEntry::new(
+                RegisterValue::U16(self.prg_ram_bank_offset),
+                RegisterFormat::Hex,
+            ),
+        );
+        general.insert(
+            "prg_rom_size".to_string(),
+            RegisterEntry::new(
+                RegisterValue::U32(self.prg_rom_size),
+                RegisterFormat::Decimal,
+            ),
+        );
+        general.insert(
+            "chr_rom_size".to_string(),
+            RegisterEntry::new(
+                RegisterValue::U32(self.chr_rom_size),
+                RegisterFormat::Decimal,
+            ),
+        );
+        general.insert(
+            "prg_ram_battery_backed".to_string(),
+            RegisterEntry::new(
+                RegisterValue::Bool(self.prg_ram_battery_backed),
+                RegisterFormat::Bool,
+            ),
+        );
+        general.insert(
+            "nametable_arrangement".to_string(),
+            RegisterEntry::new(
+                RegisterValue::Text(format!("{:?}", self.nametable_arrangement)),
+                RegisterFormat::Text,
+            ),
+        );
+
+        let mut regs = RegisterMap::new();
+        regs.insert(
+            "shift".to_string(),
+            RegisterEntry::new(RegisterValue::U8(self.shift), RegisterFormat::Binary),
+        );
+        regs.insert(
+            "shift_count".to_string(),
+            RegisterEntry::new(RegisterValue::U8(self.shift_count), RegisterFormat::Decimal),
+        );
+        regs.insert(
+            "ctrl_reg".to_string(),
+            RegisterEntry::new(RegisterValue::U8(self.ctrl_reg), RegisterFormat::Binary),
+        );
+        regs.insert(
+            "chr_bank_0".to_string(),
+            RegisterEntry::new(RegisterValue::U8(self.chr_bank_0), RegisterFormat::Hex),
+        );
+        regs.insert(
+            "chr_bank_1".to_string(),
+            RegisterEntry::new(RegisterValue::U8(self.chr_bank_1), RegisterFormat::Hex),
+        );
+        regs.insert(
+            "prg_bank".to_string(),
+            RegisterEntry::new(RegisterValue::U8(self.prg_bank), RegisterFormat::Hex),
+        );
+        regs.insert(
+            "prg_rom_bank_mode".to_string(),
+            RegisterEntry::new(
+                RegisterValue::U8(self.prg_rom_bank_mode),
+                RegisterFormat::Decimal,
+            ),
+        );
+        regs.insert(
+            "chr_rom_bank_mode".to_string(),
+            RegisterEntry::new(
+                RegisterValue::U8(self.chr_rom_bank_mode),
+                RegisterFormat::Decimal,
+            ),
+        );
+        regs.insert(
+            "last_shift_write".to_string(),
+            RegisterEntry::new(
+                RegisterValue::U64(self.last_shift_write as u64),
+                RegisterFormat::Decimal,
+            ),
+        );
+
+        let mut tables = MapperRegisterTables::new();
+        tables.insert("General".to_string(), general);
+        tables.insert("Registers".to_string(), regs);
+        tables
+    }
 }
 
 const KB_16: u32 = 0x4000;

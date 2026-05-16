@@ -310,6 +310,11 @@ impl Default for KeybindingsConfig {
                 Modifiers::CTRL.plus(Modifiers::SHIFT),
                 OnKeyAction::OpenRomHeaderViewer,
             ),
+            Binding::with_modifiers(
+                Key::G,
+                Modifiers::CTRL.plus(Modifiers::SHIFT),
+                OnKeyAction::OpenRegistersViewer,
+            ),
             Binding::with_modifiers(Key::Tab, Modifiers::CTRL, OnKeyAction::Speedup),
             // Ui Bindings
             Binding::with_modifiers(Key::O, Modifiers::CTRL, OnKeyAction::LoadRom),

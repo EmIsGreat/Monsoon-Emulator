@@ -160,6 +160,7 @@ pub enum AsyncFrontendMessage {
     OpenSpriteViewer,
     OpenSoamViewer,
     OpenRomHeaderViewer,
+    OpenRegistersViewer,
     Speedup,
 }
 

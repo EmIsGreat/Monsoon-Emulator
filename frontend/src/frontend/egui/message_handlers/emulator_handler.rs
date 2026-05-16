@@ -87,6 +87,9 @@ impl EguiApp {
             EmulatorFetchable::SoamSprites(s) => {
                 self.emu_textures.soam_data = s;
             }
+            EmulatorFetchable::Registers(r) => {
+                self.emu_textures.register_data = r;
+            }
         }
     }
 
