@@ -306,6 +306,9 @@ impl EguiApp {
             AsyncFrontendMessage::OpenRegistersViewer => {
                 add_pane_if_missing(&mut self.tree, Pane::Registers);
             }
+            AsyncFrontendMessage::OpenTraceLogViewer => {
+                add_pane_if_missing(&mut self.tree, Pane::TraceLog);
+            }
             AsyncFrontendMessage::Speedup => {
                 ctx.memory_mut(|mem| {
                     mem.data

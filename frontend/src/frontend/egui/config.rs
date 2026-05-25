@@ -27,7 +27,6 @@ pub struct ViewConfig {
     pub show_palette: bool,
     pub show_pattern_table: bool,
     pub show_nametable: bool,
-    pub show_log_window: bool,
     pub required_debug_fetches: HashSet<EmulatorFetchable>,
     /// The renderer instance used for converting palette indices to RGB colors.
     /// This can be changed at runtime by replacing with a different
@@ -44,7 +43,6 @@ impl Default for ViewConfig {
             show_palette: false,
             show_pattern_table: false,
             show_nametable: false,
-            show_log_window: false,
             required_debug_fetches: HashSet::new(),
             renderer: create_renderer(Some("PaletteLookup"), get_all_renderers()),
             palette_rgb_data: RgbPalette::default(),
@@ -316,6 +314,11 @@ impl Default for KeybindingsConfig {
                 Key::G,
                 Modifiers::CTRL.plus(Modifiers::SHIFT),
                 OnKeyAction::OpenRegistersViewer,
+            ),
+            Binding::with_modifiers(
+                Key::L,
+                Modifiers::CTRL.plus(Modifiers::SHIFT),
+                OnKeyAction::OpenTraceLogViewer,
             ),
             Binding::with_modifiers(Key::Tab, Modifiers::CTRL, OnKeyAction::Speedup),
             // Ui Bindings

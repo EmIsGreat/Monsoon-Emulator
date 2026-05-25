@@ -19,7 +19,7 @@ pub mod widgets;
 
 pub use emulator_output::render_emulator_output;
 pub use keybindings_pane::render_keybindings;
-pub use log_window::render_log_window;
+pub use log_window::render_log_viewer;
 pub use menu_bar::add_menu_bar;
 pub use nametable_pane::render_nametable;
 pub use options_pane::render_options;

@@ -47,9 +47,7 @@ use crate::frontend::egui::textures::EmuTextures;
 use crate::frontend::egui::tiles::{
     Pane, TreeBehavior, compute_required_fetches_from_tree, create_tree, find_pane,
 };
-use crate::frontend::egui::ui::{
-    add_menu_bar, add_status_bar, render_log_window, render_save_browser, render_savestate_dialogs,
-};
+use crate::frontend::egui::ui::{add_menu_bar, add_status_bar, render_save_browser, render_savestate_dialogs};
 use crate::frontend::egui::wgpu_renderer::NesWgpuRenderer;
 use crate::frontend::messages::{
     AsyncFrontendMessage, FrontendEvent, LoadedRom, SavestateLoadContext,
@@ -683,6 +681,7 @@ impl eframe::App for EguiApp {
             let mut behavior = TreeBehavior::new(
                 &mut self.config,
                 &self.emu_textures,
+                &mut self.channel_emu,
                 &self.async_sender,
                 self.wgpu_nes_renderer.as_ref(),
             );
@@ -698,9 +697,6 @@ impl eframe::App for EguiApp {
 
         // Render save browser dialog if open
         self.render_save_browser_impl(ui);
-
-        // Render CPU trace log window if open
-        render_log_window(ui.ctx(), &mut self.config, &mut self.channel_emu);
 
         #[cfg(target_arch = "wasm32")]
         if keybindings_changed {

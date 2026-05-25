@@ -12,7 +12,7 @@ use crate::frontend::egui::config::AppConfig;
 use crate::frontend::egui::textures::EmuTextures;
 use crate::frontend::egui::ui::{
     render_emulator_output, render_keybindings, render_nametable, render_options, render_palettes,
-    render_pattern_table, render_register_viewer, render_rom_header, render_soam_viewer,
+    render_log_viewer, render_pattern_table, render_register_viewer, render_rom_header, render_soam_viewer,
     render_sprite_viewer,
 };
 use crate::frontend::egui::wgpu_renderer::NesWgpuRenderer;
@@ -35,6 +35,7 @@ pub enum Pane {
     SoamSprites,
     RomHeader,
     Registers,
+    TraceLog,
     /// Keybindings configuration - closeable, can be reopened via menu
     Keybindings,
 }
@@ -52,7 +53,8 @@ impl Pane {
             | Pane::Sprites
             | Pane::SoamSprites
             | Pane::RomHeader
-            | Pane::Registers => true,
+            | Pane::Registers
+            | Pane::TraceLog => true,
         }
     }
 
@@ -69,6 +71,7 @@ impl Pane {
             Pane::SoamSprites => "SOAM Sprites",
             Pane::RomHeader => "ROM Header",
             Pane::Registers => "Registers",
+            Pane::TraceLog => "CPU Trace Log",
         }
     }
 }
@@ -77,6 +80,7 @@ impl Pane {
 pub struct TreeBehavior<'a> {
     pub config: &'a mut AppConfig,
     pub emu_textures: &'a EmuTextures,
+    pub channel_emu: &'a mut ChannelEmulator,
     pub async_sender: &'a Sender<AsyncFrontendMessage>,
     pub keybindings_changed: bool,
     /// GPU palette renderer, present when the wgpu backend is active.
@@ -87,12 +91,14 @@ impl<'a> TreeBehavior<'a> {
     pub fn new(
         config: &'a mut AppConfig,
         emu_textures: &'a EmuTextures,
+        channel_emu: &'a mut ChannelEmulator,
         async_sender: &'a Sender<AsyncFrontendMessage>,
         wgpu_nes_renderer: Option<&'a Arc<NesWgpuRenderer>>,
     ) -> Self {
         Self {
             config,
             emu_textures,
+            channel_emu,
             async_sender,
             keybindings_changed: false,
             wgpu_nes_renderer,
@@ -131,6 +137,7 @@ impl Behavior<Pane> for TreeBehavior<'_> {
             Pane::SoamSprites => render_soam_viewer(ui, self.config, self.emu_textures),
             Pane::RomHeader => render_rom_header(ui, self.config),
             Pane::Registers => render_register_viewer(ui, self.emu_textures),
+            Pane::TraceLog => render_log_viewer(ui, self.config, self.channel_emu),
         }
         UiResponse::None
     }

@@ -544,17 +544,22 @@ impl Nes {
     #[cold]
     #[inline(never)]
     fn write_trace_log(&mut self) {
-        if let Some(ref mut trace) = self.trace_log {
-            let state = SaveState {
-                board: BoardState::from(&self.board),
-                ppu_cycle_counter: self.ppu_cycle_counter,
-                cpu_cycle_counter: self.cpu_cycle_counter,
-                total_cycles: self.total_cycles,
-                rom_file: self.rom_file.as_ref().unwrap().clone(),
-                version: VERSION,
-            };
-
-            trace.trace(state)
+        if let Some(trace) = self.trace_log.as_mut() {
+            let cpu = &self.board.cpu;
+            let bus = CpuBusView::from(
+                &mut self.board.mapper,
+                &mut self.board.cpu_open_bus,
+                &mut self.board.ppu_open_bus,
+                &mut self.board.cpu_ram,
+                &mut self.board.nametable_ram,
+                &mut self.board.palette_ram,
+                &mut self.board.ppu,
+                &mut self.board.irq,
+                &mut self.board.controller1,
+                &mut self.board.controller2,
+                &mut self.board.joystick_strobe_data,
+            );
+            trace.trace(cpu, &bus, self.total_cycles)
         }
     }
 

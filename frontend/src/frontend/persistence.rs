@@ -329,8 +329,6 @@ pub struct PersistentViewConfig {
     pub show_palette: bool,
     pub show_pattern_table: bool,
     pub show_nametable: bool,
-    #[serde(default)]
-    pub show_log_window: bool,
     pub required_debug_fetches: HashSet<PersistentEmulatorFetchable>,
     /// The serialized renderer state. When present, the renderer is restored
     /// from this. When absent (e.g., first run), a default renderer is
@@ -345,7 +343,6 @@ impl Default for PersistentViewConfig {
             show_palette: false,
             show_pattern_table: false,
             show_nametable: false,
-            show_log_window: false,
             required_debug_fetches: HashSet::new(),
             renderer: NoneRenderer::new().get_id().to_string(),
         }
@@ -358,7 +355,6 @@ impl From<&ViewConfig> for PersistentViewConfig {
             show_palette: config.show_palette,
             show_pattern_table: config.show_pattern_table,
             show_nametable: config.show_nametable,
-            show_log_window: config.show_log_window,
             required_debug_fetches: config
                 .required_debug_fetches
                 .iter()
@@ -379,7 +375,6 @@ impl From<&PersistentViewConfig> for ViewConfig {
             show_nametable: config.show_nametable,
             show_palette: config.show_palette,
             show_pattern_table: config.show_pattern_table,
-            show_log_window: config.show_log_window,
             required_debug_fetches: Default::default(),
             renderer,
         }

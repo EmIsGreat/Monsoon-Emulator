@@ -110,8 +110,11 @@ pub fn add_menu_bar(
                     config,
                     async_sender,
                 ));
-                ui.separator();
-                ui.checkbox(&mut config.view_config.show_log_window, "CPU Trace Log");
+                ui.add(HotKeyButton::for_action(
+                    OnKeyAction::OpenTraceLogViewer,
+                    config,
+                    async_sender,
+                ));
             });
         });
     });

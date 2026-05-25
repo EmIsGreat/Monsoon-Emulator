@@ -1,8 +1,9 @@
-use crate::emulation::board::{Board, CpuBus, CpuBusView};
-use crate::emulation::cpu::{OpType, Source, UNUSED_BIT};
+use std::fmt::Write;
+
+use crate::emulation::board::CpuBus;
+use crate::emulation::cpu::{Cpu, OpType, Source, UNUSED_BIT};
 use crate::emulation::opcode;
 use crate::emulation::opcode::{OpCode, get_opcode};
-use crate::emulation::savestate::SaveState;
 use crate::util::add_to_low_byte;
 
 pub struct TraceLog {
@@ -24,52 +25,42 @@ impl Default for TraceLog {
 }
 
 impl TraceLog {
-    pub fn new() -> Self {
-        Self {
-            log: String::from(""),
-        }
-    }
+    pub fn new() -> Self { Self { log: String::new() } }
 
-    pub fn trace(&mut self, nes: SaveState) {
-        let mut board = Board::from(&nes.board);
-        let cpu = CpuTraceState {
-            program_counter: board.cpu.program_counter,
-            accumulator: board.cpu.accumulator,
-            x_register: board.cpu.x_register,
-            y_register: board.cpu.y_register,
-            processor_status: board.cpu.processor_status,
-            stack_pointer: board.cpu.stack_pointer,
-            current_opcode: board.cpu.current_opcode,
+    pub fn trace(&mut self, cpu: &Cpu, bus: &impl CpuBus, total_cycles: u128) {
+        let Some(current_opcode) = cpu.current_opcode else {
+            return;
         };
-        let current_opcode = get_opcode(cpu.current_opcode.unwrap().opcode).unwrap();
+
+        let cpu = CpuTraceState {
+            program_counter: cpu.program_counter,
+            accumulator: cpu.accumulator,
+            x_register: cpu.x_register,
+            y_register: cpu.y_register,
+            processor_status: cpu.processor_status,
+            stack_pointer: cpu.stack_pointer,
+            current_opcode: Some(current_opcode),
+        };
+        let current_opcode = get_opcode(current_opcode.opcode).unwrap();
 
         let relevant_mem_start = cpu.program_counter.wrapping_sub(1);
         let relevant_mem_end =
             relevant_mem_start.wrapping_add(opcode::get_bytes_for_opcode(current_opcode) as u16);
-        let bus = CpuBusView::from(
-            &mut board.mapper,
-            &mut board.cpu_open_bus,
-            &mut board.ppu_open_bus,
-            &mut board.cpu_ram,
-            &mut board.nametable_ram,
-            &mut board.palette_ram,
-            &mut board.ppu,
-            &mut board.irq,
-            &mut board.controller1,
-            &mut board.controller2,
-            &mut board.joystick_strobe_data,
-        );
         let relevant_mem: Vec<u8> = bus.get_range(relevant_mem_start..=relevant_mem_end);
-        let mem_formatted = relevant_mem
-            .iter()
-            .map(|n| format!("{:02X}", n))
-            .collect::<Vec<_>>()
-            .join(" ");
 
-        let descriptor_string = get_opcode_descriptor(current_opcode, &cpu, &bus);
+        let mut mem_formatted = String::with_capacity(8);
+        for (idx, byte) in relevant_mem.iter().enumerate() {
+            if idx != 0 {
+                mem_formatted.push(' ');
+            }
+            let _ = write!(&mut mem_formatted, "{byte:02X}");
+        }
 
-        self.log += format!(
-            "{:04X}  {:<8} {:>4} {:<27} A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{}\n",
+        let descriptor_string = get_opcode_descriptor(current_opcode, &cpu, bus);
+
+        let _ = writeln!(
+            &mut self.log,
+            "{:04X}  {:<8} {:>4} {:<27} A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{}",
             cpu.program_counter.wrapping_sub(1),
             mem_formatted,
             current_opcode.name,
@@ -79,9 +70,8 @@ impl TraceLog {
             cpu.y_register,
             cpu.processor_status | UNUSED_BIT,
             cpu.stack_pointer,
-            nes.total_cycles / 12
-        )
-        .as_str();
+            total_cycles / 12
+        );
     }
 }
 
