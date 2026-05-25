@@ -79,6 +79,8 @@ pub struct Nes {
     pub rom_file: Option<RomFile>,
     /// Optional CPU instruction trace logger for debugging.
     pub(crate) trace_log: Option<TraceLog>,
+    /// Whether CPU instruction tracing is currently enabled.
+    pub(crate) trace_enabled: bool,
     /// Internal CPU clock divider counter (0-12).
     pub(crate) cpu_cycle_counter: u8,
     /// Internal PPU clock divider counter (0-4).
@@ -338,6 +340,7 @@ impl Nes {
             board,
             rom_file: None,
             trace_log: None,
+            trace_enabled: false,
             total_cycles: 0,
             cpu_cycle_counter: 0,
             ppu_cycle_counter: 0,
@@ -476,7 +479,7 @@ impl Nes {
         if self.cpu_cycle_counter == self.alignment {
             // Only check trace_log when actually needed
             let do_trace =
-                self.trace_log.is_some() && matches!(&cpu.current_op, &MicroOp::FetchOpcode);
+                self.trace_enabled && self.trace_log.is_some() && matches!(&cpu.current_op, &MicroOp::FetchOpcode);
 
             let cpu_res = cpu.step(&mut cpu_bus_view!(self));
 
@@ -505,7 +508,34 @@ impl Nes {
     /// When enabled, every executed instruction is logged to an internal
     /// trace buffer in a nestest-compatible format. This is primarily useful
     /// for verifying CPU accuracy against reference logs.
-    pub fn enable_trace(&mut self) { self.trace_log = Some(TraceLog::default()) }
+    pub fn enable_trace(&mut self) {
+        if self.trace_log.is_none() {
+            self.trace_log = Some(TraceLog::default());
+        }
+        self.trace_enabled = true;
+    }
+
+    /// Disables CPU instruction tracing while preserving any collected log.
+    pub fn disable_trace(&mut self) { self.trace_enabled = false; }
+
+    /// Enables or disables CPU instruction tracing.
+    pub fn set_trace_enabled(&mut self, enabled: bool) {
+        if enabled {
+            self.enable_trace();
+        } else {
+            self.disable_trace();
+        }
+    }
+
+    /// Returns whether CPU instruction tracing is currently enabled.
+    pub fn trace_enabled(&self) -> bool { self.trace_enabled }
+
+    /// Clears the currently collected CPU trace log without changing enable state.
+    pub fn clear_trace_log(&mut self) {
+        if let Some(trace) = &mut self.trace_log {
+            trace.log.clear();
+        }
+    }
 
     /// Cold path: Write a trace log entry (only called when tracing is enabled)
     #[cold]
