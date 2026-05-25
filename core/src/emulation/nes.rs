@@ -516,6 +516,9 @@ impl Nes {
     }
 
     /// Disables CPU instruction tracing while preserving any collected log.
+    ///
+    /// Use this to pause trace collection without discarding previously captured
+    /// entries. Tracing can later be resumed with [`enable_trace`](Self::enable_trace).
     pub fn disable_trace(&mut self) { self.trace_enabled = false; }
 
     /// Enables or disables CPU instruction tracing.
