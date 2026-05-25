@@ -47,7 +47,9 @@ use crate::frontend::egui::textures::EmuTextures;
 use crate::frontend::egui::tiles::{
     Pane, TreeBehavior, compute_required_fetches_from_tree, create_tree, find_pane,
 };
-use crate::frontend::egui::ui::{add_menu_bar, add_status_bar, render_save_browser, render_savestate_dialogs};
+use crate::frontend::egui::ui::{
+    add_menu_bar, add_status_bar, render_save_browser, render_savestate_dialogs,
+};
 use crate::frontend::egui::wgpu_renderer::NesWgpuRenderer;
 use crate::frontend::messages::{
     AsyncFrontendMessage, FrontendEvent, LoadedRom, SavestateLoadContext,

@@ -11,9 +11,9 @@ use crate::channel_emu::{ChannelEmulator, FETCH_DEPS};
 use crate::frontend::egui::config::AppConfig;
 use crate::frontend::egui::textures::EmuTextures;
 use crate::frontend::egui::ui::{
-    render_emulator_output, render_keybindings, render_nametable, render_options, render_palettes,
-    render_log_viewer, render_pattern_table, render_register_viewer, render_rom_header, render_soam_viewer,
-    render_sprite_viewer,
+    render_emulator_output, render_keybindings, render_log_viewer, render_nametable,
+    render_options, render_palettes, render_pattern_table, render_register_viewer,
+    render_rom_header, render_soam_viewer, render_sprite_viewer,
 };
 use crate::frontend::egui::wgpu_renderer::NesWgpuRenderer;
 use crate::frontend::messages::AsyncFrontendMessage;

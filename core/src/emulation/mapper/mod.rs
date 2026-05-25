@@ -246,9 +246,9 @@ impl MapperLike for Nrom {
         match addr {
             0..=0x1FFF => {
                 if let Some(rom) = &self.chr_rom {
-                    PpuReadResult::Handled(rom.read(addr as u32, open_bus), true)
+                    PpuReadResult::Handled(rom.read(addr as u32, open_bus), false)
                 } else {
-                    PpuReadResult::Handled(open_bus.read(), false)
+                    PpuReadResult::Handled(addr as u8, false)
                 }
             }
             0x2000..=0x3EFF => {

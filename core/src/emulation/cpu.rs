@@ -1638,13 +1638,11 @@ impl Cpu {
 
     #[inline]
     pub fn process_dma(&mut self, bus: &mut impl CpuBus) {
-
         if self.remaining_dma_cycles == 514 {
             return;
         }
 
         if self.remaining_dma_cycles == 513 {
-
             if !self.dma_read {
                 self.execute_micro_op(
                     MicroOp::Read(

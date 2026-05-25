@@ -15,7 +15,7 @@ impl NametableArrangement {
     #[inline]
     pub fn resolve_address(&self, address: u16) -> u16 {
         let address = address % (VRAM_SIZE * 2);
-        
+
         let table = address / NAMETABLE_SIZE;
         let offset = address % NAMETABLE_SIZE;
 

@@ -13,7 +13,11 @@ impl ToBytes for ExportableData {
 
 const MAX_VISIBLE_LOG_CHARS: usize = 200_000;
 
-pub fn render_log_viewer(ui: &mut egui::Ui, config: &mut AppConfig, channel_emu: &mut ChannelEmulator) {
+pub fn render_log_viewer(
+    ui: &mut egui::Ui,
+    config: &mut AppConfig,
+    channel_emu: &mut ChannelEmulator,
+) {
     let mut trace_enabled = channel_emu.nes.trace_enabled();
     if ui
         .checkbox(&mut trace_enabled, "Enable CPU trace logging")
@@ -47,21 +51,23 @@ pub fn render_log_viewer(ui: &mut egui::Ui, config: &mut AppConfig, channel_emu:
     });
 
     ui.separator();
-    egui::ScrollArea::vertical().stick_to_bottom(true).show(ui, |ui| {
-        if let Some(trace) = channel_emu.nes.trace_log() {
-            let log = &trace.log;
-            let start = if log.len() > MAX_VISIBLE_LOG_CHARS {
-                let mut idx = log.len() - MAX_VISIBLE_LOG_CHARS;
-                while idx < log.len() && !log.is_char_boundary(idx) {
-                    idx += 1;
-                }
-                idx
+    egui::ScrollArea::vertical()
+        .stick_to_bottom(true)
+        .show(ui, |ui| {
+            if let Some(trace) = channel_emu.nes.trace_log() {
+                let log = &trace.log;
+                let start = if log.len() > MAX_VISIBLE_LOG_CHARS {
+                    let mut idx = log.len() - MAX_VISIBLE_LOG_CHARS;
+                    while idx < log.len() && !log.is_char_boundary(idx) {
+                        idx += 1;
+                    }
+                    idx
+                } else {
+                    0
+                };
+                ui.monospace(&log[start..]);
             } else {
-                0
-            };
-            ui.monospace(&log[start..]);
-        } else {
-            ui.monospace("");
-        }
+                ui.monospace("");
+            }
         });
 }

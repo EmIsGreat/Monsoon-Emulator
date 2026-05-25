@@ -25,7 +25,11 @@ impl Default for TraceLog {
 }
 
 impl TraceLog {
-    pub fn new() -> Self { Self { log: String::new() } }
+    pub fn new() -> Self {
+        Self {
+            log: String::new(),
+        }
+    }
 
     pub fn trace(&mut self, cpu: &Cpu, bus: &impl CpuBus, total_cycles: u128) {
         let Some(current_opcode) = cpu.current_opcode else {

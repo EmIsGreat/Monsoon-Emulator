@@ -117,9 +117,12 @@ impl MapperLike for MMC1 {
         match addr {
             0..=0x1FFF => {
                 if let Some(rom) = &self.chr_rom {
-                    PpuReadResult::Handled(rom.read(self.get_chr_rom_address(addr), open_bus), true)
+                    PpuReadResult::Handled(
+                        rom.read(self.get_chr_rom_address(addr), open_bus),
+                        false,
+                    )
                 } else {
-                    PpuReadResult::Registered
+                    PpuReadResult::Handled(addr as u8, false)
                 }
             }
             0x2000..=0x3EFF => {

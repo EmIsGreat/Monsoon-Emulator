@@ -478,8 +478,9 @@ impl Nes {
         // cpu_cycle_counter + 2 == 12  means cpu_cycle_counter == 10
         if self.cpu_cycle_counter == self.alignment {
             // Only check trace_log when actually needed
-            let do_trace =
-                self.trace_enabled && self.trace_log.is_some() && matches!(&cpu.current_op, &MicroOp::FetchOpcode);
+            let do_trace = self.trace_enabled
+                && self.trace_log.is_some()
+                && matches!(&cpu.current_op, &MicroOp::FetchOpcode);
 
             let cpu_res = cpu.step(&mut cpu_bus_view!(self));
 
@@ -517,8 +518,9 @@ impl Nes {
 
     /// Disables CPU instruction tracing while preserving any collected log.
     ///
-    /// Use this to pause trace collection without discarding previously captured
-    /// entries. Tracing can later be resumed with [`enable_trace`](Self::enable_trace).
+    /// Use this to pause trace collection without discarding previously
+    /// captured entries. Tracing can later be resumed with
+    /// [`enable_trace`](Self::enable_trace).
     pub fn disable_trace(&mut self) { self.trace_enabled = false; }
 
     /// Enables or disables CPU instruction tracing.
@@ -533,7 +535,8 @@ impl Nes {
     /// Returns whether CPU instruction tracing is currently enabled.
     pub fn trace_enabled(&self) -> bool { self.trace_enabled }
 
-    /// Clears the currently collected CPU trace log without changing enable state.
+    /// Clears the currently collected CPU trace log without changing enable
+    /// state.
     pub fn clear_trace_log(&mut self) {
         if let Some(trace) = &mut self.trace_log {
             trace.log.clear();

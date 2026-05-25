@@ -9,8 +9,8 @@ use crate::emulation::mem::palette_ram::PaletteRam;
 use crate::emulation::mem::{Memory, OpenBus};
 use crate::emulation::peripherals::{Peripheral, PeripheralDevice};
 use crate::emulation::ppu::{
-    Ppu, OPEN_BUS_DECAY_DELAY, PALETTE_RAM_END_ADDRESS, PALETTE_RAM_SIZE,
-    PALETTE_RAM_START_ADDRESS, VRAM_SIZE,
+    OPEN_BUS_DECAY_DELAY, PALETTE_RAM_END_ADDRESS, PALETTE_RAM_SIZE, PALETTE_RAM_START_ADDRESS,
+    Ppu, VRAM_SIZE,
 };
 use crate::emulation::rom::RomFile;
 use crate::emulation::savestate::BoardState;
@@ -195,8 +195,7 @@ impl<'a> PpuBus for PpuBusView<'a> {
         let res = match res {
             PpuReadResult::Handled(data, update) => ReadResult::from(data).with_update(update),
             PpuReadResult::Nametable(addr) => {
-                ReadResult::from(self.nametable_ram.read(addr as u32, self.ppu_io_bus))
-                    .to_false()
+                ReadResult::from(self.nametable_ram.read(addr as u32, self.ppu_io_bus)).to_false()
             }
             PpuReadResult::Registered => match addr {
                 0x3F00..=0x3FFF => ReadResult::from(
@@ -204,7 +203,7 @@ impl<'a> PpuBus for PpuBusView<'a> {
                         .read((addr - 0x3F00) % PALETTE_RAM_SIZE, self.ppu_io_bus),
                 )
                 .to_false(),
-                _ => ReadResult::from(self.ppu_io_bus.read()).to_false(),
+                _ => ReadResult::from(addr as u8).to_false(),
             },
         };
 
@@ -227,9 +226,9 @@ impl<'a> PpuBus for PpuBusView<'a> {
 
         match res {
             PpuReadResult::Handled(data, _) => data,
-            PpuReadResult::Nametable(addr) => self
-                .nametable_ram
-                .snapshot(addr as u32, self.ppu_io_bus),
+            PpuReadResult::Nametable(addr) => {
+                self.nametable_ram.snapshot(addr as u32, self.ppu_io_bus)
+            }
             PpuReadResult::Registered => match addr {
                 0x3F00..=0x3FFF => self
                     .palette_ram
@@ -250,11 +249,9 @@ impl<'a> PpuBus for PpuBusView<'a> {
                 0x3F00..=0x3FFF => self
                     .palette_ram
                     .write((addr - 0x3F00) % PALETTE_RAM_SIZE, data),
-                _ => self.ppu_io_bus.set_masked(data, 0xFF),
+                _ => {}
             },
         }
-
-        self.ppu_io_bus.set_masked(data, 0xFF);
     }
 
     #[inline]
