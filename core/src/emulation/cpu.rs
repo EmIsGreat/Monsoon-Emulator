@@ -6,7 +6,7 @@ use serde_big_array::BigArray;
 use crate::emulation::board::CpuBus;
 use crate::emulation::nes::ExecutionFinished;
 use crate::emulation::opcode;
-use crate::emulation::opcode::{OPCODES_MAP, OPCODES_TABLE, OpCode, get_opcode};
+use crate::emulation::opcode::{get_opcode, OpCode, OPCODES_MAP, OPCODES_TABLE};
 use crate::emulation::savestate::CpuState;
 use crate::util;
 
@@ -1459,6 +1459,8 @@ impl Cpu {
                 self.run_op(callback, bus);
             }
             MicroOp::BranchIncrement(to_add) => {
+                self.mem_read(self.program_counter, bus);
+
                 let add_to = self.program_counter;
                 let to_add = self.get_src_value(&to_add);
 
@@ -1472,6 +1474,7 @@ impl Cpu {
                 }
             }
             MicroOp::FixHiBranch(value) => {
+                self.mem_read(self.program_counter, bus);
                 self.program_counter = value;
             }
         }

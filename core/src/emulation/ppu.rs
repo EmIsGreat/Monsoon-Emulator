@@ -169,7 +169,7 @@ impl Ppu {
                 self.set_soam_disable(false);
             }
 
-            if self.scanline == PRE_RENDER_SCANLINE {
+            if self.scanline == PRE_RENDER_SCANLINE && self.dot == 1{
                 self.set_soam_disable(true);
                 self.clear_sprite_overflow();
                 self.clear_sprite_zero()
@@ -210,7 +210,7 @@ impl Ppu {
             if (self.dot >= 1 && self.dot <= 256) || (self.dot >= 321 && self.dot <= 336) {
                 self.do_dot_fetch();
 
-                if self.scanline != PRE_RENDER_SCANLINE && self.dot >= 0x01 && self.dot <= 256 {
+                if self.scanline != PRE_RENDER_SCANLINE && self.dot >= 1 && self.dot <= 256 {
                     let bg_color_address = self.get_bg_pixel();
 
                     let mut sprite_pixel_palette = 0u8;
@@ -568,7 +568,7 @@ impl Ppu {
     }
 
     #[inline]
-    pub fn get_bg_pixel(&mut self) -> u16 {
+    pub fn get_bg_pixel(&self) -> u16 {
         let mux = 0x80 >> self.fine_x_scroll;
         // pattern shifters (16-bit)
         let bit0 = ((self.shift_pattern_lo & (mux as u16) << 8) != 0) as u8;
@@ -751,7 +751,7 @@ impl Ppu {
 
     #[inline]
     pub fn get_oam_at_addr(&mut self, open_bus: &OpenBus) -> u8 {
-        if self.is_soam_clear_active {
+        if self.is_soam_clear_active || (self.dot >= 256 && self.dot <= 320) {
             0xFF
         } else {
             self.oam_read(self.oam_addr_register, open_bus)
@@ -798,6 +798,8 @@ impl Ppu {
         {
             self.oam_write(self.oam_addr_register, data);
             self.oam_addr_register = self.oam_addr_register.wrapping_add(1);
+        } else {
+            self.oam_addr_register = self.oam_addr_register.wrapping_add(4) & 0xFC;
         }
     }
 
