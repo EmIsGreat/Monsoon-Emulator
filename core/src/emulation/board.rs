@@ -262,7 +262,7 @@ impl<'a> PpuBus for PpuBusView<'a> {
             PpuWriteResult::Registered => match addr {
                 0x3F00..=0x3FFF => {
                     let prev = if self.grayscale_enabled {
-                        self.read(addr) & 0x0F
+                        self.palette_ram.read(addr, self.ppu_io_bus) & 0x0F
                     } else {
                         0
                     };
@@ -273,8 +273,8 @@ impl<'a> PpuBus for PpuBusView<'a> {
                             // Zeroes the four low bits in case grayscale is enabled, and then
                             // or's in the previous palette ram value. Effectively ignores the
                             // lower four bits completely in case of grayscale enable
-                            & !((self.grayscale_enabled as u8).wrapping_neg() & 0x0F)
-                            | prev,
+                            & (!((self.grayscale_enabled as u8).wrapping_neg() & 0x0F)
+                        ) | prev,
                     )
                 }
                 _ => {}
