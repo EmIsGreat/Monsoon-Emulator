@@ -9,8 +9,8 @@ use crate::emulation::mem::palette_ram::PaletteRam;
 use crate::emulation::mem::{Memory, OpenBus};
 use crate::emulation::peripherals::{Peripheral, PeripheralDevice};
 use crate::emulation::ppu::{
-    OPEN_BUS_DECAY_DELAY, PALETTE_RAM_END_ADDRESS, PALETTE_RAM_SIZE, PALETTE_RAM_START_ADDRESS,
-    Ppu, VRAM_SIZE,
+    Ppu, OPEN_BUS_DECAY_DELAY, PALETTE_RAM_END_ADDRESS, PALETTE_RAM_SIZE,
+    PALETTE_RAM_START_ADDRESS, VRAM_SIZE,
 };
 use crate::emulation::rom::RomFile;
 use crate::emulation::savestate::BoardState;
@@ -198,10 +198,20 @@ impl<'a> PpuBus for PpuBusView<'a> {
                 ReadResult::from(self.nametable_ram.read(addr as u32, self.ppu_io_bus)).to_false()
             }
             PpuReadResult::Registered => match addr {
-                0x3F00..=0x3FFF => ReadResult::from(
-                    self.palette_ram
-                        .read((addr - 0x3F00) % PALETTE_RAM_SIZE, self.ppu_io_bus),
-                )
+                0x3F00..=0x3FFF => {
+                    let val = self
+                        .palette_ram
+                        .read((addr - 0x3F00) % PALETTE_RAM_SIZE, self.ppu_io_bus);
+
+                    // Zeroes the four low bits in case grayscale is enabled
+                    let mask = !((self.grayscale_enabled as u8).wrapping_neg() & 0x0F);
+
+                    // println!("orig: {:08b}", val);
+                    // println!("mask: {:08b}", mask);
+                    // println!("full: {:08b}", val & mask);
+
+                    ReadResult::from(val & mask)
+                }
                 .to_false(),
                 _ => ReadResult::from(addr as u8).to_false(),
             },
@@ -230,9 +240,13 @@ impl<'a> PpuBus for PpuBusView<'a> {
                 self.nametable_ram.snapshot(addr as u32, self.ppu_io_bus)
             }
             PpuReadResult::Registered => match addr {
-                0x3F00..=0x3FFF => self
-                    .palette_ram
-                    .snapshot((addr - 0x3F00) % PALETTE_RAM_SIZE, self.ppu_io_bus),
+                0x3F00..=0x3FFF => {
+                    self
+                        .palette_ram
+                        .snapshot((addr - 0x3F00) % PALETTE_RAM_SIZE, self.ppu_io_bus)
+                        // Zeroes the four low bits in case grayscale is enabled
+                        & !((self.grayscale_enabled as u8).wrapping_neg() & 0x0F)
+                }
                 _ => self.ppu_io_bus.read(),
             },
         }
@@ -246,9 +260,23 @@ impl<'a> PpuBus for PpuBusView<'a> {
             PpuWriteResult::Handled => {}
             PpuWriteResult::Nametable(addr) => self.nametable_ram.write(addr as u32, data),
             PpuWriteResult::Registered => match addr {
-                0x3F00..=0x3FFF => self
-                    .palette_ram
-                    .write((addr - 0x3F00) % PALETTE_RAM_SIZE, data),
+                0x3F00..=0x3FFF => {
+                    let prev = if self.grayscale_enabled {
+                        self.read(addr) & 0x0F
+                    } else {
+                        0
+                    };
+
+                    self.palette_ram.write(
+                        (addr - 0x3F00) % PALETTE_RAM_SIZE,
+                        data
+                            // Zeroes the four low bits in case grayscale is enabled, and then
+                            // or's in the previous palette ram value. Effectively ignores the
+                            // lower four bits completely in case of grayscale enable
+                            & !((self.grayscale_enabled as u8).wrapping_neg() & 0x0F)
+                            | prev,
+                    )
+                }
                 _ => {}
             },
         }
@@ -322,11 +350,14 @@ impl<'a> CpuBusView<'a> {
 
     #[inline]
     fn read_ppu_reg(&mut self, addr: u16) -> ReadResult {
+        let grayscale = self.ppu.get_grayscale_enabled();
+
         let mut bus = PpuBusView::from(
             self.mapper,
             self.ppu_io_bus,
             self.nametable_ram,
             self.palette_ram,
+            grayscale,
         );
 
         match addr % 8 {
@@ -426,12 +457,16 @@ impl<'a> CpuBusView<'a> {
                 self.ppu.write_vram_addr(data);
             }
             0x7 => {
+                let grayscale = self.ppu.get_grayscale_enabled();
+
                 let mut bus = PpuBusView::from(
                     self.mapper,
                     self.ppu_io_bus,
                     self.nametable_ram,
                     self.palette_ram,
+                    grayscale,
                 );
+
                 self.ppu.write_vram(data, &mut bus);
             }
             _ => (),
@@ -460,20 +495,23 @@ pub struct PpuBusView<'a> {
     ppu_io_bus: &'a mut OpenBus,
     nametable_ram: &'a mut Memory,
     palette_ram: &'a mut PaletteRam,
+    grayscale_enabled: bool,
 }
 
 impl<'a> PpuBusView<'a> {
     pub fn from(
         mapper: &'a mut Mapper,
-        ppu_open_bus: &'a mut OpenBus,
+        ppu_io_bus: &'a mut OpenBus,
         nametable_ram: &'a mut Memory,
         palette_ram: &'a mut PaletteRam,
+        grayscale_enabled: bool,
     ) -> PpuBusView<'a> {
         PpuBusView {
             mapper,
-            ppu_io_bus: ppu_open_bus,
+            ppu_io_bus,
             nametable_ram,
             palette_ram,
+            grayscale_enabled,
         }
     }
 }

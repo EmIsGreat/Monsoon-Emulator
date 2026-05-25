@@ -117,12 +117,13 @@ macro_rules! cpu_bus_view {
 
 #[macro_export]
 macro_rules! ppu_bus_view {
-    ($self:expr) => {
+    ($self:expr, $grayscale:expr) => {
         PpuBusView::from(
             &mut $self.board.mapper,
             &mut $self.board.ppu_open_bus,
             &mut $self.board.nametable_ram,
             &mut $self.board.palette_ram,
+            $grayscale
         )
     };
 }

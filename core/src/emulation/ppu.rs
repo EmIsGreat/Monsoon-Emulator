@@ -7,10 +7,10 @@ use crate::emulation::nes::ExecutionFinished;
 // Re-import public constants/types from ppu_util so internal code can use them
 // with short names.
 pub use crate::emulation::ppu_util::{
-    EmulatorFetchable, NAMETABLE_COLS, NAMETABLE_COUNT, NAMETABLE_ROWS, NametableData,
-    PALETTE_RAM_END_ADDRESS, PALETTE_RAM_START_ADDRESS, PaletteData, RegisterEntry, RegisterFormat,
-    RegisterMap, RegisterValue, SPRITE_COUNT, SoamData, Sprite, SpriteData, SpriteMode, TILE_SIZE,
-    TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH, TileData,
+    EmulatorFetchable, NametableData, PaletteData, RegisterEntry, RegisterFormat,
+    RegisterMap, RegisterValue, SoamData, Sprite, SpriteData,
+    SpriteMode, TileData, NAMETABLE_COLS, NAMETABLE_COUNT, NAMETABLE_ROWS, PALETTE_RAM_END_ADDRESS, PALETTE_RAM_START_ADDRESS, SPRITE_COUNT,
+    TILE_SIZE, TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH,
 };
 use crate::emulation::savestate::PpuState;
 
@@ -268,9 +268,12 @@ impl Ppu {
 
                     let pixel_color = bus.read(pixel_color_address);
 
-                    if sprite_color_address != 0x3F10
+                    if sprite_zero_outputting
+                        && sprite_color_address != 0x3F10
                         && bg_color_address != PALETTE_RAM_START_ADDRESS
-                        && sprite_zero_outputting
+                        && self.dot != 256
+                        && self.is_background_rendering()
+                        && self.is_sprite_rendering()
                     {
                         self.set_sprite_zero();
                     }
@@ -655,6 +658,9 @@ impl Ppu {
     }
 
     #[inline]
+    pub fn get_grayscale_enabled(&self) -> bool { self.mask_register & 1 == 1 }
+
+    #[inline]
     pub fn set_sprite_overflow(&mut self) { self.status_register |= SPRITE_OVERFLOW_FLAG; }
 
     #[inline]
@@ -774,6 +780,8 @@ impl Ppu {
             self.v_register = self
                 .v_register
                 .wrapping_add(self.get_vram_addr_step() as u16);
+        } else {
+            self.v_register = self.v_register.wrapping_add(0x1001)
         }
 
         ret

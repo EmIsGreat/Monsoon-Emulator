@@ -22,12 +22,14 @@ impl Default for PaletteRam {
 impl PaletteRam {
     #[inline]
     pub fn read(&self, addr: u16, open_bus: &OpenBus) -> u8 {
-        match addr {
+        let val = match addr {
             0x0 | 0x4 | 0x8 | 0xC | 0x10 | 0x14 | 0x18 | 0x1C => {
                 self.zero_bits[(addr % 0x10) as usize / 4usize]
             }
             _ => self.palettes.read(addr as u32, open_bus),
-        }
+        };
+
+        (val & 0b0011_1111) | (open_bus.read() & 0b1100_0000)
     }
 
     #[inline]

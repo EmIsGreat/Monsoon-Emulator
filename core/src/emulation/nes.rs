@@ -250,13 +250,15 @@ impl Nes {
     ///
     /// This is a side-effect-free read intended for debugger UIs.
     pub fn get_memory_debug(&mut self, range: Option<RangeInclusive<u16>>) -> Vec<Vec<u8>> {
+        let grayscale = self.board.ppu.get_grayscale_enabled();
+
         vec![
             self.board
                 .cpu
                 .get_memory_debug(range.clone(), &cpu_bus_view!(self)),
             self.board
                 .ppu
-                .get_memory_debug(range.clone(), &ppu_bus_view!(self)),
+                .get_memory_debug(range.clone(), &ppu_bus_view!(self, grayscale)),
         ]
     }
 
@@ -443,6 +445,8 @@ impl Nes {
 
     #[inline(always)]
     fn step_internal(&mut self, last_cycle: u128) -> Result<ExecutionFinished, String> {
+        let grayscale = self.board.ppu.get_grayscale_enabled();
+
         let ppu = &mut self.board.ppu;
         let cpu = &mut self.board.cpu;
 
@@ -469,7 +473,7 @@ impl Nes {
         };
 
         if self.ppu_cycle_counter == 4 {
-            res = res.merge(ppu.step(&mut ppu_bus_view!(self)));
+            res = res.merge(ppu.step(&mut ppu_bus_view!(self, grayscale)));
             res.ppu_cycle_completed = true;
             self.ppu_cycle_counter = 0;
         }
@@ -645,17 +649,29 @@ impl Nes {
 
     /// Returns debug palette data from the PPU.
     pub fn get_palettes_debug(&mut self) -> EmulatorFetchable {
-        self.board.ppu.get_palettes_debug(&ppu_bus_view!(self))
+        let grayscale = self.board.ppu.get_grayscale_enabled();
+
+        self.board
+            .ppu
+            .get_palettes_debug(&ppu_bus_view!(self, grayscale))
     }
 
     /// Returns debug tile data from the PPU.
     pub fn get_tiles_debug(&mut self) -> EmulatorFetchable {
-        self.board.ppu.get_tiles_debug(&ppu_bus_view!(self))
+        let grayscale = self.board.ppu.get_grayscale_enabled();
+
+        self.board
+            .ppu
+            .get_tiles_debug(&ppu_bus_view!(self, grayscale))
     }
 
     /// Returns debug nametable data from the PPU.
     pub fn get_nametable_debug(&mut self) -> EmulatorFetchable {
-        self.board.ppu.get_nametable_debug(&ppu_bus_view!(self))
+        let grayscale = self.board.ppu.get_grayscale_enabled();
+
+        self.board
+            .ppu
+            .get_nametable_debug(&ppu_bus_view!(self, grayscale))
     }
 
     pub fn get_sprites_debug(&self) -> EmulatorFetchable { self.board.ppu.get_sprites_debug() }
@@ -721,13 +737,17 @@ impl Nes {
     /// Writes a value to PPU memory at the given address (for
     /// initialization/debugging).
     pub fn ppu_mem_write(&mut self, addr: u16, value: u8) {
-        PpuBus::write(&mut ppu_bus_view!(self), addr, value)
+        let grayscale = self.board.ppu.get_grayscale_enabled();
+
+        PpuBus::write(&mut ppu_bus_view!(self, grayscale), addr, value)
     }
 
     /// Initializes PPU memory at the given address (for
     /// initialization/debugging).
     pub fn ppu_mem_init(&mut self, addr: u16, data: u8) {
-        PpuBus::init(&mut ppu_bus_view!(self), addr, data);
+        let grayscale = self.board.ppu.get_grayscale_enabled();
+
+        PpuBus::init(&mut ppu_bus_view!(self, grayscale), addr, data);
     }
 
     /// Writes a value to OAM (sprite memory) at the given address (for
