@@ -338,6 +338,9 @@ impl NesWgpuRenderer {
 
     /// Draw the NES frame into `render_pass`, restricting the viewport to
     /// `rect_px` (given in physical screen pixels).
+    ///
+    /// Applies NTSC pixel aspect ratio correction (8:7) to stretch the texture
+    /// horizontally so pixels appear with their correct aspect ratio.
     pub fn paint_into(
         &self,
         render_pass: &mut wgpu::RenderPass<'static>,
@@ -346,7 +349,29 @@ impl NesWgpuRenderer {
         w: f32,
         h: f32,
     ) {
-        render_pass.set_viewport(x, y, w, h, 0.0, 1.0);
+        // Apply NTSC pixel aspect ratio correction (8:7).
+        // Compute the desired width when the texture is stretched to correct pixel
+        // aspect: desired_width = height * aspect.
+        let aspect = (256.0 * 8.0 / 7.0) / 240.0;
+        let desired_width = h * aspect;
+
+        // If the desired width fits into the provided rect, center horizontally
+        // and use the full height. If it would overflow, instead scale to fit
+        // the available width and reduce the height so the corrected aspect is
+        // preserved (this avoids clipping the right edge).
+        let (vp_x, vp_y, vp_w, vp_h) = if desired_width <= w {
+            let x_offset = (w - desired_width) * 0.5;
+            (x + x_offset, y, desired_width, h)
+        } else {
+            // Fit to available width and compute the reduced height to keep
+            // the pixel-aspect-correct ratio.
+            let fit_w = w;
+            let fit_h = (fit_w) / aspect;
+            let y_offset = (h - fit_h).max(0.0) * 0.5;
+            (x, y + y_offset, fit_w, fit_h)
+        };
+
+        render_pass.set_viewport(vp_x, vp_y, vp_w, vp_h, 0.0, 1.0);
         render_pass.set_pipeline(&self.pipeline);
         render_pass.set_bind_group(0, &self.bind_group, &[]);
         render_pass.draw(0..3, 0..1); // full-screen triangle
