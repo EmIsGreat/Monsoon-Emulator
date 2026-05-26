@@ -168,7 +168,7 @@ impl EmuTextures {
 
             // Determine which palettes to update
             let palette_range: Box<dyn Iterator<Item = usize>> = match palette_index {
-                Some(idx) if idx == 0 => Box::new(0..palettes.colors.len()),
+                Some(0) => Box::new(0..palettes.colors.len()),
                 Some(idx) if idx < palettes.colors.len() => Box::new(std::iter::once(idx)),
                 _ => Box::new(0..palettes.colors.len()),
             };

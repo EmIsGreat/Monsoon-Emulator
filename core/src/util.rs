@@ -123,7 +123,7 @@ macro_rules! ppu_bus_view {
             &mut $self.board.ppu_open_bus,
             &mut $self.board.nametable_ram,
             &mut $self.board.palette_ram,
-            $grayscale
+            $grayscale,
         )
     };
 }

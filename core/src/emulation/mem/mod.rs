@@ -93,7 +93,7 @@ impl OpenBus {
 
     #[inline(always)]
     fn bools_to_u8(bits: [bool; 8]) -> u8 {
-        (bits[0] as u8) << 0
+        (bits[0] as u8)
             | (bits[1] as u8) << 1
             | (bits[2] as u8) << 2
             | (bits[3] as u8) << 3

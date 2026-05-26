@@ -8,7 +8,7 @@ fn render_register_table(
     registers: &RegisterMap,
 ) {
     let mut rows = registers.iter().collect::<Vec<_>>();
-    rows.sort_by(|(left, _), (right, _)| left.cmp(right));
+    rows.sort_by_key(|(left, _)| *left);
 
     egui::Grid::new(table_id)
         .num_columns(2)
@@ -39,7 +39,7 @@ pub fn render_register_viewer(ui: &mut egui::Ui, emu_textures: &EmuTextures) {
             ui.separator();
             ui.heading("Mapper Registers");
             let mut mapper_tables = register_data.mapper.iter().collect::<Vec<_>>();
-            mapper_tables.sort_by(|(left, _), (right, _)| left.cmp(right));
+            mapper_tables.sort_by_key(|(left, _)| *left);
 
             for (table_name, table_registers) in mapper_tables {
                 egui::CollapsingHeader::new(table_name.as_str())

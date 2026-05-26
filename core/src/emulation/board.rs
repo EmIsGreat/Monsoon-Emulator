@@ -9,8 +9,8 @@ use crate::emulation::mem::palette_ram::PaletteRam;
 use crate::emulation::mem::{Memory, OpenBus};
 use crate::emulation::peripherals::{Peripheral, PeripheralDevice};
 use crate::emulation::ppu::{
-    Ppu, OPEN_BUS_DECAY_DELAY, PALETTE_RAM_END_ADDRESS, PALETTE_RAM_SIZE,
-    PALETTE_RAM_START_ADDRESS, VRAM_SIZE,
+    OPEN_BUS_DECAY_DELAY, PALETTE_RAM_END_ADDRESS, PALETTE_RAM_SIZE, PALETTE_RAM_START_ADDRESS,
+    Ppu, VRAM_SIZE,
 };
 use crate::emulation::rom::RomFile;
 use crate::emulation::savestate::BoardState;
@@ -259,6 +259,7 @@ impl<'a> PpuBus for PpuBusView<'a> {
         match res {
             PpuWriteResult::Handled => {}
             PpuWriteResult::Nametable(addr) => self.nametable_ram.write(addr as u32, data),
+            #[allow(clippy::single_match)]
             PpuWriteResult::Registered => match addr {
                 0x3F00..=0x3FFF => {
                     let prev = if self.grayscale_enabled {
