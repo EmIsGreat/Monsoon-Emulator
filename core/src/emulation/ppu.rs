@@ -280,7 +280,7 @@ impl Ppu {
 
                     self.pixel_buffer
                         [self.scanline as usize * SCREEN_RENDER_WIDTH + (self.dot - 1) as usize] =
-                        (pixel_color as u16) | ((self.get_emph_bits() as u16) << 6);
+                        ((pixel_color & 0b0011_1111)as u16) | ((self.get_emph_bits() as u16) << 6);
                 }
 
                 for s in self.sprite_fifos.iter_mut() {
