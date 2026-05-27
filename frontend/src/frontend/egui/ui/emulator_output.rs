@@ -6,7 +6,9 @@ use eframe::egui_wgpu;
 use monsoon_core::emulation::palette_util::RgbPalette;
 use monsoon_core::emulation::ppu_util::{TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH};
 
+use crate::frontend::egui::config::ViewConfig;
 use crate::frontend::egui::textures::EmuTextures;
+use crate::frontend::egui::ui::debug_overlays::render_debug_overlays;
 use crate::frontend::egui::wgpu_renderer::{NesWgpuRenderer, WgpuFrameCallback};
 
 const NES_PIXEL_ASPECT_RATIO: f32 = 8.0 / 7.0;
@@ -21,6 +23,7 @@ pub fn render_emulator_output(
     ui: &mut egui::Ui,
     emu_textures: &EmuTextures,
     wgpu_nes_renderer: Option<&Arc<NesWgpuRenderer>>,
+    view_config: &ViewConfig,
     palette: &RgbPalette,
     is_paused: bool,
 ) {
@@ -96,4 +99,12 @@ pub fn render_emulator_output(
             egui::Color32::WHITE,
         );
     }
+
+    render_debug_overlays(
+        ui,
+        response.rect,
+        &view_config.debug_overlays,
+        emu_textures,
+        is_paused,
+    );
 }

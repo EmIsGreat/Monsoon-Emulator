@@ -1,5 +1,6 @@
 //! UI components for the emulator frontend
 
+mod debug_overlays;
 mod emulator_output;
 mod keybindings_pane;
 mod log_window;

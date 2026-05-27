@@ -114,6 +114,7 @@ impl Behavior<Pane> for TreeBehavior<'_> {
                     ui,
                     self.emu_textures,
                     self.wgpu_nes_renderer,
+                    &self.config.view_config,
                     &self.config.view_config.palette_rgb_data,
                     self.config.is_effectively_paused(),
                 );
@@ -256,6 +257,10 @@ pub fn compute_required_fetches_from_tree(
     }
 
     if find_pane(&tree.tiles, &Pane::Registers).is_some() {
+        explicit_fetches.insert(EmulatorFetchable::Registers(None));
+    }
+
+    if config.view_config.debug_overlays.show_scanline_dot && config.is_effectively_paused() {
         explicit_fetches.insert(EmulatorFetchable::Registers(None));
     }
 

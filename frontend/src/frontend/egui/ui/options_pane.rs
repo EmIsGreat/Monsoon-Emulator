@@ -10,6 +10,7 @@ pub fn render_options(ui: &mut egui::Ui, config: &mut AppConfig) {
     egui::ScrollArea::vertical().show(ui, |ui| {
         render_speed_settings(ui, config);
         render_renderer_settings(ui, config);
+        render_debug_overlay_settings(ui, config);
     });
 }
 
@@ -120,5 +121,19 @@ fn render_speed_settings(ui: &mut egui::Ui, config: &mut AppConfig) {
             )
             .on_hover_text("% of main view fps");
         }
+    });
+}
+
+/// Render debug overlay toggles for the main emulator output.
+fn render_debug_overlay_settings(ui: &mut egui::Ui, config: &mut AppConfig) {
+    ui.collapsing("Debug Overlays", |ui| {
+        ui.checkbox(
+            &mut config.view_config.debug_overlays.show_tile_grid,
+            "Tile grid (8x8)",
+        );
+        ui.checkbox(
+            &mut config.view_config.debug_overlays.show_scanline_dot,
+            "Scanline/dot indicator (paused)",
+        );
     });
 }

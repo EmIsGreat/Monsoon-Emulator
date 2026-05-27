@@ -19,6 +19,13 @@ use crate::frontend::savestates::{
 };
 use crate::frontend::storage::StorageKey;
 
+/// Debug overlay configuration for the main emulator output.
+#[derive(Debug, Copy, Clone, Default, Serialize, Deserialize)]
+pub struct DebugOverlayConfig {
+    pub show_tile_grid: bool,
+    pub show_scanline_dot: bool,
+}
+
 /// View configuration for the emulator frontend.
 ///
 /// Contains settings related to rendering and debug viewers.
@@ -27,6 +34,7 @@ pub struct ViewConfig {
     pub show_palette: bool,
     pub show_pattern_table: bool,
     pub show_nametable: bool,
+    pub debug_overlays: DebugOverlayConfig,
     pub required_debug_fetches: HashSet<EmulatorFetchable>,
     /// The renderer instance used for converting palette indices to RGB colors.
     /// This can be changed at runtime by replacing with a different
@@ -43,6 +51,7 @@ impl Default for ViewConfig {
             show_palette: false,
             show_pattern_table: false,
             show_nametable: false,
+            debug_overlays: DebugOverlayConfig::default(),
             required_debug_fetches: HashSet::new(),
             renderer: create_renderer(Some("PaletteLookup"), get_all_renderers()),
             palette_rgb_data: RgbPalette::default(),
