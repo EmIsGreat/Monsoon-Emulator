@@ -74,25 +74,27 @@ impl DebugOverlay for ScanlineDotOverlay {
         };
 
         let stroke_width = 1.0 / ctx.pixels_per_point;
-        let stroke = egui::Stroke::new(
+        let dot_stroke = egui::Stroke::new(
             stroke_width,
-            egui::Color32::from_rgba_unmultiplied(255, 80, 80, 200),
+            egui::Color32::from_rgba_unmultiplied(0, 110, 0, 210),
         );
-        let dot_color = egui::Color32::from_rgba_unmultiplied(255, 80, 80, 160);
+        let dot_color = egui::Color32::from_rgba_unmultiplied(0, 110, 0, 170);
+        let scanline_color = egui::Color32::from_rgba_unmultiplied(120, 220, 140, 90);
 
         if position.scanline < TOTAL_OUTPUT_HEIGHT as u16 {
             let y = ctx.rect.top() + (position.scanline as f32 * ctx.pixel_size.y);
-            ctx.painter.line_segment(
-                [egui::pos2(ctx.rect.left(), y), egui::pos2(ctx.rect.right(), y)],
-                stroke,
+            let scanline_rect = egui::Rect::from_min_size(
+                egui::pos2(ctx.rect.left(), y),
+                egui::vec2(ctx.rect.width(), ctx.pixel_size.y),
             );
+            ctx.painter.rect_filled(scanline_rect, 0.0, scanline_color);
         }
 
         if position.dot < TOTAL_OUTPUT_WIDTH as u16 {
             let x = ctx.rect.left() + (position.dot as f32 * ctx.pixel_size.x);
             ctx.painter.line_segment(
                 [egui::pos2(x, ctx.rect.top()), egui::pos2(x, ctx.rect.bottom())],
-                stroke,
+                dot_stroke,
             );
         }
 

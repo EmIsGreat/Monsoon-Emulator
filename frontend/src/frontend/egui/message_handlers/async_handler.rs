@@ -230,18 +230,33 @@ impl EguiApp {
             }
             AsyncFrontendMessage::StepPpuCycle => {
                 let _ = self.to_emulator.send(FrontendMessage::StepPpuCycle);
+                let _ = self.to_emulator.send(FrontendMessage::RequestDebugData(
+                    EmulatorFetchable::Registers(None),
+                ));
             }
             AsyncFrontendMessage::StepCpuCycle => {
                 let _ = self.to_emulator.send(FrontendMessage::StepCpuCycle);
+                let _ = self.to_emulator.send(FrontendMessage::RequestDebugData(
+                    EmulatorFetchable::Registers(None),
+                ));
             }
             AsyncFrontendMessage::StepMasterCycle => {
                 let _ = self.to_emulator.send(FrontendMessage::StepMasterCycle);
+                let _ = self.to_emulator.send(FrontendMessage::RequestDebugData(
+                    EmulatorFetchable::Registers(None),
+                ));
             }
             AsyncFrontendMessage::StepScanline => {
                 let _ = self.to_emulator.send(FrontendMessage::StepScanline);
+                let _ = self.to_emulator.send(FrontendMessage::RequestDebugData(
+                    EmulatorFetchable::Registers(None),
+                ));
             }
             AsyncFrontendMessage::StepFrame => {
                 let _ = self.to_emulator.send(FrontendMessage::StepFrame);
+                let _ = self.to_emulator.send(FrontendMessage::RequestDebugData(
+                    EmulatorFetchable::Registers(None),
+                ));
             }
             AsyncFrontendMessage::StartLoadRom => spawn_rom_picker(
                 &self.async_sender,
