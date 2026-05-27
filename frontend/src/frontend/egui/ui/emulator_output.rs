@@ -28,10 +28,12 @@ pub fn render_emulator_output(
     }
 
     let available = ui.available_size();
-    let scale =
-        (available.x / TOTAL_OUTPUT_WIDTH as f32).min(available.y / TOTAL_OUTPUT_HEIGHT as f32);
-    let display_width = TOTAL_OUTPUT_WIDTH as f32 * scale;
-    let display_height = TOTAL_OUTPUT_HEIGHT as f32 * scale;
+    let par = 8.0 / 7.0;
+    let logical_width = TOTAL_OUTPUT_WIDTH as f32 * par;
+    let logical_height = TOTAL_OUTPUT_HEIGHT as f32;
+    let scale = (available.x / logical_width).min(available.y / logical_height);
+    let display_width = logical_width * scale;
+    let display_height = logical_height * scale;
 
     ui.label(format!(
         "{}x{} at {:.1}x scale",
