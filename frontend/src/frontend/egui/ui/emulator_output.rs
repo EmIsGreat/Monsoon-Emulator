@@ -9,6 +9,8 @@ use monsoon_core::emulation::ppu_util::{TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH}
 use crate::frontend::egui::textures::EmuTextures;
 use crate::frontend::egui::wgpu_renderer::{NesWgpuRenderer, WgpuFrameCallback};
 
+const NES_PIXEL_ASPECT_RATIO: f32 = 8.0 / 7.0;
+
 /// Render the main emulator output.
 ///
 /// When `wgpu_nes_renderer` is `Some` (wgpu backend active), the pixel buffer
@@ -28,10 +30,25 @@ pub fn render_emulator_output(
     }
 
     let available = ui.available_size();
-    let scale =
-        (available.x / TOTAL_OUTPUT_WIDTH as f32).min(available.y / TOTAL_OUTPUT_HEIGHT as f32);
-    let display_width = TOTAL_OUTPUT_WIDTH as f32 * scale;
-    let display_height = TOTAL_OUTPUT_HEIGHT as f32 * scale;
+    let label_font_id = egui::TextStyle::Body.resolve(ui.style());
+    let label_height = ui.fonts_mut(|fonts| {
+        fonts
+            .layout_no_wrap(
+                "A".to_owned(),
+                label_font_id.clone(),
+                ui.visuals().text_color(),
+            )
+            .size()
+            .y
+    });
+    let available_height = (available.y - label_height - ui.spacing().item_spacing.y).max(0.0);
+    let available_for_image = egui::vec2(available.x, available_height);
+    let logical_width = TOTAL_OUTPUT_WIDTH as f32 * NES_PIXEL_ASPECT_RATIO;
+    let logical_height = TOTAL_OUTPUT_HEIGHT as f32;
+    let scale = (available_for_image.x / logical_width)
+        .min(available_for_image.y / logical_height);
+    let display_width = logical_width * scale;
+    let display_height = logical_height * scale;
 
     ui.label(format!(
         "{}x{} at {:.1}x scale",
