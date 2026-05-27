@@ -2,7 +2,8 @@
 
 Default screen renderer implementations for the Monsoon NES emulator.
 
-This crate provides `LookupPaletteRenderer`, a fast O(1) lookup table-based renderer that converts the NES PPU's 9-bit palette indices into RGB colors. It is the default renderer used by both the frontend and CLI applications. It is part of the [Monsoon Emulator](https://github.com/EmIsGreat/Monsoon-Emulator) project.
+This crate provides `LookupPaletteRenderer`, a fast O(1) lookup table-based renderer that converts the NES PPU's 9-bit palette indices into RGB colors. It is the default renderer used by both the frontend and CLI applications. It is part of
+the [Monsoon Emulator](https://github.com/EmIsGreat/Monsoon-Emulator) project.
 
 ## Usage
 

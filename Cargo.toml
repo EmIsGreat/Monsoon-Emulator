@@ -16,7 +16,7 @@ categories = ["emulators", "game-development"]
 [workspace.dependencies]
 monsoon-core = { version = "0.2.5", path = "core" }
 monsoon-default-renderers = { version = "0.2.5", path = "renderer" }
-monsoon-db = {version = "0.2.5", path = "db" }
+monsoon-db = { version = "0.2.5", path = "db" }
 
 [profile.release]
 strip = true

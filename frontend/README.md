@@ -29,10 +29,13 @@ cargo run -- --rom path/to/game.nes
 The frontend supports WebAssembly builds for running in a web browser:
 
 ### Build
+
 ```bash
 cargo build -p monsoon-frontend --target wasm32-unknown-unknown
 ```
+
 ### Serve
+
 ```bash
 trunk serve
 ```

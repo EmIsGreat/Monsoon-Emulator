@@ -18,7 +18,6 @@ use std::fmt::{Debug, Formatter};
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
-use std::time::Duration;
 
 use crossbeam_channel::{Receiver, Sender};
 use eframe::{AppCreator, CreationContext, Frame};
@@ -35,7 +34,7 @@ use monsoon_core::rom_db::RomDb;
 use monsoon_core::util::ToBytes;
 use monsoon_db::db_provider::DbProvider;
 use monsoon_default_renderers::LookupPaletteRenderer;
-use web_time::Instant;
+use web_time::{Duration, Instant};
 
 use crate::channel_emu::ChannelEmulator;
 use crate::frontend::egui::config::{AppConfig, AppSpeed};

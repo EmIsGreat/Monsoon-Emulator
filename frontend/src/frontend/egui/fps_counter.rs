@@ -1,6 +1,4 @@
-use std::time::Duration;
-
-use web_time::Instant;
+use web_time::{Duration, Instant};
 
 /// FPS counter that tracks frame times over the last second
 #[derive(PartialEq, Clone)]

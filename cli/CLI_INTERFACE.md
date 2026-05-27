@@ -228,15 +228,15 @@ Arguments are organized into logical groups:
 
 #### Video/Screenshot Export
 
-| Flag | Long Form                       | Description                                      | Type    |
-|------|---------------------------------|--------------------------------------------------|---------|
-|      | `--screenshot`                  | Save screenshot on exit                          | PathBuf |
-|      | `--screenshot-on`               | When to capture (same as save-state-on)          | String  |
-|      | `--video-path`                  | Record video to file                             | PathBuf |
-|      | `--video-format`                | Video output format                              | String  |
-|      | `--video-fps`                   | Video frame rate (multiplier like "2x" or fixed) | String  |
-|      | `--video-mode`                  | Video export mode (accurate or smooth)           | String  |
-|      | `--video-scale`                 | Video output resolution                          | String  |
+| Flag | Long Form         | Description                                      | Type    |
+|------|-------------------|--------------------------------------------------|---------|
+|      | `--screenshot`    | Save screenshot on exit                          | PathBuf |
+|      | `--screenshot-on` | When to capture (same as save-state-on)          | String  |
+|      | `--video-path`    | Record video to file                             | PathBuf |
+|      | `--video-format`  | Video output format                              | String  |
+|      | `--video-fps`     | Video frame rate (multiplier like "2x" or fixed) | String  |
+|      | `--video-mode`    | Video export mode (accurate or smooth)           | String  |
+|      | `--video-scale`   | Video output resolution                          | String  |
 
 **Video Formats:**
 
@@ -253,12 +253,14 @@ Arguments are organized into logical groups:
 **Video FPS:**
 
 The `--video-fps` option accepts either:
+
 - Multipliers like `1x`, `2x`, `3x` (default is `1x`)
 - Fixed values like `60`, `120`, `180`
 
 When using multipliers greater than 1x, the emulator captures the framebuffer more frequently, inserting "half-finished" frames between complete PPU frames. This allows for smoother slow-motion playback or higher framerate output.
 
 Examples:
+
 - `--video-fps 1x --video-mode accurate`: 60.0988 fps (exact NES timing)
 - `--video-fps 1x --video-mode smooth`: 60.0 fps (standard timing)
 - `--video-fps 2x --video-mode accurate`: 120.1976 fps
@@ -267,18 +269,18 @@ Examples:
 
 #### Execution Control
 
-| Flag | Long Form        | Description                           | Type     |
-|------|------------------|---------------------------------------|----------|
-| `-c` | `--cycles`       | Run for N master cycles               | u128     |
-| `-f` | `--frames`       | Run for N frames                      | u64      |
-|      | `--until-opcode` | Run until specific opcode executes    | u8       |
-|      | `--until-mem`    | Run until memory condition            | String   |
-|      | `--until-hlt`    | Run until HLT instruction             | bool     |
-|      | `--trace`        | Enable instruction trace with output path (legacy) | PathBuf  |
-|      | `--internal-log` | Enable internal emulator trace logging | bool     |
-|      | `--internal-log-path` | Output path for internal emulator trace log | PathBuf  |
-|      | `--breakpoint`   | Set breakpoint at PC address          | Vec<u16> |
-|      | `--watch-mem`    | Watch memory for access (read/write)  | Vec<String> |
+| Flag | Long Form             | Description                                        | Type        |
+|------|-----------------------|----------------------------------------------------|-------------|
+| `-c` | `--cycles`            | Run for N master cycles                            | u128        |
+| `-f` | `--frames`            | Run for N frames                                   | u64         |
+|      | `--until-opcode`      | Run until specific opcode executes                 | u8          |
+|      | `--until-mem`         | Run until memory condition                         | String      |
+|      | `--until-hlt`         | Run until HLT instruction                          | bool        |
+|      | `--trace`             | Enable instruction trace with output path (legacy) | PathBuf     |
+|      | `--internal-log`      | Enable internal emulator trace logging             | bool        |
+|      | `--internal-log-path` | Output path for internal emulator trace log        | PathBuf     |
+|      | `--breakpoint`        | Set breakpoint at PC address                       | Vec<u16>    |
+|      | `--watch-mem`         | Watch memory for access (read/write)               | Vec<String> |
 
 **Memory Condition Format:** `ADDR==VALUE`, `ADDR!=VALUE`, `ADDR&MASK==VALUE`
 

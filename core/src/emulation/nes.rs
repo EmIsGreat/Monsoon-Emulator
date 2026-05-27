@@ -2,7 +2,6 @@ use std::fmt::Debug;
 use std::fs;
 use std::ops::RangeInclusive;
 use std::sync::{Arc, LazyLock};
-use std::time::Duration;
 
 use arc_swap::ArcSwap;
 
@@ -17,12 +16,6 @@ use crate::emulation::savestate::{BoardState, SaveState, VERSION};
 use crate::rom_db::RomDb;
 use crate::trace::TraceLog;
 use crate::{cpu_bus_view, ppu_bus_view};
-
-/// Number of CPU cycles executed in a single NTSC frame (~29,780).
-pub const CPU_CYCLES_PER_FRAME: u16 = 29780;
-
-/// Duration of a single NTSC frame (~16.67 ms, targeting ~60 FPS).
-pub const FRAME_DURATION: Duration = Duration::from_nanos(16_666_667);
 
 /// Number of master clock cycles per NTSC frame (357,366).
 ///
