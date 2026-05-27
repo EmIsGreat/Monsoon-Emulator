@@ -30,9 +30,23 @@ pub fn render_emulator_output(
     }
 
     let available = ui.available_size();
+    let label_font_id = egui::TextStyle::Body.resolve(ui.style());
+    let label_height = ui.fonts_mut(|fonts| {
+        fonts
+            .layout_no_wrap(
+                "A".to_owned(),
+                label_font_id.clone(),
+                ui.visuals().text_color(),
+            )
+            .size()
+            .y
+    });
+    let available_height = (available.y - label_height - ui.spacing().item_spacing.y).max(0.0);
+    let available_for_image = egui::vec2(available.x, available_height);
     let logical_width = TOTAL_OUTPUT_WIDTH as f32 * NES_PIXEL_ASPECT_RATIO;
     let logical_height = TOTAL_OUTPUT_HEIGHT as f32;
-    let scale = (available.x / logical_width).min(available.y / logical_height);
+    let scale = (available_for_image.x / logical_width)
+        .min(available_for_image.y / logical_height);
     let display_width = logical_width * scale;
     let display_height = logical_height * scale;
 
