@@ -15,7 +15,7 @@ path = "src/lib.rs"
 
 [dependencies]
 monsoon-core = { workspace = true }
-reqwest = { version = "0.13.3", features = ["brotli"], optional = true }
+reqwest = { version = "0.13.4", features = ["brotli"], optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
 serde_json = { version = "1.0", optional = true }
 

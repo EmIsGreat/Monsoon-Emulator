@@ -82,6 +82,7 @@ pub struct Ppu {
     pub sprite_fifos: [SpriteFifo; 8],
     pub current_sprite_tile_id: u8,
     pub oam_fetch: u8,
+    pub sprite_zero_in_scanline: bool,
     pub log: String,
 }
 
@@ -133,6 +134,7 @@ impl Ppu {
             sprite_fifos: [SpriteFifo::default(); 8],
             current_sprite_tile_id: 0,
             oam_fetch: 0,
+            sprite_zero_in_scanline: false,
             log: "".to_string(),
         }
     }
@@ -157,9 +159,7 @@ impl Ppu {
             self.even_frame = !self.even_frame;
         }
 
-        if (self.scanline < VISIBLE_SCANLINES + 1 || self.scanline == PRE_RENDER_SCANLINE)
-            && self.is_rendering()
-        {
+        if (self.is_visible_scanline() || self.is_pre_render_scanline()) && self.is_rendering() {
             if self.dot == 0 {
                 self.soam_index = 0;
                 self.oam_index = 0;
@@ -191,6 +191,9 @@ impl Ppu {
                 if self.dot == 257 {
                     self.soam_index = 0;
                 }
+
+                self.oam_addr_register = 0;
+                self.oam_index = 0;
 
                 self.sprite_fetch(bus);
             }
@@ -233,7 +236,7 @@ impl Ppu {
                                 sprite_pixel_palette = s.attribute & 3;
                                 sprite_pixel_pattern = pattern;
 
-                                if i == 0 {
+                                if self.sprite_zero_in_scanline && i == 0 {
                                     sprite_zero_outputting = true;
                                 }
                             }
@@ -318,12 +321,11 @@ impl Ppu {
             }
         }
 
-        if !self.is_rendering()
-            && (self.scanline < VISIBLE_SCANLINES + 1 && self.dot >= 0x01 && self.dot <= 256)
+        if !self.is_rendering() && (self.is_visible_scanline() && self.dot >= 1 && self.dot <= 256)
         {
             self.pixel_buffer
                 [self.scanline as usize * SCREEN_RENDER_WIDTH + (self.dot - 1) as usize] =
-                bus.read(PALETTE_RAM_START_ADDRESS) as u16;
+                (bus.read(PALETTE_RAM_START_ADDRESS) & 0b0011_1111) as u16;
         }
 
         if self.scanline == VBL_START_SCANLINE && self.dot == 1 {
@@ -518,8 +520,8 @@ impl Ppu {
                         self.soam_write_counter = 0;
                     }
 
-                    if self.soam_index > 32 {
-                        self.set_sprite_overflow();
+                    if self.dot == 66 {
+                        self.sprite_zero_in_scanline = true;
                     }
                 } else {
                     self.soam_write_counter = 0;
@@ -529,6 +531,7 @@ impl Ppu {
                 if self.soam_index >= 32 {
                     self.oam_increment = 5;
                     self.set_soam_disable(true);
+                    self.set_sprite_overflow();
                 }
 
                 if self.scanline != PRE_RENDER_SCANLINE {
@@ -743,20 +746,12 @@ impl Ppu {
 
     #[inline]
     pub fn snapshot_oam_at_addr(&self, open_bus: &OpenBus) -> u8 {
-        if self.is_soam_clear_active {
-            0xFF
-        } else {
-            self.oam_read(self.oam_addr_register, open_bus)
-        }
+        self.oam_read(self.oam_addr_register, open_bus)
     }
 
     #[inline(always)]
-    pub fn get_oam_at_addr(&mut self, open_bus: &OpenBus) -> u8 {
-        if self.is_soam_clear_active || (self.dot >= 256 && self.dot <= 320) {
-            0xFF
-        } else {
-            self.oam_read(self.oam_addr_register, open_bus)
-        }
+    pub fn get_oam_at_addr(&self, open_bus: &OpenBus) -> u8 {
+        self.oam_read(self.oam_addr_register, open_bus)
     }
 
     #[inline(always)]
@@ -775,9 +770,7 @@ impl Ppu {
             self.ppu_data_buffer = bus.read(self.v_register - 0x1000);
         }
 
-        if !(self.scanline < VISIBLE_SCANLINES + 1 || self.scanline == PRE_RENDER_SCANLINE)
-            || !self.is_rendering()
-        {
+        if (!self.is_visible_scanline() && !self.is_pre_render_scanline()) || !self.is_rendering() {
             self.v_register = self
                 .v_register
                 .wrapping_add(self.get_vram_addr_step() as u16);
@@ -788,19 +781,21 @@ impl Ppu {
         ret
     }
 
+    // todo: Fails accuracy coin, ask 100 whats up with that once they're online
     #[inline]
     pub fn write_oam(&mut self, mut data: u8) {
-        if self.oam_addr_register % 4 == 2 {
-            data &= 0xE3;
-        }
-
-        if !(self.scanline < VISIBLE_SCANLINES + 1 || self.scanline == PRE_RENDER_SCANLINE)
-            || !self.is_rendering()
-        {
-            self.oam_write(self.oam_addr_register, data);
-            self.oam_addr_register = self.oam_addr_register.wrapping_add(1);
+        if self.is_visible_scanline() || self.is_pre_render_scanline() {
+            self.oam_addr_register = self.oam_addr_register.wrapping_add(4);
         } else {
-            self.oam_addr_register = self.oam_addr_register.wrapping_add(4) & 0xFC;
+            if self.oam_addr_register % 4 == 2 {
+                data &= 0xE3;
+            }
+
+            let row = self.oam_addr_register / 8;
+            let byte = self.oam_addr_register % 8;
+            self.oam.write((row as u32 * 9) + byte as u32, data);
+
+            self.oam_addr_register = self.oam_addr_register.wrapping_add(1);
         }
     }
 
@@ -905,17 +900,26 @@ impl Ppu {
         }
     }
 
+    #[inline(always)]
+    pub fn is_pre_render_scanline(&self) -> bool { self.scanline == PRE_RENDER_SCANLINE }
+
+    #[inline(always)]
+    pub fn is_visible_scanline(&self) -> bool { self.scanline <= VISIBLE_SCANLINES }
+
     #[inline]
     pub fn oam_read(&self, addr: u8, open_bus: &OpenBus) -> u8 {
-        let row = addr / 8;
-        let byte = addr % 8;
-        let mut res = self.oam.read((row as u32 * 9) + byte as u32, open_bus);
-
-        if self.is_soam_clear_active {
-            res = 0xFF;
+        if self.is_rendering() && (self.dot >= 256 && self.dot <= 320) && self.is_visible_scanline()
+        {
+            return 0xFF;
         }
 
-        res
+        if self.is_soam_clear_active {
+            0xFF
+        } else {
+            let row = addr / 8;
+            let byte = addr % 8;
+            self.oam.read((row as u32 * 9) + byte as u32, open_bus)
+        }
     }
 
     #[inline]
@@ -929,13 +933,6 @@ impl Ppu {
         }
 
         res
-    }
-
-    #[inline]
-    pub fn oam_write(&mut self, addr: u8, data: u8) {
-        let row = addr / 8;
-        let byte = addr % 8;
-        self.oam.write((row as u32 * 9) + byte as u32, data)
     }
 
     #[inline]
@@ -1010,7 +1007,7 @@ impl Ppu {
             let base = PALETTE_RAM_START_ADDRESS + palette * 4;
 
             for (i, color) in colors.iter_mut().enumerate() {
-                let idx = bus.read_debug(base + i as u16);
+                let idx = bus.read_debug(base + i as u16) & 0b0011_1111;
                 *color = idx;
             }
 
@@ -1064,6 +1061,7 @@ impl Ppu {
             current_sprite_tile_id: 0,
             current_sprite_y: 0,
             sprite_fifos: [SpriteFifo::default(); 8],
+            sprite_zero_in_scanline: state.sprite_zero_in_scanline,
             log: "".to_string(),
         };
 

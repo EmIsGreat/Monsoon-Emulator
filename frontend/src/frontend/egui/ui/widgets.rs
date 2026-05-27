@@ -41,7 +41,7 @@ pub fn color_cell_rgb(
         egui::Color32::from_rgb(color.r, color.g, color.b),
     );
 
-    if response.hovered() {
+    if response.contains_pointer() {
         painter.rect_stroke(
             rect,
             0.0,
@@ -92,7 +92,7 @@ pub fn image_cell_flipped(
     let uv = flip_uv(h_flip, v_flip);
     painter.image(texture_id, rect, uv, egui::Color32::WHITE);
 
-    if response.hovered() {
+    if response.contains_pointer() {
         painter.rect_stroke(
             rect,
             0.0,
@@ -136,7 +136,7 @@ pub fn image_cell_dual_vert_flipped(
     painter.image(top_id, rect.with_max_y(middle), uv, egui::Color32::WHITE);
     painter.image(bottom_id, rect.with_min_y(middle), uv, egui::Color32::WHITE);
 
-    if response.hovered() {
+    if response.contains_pointer() {
         painter.rect_stroke(
             rect,
             0.0,

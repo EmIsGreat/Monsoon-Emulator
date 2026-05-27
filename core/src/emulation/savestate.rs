@@ -208,6 +208,7 @@ pub struct PpuState {
     pub(crate) soam_write_counter: u8,
     /// OAM fetch data register.
     pub(crate) oam_fetch: u8,
+    pub(crate) sprite_zero_in_scanline: bool,
     /// OAM (sprite) memory snapshot (256 bytes).
     pub oam_mem: Vec<u8>,
 }
@@ -253,6 +254,7 @@ impl From<&Ppu> for PpuState {
             reset_signal: ppu.reset_signal,
             dot: ppu.dot,
             scanline: ppu.scanline,
+            sprite_zero_in_scanline: ppu.sprite_zero_in_scanline,
         }
     }
 }
