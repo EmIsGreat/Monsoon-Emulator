@@ -156,7 +156,15 @@ impl BindVariant {
                     ..
                 } if mb == button)
             }),
-            BindVariant::Keyboard(kb) => input_state.key_pressed(*kb),
+            BindVariant::Keyboard(kb) => input_state.events.iter().any(|e| match e {
+                Event::Key {
+                    key,
+                    pressed: true,
+                    modifiers,
+                    ..
+                } => key_matches_event(*kb, *key, *modifiers),
+                _ => false,
+            }),
             // egui doesn't emit Event::Key for modifier-only presses, so we
             // cannot distinguish "just pressed" from "still held".
             BindVariant::ModifierKey(_) => false,
@@ -172,6 +180,14 @@ impl BindVariant {
             BindVariant::ModifierKey(mk) => mk.is_down(input_state),
         }
     }
+}
+
+fn key_matches_event(expected: Key, event_key: Key, modifiers: Modifiers) -> bool {
+    if expected == event_key {
+        return true;
+    }
+
+    expected == normalize_shifted_key(event_key, modifiers.shift)
 }
 
 impl From<PointerButton> for BindVariant {
