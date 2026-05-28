@@ -3,7 +3,7 @@
 use monsoon_core::emulation::screen_renderer::ScreenRenderer;
 
 use crate::frontend::egui::config::{AppConfig, AppSpeed, DebugSpeed};
-use crate::frontend::egui_frontend::get_all_renderers;
+use crate::get_all_renderers;
 
 /// Render the options panel
 pub fn render_options(ui: &mut egui::Ui, config: &mut AppConfig) {

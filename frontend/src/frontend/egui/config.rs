@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use crate::frontend::egui::keybindings::{
     BindVariant, Binding, HotkeyBinding, ModifierKey, OnKeyAction,
 };
-use crate::frontend::egui_frontend::get_all_renderers;
+use crate::get_all_renderers;
 use crate::frontend::messages::LoadedRom;
 use crate::frontend::savestates::{
     ChecksumMismatchDialogState, ErrorDialogState, MatchingRomDialogState, RomSelectionDialogState,

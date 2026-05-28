@@ -19,21 +19,17 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
 
+
 use crossbeam_channel::{Receiver, Sender};
 use eframe::{AppCreator, CreationContext, Frame};
 use egui::{Context, Id, Style, Ui, ViewportCommand, Visuals};
-use monsoon_core::declare_renderers;
 use monsoon_core::emulation::nes::Nes;
-use monsoon_core::emulation::ppu_util::{EmulatorFetchable, PaletteData, TILE_COUNT, TileData};
+use monsoon_core::emulation::ppu_util::{EmulatorFetchable, PaletteData, TileData, TILE_COUNT};
 use monsoon_core::emulation::rom::ExpansionDevice;
 use monsoon_core::emulation::savestate::SaveState;
-use monsoon_core::emulation::screen_renderer::{
-    NoneRenderer, RendererRegistration, ScreenRenderer,
-};
 use monsoon_core::rom_db::RomDb;
 use monsoon_core::util::ToBytes;
 use monsoon_db::db_provider::DbProvider;
-use monsoon_default_renderers::LookupPaletteRenderer;
 use web_time::{Duration, Instant};
 
 use crate::channel_emu::ChannelEmulator;
@@ -44,7 +40,7 @@ use crate::frontend::egui::message_handlers::async_handler::extract_timestamp;
 use crate::frontend::egui::message_handlers::{AsyncMessageHandler, EmulatorMessageHandler};
 use crate::frontend::egui::textures::EmuTextures;
 use crate::frontend::egui::tiles::{
-    Pane, TreeBehavior, compute_required_fetches_from_tree, create_tree, find_pane,
+    compute_required_fetches_from_tree, create_tree, find_pane, Pane, TreeBehavior,
 };
 use crate::frontend::egui::ui::{
     add_menu_bar, add_status_bar, render_save_browser, render_savestate_dialogs,
@@ -53,7 +49,7 @@ use crate::frontend::egui::wgpu_renderer::NesWgpuRenderer;
 use crate::frontend::messages::{
     AsyncFrontendMessage, FrontendEvent, LoadedRom, SavestateLoadContext,
 };
-use crate::frontend::persistence::{PersistentConfig, get_egui_storage_path, load_config};
+use crate::frontend::persistence::{get_egui_storage_path, load_config, PersistentConfig};
 use crate::frontend::storage::{Storage, StorageKey};
 use crate::frontend::{storage, util};
 use crate::messages::{EmulatorMessage, FrontendMessage, SaveType};
@@ -66,8 +62,6 @@ const AUTOSAVE_INTERVAL: Duration = Duration::from_secs(5 * 60);
 
 /// Maximum number of autosaves to keep per game
 const MAX_AUTOSAVES_PER_GAME: usize = 1024;
-
-declare_renderers!(LookupPaletteRenderer, NoneRenderer);
 
 /// Shared deque for frontend events that can be pushed from UI components
 pub type FrontendEventQueue = Rc<RefCell<VecDeque<FrontendEvent>>>;
@@ -829,7 +823,7 @@ async fn run_internal(res: SetupResponse) -> Result<(), Box<dyn std::error::Erro
 
     {
         let async_sender = res.async_sender.clone();
-        crate::frontend::util::spawn_async(async move {
+        util::spawn_async(async move {
             let cache_key = storage::db_cache_key();
             let cache_bytes = storage::read_sync(&cache_key).ok();
 

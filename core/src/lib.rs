@@ -1,3 +1,8 @@
+#![deny(clippy::unwrap_used)]
+#![deny(clippy::expect_used)]
+#![deny(clippy::panic)]
+#![deny(unused_must_use)]
+
 //! # Monsoon Core
 //!
 //! `monsoon_core` is the core emulation library for the Monsoon NES emulator.

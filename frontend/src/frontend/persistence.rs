@@ -25,9 +25,9 @@ use crate::frontend::egui::config::{
     AppConfig, AppSpeed, ConsoleConfig, DebugOverlayConfig, DebugSpeed, KeybindingsConfig,
     SpeedConfig, UserConfig, ViewConfig,
 };
-use crate::frontend::egui_frontend::get_all_renderers;
 use crate::frontend::storage;
 use crate::frontend::storage::{Storage, StorageKey};
+use crate::get_all_renderers;
 
 /// Application identifier used for directory paths
 const APP_QUALIFIER: &str = "com";

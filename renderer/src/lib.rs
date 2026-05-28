@@ -1,3 +1,8 @@
+#![deny(clippy::unwrap_used)]
+#![deny(clippy::expect_used)]
+#![deny(clippy::panic)]
+#![deny(unused_must_use)]
+
 //! Default screen renderer implementations for the Monsoon NES emulator.
 //!
 //! This crate provides [`LookupPaletteRenderer`], a fast O(1) lookup
