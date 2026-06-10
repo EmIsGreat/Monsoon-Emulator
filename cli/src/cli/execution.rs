@@ -13,9 +13,10 @@
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
-use monsoon_core::emulation::nes::{MASTER_CYCLES_PER_FRAME, Nes, NesConfig, RunOptions};
-use monsoon_core::emulation::savestate::{SaveState, try_load_state_from_bytes};
-use monsoon_core::util::ToBytes;
+use monsoon_core::emulation::nes::{Nes, NesConfig, RunOptions, MASTER_CYCLES_PER_FRAME};
+use monsoon_core::emulation::rom::{ParseError, RomFile};
+use monsoon_core::emulation::savestate::{try_load_state_from_bytes, SaveState};
+use monsoon_core::util::{SerializationError, ToBytes};
 
 use crate::cli::args::parse_hex_u8;
 // =============================================================================
@@ -216,15 +217,7 @@ impl StopCondition {
             StopCondition::PcEquals(addr) | StopCondition::Breakpoint(addr) => {
                 emu.program_counter() == *addr
             }
-            StopCondition::Opcode(op) => {
-                if let Some(opcode) = emu.current_opcode_byte()
-                    && opcode == *op
-                {
-                    return true;
-                }
-
-                false
-            }
+            StopCondition::Opcode(op) => emu.current_opcode_byte() == *op,
             StopCondition::MemoryEquals {
                 addr,
                 value,
@@ -479,7 +472,7 @@ pub enum SavestateDestination {
 
 // Re-export SavestateFormat from args for use in this module
 pub use crate::cli::args::SavestateFormat;
-use crate::cli::{CliArgs, parse_hex_u16};
+use crate::cli::{parse_hex_u16, CliArgs};
 
 /// Configuration for savestate operations
 #[derive(Debug, Clone, Default)]
@@ -600,8 +593,15 @@ impl ExecutionEngine {
     /// Load ROM from path
     pub fn load_rom(&mut self, path: &Path) -> Result<(), String> {
         let path_str = path.to_string_lossy().to_string();
-        self.emu.load_rom((&path_str, true));
-        Ok(())
+        let loadable: Result<RomFile, ParseError> = (&path_str, true, Some(&self.emu)).try_into();
+
+        match loadable {
+            Ok(rom) => {
+                let _ = self.emu.load_rom(&rom);
+                Ok(())
+            }
+            Err(err) => Err(err.to_string()),
+        }
     }
 
     /// Power on the emulator
@@ -646,21 +646,29 @@ impl ExecutionEngine {
                 .emu
                 .save_state()
                 .ok_or_else(|| "No ROM loaded, cannot save state".to_string())?;
-            let encoded = encode_savestate(&state, self.savestate_config.format)?;
+            let encoded = encode_savestate(&state, self.savestate_config.format);
 
-            match dest {
-                SavestateDestination::File(path) => {
-                    std::fs::write(path, &encoded).map_err(|e| {
-                        format!("Failed to write savestate to {}: {}", path.display(), e)
-                    })?;
+            return match encoded {
+                Ok(data) => {
+                    match dest {
+                        SavestateDestination::File(path) => {
+                            std::fs::write(path, &data).map_err(|e| {
+                                format!("Failed to write savestate to {}: {}", path.display(), e)
+                            })?;
+                        }
+                        SavestateDestination::Stdout => {
+                            std::io::stdout().write_all(&data).map_err(|e| {
+                                format!("Failed to write savestate to stdout: {}", e)
+                            })?;
+                        }
+                    }
+
+                    Ok(())
                 }
-                SavestateDestination::Stdout => {
-                    std::io::stdout()
-                        .write_all(&encoded)
-                        .map_err(|e| format!("Failed to write savestate to stdout: {}", e))?;
-                }
-            }
+                Err(err) => Err(err.to_string()),
+            };
         }
+
         Ok(())
     }
 
@@ -894,10 +902,13 @@ fn decode_savestate(bytes: &[u8]) -> Result<SaveState, String> {
 }
 
 /// Encode a savestate to bytes in the specified format
-fn encode_savestate(state: &SaveState, format: SavestateFormat) -> Result<Vec<u8>, String> {
+fn encode_savestate(
+    state: &SaveState,
+    format: SavestateFormat,
+) -> Result<Vec<u8>, SerializationError> {
     match format {
-        SavestateFormat::Binary => Ok(state.to_bytes(None)),
-        SavestateFormat::Json => Ok(state.to_bytes(Some("json".to_string()))),
+        SavestateFormat::Binary => state.to_bytes(None),
+        SavestateFormat::Json => state.to_bytes(Some("json".to_string())),
     }
 }
 
@@ -1000,7 +1011,7 @@ impl SavestateConfig {
 mod tests {
     use std::path::PathBuf;
 
-    use super::{DEFAULT_INTERNAL_TRACE_LOG_PATH, ExecutionConfig};
+    use super::{ExecutionConfig, DEFAULT_INTERNAL_TRACE_LOG_PATH};
     use crate::cli::CliArgs;
 
     #[test]

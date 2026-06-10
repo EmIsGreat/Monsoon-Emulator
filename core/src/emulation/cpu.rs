@@ -6,7 +6,7 @@ use serde_big_array::BigArray;
 use crate::emulation::board::CpuBus;
 use crate::emulation::nes::ExecutionFinished;
 use crate::emulation::opcode;
-use crate::emulation::opcode::{OPCODES_MAP, OPCODES_TABLE, OpCode, get_opcode};
+use crate::emulation::opcode::{get_opcode, OpCode, OPCODES_TABLE};
 use crate::emulation::savestate::CpuState;
 use crate::util;
 
@@ -87,7 +87,7 @@ pub struct Cpu {
     pub current_op: MicroOp,
     pub op_queue: OpQueue<RING_BUFFER_SIZE>,
     pub remaining_dma_cycles: u16,
-    pub current_opcode: Option<OpCode>,
+    pub current_opcode: OpCode,
     pub data_bus: u8,
     pub ane_constant: u8,
     pub is_halted: bool,
@@ -111,8 +111,7 @@ pub struct Cpu {
 impl Default for Cpu {
     fn default() -> Self {
         // Initialize both HashMap and fast lookup table
-        OPCODES_MAP.get_or_init(opcode::init);
-        OPCODES_TABLE.get_or_init(opcode::init_lookup_table);
+        OPCODES_TABLE.get_or_init(opcode::init);
 
         Self {
             program_counter: 0,
@@ -126,7 +125,7 @@ impl Default for Cpu {
             current_op: MicroOp::FetchOpcode,
             op_queue: OpQueue::new(),
             remaining_dma_cycles: 0,
-            current_opcode: None,
+            current_opcode: get_opcode(0),
             data_bus: 0,
             ane_constant: 0xEE,
             is_halted: false,
@@ -149,11 +148,7 @@ impl Default for Cpu {
 }
 
 impl Cpu {
-    pub fn new() -> Self {
-        OPCODES_MAP.get_or_init(opcode::init);
-        OPCODES_TABLE.get_or_init(opcode::init_lookup_table);
-        Self::default()
-    }
+    pub fn new() -> Self { Self::default() }
 
     #[inline(always)]
     pub fn mem_read(&mut self, addr: u16, bus: &mut impl CpuBus) -> u8 {
@@ -384,9 +379,7 @@ impl Cpu {
 
     #[inline]
     fn get_instructions_for_op_type(&mut self) {
-        let Some(op) = self.current_opcode else {
-            return;
-        };
+        let op = self.current_opcode;
 
         match op.op_type {
             OpType::AccumulatorOrImplied(callback) => {
@@ -1910,8 +1903,7 @@ impl Cpu {
 
 impl Cpu {
     pub fn from(state: &CpuState) -> Self {
-        OPCODES_MAP.get_or_init(opcode::init);
-        OPCODES_TABLE.get_or_init(opcode::init_lookup_table);
+        OPCODES_TABLE.get_or_init(opcode::init);
 
         Self {
             program_counter: state.program_counter,
@@ -1925,7 +1917,7 @@ impl Cpu {
             current_op: state.current_op,
             op_queue: state.op_queue,
             remaining_dma_cycles: state.remaining_dma_cycles,
-            current_opcode: state.current_opcode.and_then(get_opcode),
+            current_opcode: get_opcode(state.current_opcode),
             data_bus: state.data_bus,
             ane_constant: state.ane_constant,
             is_halted: state.is_halted,
@@ -1979,7 +1971,7 @@ pub fn adc(cpu: &mut Cpu) {
 #[inline]
 fn rol(cpu: &mut Cpu) {
     if !matches!(
-        &cpu.current_opcode.unwrap().op_type,
+        &cpu.current_opcode.op_type,
         OpType::AccumulatorOrImplied(..)
     ) {
         let target_value = cpu.data_bus;
@@ -1994,7 +1986,7 @@ fn rol(cpu: &mut Cpu) {
 #[inline]
 fn ror(cpu: &mut Cpu) {
     if !matches!(
-        &cpu.current_opcode.unwrap().op_type,
+        &cpu.current_opcode.op_type,
         OpType::AccumulatorOrImplied(..)
     ) {
         let target_value = cpu.data_bus;
@@ -2009,7 +2001,7 @@ fn ror(cpu: &mut Cpu) {
 #[inline]
 fn asl(cpu: &mut Cpu) {
     if !matches!(
-        &cpu.current_opcode.unwrap().op_type,
+        &cpu.current_opcode.op_type,
         OpType::AccumulatorOrImplied(..)
     ) {
         let target_value = cpu.data_bus;
@@ -2024,7 +2016,7 @@ fn asl(cpu: &mut Cpu) {
 #[inline]
 fn lsr(cpu: &mut Cpu) {
     if !matches!(
-        &cpu.current_opcode.unwrap().op_type,
+        &cpu.current_opcode.op_type,
         OpType::AccumulatorOrImplied(..)
     ) {
         let target_value = cpu.data_bus;

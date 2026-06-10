@@ -6,6 +6,7 @@ fn test_05_nmi_timing() {
     emu.load_rom((
         &String::from("./tests/nes-test-roms/ppu_vbl_nmi/rom_singles/05-nmi_timing.nes"),
         false,
+        None,
     ));
     emu.power();
     emu.run_until(85341973, RunOptions::default())

@@ -6,6 +6,7 @@ fn test_02_vbl_set_time() {
     emu.load_rom((
         &String::from("./tests/nes-test-roms/ppu_vbl_nmi/rom_singles/02-vbl_set_time.nes"),
         false,
+        None,
     ));
     emu.power();
     emu.run_until(85341973, RunOptions::default())

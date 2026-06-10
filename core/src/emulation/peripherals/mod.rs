@@ -24,6 +24,7 @@ pub trait PeripheralDevice {
 
 impl From<ExpansionDevice> for Peripheral {
     fn from(value: ExpansionDevice) -> Self {
+        #[allow(clippy::panic)]
         match value {
             ExpansionDevice::StandardController => {
                 Peripheral::StandardController(StandardController::default())

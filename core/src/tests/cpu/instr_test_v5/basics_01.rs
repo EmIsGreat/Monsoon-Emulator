@@ -5,6 +5,7 @@ fn test_01_basics() {
     emu.load_rom((
         &String::from("./tests/nes-test-roms/instr_test-v5/rom_singles/01-basics.nes"),
         false,
+        None,
     ));
     emu.power();
     emu.run_until(8448321, RunOptions::default())

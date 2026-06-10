@@ -6,6 +6,7 @@ fn test_oam_stress() {
     emu.load_rom((
         &String::from("./tests/nes-test-roms/oam_stress/oam_stress.nes"),
         false,
+        None,
     ));
     emu.power();
 

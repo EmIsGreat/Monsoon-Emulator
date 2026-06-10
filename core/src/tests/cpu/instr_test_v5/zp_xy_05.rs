@@ -6,6 +6,7 @@ fn test_05_zp_xy() {
     emu.load_rom((
         &String::from("./tests/nes-test-roms/instr_test-v5/rom_singles/05-zp_xy.nes"),
         false,
+        None,
     ));
     emu.reset();
     emu.run_until(102889553, RunOptions::default())

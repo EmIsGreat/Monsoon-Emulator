@@ -4,7 +4,7 @@
 //! frame updates, debug data, and savestate operations.
 
 use egui::{Context, ViewportCommand};
-use monsoon_core::emulation::ppu_util::{EmulatorFetchable, PaletteData, TILE_COUNT, TileData};
+use monsoon_core::emulation::ppu_util::{EmulatorFetchable, PaletteData, TileData, TILE_COUNT};
 use monsoon_core::emulation::savestate::SaveState;
 use monsoon_core::util::ToBytes;
 
@@ -172,10 +172,13 @@ impl EguiApp {
 
                 // Write savestate using storage
                 let data = savestate.to_bytes(None);
-                util::spawn_async(async move {
-                    let storage = storage::get_storage();
-                    let _ = storage.set(&key, data).await;
-                });
+
+                if let Ok(data) = data {
+                    util::spawn_async(async move {
+                        let storage = storage::get_storage();
+                        let _ = storage.set(&key, data).await;
+                    });
+                }
             }
         }
     }

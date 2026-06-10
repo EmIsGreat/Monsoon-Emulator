@@ -6,6 +6,7 @@ fn test_02_implied() {
     emu.load_rom((
         &String::from("./tests/nes-test-roms/instr_test-v5/rom_singles/02-implied.nes"),
         false,
+        None,
     ));
     emu.reset();
     emu.run_until(44638541, RunOptions::default())

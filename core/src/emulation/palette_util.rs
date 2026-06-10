@@ -10,7 +10,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::util::{Hashable, ToBytes, compute_hash};
+use crate::util::{compute_hash, HashError, Hashable, SerializationError, ToBytes};
 
 /// An RGB color with 8 bits per channel.
 ///
@@ -136,12 +136,13 @@ pub fn parse_palette_from_bytes(bytes: &[u8]) -> RgbPalette {
 }
 
 impl ToBytes for RgbPalette {
-    fn to_bytes(&self, _: Option<String>) -> Vec<u8> {
-        self.colors
+    fn to_bytes(&self, _: Option<String>) -> Result<Vec<u8>, SerializationError> {
+        Ok(self
+            .colors
             .iter()
             .flatten()
             .flat_map(|c| [c.r, c.g, c.b])
-            .collect()
+            .collect())
     }
 }
 
@@ -149,8 +150,8 @@ impl Hashable for RgbPalette {
     /// Compute a fast hash of the given data for change detection.
     /// Uses FNV-1a algorithm which is fast and has good distribution.
     #[inline]
-    fn hash(&self) -> u64 {
-        let bytes = self.to_bytes(None);
-        compute_hash(&bytes[..])
+    fn hash(&self) -> Result<u64, HashError> {
+        let bytes = self.to_bytes(None)?;
+        Ok(compute_hash(&bytes[..]))
     }
 }

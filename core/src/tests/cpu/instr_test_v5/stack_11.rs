@@ -6,6 +6,7 @@ fn test_11_stack() {
     emu.load_rom((
         &String::from("./tests/nes-test-roms/instr_test-v5/rom_singles/11-stack.nes"),
         false,
+        None,
     ));
     emu.reset();
     emu.run_until(69296933, RunOptions::default())

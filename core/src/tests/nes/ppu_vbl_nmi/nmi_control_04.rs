@@ -6,6 +6,7 @@ fn test_04_nmi_control() {
     emu.load_rom((
         &String::from("./tests/nes-test-roms/ppu_vbl_nmi/rom_singles/04-nmi_control.nes"),
         false,
+        None,
     ));
     emu.power();
     emu.run_until(13523621, RunOptions::default())

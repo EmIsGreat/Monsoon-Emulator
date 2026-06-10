@@ -6,6 +6,7 @@ fn test_14_rti() {
     emu.load_rom((
         &String::from("./tests/nes-test-roms/instr_test-v5/rom_singles/14-rti.nes"),
         false,
+        None,
     ));
     emu.reset();
     emu.run_until(7334409, RunOptions::default())

@@ -3,18 +3,11 @@ use crate::emulation::nes::{Nes, RunOptions};
 #[test]
 fn test_instr_misc() {
     let mut emu = Nes::default();
-    let loaded = emu.load_rom((
+    emu.load_rom((
         &String::from("./tests/nes-test-roms/instr_misc/instr_misc.nes"),
         false,
+        None,
     ));
-
-    if !loaded.0 {
-        eprint!(
-            "Mapper of Rom (id: {}) is not implemented... Aborting",
-            loaded.1
-        );
-        return;
-    }
 
     emu.reset();
     emu.run_until(200_000_000, RunOptions::default())
@@ -37,18 +30,11 @@ fn test_instr_misc() {
 #[test]
 fn test_instr_misc_01_abs_x_wrap() {
     let mut emu = Nes::default();
-    let loaded = emu.load_rom((
+    emu.load_rom((
         &String::from("./tests/nes-test-roms/instr_misc/rom_singles/01-abs_x_wrap.nes"),
         false,
+        None,
     ));
-
-    if !loaded.0 {
-        eprint!(
-            "Mapper of Rom (id: {}) is not implemented... Aborting",
-            loaded.1
-        );
-        return;
-    }
 
     emu.reset();
     emu.run_until(20_000_000, RunOptions::default())
@@ -69,18 +55,11 @@ fn test_instr_misc_01_abs_x_wrap() {
 #[test]
 fn test_instr_misc_02_branch_wrap() {
     let mut emu = Nes::default();
-    let loaded = emu.load_rom((
+    emu.load_rom((
         &String::from("./tests/nes-test-roms/instr_misc/rom_singles/02-branch_wrap.nes"),
         false,
+        None,
     ));
-
-    if !loaded.0 {
-        eprint!(
-            "Mapper of Rom (id: {}) is not implemented... Aborting",
-            loaded.1
-        );
-        return;
-    }
 
     emu.reset();
     emu.run_until(20_000_000, RunOptions::default())
@@ -101,18 +80,11 @@ fn test_instr_misc_02_branch_wrap() {
 #[test]
 fn test_instr_misc_03_dummy_reads() {
     let mut emu = Nes::default();
-    let loaded = emu.load_rom((
+    emu.load_rom((
         &String::from("./tests/nes-test-roms/instr_misc/rom_singles/03-dummy_reads.nes"),
         false,
+        None,
     ));
-
-    if !loaded.0 {
-        eprint!(
-            "Mapper of Rom (id: {}) is not implemented... Aborting",
-            loaded.1
-        );
-        return;
-    }
 
     emu.reset();
     emu.run_until(20_500_000, RunOptions::default())
@@ -133,18 +105,11 @@ fn test_instr_misc_03_dummy_reads() {
 #[test]
 fn test_instr_misc_04_dummy_reads_apu() {
     let mut emu = Nes::default();
-    let loaded = emu.load_rom((
+    emu.load_rom((
         &String::from("./tests/nes-test-roms/instr_misc/rom_singles/04-dummy_reads_apu.nes"),
         false,
+        None,
     ));
-
-    if !loaded.0 {
-        assert!(
-            loaded.0,
-            "Mapper of Rom (id: {}) is not implemented... Aborting",
-            loaded.1
-        );
-    }
 
     emu.reset();
     emu.run_until(20_000_000, RunOptions::default())

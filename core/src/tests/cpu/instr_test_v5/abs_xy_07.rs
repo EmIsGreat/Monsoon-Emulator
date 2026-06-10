@@ -6,6 +6,7 @@ fn test_07_abs_xy() {
     emu.load_rom((
         &String::from("./tests/nes-test-roms/instr_test-v5/rom_singles/07-abs_xy.nes"),
         false,
+        None,
     ));
     emu.reset();
     emu.run_until(230413181, RunOptions::default())

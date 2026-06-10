@@ -8,6 +8,7 @@ fn test_03_immediate() {
     emu.load_rom((
         &String::from("./tests/nes-test-roms/instr_test-v5/rom_singles/03-immediate.nes"),
         false,
+        None,
     ));
 
     emu.reset();

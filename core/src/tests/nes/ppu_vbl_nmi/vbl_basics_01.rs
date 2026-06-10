@@ -6,6 +6,7 @@ fn test_01_vbl_basics() {
     emu.load_rom((
         &String::from("./tests/nes-test-roms/ppu_vbl_nmi/rom_singles/01-vbl_basics.nes"),
         false,
+        None,
     ));
     emu.power();
     emu.run_until(51119365, RunOptions::default())

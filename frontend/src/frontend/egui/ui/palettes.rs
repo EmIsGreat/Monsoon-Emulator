@@ -1,14 +1,14 @@
 use crossbeam_channel::Sender;
-use monsoon_core::emulation::palette_util::{RgbColor, parse_palette_from_bytes};
+use monsoon_core::emulation::palette_util::{parse_palette_from_bytes, RgbColor};
 use monsoon_core::emulation::ppu_util::PALETTE_RAM_START_ADDRESS;
 use monsoon_core::util::Hashable;
 
 use crate::frontend::egui::config::AppConfig;
 use crate::frontend::egui::textures::EmuTextures;
-use crate::frontend::egui::ui::widgets::{PainterGridConfig, color_cell_rgb};
+use crate::frontend::egui::ui::widgets::{color_cell_rgb, PainterGridConfig};
 use crate::frontend::messages::{AsyncFrontendMessage, LoadedPalette};
 use crate::frontend::storage::{StorageCategory, StorageKey};
-use crate::frontend::util::{self, FileType, spawn_palette_picker, spawn_save_dialog};
+use crate::frontend::util::{self, spawn_palette_picker, spawn_save_dialog, FileType};
 
 pub fn render_palettes(
     ui: &mut egui::Ui,
@@ -142,8 +142,16 @@ pub fn render_palettes(
         });
     }
 
+    let (current_hash, old_hash) = if let Ok(hash) = config.view_config.palette_rgb_data.hash()
+        && let Ok(old_hash) = old_palette.hash()
+    {
+        (hash, old_hash)
+    } else {
+        return;
+    };
+
     // Send palette update if changed
-    if old_palette.hash() != config.view_config.palette_rgb_data.hash() {
+    if old_hash != current_hash {
         let _ = async_sender.send(AsyncFrontendMessage::SetPalette(
             config.view_config.palette_rgb_data,
         ));

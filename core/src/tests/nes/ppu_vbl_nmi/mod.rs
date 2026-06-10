@@ -26,18 +26,11 @@ fn test_ppu_vbl_nmi() {
     let mut emu = Nes::with_config(NesConfig {
         alignment: 1,
     });
-    let loaded = emu.load_rom((
+    emu.load_rom((
         &String::from("./tests/nes-test-roms/ppu_vbl_nmi/ppu_vbl_nmi.nes"),
         false,
+        None,
     ));
-
-    if !loaded.0 {
-        assert!(
-            loaded.0,
-            "Mapper of Rom (id: {}) is not implemented... Aborting",
-            loaded.1
-        );
-    }
 
     emu.power();
     emu.run_until(650_000_000, RunOptions::default())

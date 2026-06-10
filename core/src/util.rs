@@ -3,9 +3,12 @@
 //! This module provides serialization helpers ([`ToBytes`]) and hash utilities
 //! ([`Hashable`]) for use by the emulator and consumers of this library.
 
+use std::error::Error;
+use std::fmt::{Display, Formatter};
+
 use crate::emulation::cpu::UPPER_BYTE;
 use crate::emulation::mem::Memory;
-use crate::emulation::savestate::{BINARY_FORMAT_VERSION, JSON_FORMAT_VERSION, MAGIC, SaveState};
+use crate::emulation::savestate::{SaveState, BINARY_FORMAT_VERSION, JSON_FORMAT_VERSION, MAGIC};
 /// Returns `true` if adding a signed `offset` to `base` crosses a 256-byte page
 /// boundary.
 ///
@@ -27,13 +30,66 @@ pub(crate) fn add_to_low_byte(val: u16, add: u8) -> u16 {
     high | low as u16
 }
 
+#[derive(Debug)]
+pub enum HashError {
+    SerializationError(SerializationError),
+}
+
+impl Display for HashError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str("Error hashing data")?;
+        match self {
+            HashError::SerializationError(err) => {
+                write!(f, "{}", err)
+            }
+        }
+    }
+}
+
+impl Error for HashError {}
+
+impl From<SerializationError> for HashError {
+    fn from(err: SerializationError) -> Self { HashError::SerializationError(err) }
+}
+
 /// Trait for types that can produce a fast, non-cryptographic hash.
 ///
 /// Used for change detection (e.g., detecting when palette data has been
 /// modified) rather than for security purposes.
 pub trait Hashable {
     /// Computes a 64-bit FNV-1a hash of this value.
-    fn hash(&self) -> u64;
+    fn hash(&self) -> Result<u64, HashError>;
+}
+
+#[derive(Debug)]
+pub enum SerializationError {
+    SerdeJsonError(serde_json::Error),
+    PostcardError(postcard::Error),
+}
+
+impl Display for SerializationError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SerializationError::SerdeJsonError(err) => {
+                f.write_str("Error serializing data to json")?;
+                write!(f, "{}", err)
+            }
+            SerializationError::PostcardError(err) => {
+                f.write_str("Error serializing data using postcard")?;
+                write!(f, "{}", err)
+            }
+        }
+    }
+}
+
+impl Error for SerializationError {}
+
+impl From<serde_json::Error> for SerializationError {
+    fn from(err: serde_json::Error) -> Self { SerializationError::SerdeJsonError(err) }
+}
+
+impl From<postcard::Error> for SerializationError {
+    fn from(err: postcard::Error) -> Self { SerializationError::PostcardError(err) }
 }
 
 /// Trait for types that can be serialized to a byte vector.
@@ -43,11 +99,11 @@ pub trait Hashable {
 /// - `Some("json")` — human-readable JSON format.
 pub trait ToBytes {
     /// Serializes this value to bytes in the specified format.
-    fn to_bytes(&self, format: Option<String>) -> Vec<u8>;
+    fn to_bytes(&self, format: Option<String>) -> Result<Vec<u8>, SerializationError>;
 }
 
 impl ToBytes for SaveState {
-    fn to_bytes(&self, format: Option<String>) -> Vec<u8> {
+    fn to_bytes(&self, format: Option<String>) -> Result<Vec<u8>, SerializationError> {
         let mut res = Vec::new();
 
         res.extend(MAGIC);
@@ -59,26 +115,27 @@ impl ToBytes for SaveState {
 
         if format == "json" {
             res.push(JSON_FORMAT_VERSION);
-            res.extend(serde_json::to_vec_pretty(self).expect("Error serializing SaveState"));
+
+            res.extend(serde_json::to_vec_pretty(self)?);
         } else {
             res.push(BINARY_FORMAT_VERSION);
-            res.extend(postcard::to_stdvec(self).expect("Error serializing SaveState"));
+            res.extend(postcard::to_stdvec(self)?)
         }
 
-        res
+        Ok(res)
     }
 }
 
 impl Hashable for Memory {
-    fn hash(&self) -> u64 {
+    fn hash(&self) -> Result<u64, HashError> {
         let mut base = self.snapshot_all();
         base.push(self.is_write.into());
-        compute_hash(&base[..])
+        Ok(compute_hash(&base[..]))
     }
 }
 
 impl Hashable for Vec<u8> {
-    fn hash(&self) -> u64 { compute_hash(self) }
+    fn hash(&self) -> Result<u64, HashError> { Ok(compute_hash(self)) }
 }
 
 /// Compute a fast hash of the given data for change detection.

@@ -6,6 +6,7 @@ fn test_oam_read() {
     emu.load_rom((
         &String::from("./tests/nes-test-roms/oam_read/oam_read.nes"),
         false,
+        None,
     ));
     emu.power();
 

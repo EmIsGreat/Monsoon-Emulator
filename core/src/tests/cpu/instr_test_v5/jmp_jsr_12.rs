@@ -6,6 +6,7 @@ fn test_12_jmp_jsr() {
     emu.load_rom((
         &String::from("./tests/nes-test-roms/instr_test-v5/rom_singles/12-jmp_jsr.nes"),
         false,
+        None,
     ));
     emu.reset();
     emu.run_until(8049153, RunOptions::default())

@@ -1,9 +1,7 @@
 use std::fmt::Debug;
 use std::fs;
 use std::ops::RangeInclusive;
-use std::sync::{Arc, LazyLock};
-
-use arc_swap::ArcSwap;
+use std::sync::Arc;
 
 use crate::emulation::board::{Board, CpuBus, CpuBusView, PpuBus, PpuBusView};
 use crate::emulation::cpu::MicroOp;
@@ -23,12 +21,6 @@ use crate::{cpu_bus_view, ppu_bus_view};
 /// the PPU divides it by 4, so one master cycle is the finest timing
 /// granularity.
 pub const MASTER_CYCLES_PER_FRAME: u32 = 357366;
-
-static ROM_DB: LazyLock<ArcSwap<RomDb>> = LazyLock::new(|| ArcSwap::from_pointee(RomDb::default()));
-
-pub fn rom_db() -> Arc<RomDb> { ROM_DB.load_full() }
-
-pub fn set_rom_db(db: Arc<RomDb>) { ROM_DB.store(db); }
 
 /// The top-level NES emulator.
 ///
@@ -79,6 +71,8 @@ pub struct Nes {
     /// Internal PPU clock divider counter (0-4).
     pub(crate) ppu_cycle_counter: u8,
     pub alignment: u8,
+
+    pub rom_db: Arc<RomDb>,
 }
 
 impl Nes {
@@ -194,38 +188,33 @@ impl Nes {
     ) -> Result<ExecutionFinished, String> {
         loop {
             let res = self.step_internal(last_cycle);
-            match res {
-                Ok(res) => {
-                    if run_option.stop_at_scanline && res.scanline_done {
-                        return Ok(res);
-                    }
 
-                    if run_option.stop_at_frame && res.frame_done {
-                        return Ok(res);
-                    }
+            let res = res?;
+            if run_option.stop_at_scanline && res.scanline_done {
+                return Ok(res);
+            }
 
-                    if run_option.stop_at_cpu_cycle && res.cpu_cycle_completed {
-                        return Ok(res);
-                    }
+            if run_option.stop_at_frame && res.frame_done {
+                return Ok(res);
+            }
 
-                    if run_option.stop_at_ppu_cycle && res.ppu_cycle_completed {
-                        return Ok(res);
-                    }
+            if run_option.stop_at_cpu_cycle && res.cpu_cycle_completed {
+                return Ok(res);
+            }
 
-                    if res.last_cycle_reached || res.hlt_reached {
-                        return Ok(res);
-                    }
+            if run_option.stop_at_ppu_cycle && res.ppu_cycle_completed {
+                return Ok(res);
+            }
 
-                    if res.cycle_completed {
-                        continue;
-                    }
+            if res.last_cycle_reached || res.hlt_reached {
+                return Ok(res);
+            }
 
-                    return Ok(res);
-                }
-                Err(err) => {
-                    panic!("{}", err)
-                }
-            };
+            if res.cycle_completed {
+                continue;
+            }
+
+            return Ok(res);
         }
     }
 
@@ -340,6 +329,7 @@ impl Nes {
             cpu_cycle_counter: 0,
             ppu_cycle_counter: 0,
             alignment: 8 + config.alignment,
+            rom_db: Arc::new(RomDb::default()),
         }
     }
 
@@ -350,42 +340,17 @@ impl Nes {
     /// the reset vector (`$FFFC`).
     pub fn reset(&mut self) { self.board.reset(); }
 
-    /// Loads a ROM into the emulator.
-    ///
-    /// The argument can be anything that converts to a [`RomFile`] by
-    /// reference. Common conversions include:
-    ///
-    /// - `&RomFile` — a pre-parsed ROM file.
-    /// - `&[u8]` — raw ROM bytes (name is set to `None`).
-    /// - `&(&[u8], String)` — raw ROM bytes with a name.
-    /// - `&String` — a file path (native only, not available on WASM).
-    ///
-    /// # Example
-    ///
-    /// ```rust,no_run
-    /// use monsoon_core::emulation::nes::Nes;
-    /// use monsoon_core::emulation::rom::RomFile;
-    ///
-    /// let mut nes = Nes::default();
-    /// let mut data = std::fs::read("game.nes").unwrap();
-    /// let rom = RomFile::load(&mut data, None, false).unwrap();
-    /// nes.load_rom(&rom);
-    /// ```
-    pub fn load_rom<T>(&mut self, rom_get: T) -> (bool, RomMapper)
+    pub fn load_rom<T>(&mut self, rom_get: T) -> Result<RomMapper, T::Error>
     where
-        T: Into<RomFile>,
+        T: TryInto<RomFile>,
     {
-        let rom_file: RomFile = rom_get.into();
+        let rom_file: RomFile = rom_get.try_into()?;
         self.board.load_rom(&rom_file);
 
-        let res = (
-            !matches!(rom_file.mapper, RomMapper::Unknown(_)),
-            rom_file.mapper,
-        );
-
+        let mapper = rom_file.mapper;
         self.rom_file = Some(rom_file);
 
-        res
+        Ok(mapper)
     }
 
     /// Captures the current emulator state as a [`SaveState`].
@@ -593,7 +558,7 @@ impl Nes {
         }
     }
 
-    pub fn builtin_rom_database() -> Arc<RomDb> { rom_db() }
+    pub fn get_rom_db(&self) -> Arc<RomDb> { self.rom_db.clone() }
 }
 
 impl Default for Nes {
@@ -617,9 +582,7 @@ impl Nes {
     pub fn program_counter(&self) -> u16 { self.board.cpu.program_counter }
 
     /// Returns the opcode byte of the instruction currently being executed.
-    pub fn current_opcode_byte(&self) -> Option<u8> {
-        self.board.cpu.current_opcode.map(|c| c.opcode)
-    }
+    pub fn current_opcode_byte(&self) -> u8 { self.board.cpu.current_opcode.opcode }
 
     /// Returns `true` if the CPU has executed a halt (KIL) instruction.
     pub fn is_halted(&self) -> bool { self.board.cpu.is_halted }

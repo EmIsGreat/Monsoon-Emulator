@@ -25,7 +25,7 @@ impl NametableArrangement {
                 1 | 3 => 0x400 + offset,
                 _ => {
                     dbg!();
-                    panic!()
+                    unreachable!()
                 }
             },
             NametableArrangement::Vertical => match table {
@@ -33,7 +33,7 @@ impl NametableArrangement {
                 2 | 3 => 0x400 + offset,
                 _ => {
                     dbg!();
-                    panic!()
+                    unreachable!()
                 }
             },
             NametableArrangement::SingleScreenLower => offset,

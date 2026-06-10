@@ -6,6 +6,7 @@ fn test_10_branches() {
     emu.load_rom((
         &String::from("./tests/nes-test-roms/instr_test-v5/rom_singles/10-branches.nes"),
         false,
+        None,
     ));
     emu.reset();
     emu.run_until(146259957, RunOptions::default())

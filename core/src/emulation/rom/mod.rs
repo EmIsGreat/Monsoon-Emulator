@@ -20,11 +20,11 @@ use crate::emulation::mem::Memory;
 use crate::emulation::nes::Nes;
 use crate::emulation::rom::formats::archaic_ines::ArchaicInes;
 use crate::emulation::rom::formats::ines::Ines;
-use crate::emulation::rom::formats::ines_07::Ines07;
 use crate::emulation::rom::formats::ines2::Ines2;
+use crate::emulation::rom::formats::ines_07::Ines07;
 
 /// Errors that can occur while parsing a ROM file.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub enum ParseError {
     /// The sizes declared in the ROM header exceed the actual file length.
     SizeBiggerThanFile,
@@ -32,6 +32,7 @@ pub enum ParseError {
     InvalidHeader,
     /// The ROM format is not recognized (missing `NES\x1A` magic bytes).
     UnsupportedFormat,
+    IoError(std::io::Error),
 }
 
 impl Display for ParseError {
@@ -49,11 +50,19 @@ impl Display for ParseError {
             ParseError::UnsupportedFormat => {
                 write!(f, "Rom format is not recognized")
             }
+            ParseError::IoError(err) => {
+                write!(f, "IO Error while parsing rom")?;
+                write!(f, "{}", err)
+            }
         }
     }
 }
 
 impl Error for ParseError {}
+
+impl From<std::io::Error> for ParseError {
+    fn from(err: std::io::Error) -> Self { ParseError::IoError(err) }
+}
 
 /// Trait for ROM format parsers.
 ///
@@ -751,6 +760,7 @@ impl RomFile {
         data: &mut [u8],
         name: Option<&String>,
         use_db: bool,
+        nes: Option<&Nes>,
     ) -> Result<RomFile, ParseError> {
         let mut hasher = Sha256::new();
         hasher.update(&data);
@@ -760,8 +770,8 @@ impl RomFile {
         hasher.update(&data[16..]);
         let headerless_hash: [u8; 32] = hasher.finalize().into();
 
-        if use_db {
-            let rom_db = Nes::builtin_rom_database();
+        if use_db && let Some(nes) = nes {
+            let rom_db = nes.get_rom_db();
             let primary_lookup = rom_db.get_entry(&full_hash);
 
             if primary_lookup.is_none()
@@ -879,31 +889,36 @@ impl From<&RomFile> for RomFile {
     fn from(rom: &RomFile) -> Self { rom.clone() }
 }
 
-impl From<&mut [u8]> for RomFile {
-    fn from(data: &mut [u8]) -> Self {
-        RomFile::load(data, None, true).expect("Failed to parse ROM data")
+impl TryFrom<(&mut [u8], Option<&Nes>)> for RomFile {
+    type Error = ParseError;
+
+    fn try_from((data, nes): (&mut [u8], Option<&Nes>)) -> Result<Self, Self::Error> {
+        RomFile::load(data, None, true, nes)
     }
 }
 
-impl From<(&mut [u8], &String, bool)> for RomFile {
-    fn from((data, name, use_db): (&mut [u8], &String, bool)) -> Self {
-        RomFile::load(data, Some(name), use_db).expect("Failed to parse ROM data")
+impl TryFrom<(&mut [u8], &String, bool, Option<&Nes>)> for RomFile {
+    type Error = ParseError;
+
+    fn try_from(
+        (data, name, use_db, nes): (&mut [u8], &String, bool, Option<&Nes>),
+    ) -> Result<Self, Self::Error> {
+        RomFile::load(data, Some(name), use_db, nes)
     }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-impl From<(&String, bool)> for RomFile {
-    fn from((path, use_db): (&String, bool)) -> Self {
+impl TryFrom<(&String, bool, Option<&Nes>)> for RomFile {
+    type Error = ParseError;
+
+    fn try_from((path, use_db, nes): (&String, bool, Option<&Nes>)) -> Result<Self, Self::Error> {
         use std::fs::File;
         use std::io::Read;
 
         let mut data = Vec::new();
-        File::open(path)
-            .unwrap_or_else(|e| panic!("Failed to open ROM file '{}': {}", path, e))
-            .read_to_end(&mut data)
-            .unwrap_or_else(|e| panic!("Failed to read ROM file '{}': {}", path, e));
+        File::open(path)?.read_to_end(&mut data)?;
 
-        RomFile::load(&mut data, Some(path), use_db).expect("Failed to parse ROM data")
+        RomFile::load(&mut data, Some(path), use_db, nes)
     }
 }
 
@@ -1131,6 +1146,7 @@ impl RomBuilder {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use crate::emulation::rom::{ExpansionDevice, RomBuilder, RomMapper};
 

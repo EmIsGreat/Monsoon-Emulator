@@ -11,6 +11,7 @@ fn nestest() {
     emu.load_rom((
         &String::from("./tests/nes-test-roms/nestest_headless.nes"),
         false,
+        None,
     ));
     emu.power();
 

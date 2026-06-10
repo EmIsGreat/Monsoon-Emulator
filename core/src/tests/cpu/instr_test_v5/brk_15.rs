@@ -6,6 +6,7 @@ fn test_15_brk() {
     emu.load_rom((
         &String::from("./tests/nes-test-roms/instr_test-v5/rom_singles/15-brk.nes"),
         false,
+        None,
     ));
     emu.reset();
     emu.run_until(10908081, RunOptions::default())

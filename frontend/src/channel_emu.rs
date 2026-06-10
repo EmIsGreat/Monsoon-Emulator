@@ -6,6 +6,7 @@ use monsoon_core::emulation::nes::Nes;
 use monsoon_core::emulation::ppu_util::{
     EmulatorFetchable, PaletteData, TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH,
 };
+use monsoon_core::emulation::rom::{ParseError, RomFile};
 use monsoon_core::util::Hashable;
 
 use crate::messages::{ControllerEvent, EmulatorMessage, FrontendMessage, SaveType};
@@ -180,11 +181,16 @@ impl ChannelEmulator {
                 FrontendMessage::WritePpu(address, data) => self.nes.ppu_mem_init(address, data),
                 FrontendMessage::WriteCpu(address, data) => self.nes.cpu_mem_init(address, data),
                 FrontendMessage::LoadRom((mut rom, name, use_db)) => {
-                    let loadable = (&mut rom.data[..], &name, use_db);
-                    self.nes.load_rom(loadable);
-                    let _ = self.to_frontend.send(EmulatorMessage::RomLoaded(Box::new(
-                        self.nes.rom_file.clone().map(|r| (r, rom)),
-                    )));
+                    let loadable = (&mut rom.data[..], &name, use_db, Some(&self.nes));
+                    let rom_file: Result<RomFile, ParseError> = loadable.try_into();
+
+                    if let Ok(rom_file) = rom_file {
+                        let _ = self.nes.load_rom(&rom_file);
+
+                        let _ = self.to_frontend.send(EmulatorMessage::RomLoaded(Box::new(
+                            self.nes.rom_file.clone().map(|r| (r, rom)),
+                        )));
+                    }
                 }
                 FrontendMessage::Power(is_powered) => {
                     if is_powered {
@@ -211,9 +217,7 @@ impl ChannelEmulator {
                 FrontendMessage::AttachPeripherals((peripheral1, peripheral2)) => {
                     self.nes.attach_peripherals((peripheral1, peripheral2))
                 }
-                FrontendMessage::UpdateRomDb(db) => {
-                    monsoon_core::emulation::nes::set_rom_db(db);
-                }
+                FrontendMessage::UpdateRomDb(db) => self.nes.rom_db = db,
             }
         }
 
@@ -354,15 +358,22 @@ impl ChannelEmulator {
         // Check tile/pattern table data using a fast hash of raw PPU memory
         // Pattern tables occupy 0x0000-0x1FFF (8KB) in PPU address space
         let pattern_table_memory = self.nes.get_memory_debug(Some(0x0000..=0x1FFF))[1].to_vec();
-        let current_hash = &pattern_table_memory.hash();
+        let current_hash = pattern_table_memory.hash();
 
-        let tiles_changed = match self.last_pattern_table_hash {
-            Some(last_hash) => last_hash != *current_hash,
-            None => true, // First time, consider it changed
+        let current_hash = if let Ok(hash) = current_hash {
+            hash
+        } else {
+            return;
+        };
+
+        let tiles_changed = if let Some(last_hash) = self.last_pattern_table_hash {
+            current_hash != last_hash
+        } else {
+            true
         };
 
         if tiles_changed {
-            self.last_pattern_table_hash = Some(*current_hash);
+            self.last_pattern_table_hash = Some(current_hash);
             // Send the actual tile data directly to avoid a round-trip request
             let _ = self
                 .to_frontend

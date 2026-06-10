@@ -269,39 +269,41 @@ pub fn spawn_save_dialog(
             // Write data using the file handle
             let bytes = data.to_bytes(format);
 
-            // On native, if the filename had no extension, write to a path with the
-            // default extension appended so the file on disk gets the correct name.
-            #[cfg(not(target_arch = "wasm32"))]
-            let result = {
-                if get_extension(&filename).is_none() {
-                    let ext = file_type.get_default_extension();
-                    if !ext.is_empty() {
-                        let path = handle.path().with_extension(ext);
-                        std::fs::write(&path, &bytes)
+            if let Ok(bytes) = bytes {
+                // On native, if the filename had no extension, write to a path with the
+                // default extension appended so the file on disk gets the correct name.
+                #[cfg(not(target_arch = "wasm32"))]
+                let result = {
+                    if get_extension(&filename).is_none() {
+                        let ext = file_type.get_default_extension();
+                        if !ext.is_empty() {
+                            let path = handle.path().with_extension(ext);
+                            std::fs::write(&path, &bytes)
+                        } else {
+                            handle.write(&bytes).await
+                        }
                     } else {
                         handle.write(&bytes).await
                     }
-                } else {
-                    handle.write(&bytes).await
-                }
-            };
+                };
 
-            #[cfg(target_arch = "wasm32")]
-            let result = handle.write(&bytes).await;
+                #[cfg(target_arch = "wasm32")]
+                let result = handle.write(&bytes).await;
 
-            // Notify completion if a sender was provided
-            let error = result.err().map(|e| format!("Failed to write file: {}", e));
-            if let Some(sender) = sender {
-                let _ = sender.send(AsyncFrontendMessage::FileSaveCompleted {
-                    error,
-                    directory: save_dir,
-                    file_type,
-                });
-                if file_type == FileType::Savestate {
-                    let _ = sender.send(AsyncFrontendMessage::AutoPauseSignal {
-                        signal: AutoPauseSignal::SavestateCreateSaveDialog,
-                        active: false,
+                // Notify completion if a sender was provided
+                let error = result.err().map(|e| format!("Failed to write file: {}", e));
+                if let Some(sender) = sender {
+                    let _ = sender.send(AsyncFrontendMessage::FileSaveCompleted {
+                        error,
+                        directory: save_dir,
+                        file_type,
                     });
+                    if file_type == FileType::Savestate {
+                        let _ = sender.send(AsyncFrontendMessage::AutoPauseSignal {
+                            signal: AutoPauseSignal::SavestateCreateSaveDialog,
+                            active: false,
+                        });
+                    }
                 }
             }
         } else if let Some(sender) = sender

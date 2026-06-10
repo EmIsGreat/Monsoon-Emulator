@@ -7,10 +7,10 @@ use egui::{Context, Id, ViewportCommand};
 use monsoon_core::emulation::palette_util::RgbPalette;
 use monsoon_core::emulation::ppu_util::EmulatorFetchable;
 use monsoon_core::emulation::savestate;
-use monsoon_core::util::ToBytes;
+use monsoon_core::util::{SerializationError, ToBytes};
 
 use crate::frontend::egui::config::AutoPauseReason;
-use crate::frontend::egui::tiles::{Pane, add_pane_if_missing};
+use crate::frontend::egui::tiles::{add_pane_if_missing, Pane};
 use crate::frontend::egui_frontend::EguiApp;
 use crate::frontend::messages::{AsyncFrontendMessage, LoadedRom, SavestateLoadContext};
 use crate::frontend::savestates::{
@@ -19,7 +19,7 @@ use crate::frontend::savestates::{
 };
 use crate::frontend::storage::{Storage, StorageKey};
 use crate::frontend::util::{
-    SavestateLoadError, spawn_rom_picker, spawn_savestate_picker, try_parse_savestate,
+    spawn_rom_picker, spawn_savestate_picker, try_parse_savestate, SavestateLoadError,
 };
 use crate::frontend::{storage, util};
 use crate::messages::{FrontendMessage, SaveType};
@@ -775,7 +775,9 @@ fn find_matching_rom_in_directory(dir: &str, context: &SavestateLoadContext) -> 
 struct ExportableData(Vec<u8>);
 
 impl ToBytes for ExportableData {
-    fn to_bytes(&self, _format: Option<String>) -> Vec<u8> { self.0.clone() }
+    fn to_bytes(&self, _format: Option<String>) -> Result<Vec<u8>, SerializationError> {
+        Ok(self.0.clone())
+    }
 }
 
 /// List save entries for a game from storage asynchronously.

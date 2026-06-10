@@ -6,6 +6,7 @@ fn test_ppu_open_bus() {
     emu.load_rom((
         &String::from("./tests/nes-test-roms/ppu_open_bus/ppu_open_bus.nes"),
         false,
+        None,
     ));
     emu.power();
 

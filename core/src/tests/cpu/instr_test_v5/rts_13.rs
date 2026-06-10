@@ -6,6 +6,7 @@ fn test_13_rts() {
     emu.load_rom((
         &String::from("./tests/nes-test-roms/instr_test-v5/rom_singles/13-rts.nes"),
         false,
+        None,
     ));
     emu.reset();
     emu.run_until(6977013, RunOptions::default())

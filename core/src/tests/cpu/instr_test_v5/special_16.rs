@@ -6,6 +6,7 @@ fn test_16_special() {
     emu.load_rom((
         &String::from("./tests/nes-test-roms/instr_test-v5/rom_singles/16-special.nes"),
         false,
+        None,
     ));
     emu.reset();
     emu.run_until(6661509, RunOptions::default())

@@ -1,4 +1,4 @@
-use monsoon_core::util::ToBytes;
+use monsoon_core::util::{SerializationError, ToBytes};
 
 use crate::channel_emu::ChannelEmulator;
 use crate::frontend::egui::config::AppConfig;
@@ -8,7 +8,9 @@ use crate::frontend::util::{self, FileType};
 struct ExportableData(Vec<u8>);
 
 impl ToBytes for ExportableData {
-    fn to_bytes(&self, _format: Option<String>) -> Vec<u8> { self.0.clone() }
+    fn to_bytes(&self, _format: Option<String>) -> Result<Vec<u8>, SerializationError> {
+        Ok(self.0.clone())
+    }
 }
 
 const MAX_VISIBLE_LOG_CHARS: usize = 200_000;

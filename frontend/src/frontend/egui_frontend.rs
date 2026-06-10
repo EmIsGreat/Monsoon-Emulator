@@ -297,10 +297,13 @@ impl EguiApp {
 
                 // Write savestate using storage
                 let data = savestate.to_bytes(None);
-                util::spawn_async(async move {
-                    let storage = storage::get_storage();
-                    let _ = storage.set(&key, data).await;
-                });
+
+                if let Ok(data) = data {
+                    util::spawn_async(async move {
+                        let storage = storage::get_storage();
+                        let _ = storage.set(&key, data).await;
+                    });
+                }
 
                 // Clean up old autosaves asynchronously to avoid blocking the UI
                 Self::cleanup_old_autosaves_async(display_name);

@@ -3,7 +3,7 @@ use std::fmt::Write;
 use crate::emulation::board::CpuBus;
 use crate::emulation::cpu::{Cpu, OpType, Source, UNUSED_BIT};
 use crate::emulation::opcode;
-use crate::emulation::opcode::{OpCode, get_opcode};
+use crate::emulation::opcode::OpCode;
 use crate::util::add_to_low_byte;
 
 pub struct TraceLog {
@@ -32,9 +32,7 @@ impl TraceLog {
     }
 
     pub fn trace(&mut self, cpu: &Cpu, bus: &impl CpuBus, total_cycles: u128) {
-        let Some(current_opcode) = cpu.current_opcode else {
-            return;
-        };
+        let current_opcode = cpu.current_opcode;
 
         let cpu = CpuTraceState {
             program_counter: cpu.program_counter,
@@ -45,7 +43,6 @@ impl TraceLog {
             stack_pointer: cpu.stack_pointer,
             current_opcode: Some(current_opcode),
         };
-        let current_opcode = get_opcode(current_opcode.opcode).unwrap();
 
         let relevant_mem_start = cpu.program_counter.wrapping_sub(1);
         let relevant_mem_end =

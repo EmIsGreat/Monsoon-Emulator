@@ -74,7 +74,16 @@ impl RomDb {
 
 impl Default for RomDb {
     fn default() -> Self {
-        postcard::from_bytes::<RomDb>(include_bytes!(concat!(env!("OUT_DIR"), "/rom-info-db.bin")))
-            .expect("Error deserializing built-in rom db")
+        if let Ok(db) = postcard::from_bytes::<RomDb>(include_bytes!(concat!(
+            env!("OUT_DIR"),
+            "/rom-info-db.bin"
+        ))) {
+            db
+        } else {
+            RomDb {
+                version: "0".to_string(),
+                data: Default::default(),
+            }
+        }
     }
 }

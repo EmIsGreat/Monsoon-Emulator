@@ -6,6 +6,7 @@ fn test_ram_after_reset() {
     emu.load_rom((
         &String::from("./tests/nes-test-roms/cpu_reset/ram_after_reset.nes"),
         false,
+        None,
     ));
     emu.reset();
 
@@ -46,6 +47,7 @@ fn test_registers() {
     emu.load_rom((
         &String::from("./tests/nes-test-roms/cpu_reset/registers.nes"),
         false,
+        None,
     ));
     emu.reset();
 

@@ -14,13 +14,13 @@ use monsoon_core::emulation::nes::{Nes, NesConfig};
 use monsoon_core::emulation::palette_util::RgbColor;
 use monsoon_core::emulation::ppu_util::{TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH};
 use monsoon_core::emulation::rom::RomFile;
-use monsoon_core::emulation::screen_renderer::{ScreenRenderer, create_renderer};
+use monsoon_core::emulation::screen_renderer::{create_renderer, ScreenRenderer};
 
 use crate::cli::{
-    CliArgs, ExecutionConfig, ExecutionEngine, ExecutionResult, FpsConfig, MemoryDump, MemoryInit,
-    MemoryInitConfig, MemoryType, OutputWriter, SavestateConfig, StopReason, StreamingVideoEncoder,
-    VideoFormat, VideoResolution, apply_memory_init, apply_memory_init_config, is_ffmpeg_available,
-    parse_memory_range,
+    apply_memory_init, apply_memory_init_config, is_ffmpeg_available, parse_memory_range, CliArgs, ExecutionConfig, ExecutionEngine,
+    ExecutionResult, FpsConfig, MemoryDump, MemoryInit, MemoryInitConfig, MemoryType,
+    OutputWriter, SavestateConfig, StopReason, StreamingVideoEncoder, VideoFormat,
+    VideoResolution,
 };
 
 // =============================================================================
@@ -194,7 +194,7 @@ pub fn print_rom_info(rom_path: &Path) -> Result<(), String> {
     let path_str = rom_path.to_string_lossy().to_string();
     let mut data =
         std::fs::read(rom_path).map_err(|e| format!("Failed to read ROM file: {}", e))?;
-    let rom = RomFile::load(&mut data, Some(&path_str), true)
+    let rom = RomFile::load(&mut data, Some(&path_str), true, Some(&Nes::default()))
         .map_err(|e| format!("Failed to parse ROM: {}", e))?;
 
     println!("ROM Information:");

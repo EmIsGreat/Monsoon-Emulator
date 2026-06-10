@@ -45,8 +45,6 @@ pub fn draw_pattern_table(
                 let tile_data = pattern_data[i];
                 ui.label(format!("Rom address: ${:0X}", tile_data.address));
 
-                ui.label("Pattern:");
-
                 ui.horizontal(|ui| {
                     color_radio(
                         ui,

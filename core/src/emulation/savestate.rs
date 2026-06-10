@@ -59,7 +59,7 @@ pub struct CpuState {
     /// Queue of pending micro-operations.
     pub(crate) op_queue: OpQueue<8>,
     /// Opcode byte of the instruction currently being executed.
-    pub(crate) current_opcode: Option<u8>,
+    pub(crate) current_opcode: u8,
     /// CPU data bus / last-fetched data byte.
     pub(crate) data_bus: u8,
     /// Constant used by the ANE (XAA) illegal opcode.
@@ -107,7 +107,7 @@ impl From<&Cpu> for CpuState {
             hi: cpu.hi,
             current_op: cpu.current_op,
             op_queue: cpu.op_queue,
-            current_opcode: cpu.current_opcode.map(|c| c.opcode),
+            current_opcode: cpu.current_opcode.opcode,
             data_bus: cpu.data_bus,
             ane_constant: cpu.ane_constant,
             is_halted: cpu.is_halted,

@@ -6,6 +6,7 @@ fn test_09_ind_y() {
     emu.load_rom((
         &String::from("./tests/nes-test-roms/instr_test-v5/rom_singles/09-ind_y.nes"),
         false,
+        None,
     ));
     emu.reset();
     emu.run_until(58933325, RunOptions::default())
