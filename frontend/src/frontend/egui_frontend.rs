@@ -26,6 +26,7 @@ use egui::{Context, Id, Style, Ui, ViewportCommand, Visuals};
 use monsoon_core::emulation::nes::Nes;
 use monsoon_core::emulation::ppu_util::{EmulatorFetchable, PaletteData, TileData, TILE_COUNT};
 use monsoon_core::emulation::rom::ExpansionDevice;
+use monsoon_core::emulation::screen_renderer::create_renderer;
 use monsoon_core::emulation::savestate::SaveState;
 use monsoon_core::rom_db::RomDb;
 use monsoon_core::util::ToBytes;
@@ -46,12 +47,14 @@ use crate::frontend::egui::ui::{
     add_menu_bar, add_status_bar, render_save_browser, render_savestate_dialogs,
 };
 use crate::frontend::egui::wgpu_renderer::NesWgpuRenderer;
+use crate::frontend::egui::wgpu_screen_renderer::WGPU_RENDERER_ID;
 use crate::frontend::messages::{
     AsyncFrontendMessage, FrontendEvent, LoadedRom, SavestateLoadContext,
 };
 use crate::frontend::persistence::{get_egui_storage_path, load_config, PersistentConfig};
 use crate::frontend::storage::{Storage, StorageKey};
 use crate::frontend::{storage, util};
+use crate::get_all_renderers;
 use crate::messages::{EmulatorMessage, FrontendMessage, SaveType};
 
 /// Key used for storing egui_tiles tree state in egui's persistence
@@ -146,6 +149,12 @@ impl EguiApp {
                 .insert(Arc::clone(&renderer));
             renderer
         });
+        if wgpu_nes_renderer.is_none() && config.view_config.renderer.get_id() == WGPU_RENDERER_ID {
+            let palette = config.view_config.palette_rgb_data;
+            let mut fallback = create_renderer(Some("PaletteLookup"), get_all_renderers());
+            fallback.set_palette(palette);
+            config.view_config.renderer = fallback;
+        }
 
         Self {
             channel_emu,
@@ -165,6 +174,18 @@ impl EguiApp {
             was_focused: true,
             was_effectively_paused: false,
             wgpu_nes_renderer,
+        }
+    }
+
+    pub(crate) fn use_wgpu_renderer(&self) -> bool {
+        self.wgpu_nes_renderer.is_some() && self.config.view_config.renderer.get_id() == WGPU_RENDERER_ID
+    }
+
+    pub(crate) fn active_wgpu_renderer(&self) -> Option<&Arc<NesWgpuRenderer>> {
+        if self.use_wgpu_renderer() {
+            self.wgpu_nes_renderer.as_ref()
+        } else {
+            None
         }
     }
 
@@ -678,7 +699,7 @@ impl eframe::App for EguiApp {
                 &self.emu_textures,
                 &mut self.channel_emu,
                 &self.async_sender,
-                self.wgpu_nes_renderer.as_ref(),
+                self.active_wgpu_renderer(),
             );
             self.tree.ui(&mut behavior, ui);
             #[cfg(target_arch = "wasm32")]

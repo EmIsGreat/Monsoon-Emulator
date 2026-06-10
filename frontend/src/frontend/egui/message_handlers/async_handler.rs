@@ -341,7 +341,7 @@ impl EguiApp {
         // Re-render the current frame with the new palette (CPU path only;
         // the GPU path picks up the new palette automatically on the next
         // paint via WgpuFrameCallback::prepare).
-        if self.wgpu_nes_renderer.is_none() {
+        if !self.use_wgpu_renderer() {
             self.emu_textures
                 .update_emulator_texture(ctx, &mut self.config.view_config.renderer);
         }
@@ -532,7 +532,7 @@ impl EguiApp {
         // Re-render the current frame with the new palette (CPU path only;
         // the GPU path picks up the new palette automatically on the next
         // paint via WgpuFrameCallback::prepare).
-        if self.wgpu_nes_renderer.is_none() {
+        if !self.use_wgpu_renderer() {
             self.emu_textures
                 .update_emulator_texture(ctx, &mut self.config.view_config.renderer);
         }

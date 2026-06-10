@@ -120,7 +120,7 @@ impl Behavior<Pane> for TreeBehavior<'_> {
                 );
             }
             Pane::Options => {
-                render_options(ui, self.config);
+                render_options(ui, self.config, self.wgpu_nes_renderer.is_some());
             }
             Pane::PatternTables => {
                 render_pattern_table(ui, self.config, self.emu_textures, self.async_sender);

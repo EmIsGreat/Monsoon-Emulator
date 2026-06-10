@@ -37,3 +37,4 @@ pub mod textures;
 pub mod tiles;
 pub mod ui;
 pub mod wgpu_renderer;
+pub mod wgpu_screen_renderer;

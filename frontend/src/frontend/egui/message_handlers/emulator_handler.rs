@@ -50,7 +50,7 @@ impl EguiApp {
                 // When the wgpu renderer is active, the GPU upload happens
                 // lazily in WgpuFrameCallback::prepare() during the paint
                 // phase. Skip the CPU-side texture upload in that case.
-                if self.wgpu_nes_renderer.is_none() {
+                if !self.use_wgpu_renderer() {
                     self.emu_textures
                         .update_emulator_texture(ctx, &mut self.config.view_config.renderer);
                 }

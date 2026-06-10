@@ -3,19 +3,20 @@
 use monsoon_core::emulation::screen_renderer::ScreenRenderer;
 
 use crate::frontend::egui::config::{AppConfig, AppSpeed, DebugSpeed};
+use crate::frontend::egui::wgpu_screen_renderer::WGPU_RENDERER_ID;
 use crate::get_all_renderers;
 
 /// Render the options panel
-pub fn render_options(ui: &mut egui::Ui, config: &mut AppConfig) {
+pub fn render_options(ui: &mut egui::Ui, config: &mut AppConfig, wgpu_supported: bool) {
     egui::ScrollArea::vertical().show(ui, |ui| {
         render_speed_settings(ui, config);
-        render_renderer_settings(ui, config);
+        render_renderer_settings(ui, config, wgpu_supported);
         render_debug_overlay_settings(ui, config);
     });
 }
 
 /// Render renderer selection section
-fn render_renderer_settings(ui: &mut egui::Ui, config: &mut AppConfig) {
+fn render_renderer_settings(ui: &mut egui::Ui, config: &mut AppConfig, wgpu_supported: bool) {
     ui.collapsing("Renderer", |ui| {
         // Display the renderer type name
         ui.label(format!(
@@ -27,16 +28,18 @@ fn render_renderer_settings(ui: &mut egui::Ui, config: &mut AppConfig) {
 
         // Renderer selection dropdown
         ui.label("Select Renderer:");
-        let current_id = config.view_config.renderer.get_display_name().to_string();
+        let current_id = config.view_config.renderer.get_id().to_string();
         egui::ComboBox::from_id_salt("renderer_selector")
             .selected_text(config.view_config.renderer.get_display_name())
             .show_ui(ui, |ui| {
                 for variant in get_all_renderers() {
                     let selected = variant.key == current_id;
-                    if ui
-                        .selectable_label(selected, variant.display_name)
-                        .clicked()
-                    {
+                    let is_available = wgpu_supported || variant.key != WGPU_RENDERER_ID;
+                    let response = ui.add_enabled(
+                        is_available,
+                        egui::Button::selectable(selected, variant.display_name),
+                    );
+                    if response.clicked() {
                         // Transfer the current palette to the new renderer
                         // Note: This copies the palette (~1.5KB), but this is an infrequent UI
                         // operation
@@ -47,6 +50,9 @@ fn render_renderer_settings(ui: &mut egui::Ui, config: &mut AppConfig) {
                     }
                 }
             });
+        if !wgpu_supported {
+            ui.small("WGPU renderer unavailable on this backend.");
+        }
 
         ui.separator();
 
