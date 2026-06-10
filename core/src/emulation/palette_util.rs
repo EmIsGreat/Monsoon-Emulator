@@ -10,7 +10,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::util::{compute_hash, HashError, Hashable, SerializationError, ToBytes};
+use crate::util::{HashError, Hashable, SerializationError, ToBytes, compute_hash};
 
 /// An RGB color with 8 bits per channel.
 ///

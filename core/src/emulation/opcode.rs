@@ -1114,7 +1114,7 @@ pub fn init() -> [OpCode; 256] {
         ),
     ];
 
-    opcodes.sort_by(|op, other| op.opcode.cmp(&other.opcode));
+    opcodes.sort_by_key(|op| op.opcode);
 
     opcodes
 }

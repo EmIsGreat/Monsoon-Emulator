@@ -500,6 +500,10 @@ impl Binding {
 
     /// Format as a short string for display.
     pub fn get_string_rep(&self) -> String {
+        if self.variant == BindVariant::Unbound {
+            return "None".to_string();
+        }
+
         let mut items = Vec::new();
         if self.modifiers.ctrl {
             items.push("Ctrl");
@@ -634,7 +638,7 @@ pub trait HotkeyBinding {
     const ACCEPT_MOUSE: bool;
 
     fn new(variant: BindVariant, modifiers: Modifiers, action: OnKeyAction) -> Self;
-    fn get(&self) -> Option<&Binding>;
+    fn get(&self) -> &Binding;
     fn as_string(&self) -> String;
     fn set(&mut self, variant: BindVariant, modifiers: Modifiers, action: OnKeyAction);
     fn clear(&mut self);
@@ -653,7 +657,7 @@ impl HotkeyBinding for Binding {
         }
     }
 
-    fn get(&self) -> Option<&Binding> { Some(self) }
+    fn get(&self) -> &Binding { self }
 
     fn as_string(&self) -> String { self.get_string_rep() }
 
@@ -677,44 +681,6 @@ impl HotkeyBinding for Binding {
             TriggerType::Continuous => {
                 self.down_with_modifier_matching(input, allow_extra_modifiers)
             }
-        }
-    }
-}
-
-impl<B> HotkeyBinding for Option<B>
-where
-    B: HotkeyBinding,
-{
-    const ACCEPT_KEYBOARD: bool = B::ACCEPT_KEYBOARD;
-    const ACCEPT_MOUSE: bool = B::ACCEPT_MOUSE;
-
-    fn new(variant: BindVariant, modifiers: Modifiers, action: OnKeyAction) -> Self {
-        Some(B::new(variant, modifiers, action))
-    }
-
-    fn get(&self) -> Option<&Binding> { self.as_ref()?.get() }
-
-    fn as_string(&self) -> String {
-        match self {
-            None => "Not Bound".to_string(),
-            Some(b) => b.as_string(),
-        }
-    }
-
-    fn set(&mut self, variant: BindVariant, modifiers: Modifiers, action: OnKeyAction) {
-        if let Some(this) = self {
-            this.set(variant, modifiers, action);
-        } else {
-            *self = Self::new(variant, modifiers, action);
-        }
-    }
-
-    fn clear(&mut self) { *self = None; }
-
-    fn active(&self, input: &InputState) -> bool {
-        match self {
-            Some(b) => b.active(input),
-            None => false,
         }
     }
 }
@@ -819,11 +785,7 @@ where
                     });
                     let mouse = if B::ACCEPT_MOUSE { mouse } else { None };
 
-                    let action = self
-                        .binding
-                        .get()
-                        .expect("Binding does not have associated Action")
-                        .action;
+                    let action = self.binding.get().action;
 
                     if let Some((key, mods)) = keyboard.or(mouse) {
                         let (key, mods) =
@@ -895,9 +857,8 @@ where
                     }
                 }
             }
-        } else if let Some(bind) = self.binding.get()
-            && self.tooltip.unwrap_or(true)
-        {
+        } else if self.tooltip.unwrap_or(true) {
+            let bind = self.binding.get();
             response = response.on_hover_text(bind.get_string_rep());
         }
 
@@ -906,11 +867,7 @@ where
             ui.painter()
                 .rect_filled(rect, visuals.corner_radius, visuals.bg_fill);
 
-            let text = self
-                .binding
-                .get()
-                .map(|hk| hk.get_string_rep())
-                .unwrap_or_else(|| "None".into());
+            let text = self.binding.get().get_string_rep();
 
             ui.painter().text(
                 rect.center() + vec2(0.0, 1.0),

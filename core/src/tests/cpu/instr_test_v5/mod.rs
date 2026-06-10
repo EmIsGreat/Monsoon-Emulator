@@ -36,7 +36,7 @@ use crate::emulation::nes::{Nes, RunOptions};
 #[test]
 fn test_official_only() {
     let mut emu = Nes::default();
-  emu.load_rom((
+    emu.load_rom((
         &String::from("./tests/nes-test-roms/instr_test-v5/official_only.nes"),
         false,
         None,

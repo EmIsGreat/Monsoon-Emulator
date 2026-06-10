@@ -495,9 +495,12 @@ pub fn rom_display_name(name: &str, sha256: &[u8; 32]) -> String {
 pub fn short_hash_hex(hash: &[u8; 32]) -> String {
     use std::fmt::Write;
     let mut s = String::with_capacity(12);
+
+    #[allow(clippy::unwrap_used)]
     for b in &hash[..6] {
         write!(&mut s, "{:02x}", b).unwrap();
     }
+
     s
 }
 

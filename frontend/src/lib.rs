@@ -3,10 +3,10 @@
 #![deny(clippy::panic)]
 #![deny(unused_must_use)]
 
-use monsoon_core::emulation::screen_renderer::ScreenRenderer;
-use monsoon_core::emulation::screen_renderer::RendererRegistration;
 use monsoon_core::declare_renderers;
-use monsoon_core::emulation::screen_renderer::NoneRenderer;
+use monsoon_core::emulation::screen_renderer::{
+    NoneRenderer, RendererRegistration, ScreenRenderer,
+};
 use monsoon_default_renderers::LookupPaletteRenderer;
 
 pub mod channel_emu;

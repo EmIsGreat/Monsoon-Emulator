@@ -44,7 +44,10 @@ impl DebugOverlay for TileGridOverlay {
         for col in 1..cols {
             let x = ctx.rect.left() + (col as f32 * TILE_SIZE as f32 * ctx.pixel_size.x);
             ctx.painter.line_segment(
-                [egui::pos2(x, ctx.rect.top()), egui::pos2(x, ctx.rect.bottom())],
+                [
+                    egui::pos2(x, ctx.rect.top()),
+                    egui::pos2(x, ctx.rect.bottom()),
+                ],
                 stroke,
             );
         }
@@ -52,7 +55,10 @@ impl DebugOverlay for TileGridOverlay {
         for row in 1..rows {
             let y = ctx.rect.top() + (row as f32 * TILE_SIZE as f32 * ctx.pixel_size.y);
             ctx.painter.line_segment(
-                [egui::pos2(ctx.rect.left(), y), egui::pos2(ctx.rect.right(), y)],
+                [
+                    egui::pos2(ctx.rect.left(), y),
+                    egui::pos2(ctx.rect.right(), y),
+                ],
                 stroke,
             );
         }
@@ -95,7 +101,8 @@ impl DebugOverlay for ScanlineDotOverlay {
             ctx.painter.rect_filled(dot_bar_rect, 0.0, dot_bar_color);
         }
 
-        if position.dot < TOTAL_OUTPUT_WIDTH as u16 && position.scanline < TOTAL_OUTPUT_HEIGHT as u16
+        if position.dot < TOTAL_OUTPUT_WIDTH as u16
+            && position.scanline < TOTAL_OUTPUT_HEIGHT as u16
         {
             let min = egui::pos2(
                 ctx.rect.left() + (position.dot as f32 * ctx.pixel_size.x),
@@ -123,11 +130,10 @@ pub fn render_debug_overlays(
         rect.width() / TOTAL_OUTPUT_WIDTH as f32,
         rect.height() / TOTAL_OUTPUT_HEIGHT as f32,
     );
-    let ppu_position =
-        emu_textures
-            .register_data
-            .as_ref()
-            .and_then(|data| ppu_position_from_registers(&data.ppu));
+    let ppu_position = emu_textures
+        .register_data
+        .as_ref()
+        .and_then(|data| ppu_position_from_registers(&data.ppu));
 
     let ctx = OverlayContext {
         rect,
@@ -150,7 +156,10 @@ pub fn render_debug_overlays(
 fn ppu_position_from_registers(registers: &RegisterMap) -> Option<PpuPosition> {
     let scanline = register_u16(registers, "scanline")?;
     let dot = register_u16(registers, "dot")?;
-    Some(PpuPosition { scanline, dot })
+    Some(PpuPosition {
+        scanline,
+        dot,
+    })
 }
 
 fn register_u16(registers: &RegisterMap, key: &str) -> Option<u16> {

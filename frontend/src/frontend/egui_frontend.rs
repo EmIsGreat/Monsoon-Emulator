@@ -19,12 +19,11 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
 
-
 use crossbeam_channel::{Receiver, Sender};
 use eframe::{AppCreator, CreationContext, Frame};
 use egui::{Context, Id, Style, Ui, ViewportCommand, Visuals};
 use monsoon_core::emulation::nes::Nes;
-use monsoon_core::emulation::ppu_util::{EmulatorFetchable, PaletteData, TileData, TILE_COUNT};
+use monsoon_core::emulation::ppu_util::{EmulatorFetchable, PaletteData, TILE_COUNT, TileData};
 use monsoon_core::emulation::rom::ExpansionDevice;
 use monsoon_core::emulation::savestate::SaveState;
 use monsoon_core::rom_db::RomDb;
@@ -40,7 +39,7 @@ use crate::frontend::egui::message_handlers::async_handler::extract_timestamp;
 use crate::frontend::egui::message_handlers::{AsyncMessageHandler, EmulatorMessageHandler};
 use crate::frontend::egui::textures::EmuTextures;
 use crate::frontend::egui::tiles::{
-    compute_required_fetches_from_tree, create_tree, find_pane, Pane, TreeBehavior,
+    Pane, TreeBehavior, compute_required_fetches_from_tree, create_tree, find_pane,
 };
 use crate::frontend::egui::ui::{
     add_menu_bar, add_status_bar, render_save_browser, render_savestate_dialogs,
@@ -49,7 +48,7 @@ use crate::frontend::egui::wgpu_renderer::NesWgpuRenderer;
 use crate::frontend::messages::{
     AsyncFrontendMessage, FrontendEvent, LoadedRom, SavestateLoadContext,
 };
-use crate::frontend::persistence::{get_egui_storage_path, load_config, PersistentConfig};
+use crate::frontend::persistence::{PersistentConfig, get_egui_storage_path, load_config};
 use crate::frontend::storage::{Storage, StorageKey};
 use crate::frontend::{storage, util};
 use crate::messages::{EmulatorMessage, FrontendMessage, SaveType};
@@ -578,7 +577,10 @@ impl EguiApp {
             // Update timestamp first to prevent overlapping save operations
             self.last_autosave = Instant::now();
             let savestate = self.channel_emu.nes.save_state();
-            self.create_auto_save(Box::new(savestate.unwrap()));
+
+            if let Some(savestate) = savestate {
+                self.create_auto_save(Box::new(savestate));
+            }
         }
     }
 
@@ -596,7 +598,10 @@ impl EguiApp {
             // Update timestamp first to prevent overlapping save operations
             self.last_autosave = Instant::now();
             let savestate = self.channel_emu.nes.save_state();
-            self.create_auto_save(Box::new(savestate.unwrap()));
+
+            if let Some(savestate) = savestate {
+                self.create_auto_save(Box::new(savestate));
+            }
         }
 
         self.was_focused = is_focused;
@@ -767,13 +772,13 @@ fn common_setup(rom: Option<PathBuf>) -> SetupResponse {
         let loaded_rom = rom.as_ref().and_then(|path| {
             let data = std::fs::read(path).ok()?;
             let name = path.file_name()?.to_string_lossy().to_string();
+
             let directory = path
                 .parent()
                 .map(|p| p.to_string_lossy().to_string())
-                .map(|f| StorageKey::from(&f))
-                .unwrap();
+                .map(|f| StorageKey::from(&f));
 
-            Some(LoadedRom {
+            directory.map(|directory| LoadedRom {
                 data,
                 name,
                 directory,

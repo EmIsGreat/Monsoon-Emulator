@@ -358,6 +358,7 @@ pub fn apply_memory_init_config(emu: &mut Nes, config: &MemoryInitConfig) {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
 

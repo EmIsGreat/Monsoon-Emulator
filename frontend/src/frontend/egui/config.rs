@@ -11,13 +11,13 @@ use serde::{Deserialize, Serialize};
 use crate::frontend::egui::keybindings::{
     BindVariant, Binding, HotkeyBinding, ModifierKey, OnKeyAction,
 };
-use crate::get_all_renderers;
 use crate::frontend::messages::LoadedRom;
 use crate::frontend::savestates::{
     ChecksumMismatchDialogState, ErrorDialogState, MatchingRomDialogState, RomSelectionDialogState,
     SaveBrowserState,
 };
 use crate::frontend::storage::StorageKey;
+use crate::get_all_renderers;
 
 /// Debug overlay configuration for the main emulator output.
 #[derive(Debug, Copy, Clone, Default, Serialize, Deserialize)]

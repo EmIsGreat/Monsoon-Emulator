@@ -14,13 +14,14 @@ use monsoon_core::emulation::nes::{Nes, NesConfig};
 use monsoon_core::emulation::palette_util::RgbColor;
 use monsoon_core::emulation::ppu_util::{TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH};
 use monsoon_core::emulation::rom::RomFile;
-use monsoon_core::emulation::screen_renderer::{create_renderer, ScreenRenderer};
+use monsoon_core::emulation::screen_renderer::{ScreenRenderer, create_renderer};
+use monsoon_core::util::format_bytes_human_readable;
 
 use crate::cli::{
-    apply_memory_init, apply_memory_init_config, is_ffmpeg_available, parse_memory_range, CliArgs, ExecutionConfig, ExecutionEngine,
-    ExecutionResult, FpsConfig, MemoryDump, MemoryInit, MemoryInitConfig, MemoryType,
-    OutputWriter, SavestateConfig, StopReason, StreamingVideoEncoder, VideoFormat,
-    VideoResolution,
+    CliArgs, ExecutionConfig, ExecutionEngine, ExecutionResult, FpsConfig, MemoryDump, MemoryInit,
+    MemoryInitConfig, MemoryType, OutputWriter, SavestateConfig, StopReason, StreamingVideoEncoder,
+    VideoFormat, VideoResolution, apply_memory_init, apply_memory_init_config, is_ffmpeg_available,
+    parse_memory_range,
 };
 
 // =============================================================================
@@ -170,23 +171,6 @@ fn handle_rom_info(args: &CliArgs) -> Result<(), String> {
         .as_ref()
         .ok_or("--rom-info requires --rom to be specified")?;
     print_rom_info(rom_path)
-}
-
-fn format_bytes_human_readable(bytes: u32) -> String {
-    const UNITS: [&str; 3] = ["Bytes", "KB", "MB"];
-
-    let mut value = bytes as f64;
-    let mut unit_idx = 0usize;
-    while value >= 1024.0 && unit_idx < UNITS.len() - 1 {
-        value /= 1024.0;
-        unit_idx += 1;
-    }
-
-    if unit_idx == 0 {
-        format!("{bytes} {}", UNITS[unit_idx])
-    } else {
-        format!("{value:.2} {} ({bytes} Bytes)", UNITS[unit_idx])
-    }
 }
 
 /// Print ROM information to stdout.
@@ -367,7 +351,11 @@ fn run_with_streaming_video(
     renderer: &mut Box<dyn ScreenRenderer>,
     args: &CliArgs,
 ) -> Result<ExecutionResult, String> {
-    let video_path = args.video.video_path.as_ref().unwrap();
+    let video_path = if let Some(video_path) = args.video.video_path.as_ref() {
+        video_path
+    } else {
+        return Err("No Video Path specified".to_string());
+    };
 
     // Check if format requires FFmpeg and warn if not available
     if args.video.video_format == VideoFormat::Mp4 && !is_ffmpeg_available() {
@@ -378,9 +366,15 @@ fn run_with_streaming_video(
         );
     }
 
+    let video_scale = if let Some(video_scale) = args.video.video_scale.as_ref() {
+        video_scale
+    } else {
+        return Err("No Video Path specified".to_string());
+    };
+
     // Parse video resolution
-    let resolution = VideoResolution::parse(args.video.video_scale.as_ref().unwrap())
-        .map_err(|e| format!("Invalid video scale: {}", e))?;
+    let resolution =
+        VideoResolution::parse(video_scale).map_err(|e| format!("Invalid video scale: {}", e))?;
 
     // Parse FPS configuration
     let fps_config = FpsConfig::parse(&args.video.video_fps, args.video.video_mode)
@@ -542,7 +536,12 @@ pub fn save_screenshot(
         }
 
         // Use the last frame for screenshot
-        let frame = frames.last().unwrap();
+        let frame = if let Some(frame) = frames.last() {
+            frame
+        } else {
+            return Err("Can't screenshot as there is no frame produced yet".to_string());
+        };
+
         let rgb_frame = renderer.buffer_to_image(frame);
 
         if !args.quiet {
@@ -593,8 +592,14 @@ pub fn save_video(
             return Ok(());
         }
 
+        let video_scale = if let Some(video_scale) = args.video.video_scale.as_ref() {
+            video_scale
+        } else {
+            return Err("No Video Path specified".to_string());
+        };
+
         // Parse video resolution
-        let resolution = VideoResolution::parse(&args.video.video_scale.clone().unwrap())
+        let resolution = VideoResolution::parse(video_scale)
             .map_err(|e| format!("Invalid video scale: {}", e))?;
 
         // Parse FPS configuration

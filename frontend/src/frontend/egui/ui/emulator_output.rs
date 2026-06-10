@@ -48,8 +48,7 @@ pub fn render_emulator_output(
     let available_for_image = egui::vec2(available.x, available_height);
     let logical_width = TOTAL_OUTPUT_WIDTH as f32 * NES_PIXEL_ASPECT_RATIO;
     let logical_height = TOTAL_OUTPUT_HEIGHT as f32;
-    let scale = (available_for_image.x / logical_width)
-        .min(available_for_image.y / logical_height);
+    let scale = (available_for_image.x / logical_width).min(available_for_image.y / logical_height);
     let display_width = logical_width * scale;
     let display_height = logical_height * scale;
 

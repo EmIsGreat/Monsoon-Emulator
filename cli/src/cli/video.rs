@@ -1062,6 +1062,8 @@ impl StreamingVideoEncoder {
 // =============================================================================
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
+#[allow(clippy::panic)]
 mod tests {
     use super::*;
 

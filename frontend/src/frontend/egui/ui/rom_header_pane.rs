@@ -1,21 +1,6 @@
+use monsoon_core::util::format_bytes_human_readable;
+
 use crate::frontend::egui::config::AppConfig;
-
-fn format_bytes_human_readable(bytes: u32) -> String {
-    const UNITS: [&str; 3] = ["Bytes", "KB", "MB"];
-
-    let mut value = bytes as f64;
-    let mut unit_idx = 0usize;
-    while value >= 1024.0 && unit_idx < UNITS.len() - 1 {
-        value /= 1024.0;
-        unit_idx += 1;
-    }
-
-    if unit_idx == 0 {
-        format!("{bytes} {}", UNITS[unit_idx])
-    } else {
-        format!("{value:.2} {} ({bytes} Bytes)", UNITS[unit_idx])
-    }
-}
 
 pub fn render_rom_header(ui: &mut egui::Ui, config: &AppConfig) {
     if let Some((rom, loaded_rom)) = &config.console_config.loaded_rom {

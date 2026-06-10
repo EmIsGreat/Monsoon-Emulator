@@ -241,7 +241,11 @@ impl<'a> Widget for HotKeyButton<'a> {
 
         let left_text = self.action.get_display_name();
         let bindings = &self.config.keybindings.keybindings;
-        let right_text = bindings.get(&self.action).cloned().as_string();
+        let right_text = if let Some(binding) = bindings.get(&self.action) {
+            binding.as_string()
+        } else {
+            "None".to_string()
+        };
 
         let font_id = egui::TextStyle::Button.resolve(ui.style());
         let text_color = ui.visuals().text_color();

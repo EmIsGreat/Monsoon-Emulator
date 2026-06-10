@@ -8,7 +8,7 @@ use std::fmt::{Display, Formatter};
 
 use crate::emulation::cpu::UPPER_BYTE;
 use crate::emulation::mem::Memory;
-use crate::emulation::savestate::{SaveState, BINARY_FORMAT_VERSION, JSON_FORMAT_VERSION, MAGIC};
+use crate::emulation::savestate::{BINARY_FORMAT_VERSION, JSON_FORMAT_VERSION, MAGIC, SaveState};
 /// Returns `true` if adding a signed `offset` to `base` crosses a 256-byte page
 /// boundary.
 ///
@@ -151,6 +151,23 @@ pub(crate) fn compute_hash(data: &[u8]) -> u64 {
         hash = hash.wrapping_mul(FNV_PRIME);
     }
     hash
+}
+
+pub fn format_bytes_human_readable(bytes: u32) -> String {
+    const UNITS: [&str; 3] = ["Bytes", "KB", "MB"];
+
+    let mut value = bytes as f64;
+    let mut unit_idx = 0usize;
+    while value >= 1024.0 && unit_idx < UNITS.len() - 1 {
+        value /= 1024.0;
+        unit_idx += 1;
+    }
+
+    if unit_idx == 0 {
+        format!("{bytes} {}", UNITS[unit_idx])
+    } else {
+        format!("{value:.2} {} ({bytes} Bytes)", UNITS[unit_idx])
+    }
 }
 
 #[macro_export]
