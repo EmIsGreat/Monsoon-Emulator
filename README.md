@@ -161,8 +161,8 @@ let mut renderer = LookupPaletteRenderer::new();
 
 // pixel_buffer from Nes::get_pixel_buffer()
 # let pixel_buffer: &[u16] = &[];
-let rgb_pixels = renderer.buffer_to_image(pixel_buffer);
-// rgb_pixels is a &[RgbColor] — each with .r, .g, .b fields (u8)
+let rgb_pixels = renderer.process_frame(pixel_buffer).unwrap();
+// rgb_pixels is a &[RgbColor] (unwrapped from Option) — each with .r, .g, .b fields (u8)
 ```
 
 ### Save States
@@ -212,14 +212,14 @@ impl Debug for MyRenderer {
 }
 
 impl ScreenRenderer for MyRenderer {
-    fn buffer_to_image(&mut self, buffer: &[u16]) -> &[RgbColor] {
+    fn process_frame(&mut self, buffer: &[u16]) -> Option<&[RgbColor]> {
         self.buffer.clear();
         for &index in buffer {
             let color = index as usize & 0x3F;
             let emphasis = (index as usize >> 6) & 0x7;
             self.buffer.push(self.palette.colors[emphasis][color]);
         }
-        &self.buffer
+        Some(&self.buffer)
     }
 
     fn set_palette(&mut self, palette: RgbPalette) {

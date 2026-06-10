@@ -429,7 +429,7 @@ fn run_with_streaming_video(
     // Handle screenshot in streaming mode (save last frame)
     if args.video.screenshot.is_some() {
         let last_frame = engine.emulator().get_pixel_buffer();
-        let rgb_frame = renderer.buffer_to_image(last_frame);
+        let rgb_frame = renderer.process_frame(last_frame).unwrap();
         save_single_screenshot(rgb_frame, args)?;
     }
 
@@ -543,7 +543,7 @@ pub fn save_screenshot(
 
         // Use the last frame for screenshot
         let frame = frames.last().unwrap();
-        let rgb_frame = renderer.buffer_to_image(frame);
+        let rgb_frame = renderer.process_frame(frame).unwrap();
 
         if !args.quiet {
             eprintln!("Saving screenshot to {}...", screenshot_path.display());
@@ -633,7 +633,7 @@ pub fn save_video(
         .map_err(|e| format!("Failed to create video encoder: {}", e))?;
 
         for frame in frames {
-            let rgb_frame = renderer.buffer_to_image(frame);
+            let rgb_frame = renderer.process_frame(frame).unwrap();
             encoder.write_frame(rgb_frame).map_err(|e| e.to_string())?;
         }
 

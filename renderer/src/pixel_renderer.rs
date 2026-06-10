@@ -67,7 +67,7 @@ impl From<RgbPalette> for FlatPalette {
 ///
 /// // Convert a pixel buffer to RGB
 /// # let pixel_buffer: &[u16] = &[];
-/// let rgb = renderer.buffer_to_image(pixel_buffer);
+/// let rgb = renderer.process_frame(pixel_buffer);
 /// ```
 #[derive(Clone, Serialize, Deserialize)]
 pub struct LookupPaletteRenderer {
@@ -96,7 +96,7 @@ impl Debug for LookupPaletteRenderer {
 }
 
 impl ScreenRenderer for LookupPaletteRenderer {
-    fn buffer_to_image(&mut self, buffer: &[u16]) -> &[RgbColor] {
+    fn process_frame(&mut self, buffer: &[u16]) -> Option<&[RgbColor]> {
         if self.image.len() != buffer.len() {
             self.image = Vec::with_capacity(buffer.len());
         };
@@ -107,7 +107,7 @@ impl ScreenRenderer for LookupPaletteRenderer {
                 .push(self.palette.palette[(*x as usize) & PALETTE_INDEX_MASK])
         }
 
-        &self.image
+        Some(&self.image)
     }
 
     fn set_palette(&mut self, rgb_palette: RgbPalette) { self.palette = rgb_palette.into(); }

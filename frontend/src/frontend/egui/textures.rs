@@ -70,7 +70,7 @@ impl EmuTextures {
     /// renderer implementation.
     ///
     /// # Note
-    /// Takes a mutable reference to the renderer because `buffer_to_image`
+    /// Takes a mutable reference to the renderer because `process_frame`
     /// requires `&mut self` - renderers may use internal buffers to avoid
     /// reallocating the output image on each frame.
     pub fn update_emulator_texture(
@@ -82,9 +82,9 @@ impl EmuTextures {
             let img_width = renderer.get_width();
             let img_height = renderer.get_height();
 
-            // Use the renderer's buffer_to_image method
-            let rgb_frame = renderer.buffer_to_image(&self.front_buffer);
-            let image = Self::rgb_to_color_image(rgb_frame, img_width, img_height);
+            // Use the renderer's process_frame method
+            let rgb_frame = renderer.process_frame(&self.front_buffer);
+            if let Some(rgb_frame) = rgb_frame { let image = Self::rgb_to_color_image(rgb_frame, img_width, img_height);
 
             let texture = ctx.load_texture(
                 "emulator_output",
@@ -95,7 +95,7 @@ impl EmuTextures {
                     ..Default::default()
                 },
             );
-            self.frame_texture = Some(texture);
+            self.frame_texture = Some(texture); }
         }
     }
 

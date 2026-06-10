@@ -25,9 +25,9 @@
 //! }
 //!
 //! impl ScreenRenderer for MyRenderer {
-//!     fn buffer_to_image(&mut self, buffer: &[u16]) -> &[RgbColor] {
+//!     fn process_frame(&mut self, buffer: &[u16]) -> Option<&[RgbColor]> {
 //!         // Convert palette indices to RGB colors
-//!         return &self.buffer;
+//!         return Some(&self.buffer);
 //!     }
 //!
 //!     fn set_palette(&mut self, palette: RgbPalette) { /* ... */
@@ -63,7 +63,7 @@ pub trait ScreenRenderer: Debug {
     /// have the same length as `buffer`.
     ///
     /// The returned reference is valid until the next call to this method.
-    fn buffer_to_image(&mut self, buffer: &[u16]) -> &[RgbColor];
+    fn process_frame(&mut self, buffer: &[u16]) -> Option<&[RgbColor]>;
 
     /// Updates the palette used for color conversion.
     ///
@@ -192,7 +192,7 @@ impl Debug for NoneRenderer {
 }
 
 impl ScreenRenderer for NoneRenderer {
-    fn buffer_to_image(&mut self, _: &[u16]) -> &[RgbColor] { &self.image }
+    fn process_frame(&mut self, _: &[u16]) -> Option<&[RgbColor]> { Some(&self.image) }
 
     fn set_palette(&mut self, _: RgbPalette) {}
 

@@ -23,8 +23,8 @@ let mut renderer = LookupPaletteRenderer::new();
 
 // pixel_buffer is a &[u16] from Nes::get_pixel_buffer()
 # let pixel_buffer: &[u16] = &[];
-let rgb_pixels = renderer.buffer_to_image(pixel_buffer);
-// rgb_pixels is a &[RgbColor] — each with .r, .g, .b fields (u8)
+let rgb_pixels = renderer.process_frame(pixel_buffer).unwrap();
+// rgb_pixels is a &[RgbColor] (unwrapped from Option) — each with .r, .g, .b fields (u8)
 ```
 
 ## License
