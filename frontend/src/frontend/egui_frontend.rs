@@ -181,14 +181,6 @@ impl EguiApp {
         self.wgpu_nes_renderer.is_some() && self.config.view_config.renderer.get_id() == WGPU_RENDERER_ID
     }
 
-    pub(crate) fn active_wgpu_renderer(&self) -> Option<&Arc<NesWgpuRenderer>> {
-        if self.use_wgpu_renderer() {
-            self.wgpu_nes_renderer.as_ref()
-        } else {
-            None
-        }
-    }
-
     /// Calculate the frame budget based on current speed settings
     fn get_frame_budget(&self) -> Duration {
         let speed = self
@@ -694,12 +686,17 @@ impl eframe::App for EguiApp {
         #[cfg(target_arch = "wasm32")]
         let mut keybindings_changed = false;
         egui::CentralPanel::default().show_inside(ui, |ui| {
+            let active_wgpu_renderer = if self.use_wgpu_renderer() {
+                self.wgpu_nes_renderer.as_ref()
+            } else {
+                None
+            };
             let mut behavior = TreeBehavior::new(
                 &mut self.config,
                 &self.emu_textures,
                 &mut self.channel_emu,
                 &self.async_sender,
-                self.active_wgpu_renderer(),
+                active_wgpu_renderer,
             );
             self.tree.ui(&mut behavior, ui);
             #[cfg(target_arch = "wasm32")]

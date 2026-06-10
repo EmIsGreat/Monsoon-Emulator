@@ -8,7 +8,7 @@ use monsoon_core::emulation::screen_renderer::RendererRegistration;
 use monsoon_core::declare_renderers;
 use monsoon_core::emulation::screen_renderer::NoneRenderer;
 use monsoon_default_renderers::LookupPaletteRenderer;
-use crate::frontend::egui::wgpu_screen_renderer::WgpuScreenRenderer;
+use crate::frontend::WgpuScreenRenderer;
 
 pub mod channel_emu;
 pub mod frontend;
