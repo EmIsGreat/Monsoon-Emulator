@@ -1,6 +1,7 @@
 use std::convert::Into;
 use std::ops::RangeInclusive;
 
+use crate::emulation::apu::Apu;
 use crate::emulation::cpu::{Cpu, INTERNAL_RAM_SIZE};
 use crate::emulation::mapper::{
     CpuReadResult, CpuWriteResult, Mapper, MapperLike, NoMapper, PpuReadResult, PpuWriteResult,
@@ -9,8 +10,8 @@ use crate::emulation::mem::palette_ram::PaletteRam;
 use crate::emulation::mem::{Memory, OpenBus};
 use crate::emulation::peripherals::{Peripheral, PeripheralDevice};
 use crate::emulation::ppu::{
-    OPEN_BUS_DECAY_DELAY, PALETTE_RAM_END_ADDRESS, PALETTE_RAM_SIZE, PALETTE_RAM_START_ADDRESS,
-    Ppu, VRAM_SIZE,
+    Ppu, OPEN_BUS_DECAY_DELAY, PALETTE_RAM_END_ADDRESS, PALETTE_RAM_SIZE,
+    PALETTE_RAM_START_ADDRESS, VRAM_SIZE,
 };
 use crate::emulation::rom::RomFile;
 use crate::emulation::savestate::BoardState;
@@ -53,9 +54,11 @@ impl ReadResult {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct Board {
     pub cpu: Cpu,
     pub ppu: Ppu,
+    pub apu: Apu,
     pub cpu_ram: Memory,
     pub nametable_ram: Memory,
     pub palette_ram: PaletteRam,
@@ -181,7 +184,7 @@ impl<'a> CpuBus for CpuBusView<'a> {
     fn poll_nmi(&mut self) -> bool { self.ppu.poll_nmi() }
 
     #[inline]
-    fn poll_irq(&mut self) -> bool { *self.irq }
+    fn poll_irq(&mut self) -> bool { self.mapper.poll_irq() || self.apu.poll_irq() }
 
     #[inline]
     fn set_irq(&mut self, val: bool) { *self.irq = val }
@@ -205,10 +208,6 @@ impl<'a> PpuBus for PpuBusView<'a> {
 
                     // Zeroes the four low bits in case grayscale is enabled
                     let mask = !((self.grayscale_enabled as u8).wrapping_neg() & 0x0F);
-
-                    // println!("orig: {:08b}", val);
-                    // println!("mask: {:08b}", mask);
-                    // println!("full: {:08b}", val & mask);
 
                     ReadResult::from(val & mask)
                 }
@@ -313,6 +312,7 @@ pub struct CpuBusView<'a> {
     nametable_ram: &'a mut Memory,
     palette_ram: &'a mut PaletteRam,
     ppu: &'a mut Ppu,
+    apu: &'a mut Apu,
     irq: &'a mut bool,
     controller1: &'a mut Option<Peripheral>,
     controller2: &'a mut Option<Peripheral>,
@@ -329,6 +329,7 @@ impl<'a> CpuBusView<'a> {
         nametable_ram: &'a mut Memory,
         palette_ram: &'a mut PaletteRam,
         ppu: &'a mut Ppu,
+        apu: &'a mut Apu,
         irq: &'a mut bool,
         controller1: &'a mut Option<Peripheral>,
         controller2: &'a mut Option<Peripheral>,
@@ -342,6 +343,7 @@ impl<'a> CpuBusView<'a> {
             nametable_ram,
             palette_ram,
             ppu,
+            apu,
             irq,
             controller1,
             controller2,
@@ -389,6 +391,15 @@ impl<'a> CpuBusView<'a> {
     fn snapshot_apu_io(&self, addr: u16, open_bus: &OpenBus) -> u8 {
         match addr {
             0x4000..=0x4014 => open_bus.read(),
+            0x4015 => {
+                let frame_interrupt = if self.apu.frame_counter.frame_interrupt {
+                    0b0100_0000
+                } else {
+                    0
+                };
+
+                0b0000_0000 | frame_interrupt | (self.cpu_open_bus.read() & 0b0010_0000)
+            }
             0x4016 => {
                 if let Some(controller) = &self.controller1 {
                     controller.read_debug()
@@ -412,6 +423,18 @@ impl<'a> CpuBusView<'a> {
     fn read_apu_io(&mut self, addr: u16) -> ReadResult {
         match addr {
             0x4000..=0x4014 => ReadResult::from(self.cpu_open_bus.read()).to_false(),
+            0x4015 => {
+                let frame_interrupt = if self.apu.frame_counter.get_frame_interrupt_for_register() {
+                    0b0100_0000
+                } else {
+                    0
+                };
+
+                ReadResult::from(
+                    0b0000_0000 | frame_interrupt | (self.cpu_open_bus.read() & 0b0010_000),
+                )
+                .to_false()
+            }
             0x4016 => match self.controller1.as_mut() {
                 Some(controller) => ReadResult::from(controller.read()).with_mask(!0b11100000),
                 None => ReadResult::from(self.cpu_open_bus.read()).to_false(),
@@ -486,6 +509,11 @@ impl<'a> CpuBusView<'a> {
                     self.joystick_strobe_data,
                 )
             }
+            0x4017 => {
+                self.apu.frame_counter.five_step = data & 0x80 != 0;
+                self.apu.frame_counter.interrupt_inhibit = data & 0x40 != 0;
+                self.apu.frame_counter.frame_interrupt = !self.apu.frame_counter.interrupt_inhibit;
+            }
             _ => {}
         }
     }
@@ -518,10 +546,11 @@ impl<'a> PpuBusView<'a> {
 }
 
 impl Board {
-    pub fn new(cpu: Cpu, ppu: Ppu, mapper: Mapper) -> Board {
+    pub fn new(cpu: Cpu, ppu: Ppu, apu: Apu, mapper: Mapper) -> Board {
         Board {
             cpu,
             ppu,
+            apu,
             cpu_open_bus: OpenBus::new(OPEN_BUS_DECAY_DELAY),
             ppu_open_bus: OpenBus::new(OPEN_BUS_DECAY_DELAY),
             cpu_ram: Memory::new(INTERNAL_RAM_SIZE as usize, true),
@@ -572,7 +601,14 @@ impl Board {
 }
 
 impl Default for Board {
-    fn default() -> Self { Board::new(Cpu::new(), Ppu::default(), Mapper::NoMapper(NoMapper {})) }
+    fn default() -> Self {
+        Board::new(
+            Cpu::new(),
+            Ppu::default(),
+            Apu::default(),
+            Mapper::NoMapper(NoMapper {}),
+        )
+    }
 }
 
 impl From<&BoardState> for Board {
@@ -580,6 +616,7 @@ impl From<&BoardState> for Board {
         Board {
             cpu: Cpu::from(&state.cpu),
             ppu: Ppu::from(&state.ppu),
+            apu: Apu::from(&state.apu),
             cpu_ram: Memory::from((&state.cpu_ram, true)),
             nametable_ram: Memory::from((&state.nametable_ram, true)),
             palette_ram: PaletteRam::from(&state.palette_ram),

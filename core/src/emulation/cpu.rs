@@ -6,8 +6,7 @@ use serde_big_array::BigArray;
 use crate::emulation::board::CpuBus;
 use crate::emulation::nes::ExecutionFinished;
 use crate::emulation::opcode;
-use crate::emulation::opcode::{OPCODES_TABLE, OpCode, get_opcode};
-use crate::emulation::savestate::CpuState;
+use crate::emulation::opcode::{get_opcode, OpCode, OPCODES_TABLE};
 use crate::util;
 
 pub const INTERNAL_RAM_SIZE: u16 = 0x800;
@@ -75,6 +74,7 @@ impl<const N: usize> OpQueue<N> {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Cpu {
     pub program_counter: u16,
     pub stack_pointer: u8,
@@ -1898,44 +1898,6 @@ impl Cpu {
         // pointer
         inst.stack_pointer = 0xFD;
         inst
-    }
-}
-
-impl Cpu {
-    pub fn from(state: &CpuState) -> Self {
-        OPCODES_TABLE.get_or_init(opcode::init);
-
-        Self {
-            program_counter: state.program_counter,
-            stack_pointer: state.stack_pointer,
-            accumulator: state.accumulator,
-            x_register: state.x_register,
-            y_register: state.y_register,
-            processor_status: state.processor_status,
-            lo: state.lo,
-            hi: state.hi,
-            current_op: state.current_op,
-            op_queue: state.op_queue,
-            remaining_dma_cycles: state.remaining_dma_cycles,
-            current_opcode: get_opcode(state.current_opcode),
-            data_bus: state.data_bus,
-            ane_constant: state.ane_constant,
-            is_halted: state.is_halted,
-            irq_pending: state.irq_pending,
-            nmi_pending: state.nmi_pending,
-            nmi_detected: state.nmi_detected,
-            irq_detected: state.irq_detected,
-            locked_irq_vec: state.locked_irq_vec,
-            current_irq_vec: state.current_irq_vec,
-            is_in_irq: state.is_in_irq,
-            prev_nmi: state.prev_nmi,
-            cpu_read_cycle: state.read_cycle,
-            dma_read: state.dma_read,
-            dma_triggered: state.dma_triggered,
-            dma_page: state.dma_page,
-            last_memory_access: None,
-            cycle: state.cycle,
-        }
     }
 }
 

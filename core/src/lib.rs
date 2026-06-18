@@ -87,6 +87,7 @@
 //! [`try_load_state_from_bytes`]: emulation::savestate::try_load_state_from_bytes
 
 extern crate core;
+
 #[allow(clippy::upper_case_acronyms)]
 pub mod emulation;
 pub mod rom_db;

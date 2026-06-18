@@ -181,6 +181,7 @@ macro_rules! cpu_bus_view {
             &mut $self.board.nametable_ram,
             &mut $self.board.palette_ram,
             &mut $self.board.ppu,
+            &mut $self.board.apu,
             &mut $self.board.irq,
             &mut $self.board.controller1,
             &mut $self.board.controller2,

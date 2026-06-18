@@ -66,6 +66,7 @@ pub trait MapperLike {
     fn ppu_write(&mut self, addr: u16, data: u8) -> PpuWriteResult;
     fn ppu_init(&mut self, addr: u16, data: u8) -> PpuWriteResult;
     fn get_registers_debug(&self) -> MapperRegisterTables;
+    fn poll_irq(&self) -> bool;
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -167,6 +168,8 @@ impl MapperLike for NoMapper {
         tables.insert("General".to_string(), state);
         tables
     }
+
+    fn poll_irq(&self) -> bool { false }
 }
 
 impl<'a> From<&'a RomFile> for NoMapper {
@@ -319,6 +322,9 @@ impl MapperLike for Nrom {
         tables.insert("General".to_string(), state);
         tables
     }
+
+    #[inline]
+    fn poll_irq(&self) -> bool { false }
 }
 
 impl From<&RomFile> for Nrom {

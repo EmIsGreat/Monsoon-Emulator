@@ -258,6 +258,9 @@ impl MapperLike for MMC1 {
         tables.insert("Registers".to_string(), regs);
         tables
     }
+
+    #[inline]
+    fn poll_irq(&self) -> bool { false }
 }
 
 const KB_16: u32 = 0x4000;

@@ -14,12 +14,15 @@
 use serde::{Deserialize, Serialize};
 use static_assertions::assert_impl_all;
 
+use crate::emulation::apu::{Apu, FrameCounter};
 use crate::emulation::board::Board;
 use crate::emulation::cpu::{Cpu, MicroOp, OpQueue};
 use crate::emulation::mapper::Mapper;
 use crate::emulation::mem::OpenBus;
+use crate::emulation::opcode;
+use crate::emulation::opcode::{get_opcode, OPCODES_TABLE};
 use crate::emulation::peripherals::Peripheral;
-use crate::emulation::ppu::Ppu;
+use crate::emulation::ppu::{Ppu, SpriteFifo, TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH};
 use crate::emulation::rom::RomFile;
 
 /// Magic header bytes identifying a Monsoon save state file (`"ESSV1"`).
@@ -125,6 +128,44 @@ impl From<&Cpu> for CpuState {
             prev_nmi: cpu.prev_nmi,
             cycle: cpu.cycle,
             remaining_dma_cycles: cpu.remaining_dma_cycles,
+        }
+    }
+}
+
+impl From<&CpuState> for Cpu {
+    fn from(state: &CpuState) -> Self {
+        OPCODES_TABLE.get_or_init(opcode::init);
+
+        Self {
+            program_counter: state.program_counter,
+            stack_pointer: state.stack_pointer,
+            accumulator: state.accumulator,
+            x_register: state.x_register,
+            y_register: state.y_register,
+            processor_status: state.processor_status,
+            lo: state.lo,
+            hi: state.hi,
+            current_op: state.current_op,
+            op_queue: state.op_queue,
+            remaining_dma_cycles: state.remaining_dma_cycles,
+            current_opcode: get_opcode(state.current_opcode),
+            data_bus: state.data_bus,
+            ane_constant: state.ane_constant,
+            is_halted: state.is_halted,
+            irq_pending: state.irq_pending,
+            nmi_pending: state.nmi_pending,
+            nmi_detected: state.nmi_detected,
+            irq_detected: state.irq_detected,
+            locked_irq_vec: state.locked_irq_vec,
+            current_irq_vec: state.current_irq_vec,
+            is_in_irq: state.is_in_irq,
+            prev_nmi: state.prev_nmi,
+            cpu_read_cycle: state.read_cycle,
+            dma_read: state.dma_read,
+            dma_triggered: state.dma_triggered,
+            dma_page: state.dma_page,
+            last_memory_access: None,
+            cycle: state.cycle,
         }
     }
 }
@@ -259,6 +300,81 @@ impl From<&Ppu> for PpuState {
     }
 }
 
+impl From<&PpuState> for Ppu {
+    fn from(state: &PpuState) -> Self {
+        let mut ppu = Self {
+            dot_counter: state.cycle_counter,
+            ctrl_register: state.ctrl_register,
+            mask_register: state.mask_register,
+            status_register: state.status_register,
+            oam_addr_register: state.oam_addr_register,
+            v_register: state.ppu_addr_register,
+            ppu_data_buffer: state.ppu_data_buffer,
+            nmi_requested: state.nmi_requested,
+            oam: (&state.oam_mem, true).into(),
+            write_latch: state.write_latch,
+            t_register: state.t_register,
+            bg_next_tile_id: state.bg_next_tile_id,
+            bg_next_tile_attribute: state.bg_next_tile_attribute,
+            bg_next_tile_lsb: state.bg_next_tile_lsb,
+            fine_x_scroll: state.fine_x_scroll,
+            even_frame: state.even_frame,
+            reset_signal: state.reset_signal,
+            pixel_buffer: vec![0; TOTAL_OUTPUT_WIDTH * TOTAL_OUTPUT_HEIGHT],
+            vbl_reset_counter: state.vbl_reset_counter,
+            vbl_clear_scheduled: state.vbl_clear_scheduled,
+            scanline: state.scanline,
+            dot: state.dot,
+            prev_vbl: state.prev_vbl,
+            address_bus: state.address_bus,
+            address_latch: state.address_latch,
+            shift_pattern_lo: state.shift_pattern_lo,
+            shift_pattern_hi: state.shift_pattern_hi,
+            shift_attr_lo: state.shift_attr_lo,
+            shift_attr_hi: state.shift_attr_hi,
+            shift_in_attr_lo: state.shift_in_attr_lo,
+            shift_in_attr_hi: state.shift_in_attr_hi,
+            is_soam_clear_active: state.is_soam_clear_active,
+            oam_index: state.oam_index,
+            soam_index: state.soam_index,
+            soam_disable: state.soam_disable,
+            oam_increment: state.oam_increment,
+            soam_write_counter: state.soam_write_counter, // 1
+            oam_fetch: state.oam_fetch,
+            current_sprite_tile_id: 0,
+            current_sprite_y: 0,
+            sprite_fifos: [SpriteFifo::default(); 8],
+            sprite_zero_in_scanline: state.sprite_zero_in_scanline,
+            log: "".to_string(),
+        };
+
+        ppu.oam.load(state.oam_mem.clone().into_boxed_slice());
+
+        ppu
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct ApuState {
+    frame_counter: FrameCounter,
+}
+
+impl From<&Apu> for ApuState {
+    fn from(apu: &Apu) -> Self {
+        Self {
+            frame_counter: apu.frame_counter.clone(),
+        }
+    }
+}
+
+impl From<&ApuState> for Apu {
+    fn from(state: &ApuState) -> Self {
+        Self {
+            frame_counter: state.frame_counter.clone(),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Hash)]
 pub enum PeripheralState {}
 
@@ -268,6 +384,7 @@ pub struct BoardState {
     pub cpu: CpuState,
     /// Captured PPU state.
     pub ppu: PpuState,
+    pub apu: ApuState,
     pub cpu_ram: Vec<u8>,
     pub nametable_ram: Vec<u8>,
     pub palette_ram: Vec<u8>,
@@ -284,6 +401,7 @@ impl From<&Board> for BoardState {
         BoardState {
             cpu: CpuState::from(&board.cpu),
             ppu: PpuState::from(&board.ppu),
+            apu: ApuState::from(&board.apu),
             cpu_ram: board.cpu_ram.snapshot_all(),
             nametable_ram: board.nametable_ram.snapshot_all(),
             palette_ram: board.palette_ram.snapshot_all(),

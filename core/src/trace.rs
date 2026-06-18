@@ -6,6 +6,7 @@ use crate::emulation::opcode;
 use crate::emulation::opcode::OpCode;
 use crate::util::add_to_low_byte;
 
+#[derive(Clone, Debug)]
 pub struct TraceLog {
     pub log: String,
 }

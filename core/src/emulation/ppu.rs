@@ -7,12 +7,11 @@ use crate::emulation::nes::ExecutionFinished;
 // Re-import public constants/types from ppu_util so internal code can use them
 // with short names.
 pub use crate::emulation::ppu_util::{
-    EmulatorFetchable, NAMETABLE_COLS, NAMETABLE_COUNT, NAMETABLE_ROWS, NametableData,
-    PALETTE_RAM_END_ADDRESS, PALETTE_RAM_START_ADDRESS, PaletteData, RegisterEntry, RegisterFormat,
-    RegisterMap, RegisterValue, SPRITE_COUNT, SoamData, Sprite, SpriteData, SpriteMode, TILE_SIZE,
-    TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH, TileData,
+    EmulatorFetchable, NametableData, PaletteData, RegisterEntry, RegisterFormat,
+    RegisterMap, RegisterValue, SoamData, Sprite, SpriteData,
+    SpriteMode, TileData, NAMETABLE_COLS, NAMETABLE_COUNT, NAMETABLE_ROWS, PALETTE_RAM_END_ADDRESS, PALETTE_RAM_START_ADDRESS, SPRITE_COUNT,
+    TILE_SIZE, TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH,
 };
-use crate::emulation::savestate::PpuState;
 
 pub const PATTERN_TABLE_SIZE: usize = 256;
 pub const VBLANK_NMI_BIT: u8 = 0x80;
@@ -40,6 +39,7 @@ pub const ATTRIBUTE_TABLE_BASE_ADDRESS: u16 = 0x23C0;
 
 pub const SCREEN_RENDER_WIDTH: usize = 256;
 
+#[derive(Debug, Clone)]
 pub struct Ppu {
     pub dot_counter: u128,
     pub ctrl_register: u8,
@@ -1015,59 +1015,6 @@ impl Ppu {
         }
 
         data
-    }
-
-    pub fn from(state: &PpuState) -> Self {
-        let mut ppu = Self {
-            dot_counter: state.cycle_counter,
-            ctrl_register: state.ctrl_register,
-            mask_register: state.mask_register,
-            status_register: state.status_register,
-            oam_addr_register: state.oam_addr_register,
-            v_register: state.ppu_addr_register,
-            ppu_data_buffer: state.ppu_data_buffer,
-            nmi_requested: state.nmi_requested,
-            oam: Self::get_default_oam(),
-            write_latch: state.write_latch,
-            t_register: state.t_register,
-            bg_next_tile_id: state.bg_next_tile_id,
-            bg_next_tile_attribute: state.bg_next_tile_attribute,
-            bg_next_tile_lsb: state.bg_next_tile_lsb,
-            fine_x_scroll: state.fine_x_scroll,
-            even_frame: state.even_frame,
-            reset_signal: state.reset_signal,
-            // Initialize pixel buffer fresh - it's not saved in savestate
-            pixel_buffer: vec![0; TOTAL_OUTPUT_WIDTH * TOTAL_OUTPUT_HEIGHT],
-            vbl_reset_counter: state.vbl_reset_counter,
-            vbl_clear_scheduled: state.vbl_clear_scheduled,
-            scanline: state.scanline,
-            dot: state.dot,
-            prev_vbl: state.prev_vbl,
-            address_bus: state.address_bus,
-            address_latch: state.address_latch,
-            shift_pattern_lo: state.shift_pattern_lo,
-            shift_pattern_hi: state.shift_pattern_hi,
-            shift_attr_lo: state.shift_attr_lo,
-            shift_attr_hi: state.shift_attr_hi,
-            shift_in_attr_lo: state.shift_in_attr_lo,
-            shift_in_attr_hi: state.shift_in_attr_hi,
-            is_soam_clear_active: state.is_soam_clear_active,
-            oam_index: state.oam_index,
-            soam_index: state.soam_index,
-            soam_disable: state.soam_disable,
-            oam_increment: state.oam_increment,
-            soam_write_counter: state.soam_write_counter, // 1
-            oam_fetch: state.oam_fetch,
-            current_sprite_tile_id: 0,
-            current_sprite_y: 0,
-            sprite_fifos: [SpriteFifo::default(); 8],
-            sprite_zero_in_scanline: state.sprite_zero_in_scanline,
-            log: "".to_string(),
-        };
-
-        ppu.oam.load(state.oam_mem.clone().into_boxed_slice());
-
-        ppu
     }
 }
 

@@ -56,6 +56,7 @@ pub const MASTER_CYCLES_PER_FRAME: u32 = 357366;
 /// // Read the pixel buffer (palette indices, not RGB)
 /// let pixels = nes.get_pixel_buffer();
 /// ```
+#[derive(Clone, Debug)]
 pub struct Nes {
     pub(crate) board: Board,
     /// Total master clock cycles elapsed since power-on.
@@ -68,6 +69,7 @@ pub struct Nes {
     pub(crate) trace_enabled: bool,
     /// Internal CPU clock divider counter (0-12).
     pub(crate) cpu_cycle_counter: u8,
+    pub(crate) apu_counter: u8,
     /// Internal PPU clock divider counter (0-4).
     pub(crate) ppu_cycle_counter: u8,
     pub alignment: u8,
@@ -327,6 +329,7 @@ impl Nes {
             trace_enabled: false,
             total_cycles: 0,
             cpu_cycle_counter: 0,
+            apu_counter: 0,
             ppu_cycle_counter: 0,
             alignment: 8 + config.alignment,
             rom_db: Arc::new(RomDb::default()),
@@ -417,11 +420,9 @@ impl Nes {
         self.cpu_cycle_counter = self.cpu_cycle_counter.wrapping_add(1);
         self.ppu_cycle_counter = self.ppu_cycle_counter.wrapping_add(1);
 
-        {
-            if ppu.vbl_clear_scheduled.is_some() {
-                ppu.vbl_reset_counter += 1;
-                ppu.process_vbl_clear_scheduled();
-            }
+        if ppu.vbl_clear_scheduled.is_some() {
+            ppu.vbl_reset_counter += 1;
+            ppu.process_vbl_clear_scheduled();
         }
 
         if self.total_cycles > last_cycle {
@@ -439,12 +440,20 @@ impl Nes {
         // Check if CPU should step (every 12th master cycle, offset by 2)
         // cpu_cycle_counter + 2 == 12  means cpu_cycle_counter == 10
         if self.cpu_cycle_counter == self.alignment {
+            self.apu_counter += 1;
+
             // Only check trace_log when actually needed
             let do_trace = self.trace_enabled
                 && self.trace_log.is_some()
                 && matches!(&cpu.current_op, &MicroOp::FetchOpcode);
 
             let cpu_res = cpu.step(&mut cpu_bus_view!(self));
+
+            self.board.apu.clock_frame_counter(self.apu_counter == 2);
+
+            if self.apu_counter == 2 {
+                self.apu_counter = 0;
+            }
 
             #[allow(clippy::question_mark)]
             if let Ok(cpu_res) = cpu_res {
@@ -519,6 +528,7 @@ impl Nes {
                 &mut self.board.nametable_ram,
                 &mut self.board.palette_ram,
                 &mut self.board.ppu,
+                &mut self.board.apu,
                 &mut self.board.irq,
                 &mut self.board.controller1,
                 &mut self.board.controller2,
