@@ -9,7 +9,7 @@
 
 use std::path::Path;
 use std::time::Instant;
-
+use monsoon_core::emulation::debug_tools::StopReason;
 use monsoon_core::emulation::nes::{Nes, NesConfig};
 use monsoon_core::emulation::palette_util::RgbColor;
 use monsoon_core::emulation::ppu_util::{TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH};
@@ -19,7 +19,7 @@ use monsoon_core::util::format_bytes_human_readable;
 
 use crate::cli::{
     CliArgs, ExecutionConfig, ExecutionEngine, ExecutionResult, FpsConfig, MemoryDump, MemoryInit,
-    MemoryInitConfig, MemoryType, OutputWriter, SavestateConfig, StopReason, StreamingVideoEncoder,
+    MemoryInitConfig, MemoryType, OutputWriter, SavestateConfig, StreamingVideoEncoder,
     VideoFormat, VideoResolution, apply_memory_init, apply_memory_init_config, is_ffmpeg_available,
     parse_memory_range,
 };

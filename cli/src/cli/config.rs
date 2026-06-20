@@ -10,7 +10,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use serde::Deserialize;
-
+use monsoon_core::util::{parse_hex_u16_opt, parse_hex_u8_opt};
 use crate::cli::args::BuiltinPalette;
 use crate::cli::{CliArgs, OutputFormat, SavestateFormat, VideoExportMode, VideoFormat};
 
@@ -425,24 +425,6 @@ impl ConfigFile {
             }
         }
     }
-}
-
-/// Parse a hex string to u16, returning None on failure
-fn parse_hex_u16_opt(s: &str) -> Option<u16> {
-    let s = s
-        .strip_prefix("0x")
-        .or_else(|| s.strip_prefix("0X"))
-        .unwrap_or(s);
-    u16::from_str_radix(s, 16).ok()
-}
-
-/// Parse a hex string to u8, returning None on failure
-fn parse_hex_u8_opt(s: &str) -> Option<u8> {
-    let s = s
-        .strip_prefix("0x")
-        .or_else(|| s.strip_prefix("0X"))
-        .unwrap_or(s);
-    u8::from_str_radix(s, 16).ok()
 }
 
 /// Configuration loading errors

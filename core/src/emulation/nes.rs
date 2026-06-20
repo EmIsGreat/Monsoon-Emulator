@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use crate::emulation::board::{Board, CpuBus, CpuBusView, PpuBus, PpuBusView};
 use crate::emulation::cpu::MicroOp;
+use crate::emulation::debug_tools::{StopCondition, StopReason};
 use crate::emulation::mapper::MapperLike;
 use crate::emulation::peripherals::Peripheral;
 use crate::emulation::ppu::EmulatorFetchable;
@@ -73,7 +74,7 @@ pub struct Nes {
     /// Internal PPU clock divider counter (0-4).
     pub(crate) ppu_cycle_counter: u8,
     pub alignment: u8,
-
+    pub stop_conditions: Option<Vec<StopCondition>>,
     pub rom_db: Arc<RomDb>,
 }
 
@@ -332,6 +333,7 @@ impl Nes {
             apu_counter: 0,
             ppu_cycle_counter: 0,
             alignment: 8 + config.alignment,
+            stop_conditions: None,
             rom_db: Arc::new(RomDb::default()),
         }
     }
@@ -404,8 +406,37 @@ impl Nes {
     #[inline]
     pub fn step(&mut self) -> Result<ExecutionFinished, String> { self.step_internal(u128::MAX) }
 
+    #[cold]
+    pub fn check_stop_conditions(
+        &mut self,
+        stop_conditions: &Vec<StopCondition>,
+    ) -> Option<StopReason> {
+        for cond in stop_conditions {
+            if cond.check(self) {
+                return Some(cond.reason(self));
+            }
+        }
+
+        None
+    }
+
     #[inline(always)]
     fn step_internal(&mut self, last_cycle: u128) -> Result<ExecutionFinished, String> {
+        if let Some(conditions) = &self.stop_conditions {
+            if let Some(reason) = self.check_stop_conditions(&conditions.clone()) {
+                return Ok(ExecutionFinished {
+                    last_cycle_reached: false,
+                    hlt_reached: false,
+                    cycle_completed: false,
+                    cpu_cycle_completed: false,
+                    ppu_cycle_completed: false,
+                    frame_done: false,
+                    scanline_done: false,
+                    stop_reason: Some(reason),
+                });
+            }
+        }
+
         let grayscale = self.board.ppu.get_grayscale_enabled();
 
         let ppu = &mut self.board.ppu;
@@ -730,7 +761,7 @@ impl Nes {
 ///
 /// Returned by [`Nes::run()`], [`Nes::run_until()`], [`Nes::step()`], and
 /// [`Nes::step_frame()`] to indicate the reason execution stopped.
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
+#[derive(Debug, Clone, Eq, PartialEq, Default)]
 pub struct ExecutionFinished {
     pub last_cycle_reached: bool,
     pub hlt_reached: bool,
@@ -739,6 +770,7 @@ pub struct ExecutionFinished {
     pub ppu_cycle_completed: bool,
     pub frame_done: bool,
     pub scanline_done: bool,
+    pub stop_reason: Option<StopReason>,
 }
 
 impl ExecutionFinished {
@@ -751,6 +783,7 @@ impl ExecutionFinished {
             ppu_cycle_completed: self.ppu_cycle_completed || with.ppu_cycle_completed,
             frame_done: self.frame_done || with.frame_done,
             scanline_done: self.scanline_done || with.scanline_done,
+            stop_reason: self.stop_reason.or(with.stop_reason),
         }
     }
 }

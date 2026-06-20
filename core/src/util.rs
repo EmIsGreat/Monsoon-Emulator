@@ -8,7 +8,7 @@ use std::fmt::{Display, Formatter};
 
 use crate::emulation::cpu::UPPER_BYTE;
 use crate::emulation::mem::Memory;
-use crate::emulation::savestate::{BINARY_FORMAT_VERSION, JSON_FORMAT_VERSION, MAGIC, SaveState};
+use crate::emulation::savestate::{SaveState, BINARY_FORMAT_VERSION, JSON_FORMAT_VERSION, MAGIC};
 /// Returns `true` if adding a signed `offset` to `base` crosses a 256-byte page
 /// boundary.
 ///
@@ -168,6 +168,42 @@ pub fn format_bytes_human_readable(bytes: u32) -> String {
     } else {
         format!("{value:.2} {} ({bytes} Bytes)", UNITS[unit_idx])
     }
+}
+
+/// Parse a hexadecimal u16 value (with or without 0x prefix)
+pub fn parse_hex_u16(s: &str) -> Result<u16, String> {
+    let s = s
+        .strip_prefix("0x")
+        .or_else(|| s.strip_prefix("0X"))
+        .unwrap_or(s);
+    u16::from_str_radix(s, 16).map_err(|e| format!("Invalid hex value '{}': {}", s, e))
+}
+
+/// Parse a hexadecimal u8 value (with or without 0x prefix)
+pub fn parse_hex_u8(s: &str) -> Result<u8, String> {
+    let s = s
+        .strip_prefix("0x")
+        .or_else(|| s.strip_prefix("0X"))
+        .unwrap_or(s);
+    u8::from_str_radix(s, 16).map_err(|e| format!("Invalid hex value '{}': {}", s, e))
+}
+
+/// Parse a hex string to u16, returning None on failure
+pub fn parse_hex_u16_opt(s: &str) -> Option<u16> {
+    let s = s
+        .strip_prefix("0x")
+        .or_else(|| s.strip_prefix("0X"))
+        .unwrap_or(s);
+    u16::from_str_radix(s, 16).ok()
+}
+
+/// Parse a hex string to u8, returning None on failure
+pub fn parse_hex_u8_opt(s: &str) -> Option<u8> {
+    let s = s
+        .strip_prefix("0x")
+        .or_else(|| s.strip_prefix("0X"))
+        .unwrap_or(s);
+    u8::from_str_radix(s, 16).ok()
 }
 
 #[macro_export]

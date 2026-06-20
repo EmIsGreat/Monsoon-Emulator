@@ -5,7 +5,8 @@
 
 use std::path::PathBuf;
 
-use clap::{Args, Parser, ValueEnum, value_parser};
+use clap::{value_parser, Args, Parser, ValueEnum};
+use monsoon_core::util::{parse_hex_u16, parse_hex_u8};
 use serde::Deserialize;
 
 /// NES Emulator CLI - A cycle-accurate NES emulator with comprehensive CLI
@@ -406,24 +407,6 @@ impl std::str::FromStr for BuiltinPalette {
             )),
         }
     }
-}
-
-/// Parse a hexadecimal u16 value (with or without 0x prefix)
-pub fn parse_hex_u16(s: &str) -> Result<u16, String> {
-    let s = s
-        .strip_prefix("0x")
-        .or_else(|| s.strip_prefix("0X"))
-        .unwrap_or(s);
-    u16::from_str_radix(s, 16).map_err(|e| format!("Invalid hex value '{}': {}", s, e))
-}
-
-/// Parse a hexadecimal u8 value (with or without 0x prefix)
-pub fn parse_hex_u8(s: &str) -> Result<u8, String> {
-    let s = s
-        .strip_prefix("0x")
-        .or_else(|| s.strip_prefix("0X"))
-        .unwrap_or(s);
-    u8::from_str_radix(s, 16).map_err(|e| format!("Invalid hex value '{}': {}", s, e))
 }
 
 impl OutputArgs {

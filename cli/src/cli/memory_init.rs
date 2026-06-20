@@ -19,6 +19,7 @@ use std::io::Read;
 use std::path::Path;
 
 use monsoon_core::emulation::nes::Nes;
+use monsoon_core::util::parse_hex_u16;
 
 /// Represents a memory initialization operation
 #[derive(Debug, Clone)]
@@ -65,15 +66,6 @@ impl MemoryInit {
             values,
         })
     }
-}
-
-/// Parse a hexadecimal u16 value
-fn parse_hex_u16(s: &str) -> Result<u16, String> {
-    let s = s
-        .strip_prefix("0x")
-        .or_else(|| s.strip_prefix("0X"))
-        .unwrap_or(s);
-    u16::from_str_radix(s, 16).map_err(|e| format!("Invalid hex address '{}': {}", s, e))
 }
 
 /// Parse a comma-separated list of hex u8 values
