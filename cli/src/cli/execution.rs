@@ -14,7 +14,9 @@ use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
 use monsoon_core::emulation::debug_tools::{MemoryAccessType, StopCondition, StopReason};
-use monsoon_core::emulation::nes::{Nes, NesConfig, RunOptions, MASTER_CYCLES_PER_FRAME};
+use monsoon_core::emulation::nes::{
+    ExecutionResult, Nes, NesConfig, RunOptions, MASTER_CYCLES_PER_FRAME,
+};
 use monsoon_core::emulation::rom::{ParseError, RomFile};
 use monsoon_core::emulation::savestate::{try_load_state_from_bytes, SaveState};
 use monsoon_core::util::{SerializationError, ToBytes};
@@ -119,32 +121,6 @@ impl ExecutionConfig {
         }
         max
     }
-
-    /// Check if any stop condition is met
-    fn check_conditions(&self, emu: &mut Nes, cycles: u128, frames: u64) -> Option<StopReason> {
-        for cond in &self.stop_conditions {
-            if cond.check(emu, cycles, frames) {
-                return Some(cond.reason(emu, cycles, frames));
-            }
-        }
-
-        None
-    }
-}
-
-// =============================================================================
-// Execution Result
-// =============================================================================
-
-/// Result of an execution run
-#[derive(Debug, Clone)]
-pub struct ExecutionResult {
-    /// Why execution stopped
-    pub stop_reason: StopReason,
-    /// Total cycles executed
-    pub total_cycles: u128,
-    /// Total frames executed
-    pub total_frames: u64,
 }
 
 // =============================================================================
@@ -381,7 +357,6 @@ impl ExecutionEngine {
         }
 
         let max_cycles = self.config.max_cycles();
-        let start_cycles = self.emu.total_cycles;
 
         // Run frame by frame for stop condition checking
         let result = loop {
@@ -390,9 +365,14 @@ impl ExecutionEngine {
                 Ok(_) => {}
                 Err(e) => {
                     break ExecutionResult {
-                        stop_reason: StopReason::Error(e),
-                        total_cycles: self.emu.total_cycles - start_cycles,
-                        total_frames: self.frame_count,
+                        last_cycle_reached: false,
+                        hlt_reached: false,
+                        cycle_completed: false,
+                        cpu_cycle_completed: false,
+                        ppu_cycle_completed: false,
+                        frame_done: false,
+                        scanline_done: false,
+                        stop_reason: Some(StopReason::Error(e)),
                     };
                 }
             }
@@ -403,26 +383,32 @@ impl ExecutionEngine {
             }
 
             self.frame_count += 1;
-            let cycles_run = self.emu.total_cycles - start_cycles;
 
             // Check stop conditions
-            if let Some(reason) =
-                self.config
-                    .check_conditions(&mut self.emu, cycles_run, self.frame_count)
-            {
+            if let Some(reason) = self.emu.check_stop_conditions(&self.config.stop_conditions) {
                 break ExecutionResult {
-                    stop_reason: reason,
-                    total_cycles: cycles_run,
-                    total_frames: self.frame_count,
+                    last_cycle_reached: false,
+                    hlt_reached: false,
+                    cycle_completed: false,
+                    cpu_cycle_completed: false,
+                    ppu_cycle_completed: false,
+                    frame_done: false,
+                    scanline_done: false,
+                    stop_reason: Some(reason),
                 };
             }
 
             // Check max cycles
             if self.emu.total_cycles >= max_cycles {
                 break ExecutionResult {
-                    stop_reason: StopReason::Completed,
-                    total_cycles: cycles_run,
-                    total_frames: self.frame_count,
+                    last_cycle_reached: false,
+                    hlt_reached: false,
+                    cycle_completed: false,
+                    cpu_cycle_completed: false,
+                    ppu_cycle_completed: false,
+                    frame_done: false,
+                    scanline_done: false,
+                    stop_reason: None,
                 };
             }
         };
@@ -473,7 +459,6 @@ impl ExecutionEngine {
         }
 
         let max_cycles = self.config.max_cycles();
-        let start_cycles = self.emu.total_cycles;
 
         // Get the number of captures per PPU frame from the encoder's FPS config
         let captures_per_frame = encoder.captures_per_frame();
@@ -511,9 +496,14 @@ impl ExecutionEngine {
                     Ok(_) => {}
                     Err(e) => {
                         return Ok(ExecutionResult {
-                            stop_reason: StopReason::Error(e),
-                            total_cycles: self.emu.total_cycles - start_cycles,
-                            total_frames: self.frame_count,
+                            last_cycle_reached: false,
+                            hlt_reached: false,
+                            cycle_completed: false,
+                            cpu_cycle_completed: false,
+                            ppu_cycle_completed: false,
+                            frame_done: false,
+                            scanline_done: false,
+                            stop_reason: Some(StopReason::Error(e)),
                         });
                     }
                 }
@@ -533,18 +523,18 @@ impl ExecutionEngine {
                 }
             }
 
-            let cycles_run = self.emu.total_cycles - start_cycles;
-
             // Check stop conditions
-            if let Some(reason) =
-                self.config
-                    .check_conditions(&mut self.emu, cycles_run, self.frame_count)
-            {
+            if let Some(reason) = self.emu.check_stop_conditions(&self.config.stop_conditions) {
                 self.write_trace_log()?;
                 return Ok(ExecutionResult {
-                    stop_reason: reason,
-                    total_cycles: cycles_run,
-                    total_frames: self.frame_count,
+                    last_cycle_reached: false,
+                    hlt_reached: false,
+                    cycle_completed: false,
+                    cpu_cycle_completed: false,
+                    ppu_cycle_completed: false,
+                    frame_done: false,
+                    scanline_done: false,
+                    stop_reason: Some(reason),
                 });
             }
 
@@ -552,9 +542,14 @@ impl ExecutionEngine {
             if self.emu.total_cycles >= max_cycles {
                 self.write_trace_log()?;
                 return Ok(ExecutionResult {
-                    stop_reason: StopReason::Completed,
-                    total_cycles: cycles_run,
-                    total_frames: self.frame_count,
+                    last_cycle_reached: false,
+                    hlt_reached: false,
+                    cycle_completed: false,
+                    cpu_cycle_completed: false,
+                    ppu_cycle_completed: false,
+                    frame_done: false,
+                    scanline_done: false,
+                    stop_reason: None,
                 });
             }
         }

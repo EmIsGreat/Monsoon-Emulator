@@ -3,7 +3,7 @@ use std::ops::{Deref, DerefMut, RangeInclusive};
 use crate::emulation::board::CpuBus;
 use crate::emulation::cpu::Cpu as CoreCpu;
 use crate::emulation::mem::{Memory, OpenBus};
-use crate::emulation::nes::ExecutionFinished;
+use crate::emulation::nes::ExecutionResult;
 
 struct TestBus {
     memory: [u8; 0x10000],
@@ -113,7 +113,7 @@ impl Cpu {
 
     #[inline]
     #[allow(unused_results)]
-    pub(crate) fn step(&mut self) -> Result<ExecutionFinished, String> {
+    pub(crate) fn step(&mut self) -> Result<ExecutionResult, String> {
         self.with_bus(|cpu, bus| cpu.step(bus))
     }
 

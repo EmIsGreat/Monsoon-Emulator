@@ -9,19 +9,19 @@
 
 use std::path::Path;
 use std::time::Instant;
+
 use monsoon_core::emulation::debug_tools::StopReason;
-use monsoon_core::emulation::nes::{Nes, NesConfig};
+use monsoon_core::emulation::nes::{ExecutionResult, Nes, NesConfig, MASTER_CYCLES_PER_FRAME};
 use monsoon_core::emulation::palette_util::RgbColor;
 use monsoon_core::emulation::ppu_util::{TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH};
 use monsoon_core::emulation::rom::RomFile;
-use monsoon_core::emulation::screen_renderer::{ScreenRenderer, create_renderer};
+use monsoon_core::emulation::screen_renderer::{create_renderer, ScreenRenderer};
 use monsoon_core::util::format_bytes_human_readable;
 
 use crate::cli::{
-    CliArgs, ExecutionConfig, ExecutionEngine, ExecutionResult, FpsConfig, MemoryDump, MemoryInit,
-    MemoryInitConfig, MemoryType, OutputWriter, SavestateConfig, StreamingVideoEncoder,
-    VideoFormat, VideoResolution, apply_memory_init, apply_memory_init_config, is_ffmpeg_available,
-    parse_memory_range,
+    apply_memory_init, apply_memory_init_config, is_ffmpeg_available, parse_memory_range, CliArgs, ExecutionConfig, ExecutionEngine,
+    FpsConfig, MemoryDump, MemoryInit, MemoryInitConfig, MemoryType, OutputWriter,
+    SavestateConfig, StreamingVideoEncoder, VideoFormat, VideoResolution,
 };
 
 // =============================================================================
@@ -130,8 +130,11 @@ pub fn run_headless(args: &CliArgs) -> Result<(), String> {
     // Print execution summary if verbose
     if args.verbose {
         eprintln!("Execution time: {:?}", start.elapsed());
-        eprintln!("Total cycles: {}", result.total_cycles);
-        eprintln!("Total frames: {}", result.total_frames);
+        eprintln!("Total cycles: {}", engine.emu.total_cycles);
+        eprintln!(
+            "Total frames: {}",
+            engine.emu.total_cycles / MASTER_CYCLES_PER_FRAME as u128
+        );
         eprintln!("Stop reason: {:?}", result.stop_reason);
     }
 
@@ -154,7 +157,7 @@ pub fn run_headless(args: &CliArgs) -> Result<(), String> {
 
     // Check for error stop reason
     match result.stop_reason {
-        StopReason::Error(e) => Err(e),
+        Some(StopReason::Error(e)) => Err(e),
         _ => Ok(()),
     }
 }

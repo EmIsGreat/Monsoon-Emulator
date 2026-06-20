@@ -3,7 +3,7 @@ use std::ops::RangeInclusive;
 
 use crate::emulation::board::PpuBus;
 use crate::emulation::mem::{Memory, OpenBus};
-use crate::emulation::nes::ExecutionFinished;
+use crate::emulation::nes::ExecutionResult;
 // Re-import public constants/types from ppu_util so internal code can use them
 // with short names.
 pub use crate::emulation::ppu_util::{
@@ -142,7 +142,7 @@ impl Ppu {
     fn get_default_oam() -> Memory { Memory::new(OAM_SIZE + OAM_SIZE / 8, true) }
 
     #[inline(always)]
-    pub fn step(&mut self, bus: &mut impl PpuBus) -> ExecutionFinished {
+    pub fn step(&mut self, bus: &mut impl PpuBus) -> ExecutionResult {
         self.prev_vbl = self.status_register & VBLANK_NMI_BIT;
 
         if self.reset_signal {
@@ -377,7 +377,7 @@ impl Ppu {
             }
         }
 
-        ExecutionFinished {
+        ExecutionResult {
             frame_done: is_frame_end,
             scanline_done: is_scanline_end,
             ..Default::default()

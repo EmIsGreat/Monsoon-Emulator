@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_big_array::BigArray;
 
 use crate::emulation::board::CpuBus;
-use crate::emulation::nes::ExecutionFinished;
+use crate::emulation::nes::ExecutionResult;
 use crate::emulation::opcode;
 use crate::emulation::opcode::{get_opcode, OpCode, OPCODES_TABLE};
 use crate::util;
@@ -1173,11 +1173,11 @@ impl Cpu {
     }
 
     #[inline(always)]
-    pub fn step(&mut self, bus: &mut impl CpuBus) -> Result<ExecutionFinished, String> {
+    pub fn step(&mut self, bus: &mut impl CpuBus) -> Result<ExecutionResult, String> {
         self.cycle += 1;
 
         if self.is_halted {
-            return Ok(ExecutionFinished {
+            return Ok(ExecutionResult {
                 hlt_reached: true,
                 ..Default::default()
             });
@@ -1189,7 +1189,7 @@ impl Cpu {
             self.process_dma(bus);
             self.remaining_dma_cycles -= 1;
 
-            return Ok(ExecutionFinished {
+            return Ok(ExecutionResult {
                 cycle_completed: true,
                 ..Default::default()
             });
@@ -1239,7 +1239,7 @@ impl Cpu {
                 self.trigger_nmi();
                 self.nmi_pending = false;
                 self.irq_pending = false;
-                return Ok(ExecutionFinished {
+                return Ok(ExecutionResult {
                     cycle_completed: true,
                     ..Default::default()
                 });
@@ -1248,7 +1248,7 @@ impl Cpu {
                 bus.set_irq(false);
                 self.nmi_pending = false;
                 self.irq_pending = false;
-                return Ok(ExecutionFinished {
+                return Ok(ExecutionResult {
                     cycle_completed: true,
                     ..Default::default()
                 });
@@ -1257,7 +1257,7 @@ impl Cpu {
             self.current_op = MicroOp::FetchOpcode;
         }
 
-        Ok(ExecutionFinished {
+        Ok(ExecutionResult {
             cycle_completed: true,
             ..Default::default()
         })

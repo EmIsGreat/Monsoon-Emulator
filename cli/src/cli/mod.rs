@@ -187,7 +187,7 @@ use clap::Parser;
 pub use config::ConfigFile;
 pub use error::{CliError, CliResult};
 pub use execution::{
-    ExecutionConfig, ExecutionEngine, ExecutionResult, SavestateConfig,
+    ExecutionConfig, ExecutionEngine, SavestateConfig,
     SavestateDestination, SavestateSource
 };
 pub use headless::{create_renderer_from_args, list_renderers, run_headless};

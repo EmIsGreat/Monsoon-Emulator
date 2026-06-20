@@ -159,7 +159,7 @@ impl Nes {
     /// # Panics
     ///
     /// Panics if an internal emulation error occurs during execution.
-    pub fn run(&mut self) -> Result<ExecutionFinished, String> {
+    pub fn run(&mut self) -> Result<ExecutionResult, String> {
         self.run_until(u128::MAX, RunOptions::default())
     }
 
@@ -188,7 +188,7 @@ impl Nes {
         &mut self,
         last_cycle: u128,
         run_option: RunOptions,
-    ) -> Result<ExecutionFinished, String> {
+    ) -> Result<ExecutionResult, String> {
         loop {
             let res = self.step_internal(last_cycle);
 
@@ -252,7 +252,7 @@ impl Nes {
     ///
     /// This is the recommended method for frame-based emulation loops.
     #[inline]
-    pub fn step_frame(&mut self) -> Result<ExecutionFinished, String> {
+    pub fn step_frame(&mut self) -> Result<ExecutionResult, String> {
         self.run_until(
             u128::MAX,
             RunOptions {
@@ -265,7 +265,7 @@ impl Nes {
     /// Runs the emulator until the next scanline completion (until the PPU
     /// completes dot 340).
     #[inline]
-    pub fn step_scanline(&mut self) -> Result<ExecutionFinished, String> {
+    pub fn step_scanline(&mut self) -> Result<ExecutionResult, String> {
         self.run_until(
             u128::MAX,
             RunOptions {
@@ -278,7 +278,7 @@ impl Nes {
     /// Runs the emulator for until the next cpu cycle completes (<=12 master
     /// cycles)
     #[inline]
-    pub fn step_cpu_cycle(&mut self) -> Result<ExecutionFinished, String> {
+    pub fn step_cpu_cycle(&mut self) -> Result<ExecutionResult, String> {
         self.run_until(
             u128::MAX,
             RunOptions {
@@ -291,7 +291,7 @@ impl Nes {
     /// Runs the emulator for until the next ppu cycle completes (<=4 master
     /// cycles)
     #[inline]
-    pub fn step_ppu_cycle(&mut self) -> Result<ExecutionFinished, String> {
+    pub fn step_ppu_cycle(&mut self) -> Result<ExecutionResult, String> {
         self.run_until(
             u128::MAX,
             RunOptions {
@@ -404,7 +404,7 @@ impl Nes {
     ///
     /// For most use cases, prefer [`step_frame()`](Nes::step_frame).
     #[inline]
-    pub fn step(&mut self) -> Result<ExecutionFinished, String> { self.step_internal(u128::MAX) }
+    pub fn step(&mut self) -> Result<ExecutionResult, String> { self.step_internal(u128::MAX) }
 
     #[cold]
     pub fn check_stop_conditions(
@@ -421,10 +421,10 @@ impl Nes {
     }
 
     #[inline(always)]
-    fn step_internal(&mut self, last_cycle: u128) -> Result<ExecutionFinished, String> {
+    fn step_internal(&mut self, last_cycle: u128) -> Result<ExecutionResult, String> {
         if let Some(conditions) = &self.stop_conditions {
             if let Some(reason) = self.check_stop_conditions(&conditions.clone()) {
-                return Ok(ExecutionFinished {
+                return Ok(ExecutionResult {
                     last_cycle_reached: false,
                     hlt_reached: false,
                     cycle_completed: false,
@@ -442,7 +442,7 @@ impl Nes {
         let ppu = &mut self.board.ppu;
         let cpu = &mut self.board.cpu;
 
-        let mut res = ExecutionFinished {
+        let mut res = ExecutionResult {
             cycle_completed: true,
             ..Default::default()
         };
@@ -762,7 +762,7 @@ impl Nes {
 /// Returned by [`Nes::run()`], [`Nes::run_until()`], [`Nes::step()`], and
 /// [`Nes::step_frame()`] to indicate the reason execution stopped.
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
-pub struct ExecutionFinished {
+pub struct ExecutionResult {
     pub last_cycle_reached: bool,
     pub hlt_reached: bool,
     pub cycle_completed: bool,
@@ -773,8 +773,8 @@ pub struct ExecutionFinished {
     pub stop_reason: Option<StopReason>,
 }
 
-impl ExecutionFinished {
-    pub fn merge(self, with: ExecutionFinished) -> Self {
+impl ExecutionResult {
+    pub fn merge(self, with: ExecutionResult) -> Self {
         Self {
             last_cycle_reached: self.last_cycle_reached || with.last_cycle_reached,
             hlt_reached: self.hlt_reached || with.hlt_reached,
