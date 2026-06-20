@@ -22,7 +22,7 @@ use crate::{cpu_bus_view, ppu_bus_view};
 /// the PPU divides it by 4, so one master cycle is the finest timing
 /// granularity.
 pub const MASTER_CYCLES_PER_FRAME: u32 = 357366;
-
+type ClockingFunction = fn(&mut Nes, last_cycle: u128) -> Result<ExecutionResult, String>;
 /// The top-level NES emulator.
 ///
 /// `Nes` orchestrates the CPU, PPU, and memory subsystems to provide
@@ -75,6 +75,7 @@ pub struct Nes {
     pub(crate) ppu_cycle_counter: u8,
     pub alignment: u8,
     pub stop_conditions: Option<Vec<StopCondition>>,
+    pub clocking_function: ClockingFunction,
     pub rom_db: Arc<RomDb>,
 }
 
@@ -190,7 +191,7 @@ impl Nes {
         run_option: RunOptions,
     ) -> Result<ExecutionResult, String> {
         loop {
-            let res = self.step_internal(last_cycle);
+            let res = (self.clocking_function)(self, last_cycle);
 
             let res = res?;
             if run_option.stop_at_scanline && res.scanline_done {
@@ -334,6 +335,7 @@ impl Nes {
             ppu_cycle_counter: 0,
             alignment: 8 + config.alignment,
             stop_conditions: None,
+            clocking_function: Self::step_internal,
             rom_db: Arc::new(RomDb::default()),
         }
     }
@@ -404,7 +406,9 @@ impl Nes {
     ///
     /// For most use cases, prefer [`step_frame()`](Nes::step_frame).
     #[inline]
-    pub fn step(&mut self) -> Result<ExecutionResult, String> { self.step_internal(u128::MAX) }
+    pub fn step(&mut self) -> Result<ExecutionResult, String> {
+        (self.clocking_function)(self, u128::MAX)
+    }
 
     #[cold]
     pub fn check_stop_conditions(
@@ -420,8 +424,8 @@ impl Nes {
         None
     }
 
-    #[inline(always)]
-    fn step_internal(&mut self, last_cycle: u128) -> Result<ExecutionResult, String> {
+    #[cold]
+    fn step_debug(&mut self, last_cycle: u128) -> Result<ExecutionResult, String> {
         if let Some(conditions) = &self.stop_conditions {
             if let Some(reason) = self.check_stop_conditions(&conditions.clone()) {
                 return Ok(ExecutionResult {
@@ -437,6 +441,11 @@ impl Nes {
             }
         }
 
+        self.step_internal(last_cycle)
+    }
+
+    #[inline(always)]
+    fn step_internal(&mut self, last_cycle: u128) -> Result<ExecutionResult, String> {
         let grayscale = self.board.ppu.get_grayscale_enabled();
 
         let ppu = &mut self.board.ppu;
