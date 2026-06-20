@@ -5,7 +5,7 @@ use egui::{Key, Modifiers};
 use monsoon_core::emulation::palette_util::RgbPalette;
 use monsoon_core::emulation::ppu_util::EmulatorFetchable;
 use monsoon_core::emulation::rom::RomFile;
-use monsoon_core::emulation::screen_renderer::{ScreenRenderer, create_renderer};
+use monsoon_core::emulation::screen_renderer::{create_renderer, ScreenRenderer};
 use serde::{Deserialize, Serialize};
 
 use crate::frontend::egui::keybindings::{
@@ -347,12 +347,8 @@ impl Default for KeybindingsConfig {
                 OnKeyAction::OpenKeybindingsMenu,
             ),
             // Console Bindings
-            Binding::key(Key::R, OnKeyAction::Reset),
-            Binding::with_modifiers(
-                Key::P,
-                Modifiers::CTRL.plus(Modifiers::ALT),
-                OnKeyAction::PowerCycle,
-            ),
+            Binding::with_modifiers(Key::R, Modifiers::CTRL, OnKeyAction::Reset),
+            Binding::with_modifiers(Key::T, Modifiers::CTRL, OnKeyAction::PowerCycle),
             Binding::with_modifiers(Key::P, Modifiers::CTRL, OnKeyAction::PowerToggle),
         ];
 
