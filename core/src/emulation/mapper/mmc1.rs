@@ -23,7 +23,7 @@ pub struct MMC1 {
     pub chr_rom: Option<Memory>,
     pub nametable_arrangement: NametableArrangement,
     pub prg_ram_bank_offset: u16,
-    pub last_shift_write: u128,
+    pub last_shift_write: u64,
     shift: u8,
     shift_count: u8,
     ctrl_reg: u8,
@@ -36,7 +36,7 @@ pub struct MMC1 {
 
 impl MapperLike for MMC1 {
     #[inline]
-    fn write(&mut self, addr: u16, data: u8, cycle: u128) -> CpuWriteResult {
+    fn write(&mut self, addr: u16, data: u8, cycle: u64) -> CpuWriteResult {
         match addr {
             0x4020..=0xFFFF => {
                 #[allow(clippy::collapsible_if)]
@@ -373,7 +373,7 @@ impl From<&RomFile> for MMC1 {
             },
             chr_rom_size: value.chr_memory.chr_rom_size,
             prg_ram_bank_offset: 0,
-            last_shift_write: u128::MAX,
+            last_shift_write: u64::MAX,
             shift: 0,
             shift_count: 0,
             ctrl_reg: 0x0C,

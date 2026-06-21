@@ -18,7 +18,7 @@
 //! fn load_config(path: &str) -> CliResult<Config> {
 //!     let content = std::fs::read_to_string(path)
 //!         .map_err(|e| CliError::config_io(path, e))?;
-//!     
+//!
 //!     toml::from_str(&content)
 //!         .map_err(|e| CliError::config_parse(path, e))
 //! }
@@ -134,7 +134,7 @@ pub enum CliError {
     /// Execution error
     Execution {
         message: String,
-        cycles: Option<u128>,
+        cycles: Option<u64>,
         frames: Option<u64>,
     },
 

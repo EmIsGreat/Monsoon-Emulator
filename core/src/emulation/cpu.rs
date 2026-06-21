@@ -105,7 +105,7 @@ pub struct Cpu {
     pub dma_page: u8,
     /// Last memory access for watchpoint debugging (address, was_read, value)
     pub last_memory_access: Option<(u16, bool, u8)>,
-    pub cycle: u128,
+    pub cycle: u64,
 }
 
 impl Default for Cpu {

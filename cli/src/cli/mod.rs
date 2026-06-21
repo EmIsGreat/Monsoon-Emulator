@@ -67,13 +67,13 @@
 //! ```rust,ignore
 //! // 1. Add variant to StopCondition enum in execution.rs
 //! pub enum StopCondition {
-//!     Cycles(u128), Frames(u64), PcEquals(u16),
+//!     Cycles(u64), Frames(u64), PcEquals(u16),
 //!     ScanlineEquals(u16),  // New!
 //! }
 //!
 //! // 2. Add corresponding StopReason variant
 //! pub enum StopReason {
-//!     CyclesReached(u128), FramesReached(u64), PcReached(u16),
+//!     CyclesReached(u64), FramesReached(u64), PcReached(u16),
 //!     ScanlineReached(u16),  // New!
 //! }
 //!

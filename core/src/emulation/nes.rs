@@ -1,10 +1,10 @@
 use std::fmt::Debug;
 use std::fs;
+use std::hint::unlikely;
 use std::ops::RangeInclusive;
 use std::sync::Arc;
 
 use crate::emulation::board::{Board, CpuBus, CpuBusView, PpuBus, PpuBusView};
-use crate::emulation::cpu::MicroOp;
 use crate::emulation::debug_tools::{StopCondition, StopReason};
 use crate::emulation::mapper::MapperLike;
 use crate::emulation::peripherals::Peripheral;
@@ -22,7 +22,7 @@ use crate::{cpu_bus_view, ppu_bus_view};
 /// the PPU divides it by 4, so one master cycle is the finest timing
 /// granularity.
 pub const MASTER_CYCLES_PER_FRAME: u32 = 357366;
-type ClockingFunction = fn(&mut Nes, last_cycle: u128) -> Result<ExecutionResult, String>;
+type ClockingFunction = fn(&mut Nes, last_cycle: u64) -> Result<ExecutionResult, String>;
 /// The top-level NES emulator.
 ///
 /// `Nes` orchestrates the CPU, PPU, and memory subsystems to provide
@@ -61,7 +61,7 @@ type ClockingFunction = fn(&mut Nes, last_cycle: u128) -> Result<ExecutionResult
 pub struct Nes {
     pub(crate) board: Board,
     /// Total master clock cycles elapsed since power-on.
-    pub total_cycles: u128,
+    pub total_cycles: u64,
     /// The currently loaded ROM, or `None` if no ROM has been loaded.
     pub rom_file: Option<RomFile>,
     /// Optional CPU instruction trace logger for debugging.
@@ -145,8 +145,8 @@ impl Nes {
         self.board = Board::default();
         self.board.attach_controllers(controller1, controller2);
         self.total_cycles = 0;
-        self.cpu_cycle_counter = 0;
-        self.ppu_cycle_counter = 0;
+        self.cpu_cycle_counter = 12;
+        self.ppu_cycle_counter = 4;
     }
 
     /// Runs the emulator indefinitely until a halt instruction (`HLT`) is
@@ -161,7 +161,7 @@ impl Nes {
     ///
     /// Panics if an internal emulation error occurs during execution.
     pub fn run(&mut self) -> Result<ExecutionResult, String> {
-        self.run_until(u128::MAX, RunOptions::default())
+        self.run_until(u64::MAX, RunOptions::default())
     }
 
     /// Runs the emulator until a specific cycle count is reached, or until a
@@ -170,7 +170,7 @@ impl Nes {
     /// # Arguments
     ///
     /// * `last_cycle` — The master clock cycle count at which to stop
-    ///   execution. Use `u128::MAX` to run without a cycle limit.
+    ///   execution. Use `u64::MAX` to run without a cycle limit.
     /// * `stop_at_frame` — If `true`, execution also stops at the end of the
     ///   current video frame (after scanline 240).
     ///
@@ -187,11 +187,11 @@ impl Nes {
     /// Panics if an internal emulation error occurs during execution.
     pub fn run_until(
         &mut self,
-        last_cycle: u128,
+        last_cycle: u64,
         run_option: RunOptions,
     ) -> Result<ExecutionResult, String> {
         loop {
-            let res = (self.clocking_function)(self, last_cycle);
+            let res = self.step_internal(last_cycle);
 
             let res = res?;
             if run_option.stop_at_scanline && res.scanline_done {
@@ -255,7 +255,7 @@ impl Nes {
     #[inline]
     pub fn step_frame(&mut self) -> Result<ExecutionResult, String> {
         self.run_until(
-            u128::MAX,
+            u64::MAX,
             RunOptions {
                 stop_at_frame: true,
                 ..Default::default()
@@ -268,7 +268,7 @@ impl Nes {
     #[inline]
     pub fn step_scanline(&mut self) -> Result<ExecutionResult, String> {
         self.run_until(
-            u128::MAX,
+            u64::MAX,
             RunOptions {
                 stop_at_scanline: true,
                 ..Default::default()
@@ -281,7 +281,7 @@ impl Nes {
     #[inline]
     pub fn step_cpu_cycle(&mut self) -> Result<ExecutionResult, String> {
         self.run_until(
-            u128::MAX,
+            u64::MAX,
             RunOptions {
                 stop_at_cpu_cycle: true,
                 ..Default::default()
@@ -294,7 +294,7 @@ impl Nes {
     #[inline]
     pub fn step_ppu_cycle(&mut self) -> Result<ExecutionResult, String> {
         self.run_until(
-            u128::MAX,
+            u64::MAX,
             RunOptions {
                 stop_at_ppu_cycle: true,
                 ..Default::default()
@@ -329,11 +329,11 @@ impl Nes {
             rom_file: None,
             trace_log: None,
             trace_enabled: false,
-            total_cycles: 0,
-            cpu_cycle_counter: 0,
-            apu_counter: 0,
-            ppu_cycle_counter: 0,
-            alignment: 8 + config.alignment,
+            total_cycles: 4,
+            cpu_cycle_counter: 12,
+            apu_counter: 2,
+            ppu_cycle_counter: 4,
+            alignment: config.alignment,
             stop_conditions: None,
             clocking_function: Self::step_internal,
             rom_db: Arc::new(RomDb::default()),
@@ -406,9 +406,7 @@ impl Nes {
     ///
     /// For most use cases, prefer [`step_frame()`](Nes::step_frame).
     #[inline]
-    pub fn step(&mut self) -> Result<ExecutionResult, String> {
-        (self.clocking_function)(self, u128::MAX)
-    }
+    pub fn step(&mut self) -> Result<ExecutionResult, String> { self.step_internal(u64::MAX) }
 
     #[cold]
     pub fn check_stop_conditions(
@@ -425,7 +423,7 @@ impl Nes {
     }
 
     #[cold]
-    fn step_debug(&mut self, last_cycle: u128) -> Result<ExecutionResult, String> {
+    fn step_debug(&mut self, last_cycle: u64) -> Result<ExecutionResult, String> {
         if let Some(conditions) = &self.stop_conditions {
             if let Some(reason) = self.check_stop_conditions(&conditions.clone()) {
                 return Ok(ExecutionResult {
@@ -445,7 +443,7 @@ impl Nes {
     }
 
     #[inline(always)]
-    fn step_internal(&mut self, last_cycle: u128) -> Result<ExecutionResult, String> {
+    fn step_internal(&mut self, last_cycle: u64) -> Result<ExecutionResult, String> {
         let grayscale = self.board.ppu.get_grayscale_enabled();
 
         let ppu = &mut self.board.ppu;
@@ -457,42 +455,50 @@ impl Nes {
         };
 
         self.total_cycles += 1;
-        self.cpu_cycle_counter = self.cpu_cycle_counter.wrapping_add(1);
-        self.ppu_cycle_counter = self.ppu_cycle_counter.wrapping_add(1);
+        self.cpu_cycle_counter -= 1;
+        self.ppu_cycle_counter -= 1;
 
-        if ppu.vbl_clear_scheduled.is_some() {
+        let cpu_step = self.cpu_cycle_counter == self.alignment;
+
+        if self.ppu_cycle_counter != 0 && !cpu_step {
+            return Ok(ExecutionResult::default());
+        }
+
+        if self.cpu_cycle_counter == 0 {
+            self.cpu_cycle_counter = 12;
+        }
+
+        if unlikely(ppu.vbl_clear_scheduled.is_some()) {
             ppu.vbl_reset_counter += 1;
             ppu.process_vbl_clear_scheduled();
         }
 
-        if self.total_cycles > last_cycle {
-            self.total_cycles -= 1;
+        if unlikely(self.total_cycles > last_cycle) {
             res.last_cycle_reached = true;
             return Ok(res);
         };
 
-        if self.ppu_cycle_counter == 4 {
+        if self.ppu_cycle_counter == 0 {
             res = res.merge(ppu.step(&mut ppu_bus_view!(self, grayscale)));
             res.ppu_cycle_completed = true;
-            self.ppu_cycle_counter = 0;
+            self.ppu_cycle_counter = 4;
         }
 
         // Check if CPU should step (every 12th master cycle, offset by 2)
         // cpu_cycle_counter + 2 == 12  means cpu_cycle_counter == 10
-        if self.cpu_cycle_counter == self.alignment {
-            self.apu_counter += 1;
+        if cpu_step {
+            self.apu_counter -= 1;
 
-            // Only check trace_log when actually needed
-            let do_trace = self.trace_enabled
-                && self.trace_log.is_some()
-                && matches!(&cpu.current_op, &MicroOp::FetchOpcode);
+            if unlikely(self.trace_enabled) {
+                std::hint::black_box(());
+            }
 
             let cpu_res = cpu.step(&mut cpu_bus_view!(self));
 
             self.board.apu.clock_frame_counter(self.apu_counter == 2);
 
-            if self.apu_counter == 2 {
-                self.apu_counter = 0;
+            if self.apu_counter == 0 {
+                self.apu_counter = 2;
             }
 
             #[allow(clippy::question_mark)]
@@ -502,14 +508,6 @@ impl Nes {
             } else {
                 return cpu_res;
             }
-
-            if do_trace {
-                self.write_trace_log();
-            }
-        }
-
-        if self.cpu_cycle_counter == 12 {
-            self.cpu_cycle_counter = 0;
         }
 
         Ok(res)
@@ -770,7 +768,7 @@ impl Nes {
 ///
 /// Returned by [`Nes::run()`], [`Nes::run_until()`], [`Nes::step()`], and
 /// [`Nes::step_frame()`] to indicate the reason execution stopped.
-#[derive(Debug, Clone, Eq, PartialEq, Default)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ExecutionResult {
     pub last_cycle_reached: bool,
     pub hlt_reached: bool,
@@ -782,6 +780,21 @@ pub struct ExecutionResult {
     pub stop_reason: Option<StopReason>,
 }
 
+impl Default for ExecutionResult {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            last_cycle_reached: false,
+            hlt_reached: false,
+            cycle_completed: true,
+            cpu_cycle_completed: false,
+            ppu_cycle_completed: false,
+            frame_done: false,
+            scanline_done: false,
+            stop_reason: None,
+        }
+    }
+}
 impl ExecutionResult {
     pub fn merge(self, with: ExecutionResult) -> Self {
         Self {

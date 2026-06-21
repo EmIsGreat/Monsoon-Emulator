@@ -10,7 +10,7 @@ fn test_ram_after_reset() {
     ));
     emu.reset();
 
-    for i in 0..u128::MAX {
+    for i in 0..u64::MAX {
         emu.step().expect("TODO: panic message");
 
         let val = emu.get_memory_debug(Some(0x6000..=0x6000))[0][0];
@@ -51,7 +51,7 @@ fn test_registers() {
     ));
     emu.reset();
 
-    for i in 0..u128::MAX {
+    for i in 0..u64::MAX {
         emu.step().expect("TODO: panic message");
 
         let val = emu.get_memory_debug(Some(0x6000..=0x6000))[0][0];

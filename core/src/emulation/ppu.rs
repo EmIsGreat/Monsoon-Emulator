@@ -41,7 +41,7 @@ pub const SCREEN_RENDER_WIDTH: usize = 256;
 
 #[derive(Debug, Clone)]
 pub struct Ppu {
-    pub dot_counter: u128,
+    pub dot_counter: u64,
     pub ctrl_register: u8,
     pub mask_register: u8,
     pub status_register: u8,

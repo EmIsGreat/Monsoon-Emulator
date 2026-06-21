@@ -18,11 +18,6 @@ monsoon-core = { version = "0.2.5", path = "core" }
 monsoon-default-renderers = { version = "0.2.5", path = "renderer" }
 monsoon-db = { version = "0.2.5", path = "db" }
 
-[profile.release]
-strip = true
-panic = "abort"
-incremental = true
-
 [profile.full_release]
 inherits = "release"
 codegen-units = 1
@@ -32,7 +27,13 @@ lto = "fat"
 inherits = "full_release"
 rustflags = ["-C", "target-cpu=native"]
 
+[profile.release]
+strip = true
+panic = "abort"
+incremental = true
+
 [profile.profiling]
+panic = "unwind"
 inherits = "release"
 strip = "none"
 debug = "full"

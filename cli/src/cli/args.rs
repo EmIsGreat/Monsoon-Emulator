@@ -265,7 +265,7 @@ pub enum VideoFormat {
 pub struct ExecutionArgs {
     /// Run for N master cycles
     #[arg(long)]
-    pub cycles: Option<u128>,
+    pub cycles: Option<u64>,
 
     /// Run for N frames
     #[arg(short, long)]

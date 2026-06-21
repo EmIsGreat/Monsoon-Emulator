@@ -32,7 +32,7 @@ impl TraceLog {
         }
     }
 
-    pub fn trace(&mut self, cpu: &Cpu, bus: &impl CpuBus, total_cycles: u128) {
+    pub fn trace(&mut self, cpu: &Cpu, bus: &impl CpuBus, total_cycles: u64) {
         let current_opcode = cpu.current_opcode;
 
         let cpu = CpuTraceState {

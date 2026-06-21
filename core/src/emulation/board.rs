@@ -76,7 +76,7 @@ pub trait CpuBus {
     fn read(&mut self, addr: u16) -> u8;
     fn read_debug(&self, addr: u16) -> u8;
     fn get_range(&self, addr: RangeInclusive<u16>) -> Vec<u8>;
-    fn write(&mut self, addr: u16, data: u8, cycle: u128);
+    fn write(&mut self, addr: u16, data: u8, cycle: u64);
     fn init(&mut self, addr: u16, data: u8);
     fn get_ppu_open_bus(&mut self) -> &mut OpenBus;
     fn poll_nmi(&mut self) -> bool;
@@ -143,7 +143,7 @@ impl<'a> CpuBus for CpuBusView<'a> {
     }
 
     #[inline]
-    fn write(&mut self, addr: u16, data: u8, cycle: u128) {
+    fn write(&mut self, addr: u16, data: u8, cycle: u64) {
         let res = self.mapper.write(addr, data, cycle);
         self.cpu_open_bus.set_masked(data, 0xFF);
 

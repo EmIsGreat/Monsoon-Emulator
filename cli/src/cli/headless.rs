@@ -133,7 +133,7 @@ pub fn run_headless(args: &CliArgs) -> Result<(), String> {
         eprintln!("Total cycles: {}", engine.emu.total_cycles);
         eprintln!(
             "Total frames: {}",
-            engine.emu.total_cycles / MASTER_CYCLES_PER_FRAME as u128
+            engine.emu.total_cycles / MASTER_CYCLES_PER_FRAME as u64
         );
         eprintln!("Stop reason: {:?}", result.stop_reason);
     }

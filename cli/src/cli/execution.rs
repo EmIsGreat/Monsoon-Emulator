@@ -57,7 +57,7 @@ impl ExecutionConfig {
     }
 
     /// Set stop after N cycles
-    pub fn with_cycles(mut self, cycles: u128) -> Self {
+    pub fn with_cycles(mut self, cycles: u64) -> Self {
         self.stop_conditions.push(StopCondition::Cycles(cycles));
         self
     }
@@ -108,13 +108,13 @@ impl ExecutionConfig {
     }
 
     /// Calculate the maximum cycles to run based on stop conditions
-    fn max_cycles(&self) -> u128 {
-        let mut max = u128::MAX;
+    fn max_cycles(&self) -> u64 {
+        let mut max = u64::MAX;
         for cond in &self.stop_conditions {
             match cond {
                 StopCondition::Cycles(c) => max = max.min(*c),
                 StopCondition::Frames(f) => {
-                    max = max.min(*f as u128 * MASTER_CYCLES_PER_FRAME as u128)
+                    max = max.min(*f * MASTER_CYCLES_PER_FRAME as u64)
                 }
                 _ => {}
             }
@@ -480,15 +480,15 @@ impl ExecutionEngine {
                     -2
                 };
 
-                let base = (capture_idx + 1) as u128 * MASTER_CYCLES_PER_FRAME as u128;
+                let base = (capture_idx + 1) as u64 * MASTER_CYCLES_PER_FRAME as u64;
 
                 let base = if odd_frame_offset >= 0 {
-                    base.saturating_add(odd_frame_offset as u128)
+                    base.saturating_add(odd_frame_offset as u64)
                 } else {
-                    base.saturating_sub((-odd_frame_offset) as u128)
+                    base.saturating_sub((-odd_frame_offset) as u64)
                 };
 
-                let capture_point = base / captures_per_frame as u128;
+                let capture_point = base / captures_per_frame as u64;
                 let target_cycles = frame_start_cycles + capture_point;
 
                 // Run until the target cycle

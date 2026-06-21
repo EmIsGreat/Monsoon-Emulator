@@ -57,7 +57,7 @@ impl Mapper {
 
 #[enum_delegate::register]
 pub trait MapperLike {
-    fn write(&mut self, addr: u16, data: u8, cycle: u128) -> CpuWriteResult;
+    fn write(&mut self, addr: u16, data: u8, cycle: u64) -> CpuWriteResult;
     fn init(&mut self, addr: u16, data: u8) -> CpuWriteResult;
     fn read(&mut self, addr: u16, open_bus: &OpenBus) -> CpuReadResult;
     fn read_debug(&self, addr: u16, open_bus: &OpenBus) -> CpuReadResult;
@@ -99,7 +99,7 @@ pub enum PpuWriteResult {
 pub struct NoMapper {}
 
 impl MapperLike for NoMapper {
-    fn write(&mut self, addr: u16, _: u8, _: u128) -> CpuWriteResult {
+    fn write(&mut self, addr: u16, _: u8, _: u64) -> CpuWriteResult {
         match addr {
             0x4020..=0xFFFF => CpuWriteResult::Handled,
             _ => CpuWriteResult::Registered,
@@ -189,7 +189,7 @@ pub struct Nrom {
 
 impl MapperLike for Nrom {
     #[inline]
-    fn write(&mut self, addr: u16, data: u8, _: u128) -> CpuWriteResult {
+    fn write(&mut self, addr: u16, data: u8, _: u64) -> CpuWriteResult {
         match addr {
             0x4020..=0xFFFF => {
                 #[allow(clippy::collapsible_if)]

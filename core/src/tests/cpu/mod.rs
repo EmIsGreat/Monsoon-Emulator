@@ -39,7 +39,7 @@ impl CpuBus for TestBus {
         addr.into_iter().map(|a| self.read_debug(a)).collect()
     }
 
-    fn write(&mut self, addr: u16, data: u8, _: u128) {
+    fn write(&mut self, addr: u16, data: u8, _: u64) {
         if self.rom_mapped && addr >= 0x8000 {
             return;
         }

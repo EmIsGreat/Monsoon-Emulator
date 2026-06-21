@@ -149,7 +149,7 @@ pub struct VideoConfig {
 #[derive(Debug, Clone, Default, Deserialize)]
 #[serde(default)]
 pub struct ExecutionConfig {
-    pub cycles: Option<u128>,
+    pub cycles: Option<u64>,
     pub frames: Option<u64>,
     pub until_opcode: Option<String>,
     pub until_mem: Option<Vec<String>>,

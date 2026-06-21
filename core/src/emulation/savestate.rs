@@ -93,7 +93,7 @@ pub struct CpuState {
     pub(crate) nmi_pending: bool,
     /// Previous NMI line state (for edge detection).
     pub(crate) prev_nmi: bool,
-    pub cycle: u128,
+    pub cycle: u64,
     pub remaining_dma_cycles: u16,
 }
 
@@ -178,7 +178,7 @@ impl From<&CpuState> for Cpu {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct PpuState {
     /// Total dot cycles elapsed.
-    pub cycle_counter: u128,
+    pub cycle_counter: u64,
     /// Counter for VBL clear scheduling.
     pub(crate) vbl_reset_counter: u8,
     /// PPU status register (`$2002`).
@@ -444,7 +444,7 @@ pub struct SaveState {
     /// Save state format version.
     pub version: u16,
     /// Total master clock cycles at the time of capture.
-    pub total_cycles: u128,
+    pub total_cycles: u64,
     pub ppu_cycle_counter: u8,
     /// CPU clock divider counter at the time of capture.
     pub cpu_cycle_counter: u8,

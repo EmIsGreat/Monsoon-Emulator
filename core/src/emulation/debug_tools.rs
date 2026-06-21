@@ -5,7 +5,7 @@ use crate::util::{parse_hex_u16, parse_hex_u8};
 #[derive(Debug, Clone)]
 pub enum StopCondition {
     /// Stop after N master cycles
-    Cycles(u128),
+    Cycles(u64),
     /// Stop after N frames
     Frames(u64),
     /// Stop when PC reaches address (breakpoint)
@@ -209,7 +209,7 @@ impl StopCondition {
         match self {
             StopCondition::Cycles(_) => StopReason::CyclesReached(emu.total_cycles),
             StopCondition::Frames(_) => StopReason::FramesReached(
-                (emu.total_cycles / MASTER_CYCLES_PER_FRAME as u128) as u64,
+                (emu.total_cycles / MASTER_CYCLES_PER_FRAME as u64) as u64,
             ),
             StopCondition::PcEquals(addr) | StopCondition::Breakpoint(addr) => {
                 StopReason::PcReached(*addr)
@@ -251,7 +251,7 @@ impl StopCondition {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StopReason {
     /// Reached target cycle count
-    CyclesReached(u128),
+    CyclesReached(u64),
     /// Reached target frame count
     FramesReached(u64),
     /// PC reached target address (breakpoint)
