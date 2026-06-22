@@ -1,0 +1,33 @@
+# Maintainer: EmIsGreat <monsoon-package@gemderbent.dev>
+
+pkgname="monsoon-emulator-bin"
+pkgver="0.2.6"
+pkgrel=1
+pkgdesc="A work-in-progress NES emulator"
+arch=('x86_64')
+url="https://github.com/EmIsGreat/Monsoon-Emulator"
+license=('Apache-2.0')
+
+conflicts=('monsoon-emulator')
+options=('!debug')
+
+depends=(
+    'glibc'
+    'gcc-libs'
+)
+
+source=(
+    "${pkgname%-emulator-bin}-cli-$pkgver.tar.gz::$url/releases/download/v$pkgver/monsoon-cli-x86_64-unknown-linux-gnu.tar.gz"
+    "${pkgname%-emulator-bin}-frontend-$pkgver.tar.gz::$url/releases/download/v$pkgver/monsoon-frontend-x86_64-unknown-linux-gnu.tar.gz"
+    "https://raw.githubusercontent.com/EmIsGreat/Monsoon-Emulator/v$pkgver/LICENSE"
+)
+
+b2sums=('dc305f5bb1ed6bfbcc68f373b056a3ea4fdb9b47ff6cd1ef0c6717c1afbaaf5715da68e696d729651f424290a0274deca3822522e6515507eed5d8ba7daaa66a'
+        'd725035f9da86e93c732a6dbd23cabc60b3de8d7f9fe4aa928bcc7e01de8b5ff5a32afff02b593e1416ec8a71833434b9de56d859456a0661280c29590f7ba63'
+        '40b4641424fe7d53369c27edd05f1dba3380b32917d0e2464862e2d1a44ea1768810e65eb392274205ac95b9d10f9867f63258aab28d0bf6ceb4bf98b880b991')
+
+package() {
+    install -Dm755 "${pkgname%-emulator-bin}-cli-x86_64-unknown-linux-gnu.x86_64" "$pkgdir/usr/bin/${pkgname%-emulator-bin}-cli"
+    install -Dm755 "${pkgname%-emulator-bin}-frontend-x86_64-unknown-linux-gnu.x86_64" "$pkgdir/usr/bin/${pkgname%-emulator-bin}-frontend"
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/${pkgname}/LICENSE"
+}

@@ -169,6 +169,65 @@ jobs:
                     
                     publish_crate monsoon-frontend
 
+    publish-aur:
+        needs: publish-crates
+        runs-on: ubuntu-latest
+
+        steps:
+            -   name: Install AUR tooling
+                run: sudo apt-get update && sudo apt-get install -y pacman-package-manager
+
+            -   name: Setup SSH
+                run: |
+                    mkdir -p ~/.ssh
+                    echo "${{ secrets.AUR_SSH_KEY }}" > ~/.ssh/aur
+                    chmod 600 ~/.ssh/aur
+                    cat >> ~/.ssh/config <<EOF
+                    Host aur.archlinux.org
+                      IdentityFile ~/.ssh/aur
+                      StrictHostKeyChecking accept-new
+                    EOF
+
+            -   name: Get version
+                id: version
+                run: |
+                    VERSION=$(grep -m1 '^version = ' Cargo.toml | sed 's/version = "\(.*\)"/\1/')
+                    echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+            -   name: Update monsoon-emulator
+                run: |
+                    git clone ssh://aur@aur.archlinux.org/monsoon-emulator.git
+                    cd monsoon-emulator
+                    
+                    sed -i \
+                      "s/^pkgver=.*/pkgver=${{ steps.version.outputs.version }}/" \
+                      PKGBUILD
+                    
+                    updpkgsums
+                    
+                    git config user.name "GitHub Actions"
+                    git config user.email "actions@github.com"
+                    
+                    git commit -am "Update to ${{ steps.version.outputs.version }}" || exit 0
+                    git push
+
+            -   name: Update monsoon-emulator-bin
+                run: |
+                    git clone ssh://aur@aur.archlinux.org/monsoon-emulator-bin.git
+                    cd monsoon-emulator-bin
+                    
+                    sed -i \
+                      "s/^pkgver=.*/pkgver=${{ steps.version.outputs.version }}/" \
+                      PKGBUILD
+                    
+                    updpkgsums
+                    
+                    git config user.name "GitHub Actions"
+                    git config user.email "actions@github.com"
+                    
+                    git commit -am "Update to ${{ steps.version.outputs.version }}" || exit 0
+                    git push
+
     deploy-web:
         runs-on: ubuntu-latest
         environment:

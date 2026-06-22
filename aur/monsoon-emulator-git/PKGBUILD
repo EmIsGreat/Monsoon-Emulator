@@ -1,0 +1,54 @@
+# Maintainer: EmIsGreat <monsoon-package@gemderbent.dev>
+
+pkgname="monsoon-emulator"
+pkgver="0.2.6"
+pkgrel=1
+pkgdesc="A work-in-progress NES emulator"
+arch=('x86_64')
+url="https://github.com/EmIsGreat/Monsoon-Emulator"
+license=('Apache-2.0')
+
+options=(
+    '!lto'
+    '!debug'
+)
+
+conflicts=('monsoon-emulator-bin')
+
+depends=(
+    'glibc'
+    'gcc-libs'
+)
+
+makedepends=(cargo-nightly)
+
+source=(
+    "${pkgname}-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz"
+    "https://raw.githubusercontent.com/EmIsGreat/Monsoon-Emulator/v$pkgver/LICENSE"
+)
+
+b2sums=('f16ba6352906abcce5be1ba7ddc5fe9d3270b7a72b40ef72d8ae9e0614d4ddad46a596a4c5ab870f6ec1e2971019e6d04a3f59d3bd4c642ad6068ae24fd7eb2e'
+        '40b4641424fe7d53369c27edd05f1dba3380b32917d0e2464862e2d1a44ea1768810e65eb392274205ac95b9d10f9867f63258aab28d0bf6ceb4bf98b880b991')
+
+prepare() {
+    cd "Monsoon-Emulator-$pkgver"
+    cargo fetch --locked --target host-tuple 
+}
+
+build() {
+    cd "Monsoon-Emulator-$pkgver"
+
+    export CARGO_TARGET_DIR=target
+    cargo build --frozen --profile release -p monsoon-frontend
+    cargo build --frozen --profile release -p monsoon-cli
+}
+
+package() {
+    cd "Monsoon-Emulator-$pkgver"
+    mv "target/release/cli" "target/release/${pkgname%-emulator}-cli"
+    mv "target/release/frontend" "target/release/${pkgname%-emulator}-frontend"
+
+    install -Dm0755 -t "$pkgdir/usr/bin/" "target/release/${pkgname%-emulator}-cli"
+    install -Dm0755 -t "$pkgdir/usr/bin/" "target/release/${pkgname%-emulator}-frontend"
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/${pkgname}/LICENSE"
+}
