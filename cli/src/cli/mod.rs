@@ -180,15 +180,12 @@ pub mod memory_init;
 pub mod output;
 pub mod video;
 
-pub use args::{
-    CliArgs, OutputFormat, SavestateFormat, VideoExportMode, VideoFormat,
-};
+pub use args::{CliArgs, OutputFormat, SavestateFormat, VideoExportMode, VideoFormat};
 use clap::Parser;
 pub use config::ConfigFile;
 pub use error::{CliError, CliResult};
 pub use execution::{
-    ExecutionConfig, ExecutionEngine, SavestateConfig,
-    SavestateDestination, SavestateSource
+    ExecutionConfig, ExecutionEngine, SavestateConfig, SavestateDestination, SavestateSource,
 };
 pub use headless::{create_renderer_from_args, list_renderers, run_headless};
 pub use memory_init::{MemoryInit, MemoryInitConfig, apply_memory_init, apply_memory_init_config};

@@ -248,7 +248,7 @@ impl MapperLike for MMC1 {
         regs.insert(
             "last_shift_write".to_string(),
             RegisterEntry::new(
-                RegisterValue::U64(self.last_shift_write as u64),
+                RegisterValue::U64(self.last_shift_write),
                 RegisterFormat::Decimal,
             ),
         );

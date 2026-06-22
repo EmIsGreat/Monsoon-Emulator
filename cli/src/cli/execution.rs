@@ -15,10 +15,10 @@ use std::path::{Path, PathBuf};
 
 use monsoon_core::emulation::debug_tools::{MemoryAccessType, StopCondition, StopReason};
 use monsoon_core::emulation::nes::{
-    ExecutionResult, Nes, NesConfig, RunOptions, MASTER_CYCLES_PER_FRAME,
+    ExecutionResult, MASTER_CYCLES_PER_FRAME, Nes, NesConfig, RunOptions,
 };
 use monsoon_core::emulation::rom::{ParseError, RomFile};
-use monsoon_core::emulation::savestate::{try_load_state_from_bytes, SaveState};
+use monsoon_core::emulation::savestate::{SaveState, try_load_state_from_bytes};
 use monsoon_core::util::{SerializationError, ToBytes};
 
 // =============================================================================
@@ -113,9 +113,7 @@ impl ExecutionConfig {
         for cond in &self.stop_conditions {
             match cond {
                 StopCondition::Cycles(c) => max = max.min(*c),
-                StopCondition::Frames(f) => {
-                    max = max.min(*f * MASTER_CYCLES_PER_FRAME as u64)
-                }
+                StopCondition::Frames(f) => max = max.min(*f * MASTER_CYCLES_PER_FRAME as u64),
                 _ => {}
             }
         }
@@ -147,9 +145,9 @@ pub enum SavestateDestination {
     Stdout,
 }
 
-pub use crate::cli::args::SavestateFormat;
 // Re-export SavestateFormat from args for use in this module
 use crate::cli::CliArgs;
+pub use crate::cli::args::SavestateFormat;
 
 /// Configuration for savestate operations
 #[derive(Debug, Clone, Default)]
@@ -707,7 +705,7 @@ impl SavestateConfig {
 mod tests {
     use std::path::PathBuf;
 
-    use super::{ExecutionConfig, DEFAULT_INTERNAL_TRACE_LOG_PATH};
+    use super::{DEFAULT_INTERNAL_TRACE_LOG_PATH, ExecutionConfig};
     use crate::cli::CliArgs;
 
     #[test]

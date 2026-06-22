@@ -9,8 +9,9 @@ use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
 
+use monsoon_core::util::{parse_hex_u8_opt, parse_hex_u16_opt};
 use serde::Deserialize;
-use monsoon_core::util::{parse_hex_u16_opt, parse_hex_u8_opt};
+
 use crate::cli::args::BuiltinPalette;
 use crate::cli::{CliArgs, OutputFormat, SavestateFormat, VideoExportMode, VideoFormat};
 

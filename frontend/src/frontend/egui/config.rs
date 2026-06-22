@@ -5,7 +5,7 @@ use egui::{Key, Modifiers};
 use monsoon_core::emulation::palette_util::RgbPalette;
 use monsoon_core::emulation::ppu_util::EmulatorFetchable;
 use monsoon_core::emulation::rom::RomFile;
-use monsoon_core::emulation::screen_renderer::{create_renderer, ScreenRenderer};
+use monsoon_core::emulation::screen_renderer::{ScreenRenderer, create_renderer};
 use serde::{Deserialize, Serialize};
 
 use crate::frontend::egui::keybindings::{

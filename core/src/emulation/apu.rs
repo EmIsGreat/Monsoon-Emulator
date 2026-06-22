@@ -6,7 +6,7 @@ pub const FRAME_COUNTER_STEP_3: u16 = 11185;
 pub const FRAME_COUNTER_STEP_4: u16 = 14914;
 pub const FRAME_COUNTER_STEP_5: u16 = 18640;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Apu {
     pub frame_counter: FrameCounter,
 }
@@ -14,12 +14,11 @@ pub struct Apu {
 impl Apu {
     #[inline(always)]
     pub fn clock_frame_counter(&mut self, is_proper: bool) {
-        match self.frame_counter.clock(is_proper) {
-            Some(res) => match res {
+        if let Some(res) = self.frame_counter.clock(is_proper) {
+            match res {
                 FrameCounterClockResult::HalfFrame => self.clock_half_frame(),
                 FrameCounterClockResult::QuarterFrame => self.clock_quarter_frame(),
-            },
-            None => {}
+            }
         }
     }
 
@@ -33,22 +32,10 @@ impl Apu {
     pub fn poll_irq(&self) -> bool { self.frame_counter.frame_interrupt }
 }
 
-impl Default for Apu {
-    fn default() -> Self {
-        Self {
-            frame_counter: FrameCounter::default(),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct PulseGenerator {}
 
-impl Default for PulseGenerator {
-    fn default() -> Self { Self {} }
-}
-
-#[derive(Debug, Clone, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, Hash, PartialEq, Default, Serialize, Deserialize)]
 pub struct FrameCounter {
     pub five_step: bool,
     pub frame_interrupt: bool,
@@ -110,15 +97,4 @@ impl FrameCounter {
 pub enum FrameCounterClockResult {
     HalfFrame,
     QuarterFrame,
-}
-
-impl Default for FrameCounter {
-    fn default() -> Self {
-        Self {
-            frame_interrupt: false,
-            interrupt_inhibit: false,
-            five_step: false,
-            apu_cycle_counter: 0,
-        }
-    }
 }

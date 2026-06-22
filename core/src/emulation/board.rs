@@ -10,8 +10,8 @@ use crate::emulation::mem::palette_ram::PaletteRam;
 use crate::emulation::mem::{Memory, OpenBus};
 use crate::emulation::peripherals::{Peripheral, PeripheralDevice};
 use crate::emulation::ppu::{
-    Ppu, OPEN_BUS_DECAY_DELAY, PALETTE_RAM_END_ADDRESS, PALETTE_RAM_SIZE,
-    PALETTE_RAM_START_ADDRESS, VRAM_SIZE,
+    OPEN_BUS_DECAY_DELAY, PALETTE_RAM_END_ADDRESS, PALETTE_RAM_SIZE, PALETTE_RAM_START_ADDRESS,
+    Ppu, VRAM_SIZE,
 };
 use crate::emulation::rom::RomFile;
 use crate::emulation::savestate::BoardState;
@@ -398,7 +398,7 @@ impl<'a> CpuBusView<'a> {
                     0
                 };
 
-                0b0000_0000 | frame_interrupt | (self.cpu_open_bus.read() & 0b0010_0000)
+                frame_interrupt | (self.cpu_open_bus.read() & 0b0010_0000)
             }
             0x4016 => {
                 if let Some(controller) = &self.controller1 {
@@ -430,10 +430,8 @@ impl<'a> CpuBusView<'a> {
                     0
                 };
 
-                ReadResult::from(
-                    0b0000_0000 | frame_interrupt | (self.cpu_open_bus.read() & 0b0010_000),
-                )
-                .to_false()
+                ReadResult::from(frame_interrupt | (self.cpu_open_bus.read() & 0b0010_0000))
+                    .to_false()
             }
             0x4016 => match self.controller1.as_mut() {
                 Some(controller) => ReadResult::from(controller.read()).with_mask(!0b11100000),

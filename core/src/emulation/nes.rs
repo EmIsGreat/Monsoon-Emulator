@@ -422,21 +422,22 @@ impl Nes {
         None
     }
 
+    #[allow(unused)]
     #[cold]
     fn step_debug(&mut self, last_cycle: u64) -> Result<ExecutionResult, String> {
-        if let Some(conditions) = &self.stop_conditions {
-            if let Some(reason) = self.check_stop_conditions(&conditions.clone()) {
-                return Ok(ExecutionResult {
-                    last_cycle_reached: false,
-                    hlt_reached: false,
-                    cycle_completed: false,
-                    cpu_cycle_completed: false,
-                    ppu_cycle_completed: false,
-                    frame_done: false,
-                    scanline_done: false,
-                    stop_reason: Some(reason),
-                });
-            }
+        if let Some(conditions) = &self.stop_conditions
+            && let Some(reason) = self.check_stop_conditions(&conditions.clone())
+        {
+            return Ok(ExecutionResult {
+                last_cycle_reached: false,
+                hlt_reached: false,
+                cycle_completed: false,
+                cpu_cycle_completed: false,
+                ppu_cycle_completed: false,
+                frame_done: false,
+                scanline_done: false,
+                stop_reason: Some(reason),
+            });
         }
 
         self.step_internal(last_cycle)
@@ -555,6 +556,7 @@ impl Nes {
     /// Cold path: Write a trace log entry (only called when tracing is enabled)
     #[cold]
     #[inline(never)]
+    #[allow(unused)]
     fn write_trace_log(&mut self) {
         if let Some(trace) = self.trace_log.as_mut() {
             let cpu = &self.board.cpu;

@@ -1,5 +1,5 @@
-use crate::emulation::nes::{Nes, MASTER_CYCLES_PER_FRAME};
-use crate::util::{parse_hex_u16, parse_hex_u8};
+use crate::emulation::nes::{MASTER_CYCLES_PER_FRAME, Nes};
+use crate::util::{parse_hex_u8, parse_hex_u16};
 
 /// A stop condition that can be checked during execution
 #[derive(Debug, Clone)]
@@ -139,7 +139,7 @@ impl StopCondition {
         match self {
             StopCondition::Cycles(target) => emu.total_cycles >= *target,
             StopCondition::Frames(target) => {
-                emu.total_cycles as u64 >= *target * MASTER_CYCLES_PER_FRAME as u64
+                emu.total_cycles >= *target * MASTER_CYCLES_PER_FRAME as u64
             }
             StopCondition::PcEquals(addr) | StopCondition::Breakpoint(addr) => {
                 emu.program_counter() == *addr
@@ -208,9 +208,9 @@ impl StopCondition {
     pub fn reason(&self, emu: &mut Nes) -> StopReason {
         match self {
             StopCondition::Cycles(_) => StopReason::CyclesReached(emu.total_cycles),
-            StopCondition::Frames(_) => StopReason::FramesReached(
-                (emu.total_cycles / MASTER_CYCLES_PER_FRAME as u64) as u64,
-            ),
+            StopCondition::Frames(_) => {
+                StopReason::FramesReached(emu.total_cycles / MASTER_CYCLES_PER_FRAME as u64)
+            }
             StopCondition::PcEquals(addr) | StopCondition::Breakpoint(addr) => {
                 StopReason::PcReached(*addr)
             }
@@ -269,7 +269,7 @@ pub enum StopReason {
     /// User-requested stop (e.g., breakpoint)
     Breakpoint(u16),
     /// Execution error occurred
-    Error(String)
+    Error(String),
 }
 
 /// Memory access type for watchpoints

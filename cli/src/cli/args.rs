@@ -5,8 +5,8 @@
 
 use std::path::PathBuf;
 
-use clap::{value_parser, Args, Parser, ValueEnum};
-use monsoon_core::util::{parse_hex_u16, parse_hex_u8};
+use clap::{Args, Parser, ValueEnum, value_parser};
+use monsoon_core::util::{parse_hex_u8, parse_hex_u16};
 use serde::Deserialize;
 
 /// NES Emulator CLI - A cycle-accurate NES emulator with comprehensive CLI

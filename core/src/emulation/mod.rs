@@ -22,8 +22,10 @@
 //! - `mem` — Memory subsystem (RAM, ROM, memory maps, I/O registers).
 //! - `opcode` — 6502 opcode definitions and lookup tables.
 
+pub mod apu;
 pub(crate) mod board;
 pub(crate) mod cpu;
+pub mod debug_tools;
 pub(crate) mod mapper;
 pub(crate) mod mem;
 pub mod nes;
@@ -35,5 +37,3 @@ pub mod ppu_util;
 pub mod rom;
 pub mod savestate;
 pub mod screen_renderer;
-pub mod apu;
-pub mod debug_tools;

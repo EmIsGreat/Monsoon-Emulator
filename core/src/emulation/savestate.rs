@@ -20,7 +20,7 @@ use crate::emulation::cpu::{Cpu, MicroOp, OpQueue};
 use crate::emulation::mapper::Mapper;
 use crate::emulation::mem::OpenBus;
 use crate::emulation::opcode;
-use crate::emulation::opcode::{get_opcode, OPCODES_TABLE};
+use crate::emulation::opcode::{OPCODES_TABLE, get_opcode};
 use crate::emulation::peripherals::Peripheral;
 use crate::emulation::ppu::{Ppu, SpriteFifo, TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH};
 use crate::emulation::rom::RomFile;

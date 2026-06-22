@@ -6,7 +6,7 @@ use serde_big_array::BigArray;
 use crate::emulation::board::CpuBus;
 use crate::emulation::nes::ExecutionResult;
 use crate::emulation::opcode;
-use crate::emulation::opcode::{get_opcode, OpCode, OPCODES_TABLE};
+use crate::emulation::opcode::{OPCODES_TABLE, OpCode, get_opcode};
 use crate::util;
 
 pub const INTERNAL_RAM_SIZE: u16 = 0x800;
