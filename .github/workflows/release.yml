@@ -54,13 +54,23 @@ jobs:
                       powershell -Command "Compress-Archive -Path monsoon-frontend-${{ matrix.target }}.exe -DestinationPath monsoon-frontend-${{ matrix.target }}.zip"
                       rm *.exe
                     else
-                      cp target/full_release/cli "artifacts/monsoon-cli-${{ matrix.target }}"
-                      cp target/full_release/frontend "artifacts/monsoon-frontend-${{ matrix.target }}"
+                      if [ "${{ runner.os }}" = "Linux" ]; then
+                        cp target/full_release/cli "artifacts/monsoon-cli-${{ matrix.target }}.x86_64"
+                        cp target/full_release/frontend "artifacts/monsoon-frontend-${{ matrix.target }}.x86_64"
                     
-                      cd artifacts
-                      tar -czf "monsoon-cli-${{ matrix.target }}.tar.gz" "monsoon-cli-${{ matrix.target }}"
-                      tar -czf "monsoon-frontend-${{ matrix.target }}.tar.gz" "monsoon-frontend-${{ matrix.target }}"
-                      rm "monsoon-cli-${{ matrix.target }}" "monsoon-frontend-${{ matrix.target }}"
+                        cd artifacts
+                        tar -czf "monsoon-cli-${{ matrix.target }}.tar.gz" "monsoon-cli-${{ matrix.target }}.x86_64"
+                        tar -czf "monsoon-frontend-${{ matrix.target }}.tar.gz" "monsoon-frontend-${{ matrix.target }}.x86_64"
+                        rm "monsoon-cli-${{ matrix.target }}.x86_64" "monsoon-frontend-${{ matrix.target }}.x86_64"
+                      else
+                        cp target/full_release/cli "artifacts/monsoon-cli-${{ matrix.target }}"
+                        cp target/full_release/frontend "artifacts/monsoon-frontend-${{ matrix.target }}"
+                    
+                        cd artifacts
+                        tar -czf "monsoon-cli-${{ matrix.target }}.tar.gz" "monsoon-cli-${{ matrix.target }}"
+                        tar -czf "monsoon-frontend-${{ matrix.target }}.tar.gz" "monsoon-frontend-${{ matrix.target }}"
+                        rm "monsoon-cli-${{ matrix.target }}" "monsoon-frontend-${{ matrix.target }}"
+                      fi
                     fi
 
             -   name: Upload artifacts

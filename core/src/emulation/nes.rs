@@ -490,10 +490,6 @@ impl Nes {
         if cpu_step {
             self.apu_counter -= 1;
 
-            if unlikely(self.trace_enabled) {
-                std::hint::black_box(());
-            }
-
             let cpu_res = cpu.step(&mut cpu_bus_view!(self));
 
             self.board.apu.clock_frame_counter(self.apu_counter == 2);
