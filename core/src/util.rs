@@ -3,12 +3,14 @@
 //! This module provides serialization helpers ([`ToBytes`]) and hash utilities
 //! ([`Hashable`]) for use by the emulator and consumers of this library.
 
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 
 use crate::emulation::cpu::UPPER_BYTE;
 use crate::emulation::mem::Memory;
-use crate::emulation::savestate::{BINARY_FORMAT_VERSION, JSON_FORMAT_VERSION, MAGIC, SaveState};
+use crate::emulation::savestate::{SaveState, BINARY_FORMAT_VERSION, JSON_FORMAT_VERSION, MAGIC};
 /// Returns `true` if adding a signed `offset` to `base` crosses a 256-byte page
 /// boundary.
 ///

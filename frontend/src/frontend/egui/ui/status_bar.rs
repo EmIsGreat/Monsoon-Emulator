@@ -26,6 +26,10 @@ pub fn add_status_bar(
                 ui.separator();
                 ui.label(format!("Loaded Rom: {}", l.name));
             }
+
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                ui.label(format!("Ver. {}", monsoon_core::util::VERSION));
+            });
         });
     });
 }
