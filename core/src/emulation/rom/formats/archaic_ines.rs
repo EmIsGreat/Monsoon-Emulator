@@ -4,6 +4,10 @@ use crate::emulation::rom::{ParseError, RomBuilder, RomFile, RomParser};
 pub struct ArchaicInes;
 
 impl RomParser for ArchaicInes {
+    fn get_name(&self) -> &str {
+        "Archaic Ines"
+    }
+
     fn parse(&self, rom: &[u8], name: Option<&String>) -> Result<RomFile, ParseError> {
         let prg_rom_size = rom[4] as u32 * 16 * 1024;
         let chr_rom_size = rom[5] as u32 * 8 * 1024;

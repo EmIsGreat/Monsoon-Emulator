@@ -11,17 +11,17 @@ use std::path::Path;
 use std::time::Instant;
 
 use monsoon_core::emulation::debug_tools::StopReason;
-use monsoon_core::emulation::nes::{ExecutionResult, MASTER_CYCLES_PER_FRAME, Nes, NesConfig};
+use monsoon_core::emulation::nes::{ExecutionResult, Nes, NesConfig, MASTER_CYCLES_PER_FRAME};
 use monsoon_core::emulation::palette_util::RgbColor;
 use monsoon_core::emulation::ppu_util::{TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH};
 use monsoon_core::emulation::rom::RomFile;
-use monsoon_core::emulation::screen_renderer::{ScreenRenderer, create_renderer};
+use monsoon_core::emulation::screen_renderer::{create_renderer, ScreenRenderer};
 use monsoon_core::util::format_bytes_human_readable;
 
 use crate::cli::{
-    CliArgs, ExecutionConfig, ExecutionEngine, FpsConfig, MemoryDump, MemoryInit, MemoryInitConfig,
-    MemoryType, OutputWriter, SavestateConfig, StreamingVideoEncoder, VideoFormat, VideoResolution,
-    apply_memory_init, apply_memory_init_config, is_ffmpeg_available, parse_memory_range,
+    apply_memory_init, apply_memory_init_config, is_ffmpeg_available, parse_memory_range, CliArgs, ExecutionConfig, ExecutionEngine,
+    FpsConfig, MemoryDump, MemoryInit, MemoryInitConfig, MemoryType, OutputWriter,
+    SavestateConfig, StreamingVideoEncoder, VideoFormat, VideoResolution,
 };
 
 // =============================================================================
@@ -183,7 +183,8 @@ pub fn print_rom_info(rom_path: &Path) -> Result<(), String> {
         std::fs::read(rom_path).map_err(|e| format!("Failed to read ROM file: {}", e))?;
     let rom = RomFile::load(&mut data, Some(&path_str), true, Some(&Nes::default()))
         .map_err(|e| format!("Failed to parse ROM: {}", e))?;
-
+    println!("NES ROM image ({})", rom.format_name);
+    println!();
     println!("ROM Information:");
     println!("  File: {}", rom_path.display());
     println!(
@@ -195,6 +196,9 @@ pub fn print_rom_info(rom_path: &Path) -> Result<(), String> {
     );
     if let Some(ref name) = rom.name {
         println!("  Name: {}", name);
+    }
+    if let Some(ref name) = rom.original_name {
+        println!("  Original Name: {}", name);
     }
     println!(
         "  File Size: {}",

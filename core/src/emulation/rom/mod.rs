@@ -20,8 +20,8 @@ use crate::emulation::mem::Memory;
 use crate::emulation::nes::Nes;
 use crate::emulation::rom::formats::archaic_ines::ArchaicInes;
 use crate::emulation::rom::formats::ines::Ines;
-use crate::emulation::rom::formats::ines_07::Ines07;
 use crate::emulation::rom::formats::ines2::Ines2;
+use crate::emulation::rom::formats::ines_07::Ines07;
 
 /// Errors that can occur while parsing a ROM file.
 #[derive(Debug)]
@@ -71,6 +71,7 @@ impl From<std::io::Error> for ParseError {
 /// instead, which auto-detects the format.
 #[doc(hidden)]
 pub trait RomParser: Debug {
+    fn get_name(&self) -> &str;
     fn parse(&self, rom: &[u8], name: Option<&String>) -> Result<RomFile, ParseError>;
 }
 
@@ -140,6 +141,8 @@ pub struct RomFile {
     /// size.
     #[serde(skip)]
     pub data: Vec<u8>,
+    pub original_name: Option<String>,
+    pub format_name: String,
 }
 
 #[derive(
@@ -784,10 +787,21 @@ impl RomFile {
 
         let rom_type = RomFile::get_rom_type(data)?;
         let mut rom_file = rom_type.parse(data, name)?;
+        rom_file.format_name = rom_type.get_name().to_string();
         rom_file.data = data.to_vec();
 
         rom_file.data_checksum = full_hash;
         rom_file.checksum_headerless = headerless_hash;
+
+        if use_db && let Some(nes) = nes {
+            let rom_db = nes.get_rom_db();
+            let headerless = rom_db.get_entry_by_headerless(&headerless_hash);
+
+            if let Some(entry) = headerless {
+                rom_file.name = Some(entry.name.clone());
+                rom_file.original_name = entry.orig_name.clone();
+            }
+        }
 
         Ok(rom_file)
     }
@@ -1141,6 +1155,8 @@ impl RomBuilder {
             data_checksum: [0; 32],
             checksum_headerless: [0; 32],
             data: Vec::new(),
+            original_name: None,
+            format_name: String::new(),
         }
     }
 }
