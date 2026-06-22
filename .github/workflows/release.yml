@@ -25,7 +25,7 @@ jobs:
         runs-on: ${{ matrix.os }}
         steps:
             -   name: Checkout code
-                uses: actions/checkout@v6
+                uses: actions/checkout@v7
 
             -   uses: dtolnay/rust-toolchain@nightly
                 with:
@@ -44,16 +44,27 @@ jobs:
                 shell: bash
                 run: |
                     mkdir -p artifacts
+                    
                     if [ "${{ runner.os }}" = "Windows" ]; then
                       cp target/full_release/cli.exe "artifacts/monsoon-cli-${{ matrix.target }}.exe"
                       cp target/full_release/frontend.exe "artifacts/monsoon-frontend-${{ matrix.target }}.exe"
+                    
+                      cd artifacts
+                      powershell -Command "Compress-Archive -Path monsoon-cli-${{ matrix.target }}.exe -DestinationPath monsoon-cli-${{ matrix.target }}.zip"
+                      powershell -Command "Compress-Archive -Path monsoon-frontend-${{ matrix.target }}.exe -DestinationPath monsoon-frontend-${{ matrix.target }}.zip"
+                      rm *.exe
                     else
                       cp target/full_release/cli "artifacts/monsoon-cli-${{ matrix.target }}"
                       cp target/full_release/frontend "artifacts/monsoon-frontend-${{ matrix.target }}"
+                    
+                      cd artifacts
+                      tar -czf "monsoon-cli-${{ matrix.target }}.tar.gz" "monsoon-cli-${{ matrix.target }}"
+                      tar -czf "monsoon-frontend-${{ matrix.target }}.tar.gz" "monsoon-frontend-${{ matrix.target }}"
+                      rm "monsoon-cli-${{ matrix.target }}" "monsoon-frontend-${{ matrix.target }}"
                     fi
 
             -   name: Upload artifacts
-                uses: actions/upload-artifact@v6
+                uses: actions/upload-artifact@v7
                 with:
                     name: binaries-${{ matrix.target }}
                     path: artifacts/
@@ -64,7 +75,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout code
-                uses: actions/checkout@v6
+                uses: actions/checkout@v7
 
             -   name: Get version
                 id: version
@@ -73,13 +84,13 @@ jobs:
                     echo "version=$VERSION" >> $GITHUB_OUTPUT
 
             -   name: Download all artifacts
-                uses: actions/download-artifact@v6
+                uses: actions/download-artifact@v8
                 with:
                     path: artifacts
                     merge-multiple: true
 
             -   name: Create Release
-                uses: softprops/action-gh-release@v2
+                uses: softprops/action-gh-release@v3
                 with:
                     tag_name: v${{ steps.version.outputs.version }}
                     name: v${{ steps.version.outputs.version }}
@@ -90,7 +101,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout code
-                uses: actions/checkout@v6
+                uses: actions/checkout@v7
 
             -   uses: dtolnay/rust-toolchain@nightly
 
@@ -154,7 +165,7 @@ jobs:
             url: ${{ steps.deploy.outputs.page_url }}
         steps:
             -   name: Checkout code
-                uses: actions/checkout@v6
+                uses: actions/checkout@v7
 
             -   uses: dtolnay/rust-toolchain@nightly
                 with:
@@ -177,7 +188,7 @@ jobs:
                 run: trunk build --cargo-profile full_release
 
             -   name: Upload Pages artifact
-                uses: actions/upload-pages-artifact@v3
+                uses: actions/upload-pages-artifact@v5
                 with:
                     path: frontend/dist
 
