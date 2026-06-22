@@ -59,16 +59,16 @@ jobs:
                         cp target/full_release/frontend "artifacts/monsoon-frontend-${{ matrix.target }}.x86_64"
                     
                         cd artifacts
-                        tar -czf "monsoon-cli-${{ matrix.target }}.tar.gz" "monsoon-cli-${{ matrix.target }}.x86_64"
-                        tar -czf "monsoon-frontend-${{ matrix.target }}.tar.gz" "monsoon-frontend-${{ matrix.target }}.x86_64"
+                        tar -cf - "monsoon-cli-${{ matrix.target }}.x86_64" | gzip -9 > "monsoon-cli-${{ matrix.target }}.tar.gz"
+                        tar -cf - "monsoon-frontend-${{ matrix.target }}.x86_64" | gzip -9 "monsoon-frontend-${{ matrix.target }}.tar.gz"
                         rm "monsoon-cli-${{ matrix.target }}.x86_64" "monsoon-frontend-${{ matrix.target }}.x86_64"
                       else
                         cp target/full_release/cli "artifacts/monsoon-cli-${{ matrix.target }}"
                         cp target/full_release/frontend "artifacts/monsoon-frontend-${{ matrix.target }}"
                     
                         cd artifacts
-                        tar -czf "monsoon-cli-${{ matrix.target }}.tar.gz" "monsoon-cli-${{ matrix.target }}"
-                        tar -czf "monsoon-frontend-${{ matrix.target }}.tar.gz" "monsoon-frontend-${{ matrix.target }}"
+                        tar -cf - "monsoon-cli-${{ matrix.target }}" | gzip -9 > "monsoon-cli-${{ matrix.target }}.tar.gz"
+                        tar -cf - "monsoon-frontend-${{ matrix.target }}" | gzip -9 "monsoon-frontend-${{ matrix.target }}.tar.gz"
                         rm "monsoon-cli-${{ matrix.target }}" "monsoon-frontend-${{ matrix.target }}"
                       fi
                     fi
