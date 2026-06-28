@@ -28,6 +28,8 @@ impl From<&RomFile> for Mapper {
         match value.mapper {
             RomMapper::NRom => Mapper::Nrom(Nrom::from(value)),
             RomMapper::MMC1 => Mapper::MMC1(MMC1::from(value)),
+            RomMapper::MMC1A => Mapper::MMC1(MMC1::from(value)),
+            RomMapper::NesEvent => todo!(),
             RomMapper::Unknown(_) => Mapper::NoMapper(NoMapper {}),
         }
     }

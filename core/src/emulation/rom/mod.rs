@@ -635,6 +635,8 @@ impl Display for RomTimingRegion {
 pub enum RomMapper {
     NRom = 0,
     MMC1 = 1,
+    MMC1A = 155,
+    NesEvent = 105,
     #[num_enum(catch_all)]
     Unknown(u16),
 }
@@ -644,6 +646,8 @@ impl Display for RomMapper {
         let str: &str = match self {
             RomMapper::NRom => "NROM",
             RomMapper::MMC1 => "MMC1",
+            RomMapper::MMC1A => "MMC1A",
+            RomMapper::NesEvent => "NES-EVENT",
             RomMapper::Unknown(_) => "Unknown Mapper",
         };
 
