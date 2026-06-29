@@ -1,0 +1,21 @@
+[package]
+name = "monsoon-macro"
+description = "Macros for the monsoon-core emulator"
+readme = "README.md"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
+categories.workspace = true
+
+[lib]
+proc-macro = true
+name = "monsoon_macro"
+path = "src/lib.rs"
+
+[dependencies]
+syn = { version = "2.0.118", features = ["full"] }
+quote = "1.0.46"
+proc-macro2 = { version = "1.0.106", features = ["nightly"] }
+rand = { version = "0.10.1" }

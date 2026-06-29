@@ -1,10 +1,11 @@
+use egui::AsId;
 use monsoon_core::emulation::ppu_util::RegisterMap;
 
 use crate::frontend::egui::textures::EmuTextures;
 
 fn render_register_table(
     ui: &mut egui::Ui,
-    table_id: impl std::hash::Hash,
+    table_id: impl AsId,
     registers: &RegisterMap,
 ) {
     let mut rows = registers.iter().collect::<Vec<_>>();

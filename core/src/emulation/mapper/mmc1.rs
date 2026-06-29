@@ -16,66 +16,56 @@ use crate::emulation::rom::{RomFile, RomMapper};
 #[enum_delegate::implement(MapperLike)]
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub enum MMC1 {
-    A0(MMC1Common<A, 0>),
-    A5(MMC1Common<A, 5>),
-    A6(MMC1Common<A, 6>),
-    A7(MMC1Common<A, 7>),
+    A0(MMC1Common<RevA, 0>),
+    A5(MMC1Common<RevA, 5>),
+    A6(MMC1Common<RevA, 6>),
+    A7(MMC1Common<RevA, 7>),
 
-    B0(MMC1Common<B, 0>),
-    B5(MMC1Common<B, 5>),
-    B6(MMC1Common<B, 6>),
-    B7(MMC1Common<B, 7>),
+    B0(MMC1Common<RevB, 0>),
+    B5(MMC1Common<RevB, 5>),
+    B6(MMC1Common<RevB, 6>),
+    B7(MMC1Common<RevB, 7>),
 }
 
 impl From<&RomFile> for MMC1 {
     fn from(value: &RomFile) -> Self {
-        let version: MMC1Variants = match value.mapper {
-            RomMapper::MMC1 => MMC1Variants::B(B),
-            RomMapper::MMC1A => MMC1Variants::A(A),
-            _ => {
-                unreachable!()
-            }
-        };
+        match (value.mapper, value.submapper_number) {
+            (RomMapper::MMC1A, 5) => Self::make(value, Self::A5),
+            (RomMapper::MMC1A, 6) => Self::make(value, Self::A6),
+            (RomMapper::MMC1A, 7) => Self::make(value, Self::A7),
+            (RomMapper::MMC1A, _) => Self::make(value, Self::A0),
 
-        match version {
-            MMC1Variants::A(_) => match value.submapper_number {
-                5 => MMC1::A5(MMC1Common::from(value)),
-                6 => MMC1::A6(MMC1Common::from(value)),
-                7 => MMC1::A7(MMC1Common::from(value)),
-                _ => MMC1::A0(MMC1Common::from(value)),
-            },
-            MMC1Variants::B(_) => match value.submapper_number {
-                5 => MMC1::B5(MMC1Common::from(value)),
-                6 => MMC1::B6(MMC1Common::from(value)),
-                7 => MMC1::B7(MMC1Common::from(value)),
-                _ => MMC1::B0(MMC1Common::from(value)),
-            },
+            (RomMapper::MMC1, 5) => Self::make(value, Self::B5),
+            (RomMapper::MMC1, 6) => Self::make(value, Self::B6),
+            (RomMapper::MMC1, 7) => Self::make(value, Self::B7),
+            (RomMapper::MMC1, _) => Self::make(value, Self::B0),
+
+            _ => unreachable!(),
         }
     }
 }
 
-enum MMC1Variants {
-    A(A),
-    B(B),
-}
-
+#[monsoon_macro::mapper_variant]
 pub trait MMC1Variant {
     const NAME: &'static str;
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
-pub struct A;
+pub struct RevA;
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
-pub struct B;
+pub struct RevB;
 
-impl MMC1Variant for A {
+impl MMC1Variant for RevA {
     const NAME: &'static str = "A";
 }
 
-impl MMC1Variant for B {
+impl MMC1Variant for RevB {
     const NAME: &'static str = "B";
 }
 
+#[monsoon_macro::mapper_versions(
+    enum = MMC2
+)]
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct MMC1Common<V: MMC1Variant, const S: u8> {
     pub prg_ram_size: u16,
@@ -97,6 +87,15 @@ pub struct MMC1Common<V: MMC1Variant, const S: u8> {
     prg_rom_bank_mode: u8,
     chr_rom_bank_mode: u8,
     _type: PhantomData<V>,
+}
+
+impl MMC1 {
+    fn make<V: MMC1Variant, const S: u8>(
+        value: &RomFile,
+        ctor: fn(MMC1Common<V, S>) -> Self,
+    ) -> Self {
+        ctor(MMC1Common::from(value))
+    }
 }
 
 impl<V: MMC1Variant, const S: u8> MapperLike for MMC1Common<V, S> {

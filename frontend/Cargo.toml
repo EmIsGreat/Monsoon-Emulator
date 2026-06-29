@@ -18,9 +18,9 @@ name = "frontend"
 path = "src/bin/main.rs"
 
 [dependencies]
-eframe = { version = "0.34", features = ["wgpu", "persistence"] }
-egui = { version = "0.34", features = ["persistence", "rayon"] }
-egui_tiles = { version = "0.15", features = ["serde"] }
+eframe = { version = "0.35", features = ["wgpu", "persistence"] }
+egui = { version = "0.35", features = ["persistence", "rayon"] }
+egui_tiles = { version = "0.16", features = ["serde"] }
 clap = { version = "4.6", features = ["derive", "cargo", "env", "string", "unicode", "wrap_help"] }
 crossbeam-channel = { version = "0.5" }
 rfd = { version = "0.17" }

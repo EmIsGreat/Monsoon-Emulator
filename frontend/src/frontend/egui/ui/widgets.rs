@@ -4,7 +4,7 @@
 //! multiple UI components to reduce code duplication.
 
 use crossbeam_channel::Sender;
-use egui::{Response, StrokeKind, Ui, Widget, vec2};
+use egui::{Response, StrokeKind, Ui, Widget, vec2, AsIdSalt};
 use monsoon_core::emulation::palette_util::RgbColor;
 
 use crate::frontend::egui::config::AppConfig;
@@ -30,7 +30,7 @@ pub fn color_cell_rgb(
     rect: egui::Rect,
     color: RgbColor,
     sense: egui::Sense,
-    id_source: impl std::hash::Hash,
+    id_source: impl AsIdSalt,
 ) -> Response {
     let response = ui.interact(rect, ui.id().with(id_source), sense);
     let painter = ui.painter();
@@ -71,7 +71,7 @@ pub fn image_cell(
     rect: egui::Rect,
     texture_id: egui::TextureId,
     sense: egui::Sense,
-    id_source: impl std::hash::Hash,
+    id_source: impl AsIdSalt,
 ) -> Response {
     image_cell_flipped(ui, rect, texture_id, false, false, sense, id_source)
 }
@@ -84,7 +84,7 @@ pub fn image_cell_flipped(
     h_flip: bool,
     v_flip: bool,
     sense: egui::Sense,
-    id_source: impl std::hash::Hash,
+    id_source: impl AsIdSalt,
 ) -> Response {
     let response = ui.interact(rect, ui.id().with(id_source), sense);
     let painter = ui.painter();
@@ -118,7 +118,7 @@ pub fn image_cell_dual_vert_flipped(
     h_flip: bool,
     v_flip: bool,
     sense: egui::Sense,
-    id_source: impl std::hash::Hash,
+    id_source: impl AsIdSalt,
 ) -> Response {
     let response = ui.interact(rect, ui.id().with(id_source), sense);
     let painter = ui.painter();

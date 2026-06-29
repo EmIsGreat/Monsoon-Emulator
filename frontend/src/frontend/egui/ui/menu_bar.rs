@@ -11,7 +11,7 @@ pub fn add_menu_bar(
     config: &mut AppConfig,
     async_sender: &Sender<AsyncFrontendMessage>,
 ) {
-    egui::Panel::top("menu_bar").show_inside(ui, |ui| {
+    egui::Panel::top("menu_bar").show(ui, |ui| {
         egui::MenuBar::new().ui(ui, |ui| {
             ui.menu_button("File", |ui| {
                 ui.add(HotKeyButton::for_action(

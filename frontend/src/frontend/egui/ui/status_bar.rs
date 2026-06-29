@@ -11,7 +11,7 @@ pub fn add_status_bar(
     config: &AppConfig,
     emu_textures: &EmuTextures,
 ) {
-    egui::Panel::bottom("status_bar").show_inside(ui, |ui| {
+    egui::Panel::bottom("status_bar").show(ui, |ui| {
         ui.horizontal(|ui| {
             ui.label(format!("FPS: {:.1}", fps_counter.fps()));
             ui.separator();

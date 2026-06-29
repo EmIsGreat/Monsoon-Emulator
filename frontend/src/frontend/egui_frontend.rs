@@ -680,7 +680,7 @@ impl eframe::App for EguiApp {
         // Central panel with tile tree
         #[cfg(target_arch = "wasm32")]
         let mut keybindings_changed = false;
-        egui::CentralPanel::default().show_inside(ui, |ui| {
+        egui::CentralPanel::default().show(ui, |ui| {
             let mut behavior = TreeBehavior::new(
                 &mut self.config,
                 &self.emu_textures,
@@ -860,7 +860,7 @@ async fn run_internal(res: SetupResponse) -> Result<(), Box<dyn std::error::Erro
             .with_inner_size([1024.0, 768.0])
             .with_title("Monsoon")
             .with_app_id("monsoon-emulator"),
-        vsync: false, // Disable vsync for uncapped performance
+
         // Enable persistence with custom storage path
         persistence_path: res.persistence_path.clone(),
         renderer: eframe::Renderer::Wgpu,

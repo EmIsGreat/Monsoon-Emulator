@@ -12,9 +12,7 @@ use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::hash::Hash;
 
 use crossbeam_channel::Sender;
-use egui::{
-    Event, Id, InputState, Key, Modifiers, PointerButton, Response, Sense, Ui, Widget, vec2,
-};
+use egui::{Event, Id, InputState, Key, Modifiers, PointerButton, Response, Sense, Ui, Widget, vec2, AsId};
 use serde::{Deserialize, Serialize};
 use strum::EnumIter;
 
@@ -705,7 +703,7 @@ where
     B: HotkeyBinding,
 {
     /// Changes the default id for this widget.
-    pub fn with_id(binding: &'a mut B, id_source: impl Hash) -> Self {
+    pub fn with_id(binding: &'a mut B, id_source: impl AsId) -> Self {
         Self {
             binding,
             id: Id::new(id_source),
