@@ -117,14 +117,13 @@ fn generate_enum_froms(
 }
 
 fn get_crate_path() -> TokenStream {
-    let crate_path = match crate_name("monsoon-core").unwrap() {
+    match crate_name("monsoon-core").unwrap() {
         FoundCrate::Itself => quote!(crate),
         FoundCrate::Name(name) => {
             let ident = format_ident!("{}", name);
             quote!(::#ident)
         }
-    };
-    crate_path
+    }
 }
 
 fn generate_enum(

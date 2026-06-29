@@ -2817,7 +2817,7 @@ dependencies = [
 
 [[package]]
 name = "monsoon-cli"
-version = "0.2.6"
+version = "0.2.7"
 dependencies = [
  "clap",
  "image",
@@ -2831,14 +2831,14 @@ dependencies = [
 
 [[package]]
 name = "monsoon-core"
-version = "0.2.6"
+version = "0.2.7"
 dependencies = [
  "enum_delegate",
  "hex",
  "monsoon-macro",
  "num_enum",
  "postcard",
- "quick-xml 0.40.1",
+ "quick-xml 0.41.0",
  "serde",
  "serde-big-array",
  "serde_json",
@@ -2848,7 +2848,7 @@ dependencies = [
 
 [[package]]
 name = "monsoon-db"
-version = "0.2.6"
+version = "0.2.7"
 dependencies = [
  "monsoon-core",
  "reqwest",
@@ -2858,7 +2858,7 @@ dependencies = [
 
 [[package]]
 name = "monsoon-default-renderers"
-version = "0.2.6"
+version = "0.2.7"
 dependencies = [
  "monsoon-core",
  "serde",
@@ -2867,7 +2867,7 @@ dependencies = [
 
 [[package]]
 name = "monsoon-frontend"
-version = "0.2.6"
+version = "0.2.7"
 dependencies = [
  "async-trait",
  "chrono",
@@ -2897,7 +2897,7 @@ dependencies = [
 
 [[package]]
 name = "monsoon-macro"
-version = "0.2.6"
+version = "0.2.7"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
@@ -3778,9 +3778,9 @@ dependencies = [
 
 [[package]]
 name = "quick-xml"
-version = "0.40.1"
+version = "0.41.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2474bd2e5029e7ccb6abb2ba48cf2383a333851dedf495901544281590c7da7f"
+checksum = "e660451e55124f798a69a5af3f49ccfbefbd41910eefd25caf2393e1f3473ec1"
 dependencies = [
  "memchr",
 ]
