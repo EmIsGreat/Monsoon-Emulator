@@ -2817,7 +2817,7 @@ dependencies = [
 
 [[package]]
 name = "monsoon-cli"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "clap",
  "image",
@@ -2831,7 +2831,7 @@ dependencies = [
 
 [[package]]
 name = "monsoon-core"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "enum_delegate",
  "hex",
@@ -2848,7 +2848,7 @@ dependencies = [
 
 [[package]]
 name = "monsoon-db"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "monsoon-core",
  "reqwest",
@@ -2858,7 +2858,7 @@ dependencies = [
 
 [[package]]
 name = "monsoon-default-renderers"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "monsoon-core",
  "serde",
@@ -2867,7 +2867,7 @@ dependencies = [
 
 [[package]]
 name = "monsoon-frontend"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "async-trait",
  "chrono",
@@ -2897,7 +2897,7 @@ dependencies = [
 
 [[package]]
 name = "monsoon-macro"
-version = "0.2.7"
+version = "0.2.8"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
