@@ -1,6 +1,7 @@
 use std::marker::PhantomData;
 use std::string::ToString;
 
+use monsoon_macro::mapper_variant;
 use serde::{Deserialize, Serialize};
 
 use crate::emulation::mapper::nametable_mapping::NametableArrangement;
@@ -16,10 +17,10 @@ use crate::emulation::rom::{RomFile, RomMapper};
 #[enum_delegate::implement(MapperLike)]
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub enum MMC1 {
-    A0(MMC1Common<RevA, 0>),
-    A5(MMC1Common<RevA, 5>),
-    A6(MMC1Common<RevA, 6>),
-    A7(MMC1Common<RevA, 7>),
+    A0(MMC1Common<RevA2, 0>),
+    A5(MMC1Common<RevA2, 5>),
+    A6(MMC1Common<RevA2, 6>),
+    A7(MMC1Common<RevA2, 7>),
 
     B0(MMC1Common<RevB, 0>),
     B5(MMC1Common<RevB, 5>),
@@ -45,17 +46,16 @@ impl From<&RomFile> for MMC1 {
     }
 }
 
-#[monsoon_macro::mapper_variant]
 pub trait MMC1Variant {
     const NAME: &'static str;
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
-pub struct RevA;
+pub struct RevA2;
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct RevB;
 
-impl MMC1Variant for RevA {
+impl MMC1Variant for RevA2 {
     const NAME: &'static str = "A";
 }
 
@@ -63,9 +63,55 @@ impl MMC1Variant for RevB {
     const NAME: &'static str = "B";
 }
 
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
+pub struct RevA;
+
+impl MMC2Variant for RevA {
+    const NAME: &'static str = "A";
+}
+
+#[mapper_variant]
+pub trait MMC2Variant {
+    const NAME: &'static str;
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
+pub struct Sub0;
+
+impl MMC2Submapper for Sub0 {
+    const NUMBER: u8 = 0;
+}
+
+#[mapper_variant]
+pub trait MMC2Submapper {
+    const NUMBER: u8;
+}
+
 #[monsoon_macro::mapper_versions(
-    enum = MMC2
+    enum = MMC2,
+    revisions {
+        RevA => {
+            mapper = RomMapper::MMC1A,
+            NAME = "A"
+        },
+        RevB => {
+            mapper = RomMapper::MMC1,
+            NAME = "B"
+        }
+    },
+    submappers {
+        0,
+        5,
+        6,
+        7
+    }
 )]
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
+pub struct MMC2Common<V: MMC2Variant, S: MMC2Submapper> {
+    _variant: PhantomData<V>,
+    _submapper: PhantomData<S>,
+}
+
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct MMC1Common<V: MMC1Variant, const S: u8> {
     pub prg_ram_size: u16,

@@ -3,6 +3,7 @@ mod mapper_variant;
 mod mapper_versions;
 
 use proc_macro::TokenStream;
+use syn::parse_macro_input;
 
 #[proc_macro_attribute]
 pub fn mapper_variant(attribute_args: TokenStream, item: TokenStream) -> TokenStream {
@@ -10,18 +11,23 @@ pub fn mapper_variant(attribute_args: TokenStream, item: TokenStream) -> TokenSt
 }
 
 //#[monsoon_macro::mapper_versions(
-//     enum = MMC1,
-//     revisions(
-//         RevA => {
-//             mapper = RomMapper::MMC1A,
-//             name = "A"
-//         },
-//         RevB => {
-//             mapper = RomMapper::MMC1,
-//             name = "B"
-//         }
-//     ),
-//     submappers(0, 5, 6, 7)
+//      enum = MMC1,
+//      revisions(
+//          RevA => {
+//              mapper = RomMapper::MMC1A,
+//              name = "A"
+//          },
+//          RevB => {
+//              mapper = RomMapper::MMC1,
+//              name = "B"
+//          }
+//      ),
+//      submappers(
+//          0,
+//          5,
+//          6,
+//          7
+//      )
 // )]
 // #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
 // pub struct MMC1Common<V: MMC1Variant, S: MMC1Revision> {
@@ -35,5 +41,8 @@ pub fn mapper_versions(attr: TokenStream, item: TokenStream) -> TokenStream {
 
 #[proc_macro]
 pub fn implement_mapper_for_struct(input: TokenStream) -> TokenStream {
-    implement_mapper_variant::implement_mapper_for_struct(input.into()).into()
+    implement_mapper_variant::implement_mapper_for_struct(parse_macro_input!(
+        input as implement_mapper_variant::Input
+    ))
+    .into()
 }

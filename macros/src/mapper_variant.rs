@@ -1,7 +1,7 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote, quote_spanned};
 use syn::spanned::Spanned;
-use syn::{parse2, ItemTrait, TraitItem};
+use syn::{ItemTrait, TraitItem, parse2};
 
 pub fn mapper_variants(attribute_args: TokenStream, item: TokenStream) -> TokenStream {
     if !attribute_args.is_empty() {
