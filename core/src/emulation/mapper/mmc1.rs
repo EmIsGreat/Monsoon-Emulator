@@ -12,91 +12,28 @@ use crate::emulation::mem::{Memory, OpenBus};
 use crate::emulation::ppu_util::{
     MapperRegisterTables, RegisterEntry, RegisterFormat, RegisterMap, RegisterValue,
 };
-use crate::emulation::rom::{RomFile, RomMapper};
+use crate::emulation::rom::RomFile;
 
-#[enum_delegate::implement(MapperLike)]
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
-pub enum MMC1 {
-    A0(MMC1Common<RevA2, 0>),
-    A5(MMC1Common<RevA2, 5>),
-    A6(MMC1Common<RevA2, 6>),
-    A7(MMC1Common<RevA2, 7>),
-
-    B0(MMC1Common<RevB, 0>),
-    B5(MMC1Common<RevB, 5>),
-    B6(MMC1Common<RevB, 6>),
-    B7(MMC1Common<RevB, 7>),
-}
-
-impl From<&RomFile> for MMC1 {
-    fn from(value: &RomFile) -> Self {
-        match (value.mapper, value.submapper_number) {
-            (RomMapper::MMC1A, 5) => Self::make(value, Self::A5),
-            (RomMapper::MMC1A, 6) => Self::make(value, Self::A6),
-            (RomMapper::MMC1A, 7) => Self::make(value, Self::A7),
-            (RomMapper::MMC1A, _) => Self::make(value, Self::A0),
-
-            (RomMapper::MMC1, 5) => Self::make(value, Self::B5),
-            (RomMapper::MMC1, 6) => Self::make(value, Self::B6),
-            (RomMapper::MMC1, 7) => Self::make(value, Self::B7),
-            (RomMapper::MMC1, _) => Self::make(value, Self::B0),
-
-            _ => unreachable!(),
-        }
-    }
-}
-
+#[mapper_variant]
 pub trait MMC1Variant {
     const NAME: &'static str;
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
-pub struct RevA2;
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
-pub struct RevB;
-
-impl MMC1Variant for RevA2 {
-    const NAME: &'static str = "A";
-}
-
-impl MMC1Variant for RevB {
-    const NAME: &'static str = "B";
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
-pub struct RevA;
-
-impl MMC2Variant for RevA {
-    const NAME: &'static str = "A";
-}
-
 #[mapper_variant]
-pub trait MMC2Variant {
-    const NAME: &'static str;
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
-pub struct Sub0;
-
-impl MMC2Submapper for Sub0 {
-    const NUMBER: u8 = 0;
-}
-
-#[mapper_variant]
-pub trait MMC2Submapper {
+pub trait MMC1Submapper {
     const NUMBER: u8;
 }
 
 #[monsoon_macro::mapper_versions(
-    enum = MMC2,
+    enum = MMC1,
     revisions {
         RevA => {
-            mapper = RomMapper::MMC1A,
-            NAME = "A"
+            mapper = MMC1A,
+            NAME = "A",
         },
         RevB => {
-            mapper = RomMapper::MMC1,
-            NAME = "B"
+            mapper = MMC1,
+            NAME = "B",
         }
     },
     submappers {
@@ -107,13 +44,7 @@ pub trait MMC2Submapper {
     }
 )]
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
-pub struct MMC2Common<V: MMC2Variant, S: MMC2Submapper> {
-    _variant: PhantomData<V>,
-    _submapper: PhantomData<S>,
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
-pub struct MMC1Common<V: MMC1Variant, const S: u8> {
+pub struct MMC1Common<V: MMC1Variant, S: MMC1Submapper> {
     pub prg_ram_size: u16,
     pub prg_ram_battery_backed: bool,
     pub prg_rom_size: u32,
@@ -132,19 +63,11 @@ pub struct MMC1Common<V: MMC1Variant, const S: u8> {
     prg_bank: u8,
     prg_rom_bank_mode: u8,
     chr_rom_bank_mode: u8,
-    _type: PhantomData<V>,
+    _variant: PhantomData<V>,
+    _submapper: PhantomData<S>,
 }
 
-impl MMC1 {
-    fn make<V: MMC1Variant, const S: u8>(
-        value: &RomFile,
-        ctor: fn(MMC1Common<V, S>) -> Self,
-    ) -> Self {
-        ctor(MMC1Common::from(value))
-    }
-}
-
-impl<V: MMC1Variant, const S: u8> MapperLike for MMC1Common<V, S> {
+impl<V: MMC1Variant, S: MMC1Submapper> MapperLike for MMC1Common<V, S> {
     #[inline]
     fn write(&mut self, addr: u16, data: u8, cycle: u64) -> CpuWriteResult {
         match addr {
@@ -274,7 +197,7 @@ impl<V: MMC1Variant, const S: u8> MapperLike for MMC1Common<V, S> {
         );
         general.insert(
             "submapper".to_string(),
-            RegisterEntry::new(RegisterValue::U8(S), RegisterFormat::Decimal),
+            RegisterEntry::new(RegisterValue::U8(S::NUMBER), RegisterFormat::Decimal),
         );
         general.insert(
             "prg_ram_size".to_string(),
@@ -378,7 +301,7 @@ impl<V: MMC1Variant, const S: u8> MapperLike for MMC1Common<V, S> {
 
 const KB_16: u32 = 0x4000;
 
-impl<V: MMC1Variant, const S: u8> MMC1Common<V, S> {
+impl<V: MMC1Variant, S: MMC1Submapper> MMC1Common<V, S> {
     #[inline]
     fn get_prg_rom_address(&self, addr: u16) -> u32 {
         // should be between 0x4000 and 0x7FFF
@@ -465,7 +388,7 @@ impl<V: MMC1Variant, const S: u8> MMC1Common<V, S> {
     }
 }
 
-impl<V: MMC1Variant, const S: u8> From<&RomFile> for MMC1Common<V, S> {
+impl<V: MMC1Variant, S: MMC1Submapper> From<&RomFile> for MMC1Common<V, S> {
     fn from(value: &RomFile) -> Self {
         let prg_ram_size = Mapper::get_likely_correct_ram_size(value);
         let battery_backed = value.is_battery_backed || value.prg_memory.prg_nvram_size > 0;
@@ -493,7 +416,8 @@ impl<V: MMC1Variant, const S: u8> From<&RomFile> for MMC1Common<V, S> {
             prg_bank: 0,
             prg_rom_bank_mode: 0,
             chr_rom_bank_mode: 0,
-            _type: PhantomData::default(),
+            _variant: PhantomData,
+            _submapper: PhantomData,
         };
 
         mmc1.process_ctrl_change();

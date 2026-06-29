@@ -12,7 +12,9 @@ use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::hash::Hash;
 
 use crossbeam_channel::Sender;
-use egui::{Event, Id, InputState, Key, Modifiers, PointerButton, Response, Sense, Ui, Widget, vec2, AsId};
+use egui::{
+    AsId, Event, Id, InputState, Key, Modifiers, PointerButton, Response, Sense, Ui, Widget, vec2,
+};
 use serde::{Deserialize, Serialize};
 use strum::EnumIter;
 

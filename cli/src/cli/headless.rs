@@ -11,17 +11,17 @@ use std::path::Path;
 use std::time::Instant;
 
 use monsoon_core::emulation::debug_tools::StopReason;
-use monsoon_core::emulation::nes::{ExecutionResult, Nes, NesConfig, MASTER_CYCLES_PER_FRAME};
+use monsoon_core::emulation::nes::{ExecutionResult, MASTER_CYCLES_PER_FRAME, Nes, NesConfig};
 use monsoon_core::emulation::palette_util::RgbColor;
 use monsoon_core::emulation::ppu_util::{TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH};
 use monsoon_core::emulation::rom::RomFile;
-use monsoon_core::emulation::screen_renderer::{create_renderer, ScreenRenderer};
+use monsoon_core::emulation::screen_renderer::{ScreenRenderer, create_renderer};
 use monsoon_core::util::format_bytes_human_readable;
 
 use crate::cli::{
-    apply_memory_init, apply_memory_init_config, is_ffmpeg_available, parse_memory_range, CliArgs, ExecutionConfig, ExecutionEngine,
-    FpsConfig, MemoryDump, MemoryInit, MemoryInitConfig, MemoryType, OutputWriter,
-    SavestateConfig, StreamingVideoEncoder, VideoFormat, VideoResolution,
+    CliArgs, ExecutionConfig, ExecutionEngine, FpsConfig, MemoryDump, MemoryInit, MemoryInitConfig,
+    MemoryType, OutputWriter, SavestateConfig, StreamingVideoEncoder, VideoFormat, VideoResolution,
+    apply_memory_init, apply_memory_init_config, is_ffmpeg_available, parse_memory_range,
 };
 
 // =============================================================================

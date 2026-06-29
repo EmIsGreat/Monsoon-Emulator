@@ -1,9 +1,10 @@
+#![feature(unboxed_closures)]
+
 mod implement_mapper_variant;
 mod mapper_variant;
 mod mapper_versions;
 
 use proc_macro::TokenStream;
-use syn::parse_macro_input;
 
 #[proc_macro_attribute]
 pub fn mapper_variant(attribute_args: TokenStream, item: TokenStream) -> TokenStream {
@@ -41,8 +42,5 @@ pub fn mapper_versions(attr: TokenStream, item: TokenStream) -> TokenStream {
 
 #[proc_macro]
 pub fn implement_mapper_for_struct(input: TokenStream) -> TokenStream {
-    implement_mapper_variant::implement_mapper_for_struct(parse_macro_input!(
-        input as implement_mapper_variant::Input
-    ))
-    .into()
+    implement_mapper_variant::implement_mapper_for_struct(input.into()).into()
 }

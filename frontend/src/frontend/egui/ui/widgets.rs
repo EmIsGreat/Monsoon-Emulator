@@ -4,7 +4,7 @@
 //! multiple UI components to reduce code duplication.
 
 use crossbeam_channel::Sender;
-use egui::{Response, StrokeKind, Ui, Widget, vec2, AsIdSalt};
+use egui::{AsIdSalt, Response, StrokeKind, Ui, Widget, vec2};
 use monsoon_core::emulation::palette_util::RgbColor;
 
 use crate::frontend::egui::config::AppConfig;
