@@ -155,6 +155,9 @@ jobs:
                     
                     VERSION=$(grep -m1 '^version = ' Cargo.toml | sed 's/version = "\(.*\)"/\1/')
                     
+                    publish_crate monsoon-macro
+                    wait_for_crate monsoon-macro "$VERSION"
+                    
                     publish_crate monsoon-core
                     wait_for_crate monsoon-core "$VERSION"
                     
