@@ -6,7 +6,7 @@ use serde_big_array::BigArray;
 use crate::emulation::board::CpuBus;
 use crate::emulation::nes::ExecutionResult;
 use crate::emulation::opcode;
-use crate::emulation::opcode::{OPCODES_TABLE, OpCode, get_opcode};
+use crate::emulation::opcode::{get_opcode, OpCode, OPCODES_TABLE};
 use crate::util;
 
 pub const INTERNAL_RAM_SIZE: u16 = 0x800;
@@ -1859,13 +1859,9 @@ pub enum Condition {
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, Hash)]
 pub enum OpType {
     ImmediateAddressing(Target, MicroOpCallback),
-    AbsoluteRead(Target, MicroOpCallback),
-    AbsoluteIndexRead(Source, Target, MicroOpCallback),
-    ZeroPageRead(Target, MicroOpCallback),
-    ZeroPageIndexRead(Source, Target, MicroOpCallback),
     AccumulatorOrImplied(MicroOpCallback),
-    IndexedIndirectRead(Target, MicroOpCallback),
-    IndirectIndexedRead(Target, MicroOpCallback),
+    JmpIndirect(MicroOpCallback),
+    Relative(MicroOpCallback),
     BRK(MicroOpCallback),
     RTI(MicroOpCallback),
     RTS(MicroOpCallback),
@@ -1873,20 +1869,24 @@ pub enum OpType {
     PL(Target, MicroOpCallback),
     JSR(MicroOpCallback),
     JmpAbsolute(MicroOpCallback),
+    AbsoluteRead(Target, MicroOpCallback),
     AbsoluteRMW(Target, MicroOpCallback),
     AbsoluteWrite(Source, MicroOpCallback),
-    ZeroPageRMW(Target, MicroOpCallback),
-    ZeroPageWrite(Source, MicroOpCallback),
-    ZeroPageIndexRMW(Source, MicroOpCallback),
-    ZeroPageIndexWrite(Source, Source, MicroOpCallback),
+    AbsoluteIndexRead(Source, Target, MicroOpCallback),
     AbsoluteIndexRMW(Source, MicroOpCallback),
     AbsoluteIndexWrite(Source, Source, MicroOpCallback),
-    IndexedIndirectWrite(Source, MicroOpCallback),
-    JmpIndirect(MicroOpCallback),
-    IndirectIndexedWrite(Source, MicroOpCallback),
-    Relative(MicroOpCallback),
-    IndexedIndirectRMW(MicroOpCallback),
+    ZeroPageRead(Target, MicroOpCallback),
+    ZeroPageRMW(Target, MicroOpCallback),
+    ZeroPageWrite(Source, MicroOpCallback),
+    ZeroPageIndexRead(Source, Target, MicroOpCallback),
+    ZeroPageIndexRMW(Source, MicroOpCallback),
+    ZeroPageIndexWrite(Source, Source, MicroOpCallback),
+    IndirectIndexedRead(Target, MicroOpCallback),
     IndirectIndexedRMW(MicroOpCallback),
+    IndirectIndexedWrite(Source, MicroOpCallback),
+    IndexedIndirectRead(Target, MicroOpCallback),
+    IndexedIndirectRMW(MicroOpCallback),
+    IndexedIndirectWrite(Source, MicroOpCallback),
 }
 
 #[cfg(test)]
