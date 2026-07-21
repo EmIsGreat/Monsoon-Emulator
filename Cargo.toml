@@ -24,7 +24,7 @@ inherits = "release"
 codegen-units = 1
 lto = "fat"
 
-[profile.max_performance]
+[profile.native]
 inherits = "full_release"
 rustflags = ["-C", "target-cpu=native"]
 

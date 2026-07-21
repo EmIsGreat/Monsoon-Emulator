@@ -14,14 +14,15 @@ use std::fmt::{Debug, Display, Formatter};
 use num_enum::{FromPrimitive, IntoPrimitive};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use strum::EnumIter;
 
 use crate::emulation::mapper::nametable_mapping::NametableArrangement;
 use crate::emulation::mem::Memory;
 use crate::emulation::nes::Nes;
 use crate::emulation::rom::formats::archaic_ines::ArchaicInes;
 use crate::emulation::rom::formats::ines::Ines;
-use crate::emulation::rom::formats::ines_07::Ines07;
 use crate::emulation::rom::formats::ines2::Ines2;
+use crate::emulation::rom::formats::ines_07::Ines07;
 
 /// Errors that can occur while parsing a ROM file.
 #[derive(Debug)]
@@ -154,6 +155,7 @@ pub struct RomFile {
     Ord,
     PartialOrd,
     Hash,
+    EnumIter,
     FromPrimitive,
     IntoPrimitive,
     Serialize,
@@ -380,6 +382,7 @@ impl Display for ExpansionDevice {
     Ord,
     PartialOrd,
     Hash,
+    EnumIter,
     FromPrimitive,
     IntoPrimitive,
     Serialize,
@@ -411,9 +414,9 @@ impl Display for ExtendedConsoleType {
             ExtendedConsoleType::NesFamicom => "Nes/Famicom/Dendy",
             ExtendedConsoleType::VsSystem => "Nintendo Vs. System",
             ExtendedConsoleType::Playchoice10 => "Nintendo Playchoice 10",
-            ExtendedConsoleType::DecimalModeFamiclone => "Famiclone w/ Decimal Mode CPU",
+            ExtendedConsoleType::DecimalModeFamiclone => "Famiclone with Decimal Mode CPU",
             ExtendedConsoleType::EPSMFamicom => {
-                "Nes/Famicom/Dendy w/ EPSM module or plug-through Cartridge"
+                "Nes/Famicom/Dendy with EPSM module or plug-through Cartridge"
             }
             ExtendedConsoleType::VT01 => "V.R. Technology VT01 with red/cyan STN palette",
             ExtendedConsoleType::VT02 => "V.R Technology VT02",
@@ -441,6 +444,7 @@ impl Display for ExtendedConsoleType {
     Ord,
     PartialOrd,
     Hash,
+    EnumIter,
     FromPrimitive,
     IntoPrimitive,
     Serialize,
@@ -492,6 +496,7 @@ impl Display for VsHardwareType {
     Ord,
     PartialOrd,
     Hash,
+    EnumIter,
     FromPrimitive,
     IntoPrimitive,
     Serialize,
@@ -543,6 +548,7 @@ impl Display for VsSystemPpuType {
     Ord,
     PartialOrd,
     Hash,
+    EnumIter,
     FromPrimitive,
     IntoPrimitive,
     Serialize,
@@ -584,6 +590,7 @@ impl Display for ConsoleType {
     Ord,
     PartialOrd,
     Hash,
+    EnumIter,
     FromPrimitive,
     IntoPrimitive,
     Serialize,
@@ -625,6 +632,7 @@ impl Display for RomTimingRegion {
     Ord,
     PartialOrd,
     Hash,
+    EnumIter,
     FromPrimitive,
     IntoPrimitive,
     Serialize,
@@ -634,26 +642,212 @@ impl Display for RomTimingRegion {
 #[serde(into = "u16", from = "u16")]
 pub enum RomMapper {
     NRom = 0,
-    MMC1 = 1,
-    MMC1A = 155,
+    MMC1B = 1,
+    UxROM = 2,
+    CNROM = 3,
+    MMC3 = 4,
+    MMC5 = 5,
+    FrontFareastMagicCard1and2MB = 6,
+    AxROM = 7,
+    FrontFareastMagicCard1and2MBSub4 = 8,
+    MMC2 = 9,
+    MMC4 = 10,
+    ColorDreams = 11,
+    SL5020BandFrontFareastMagicCard4MB = 12,
+    CPROM = 13,
+    SL1632 = 14,
+    K1029andK1030P = 15,
+    FGC1and2orLZ93D50 = 16,
+    FrontFareastSuperMagicCard = 17,
+    SS88006 = 18,
+    Namco129and163 = 19,
+    FamicomDiskSystem = 20,
+    VRC4AandC = 21,
+    VRC2A = 22,
+    VRC2BandVRC4FandE = 23,
+    VRC6A = 24,
+    VRC2CandVRC4BandD = 25,
+    VRC6B = 26,
+    VRC4unl = 27,
+    Action53 = 28,
+    CUFROM = 29,
+    UNROM512 = 30,
+    NSFSubset = 31,
+    G101 = 32,
+    TC0190 = 33,
+    NINAorBNROM = 34,
+    JingtaiASIC8kBWRAM = 35,
+    TXC0122000400 = 36,
+    SmbTetrisNWCMulticart = 37,
+    BitCorpCrimeBusters = 38,
+    OversizeBNROM = 39,
+    NTDEC2722and2752 = 40,
+    Caltron6in1 = 41,
+    HackedFDS = 42,
+    TONYI = 43,
+    MMC3Multicart = 44,
+    MulticartGA23C = 45,
+    RumbleStation = 46,
+    MMC3Multicart2 = 47,
+    TC0690 = 48,
+    MMC3Multicart3 = 49,
+    SMB2N32 = 50,
+    BallGames11in1 = 51,
+    Realtec8213 = 52,
+    Supervision16in1 = 53,
+    NovelDiamond201Alias = 54,
+    BTLMario1 = 55,
+    UnlSMB3 = 56,
+    MulticartMapper4 = 57,
+    NROMMulticart = 58,
+    BMCT3H53 = 59,
+    NROM128ResetMulticart = 60,
+    MulticartMapper5 = 61,
+    MulticartMapper6 = 62,
+    NTDECMulticartTH29913 = 63,
+    RAMBO1 = 64,
+    H3001 = 65,
+    GxROM = 66,
+    Sunsoft3 = 67,
+    Sunsoft4 = 68,
+    SunsoftFME7 = 69,
+    Mapper70 = 70,
+    Codemasters = 71,
+    JF17 = 72,
+    VRC3 = 73,
+    Waixing43393 = 74,
+    VRC1 = 75,
+    NAMCOT3446 = 76,
+    NapoleonSenki = 77,
+    HolyDiver = 78,
+    NINA03and06 = 79,
+    UN1ROM = 94,
     NesEvent = 105,
+    TKLSROM = 118,
+    TQROM = 119,
+    MMC1A = 155,
+    UNROMCrazyClimber = 180,
+    CNROM8KB = 185,
     #[num_enum(catch_all)]
     Unknown(u16),
 }
 
 impl Display for RomMapper {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let str: &str = match self {
+        let str = match self {
             RomMapper::NRom => "NROM",
-            RomMapper::MMC1 => "MMC1",
+            RomMapper::MMC1B => "MMC1B",
             RomMapper::MMC1A => "MMC1A",
             RomMapper::NesEvent => "NES-EVENT",
+            RomMapper::UxROM => "UxROM",
+            RomMapper::UN1ROM => "UN1ROM",
+            RomMapper::UNROMCrazyClimber => "UNROM (Crazy Climber)",
+            RomMapper::CNROM => "CNROM",
+            RomMapper::CNROM8KB => "CNROM (with 8KiB CHR-ROM)",
+            RomMapper::MMC3 => "MMC3",
+            RomMapper::TKLSROM => "TKSROM/TLSROM",
+            RomMapper::TQROM => "TQROM",
             RomMapper::Unknown(_) => "Unknown Mapper",
+            RomMapper::MMC5 => "MMC5",
+            RomMapper::FrontFareastMagicCard1and2MB => "Front Fareast Magic Card 1/2MB",
+            RomMapper::AxROM => "AxROM",
+            RomMapper::FrontFareastMagicCard1and2MBSub4 => {
+                "Front Fareast Magic Card 1/2MB (using Submapper 4)"
+            }
+            RomMapper::MMC2 => "MMC2",
+            RomMapper::MMC4 => "MMC4",
+            RomMapper::ColorDreams => "Color Dreams",
+            RomMapper::SL5020BandFrontFareastMagicCard4MB => {
+                "哥德 (Gouder) SL-5020B (Sub. 0) or Front Fareast Magic Card 4MB (Sub. 1)"
+            }
+            RomMapper::CPROM => "CPROM",
+            RomMapper::SL1632 => "哥德 (Gouder) SL-1632",
+            RomMapper::K1029andK1030P => "K-1029 or K-1030P",
+            RomMapper::FGC1and2orLZ93D50 => "Bandai FCG-1/2 (Sub. 4) or LZ93D50 (Sub. 5)",
+            RomMapper::FrontFareastSuperMagicCard => "Front Fareast Super Magic Card",
+            RomMapper::SS88006 => "Jaleco SS 88006",
+            RomMapper::Namco129and163 => "Namco 129/163",
+            RomMapper::FamicomDiskSystem => "Famicom Disk System",
+            RomMapper::VRC4AandC => "Konami VRC4a (Sub. 1) or VRC4c (Sub. 2)",
+            RomMapper::VRC2A => "Konami VRC2a",
+            RomMapper::VRC2BandVRC4FandE => {
+                "Konami VRC2b (Sub. 3), VRC4e (Sub. 2), or VRC4f (Sub. 1)"
+            }
+            RomMapper::VRC6A => "Konami VRC6a",
+            RomMapper::VRC2CandVRC4BandD => {
+                "Konami VRC2c (Sub. 3), VRC4b (Sub. 1), or VRC4d (Sub. 2)"
+            }
+            RomMapper::VRC6B => "Konami VRC6b",
+            RomMapper::VRC4unl => "Konami VRC4 unlicensed",
+            RomMapper::Action53 => "Action 53",
+            RomMapper::CUFROM => "RET-CUFROM",
+            RomMapper::UNROM512 => "UNROM 512",
+            RomMapper::NSFSubset => "NSF Subset",
+            RomMapper::G101 => "Irem G-101",
+            RomMapper::TC0190 => "Taito TC0190",
+            RomMapper::NINAorBNROM => "NINA-001/002 (Sub. 1) or BNROM (Sub 2.)",
+            RomMapper::JingtaiASIC8kBWRAM => "晶太 (Jīngtài) ASIC (with 8KiB WRAM)",
+            RomMapper::TXC0122000400 => "TXC 01-22000-400",
+            RomMapper::SmbTetrisNWCMulticart => {
+                "Nintendo of Europe Multicart Mapper \"Super Mario Bros. + Tetris + Nintendo World \
+                 Cup 3-in-1\""
+            }
+            RomMapper::BitCorpCrimeBusters => "Bit Corp. Crime Busters Mapper",
+            RomMapper::OversizeBNROM => "Oversize BNROM",
+            RomMapper::NTDEC2722and2752 => "NTDEC 2722 (Sub. 0) or 2752 (Sub. 1)",
+            RomMapper::Caltron6in1 => "Caltron 6-in-1 Multicart Mapper",
+            RomMapper::HackedFDS => "FDS to Cartridge hack Mapper",
+            RomMapper::TONYI => "TONY-I",
+            RomMapper::MMC3Multicart => "MMC3 Multicart Mapper (Super Big 7-in-1)",
+            RomMapper::MulticartGA23C => "Multicart using GA23C",
+            RomMapper::RumbleStation => "Rumble Station Mapper",
+            RomMapper::MMC3Multicart2 => {
+                "MMC3 Multicart Mapper (Super Spike V'Ball + Nintendo World Cup)"
+            }
+            RomMapper::TC0690 => "Taito TC0690",
+            RomMapper::MMC3Multicart3 => "MMC3 Multicart Mapper (Super HIK 4-in-1)",
+            RomMapper::SMB2N32 => "N-32 conversion of SMB2J Mapper",
+            RomMapper::BallGames11in1 => "Multicart Mapper (11-in-1 Ball Games)",
+            RomMapper::Realtec8213 => "Realtec 8213",
+            RomMapper::Supervision16in1 => "Multicart Mapper (Supervision 16-in-1)",
+            RomMapper::NovelDiamond201Alias => {
+                "Mapper 201 Multicart Mapper for Novel Diamond 9999999-in-1"
+            }
+            RomMapper::BTLMario1 => "BTL-MARIO1-MALEE2",
+            RomMapper::UnlSMB3 => "Unlicensed SMB3 Mapper",
+            RomMapper::MulticartMapper4 => "Multicart Mapper (GK 47-in-1, 6-in-1 (SuperGK))",
+            RomMapper::NROMMulticart => "NROM-/CNROM based Multicart Mapper",
+            RomMapper::BMCT3H53 => "BMC-T3H53 and BMC-D1038 Multicart Mappers",
+            RomMapper::NROM128ResetMulticart => "NROM-128 Multicart Mapper (Reset Based 4-in-1)",
+            RomMapper::MulticartMapper5 => {
+                "Multicart Mapper (方塊外傳 9合1 - Tetris Family 9-in-1, HQ 高品質合卡 15-in-1 \
+                 (Sub. 0) and 32-in-1 (Sub. 1))"
+            }
+            RomMapper::MulticartMapper6 => "Multicart Mapper (Super 700-in-1)",
+            RomMapper::NTDECMulticartTH29913 => {
+                "NTDEC Multicart Mapper (Powerful 250-in-1 (Sub. 0) and 82-in-1 (Sub. 1))"
+            }
+            RomMapper::RAMBO1 => "RAMBO-1",
+            RomMapper::H3001 => "Irem H3001",
+            RomMapper::GxROM => "GxROM",
+            RomMapper::Sunsoft3 => "Sunsoft-3",
+            RomMapper::Sunsoft4 => "Sunsoft-4",
+            RomMapper::SunsoftFME7 => "Sunsoft FME-7, 5A, or 5B",
+            RomMapper::Mapper70 => "Bandai Mapper 70",
+            RomMapper::Codemasters => "Codemasters Camerica Mapper",
+            RomMapper::JF17 => "Jaleco JF-17",
+            RomMapper::VRC3 => "Konami VRC3",
+            RomMapper::Waixing43393 => "Waixing 43-393/43-406/860908C",
+            RomMapper::VRC1 => "Konami VRC1",
+            RomMapper::NAMCOT3446 => "Namcot 3446",
+            RomMapper::NapoleonSenki => "Napoleon Senki Mapper",
+            RomMapper::HolyDiver => "Holy Diver and Uchuusen - Cosmo Carrier Mapper",
+            RomMapper::NINA03and06 => "NINA-03 or NINA-06",
         };
 
         let mapper_num: u16 = (*self).into();
 
-        write!(f, "{str} (INes Mapper {})", mapper_num)
+        write!(f, "{str} (INes Mapper {:03})", mapper_num)
     }
 }
 
@@ -700,6 +894,13 @@ impl ChrMemory {
 }
 
 impl RomFile {
+    pub fn get_for_header(header: &Vec<u8>, name: String) -> Result<Self, ParseError> {
+        let rom_type = RomFile::get_rom_type(header, true)?;
+        let mut file = rom_type.parse(header, Some(&name))?;
+        file.format_name = rom_type.get_name().to_string();
+        Ok(file)
+    }
+
     fn range_all_zeros(arr: &[u8], start: usize, end: usize) -> bool {
         if start > end || end > arr.len() {
             return false;
@@ -707,7 +908,7 @@ impl RomFile {
         arr[start..end].iter().all(|&x| x == 0)
     }
 
-    fn get_rom_type(rom: &[u8]) -> Result<Box<dyn RomParser>, ParseError> {
+    fn get_rom_type(rom: &[u8], header_only: bool) -> Result<Box<dyn RomParser>, ParseError> {
         // iNES and NES 2.0 headers are 16 bytes minimum
         if rom.len() < 16 {
             return Err(ParseError::InvalidHeader);
@@ -725,7 +926,7 @@ impl RomFile {
             let chr_rom_size = Ines2::get_chr_rom_size(chr_rom_size_lsb, chr_rom_size_msb);
 
             if rom[7] & 0b00001100 == 8
-                && (prg_rom_size as usize + chr_rom_size as usize) < rom.len()
+                && ((prg_rom_size as usize + chr_rom_size as usize) < rom.len() || header_only)
             {
                 return Ok(Box::new(Ines2));
             }
@@ -789,7 +990,7 @@ impl RomFile {
             }
         }
 
-        let rom_type = RomFile::get_rom_type(data)?;
+        let rom_type = RomFile::get_rom_type(data, false)?;
         let mut rom_file = rom_type.parse(data, name)?;
         rom_file.format_name = rom_type.get_name().to_string();
         rom_file.data = data.to_vec();
@@ -1177,7 +1378,7 @@ mod tests {
         assert_eq!(serialized, "1");
 
         let serialized =
-            serde_json::to_string(&RomMapper::MMC1).expect("failed to serialize rom mapper");
+            serde_json::to_string(&RomMapper::MMC1B).expect("failed to serialize rom mapper");
         assert_eq!(serialized, "1");
     }
 

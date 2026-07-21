@@ -1336,17 +1336,18 @@ impl Cpu {
             MicroOp::ReadPageCrossAware(source, offset, target, schedule_read, callback) => {
                 let mut page_cross = false;
 
-                if let Some(address) = self.get_u16_address(&source) {
-                    let val = self.mem_read(address, bus);
-                    self.write_to_target(&target, val, bus);
-                    let offset = self.get_src_value(&offset);
+                let address = self
+                    .get_u16_address(&source)
+                    .expect("ReadPageCrossAware needs a not-None source");
+                let val = self.mem_read(address, bus);
+                self.write_to_target(&target, val, bus);
+                let offset = self.get_src_value(&offset);
 
-                    if let Some(offset) = offset
-                        && self.lo.overflowing_sub(offset).1
-                    {
-                        page_cross = true;
-                    }
-                };
+                if let Some(offset) = offset
+                    && self.lo.overflowing_sub(offset).1
+                {
+                    page_cross = true;
+                }
 
                 if page_cross {
                     if schedule_read {

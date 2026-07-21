@@ -11,6 +11,8 @@ pub struct RomDb {
 }
 
 impl RomDb {
+    pub fn get_all_entries(&self) -> Vec<&RomDbEntry> { self.data.values().collect() }
+
     pub fn get_entry(&self, full_hash: &[u8; 32]) -> Option<&RomDbEntry> {
         self.data.get(full_hash)
     }

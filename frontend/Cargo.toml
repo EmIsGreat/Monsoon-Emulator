@@ -42,7 +42,7 @@ monsoon-default-renderers = { workspace = true }
 dhat-heap = ["dhat"]
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tokio = { version = "1.52", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1.53", features = ["rt-multi-thread", "macros"] }
 
 # Web-only dependencies
 [target.'cfg(target_arch = "wasm32")'.dependencies]

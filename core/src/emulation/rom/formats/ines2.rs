@@ -79,9 +79,9 @@ impl RomParser for Ines2 {
         let misc_rom_count = rom[14] & 0x3;
         let default_expansion_device = rom[15] & 0b00111111;
 
-        if prg_rom_size as usize + chr_rom_size as usize > rom.len() {
-            return Err(ParseError::SizeBiggerThanFile);
-        }
+        // if prg_rom_size as usize + chr_rom_size as usize > rom.len() {
+        //     return Err(ParseError::SizeBiggerThanFile);
+        // }
 
         Ok(RomBuilder::default()
             .prg_rom_size(prg_rom_size)

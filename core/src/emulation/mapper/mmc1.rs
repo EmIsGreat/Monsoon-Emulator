@@ -32,7 +32,7 @@ pub trait MMC1Submapper {
             NAME = "A",
         },
         RevB => {
-            mapper = MMC1,
+            mapper = MMC1B,
             NAME = "B",
         }
     },

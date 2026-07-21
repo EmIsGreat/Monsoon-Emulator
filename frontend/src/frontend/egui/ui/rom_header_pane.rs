@@ -103,6 +103,9 @@ pub fn render_rom_header(ui: &mut egui::Ui, config: &AppConfig) {
                         .unwrap_or_else(|| "(none)".to_string()),
                 );
                 ui.end_row();
+                ui.label("File Type");
+                ui.label(&rom.format_name);
+                ui.end_row()
             });
     } else {
         ui.label("No ROM loaded.");

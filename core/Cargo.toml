@@ -25,6 +25,7 @@ sha2 = { version = "0.11.0" }
 num_enum = { version = "0.7.6" }
 enum_delegate = "0.2.0"
 static_assertions = "1.1.0"
+strum = { version = "0.28.0", features = ["derive"] }
 
 monsoon-macro = { workspace = true }
 
