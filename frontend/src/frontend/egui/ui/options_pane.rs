@@ -11,6 +11,14 @@ pub fn render_options(ui: &mut egui::Ui, config: &mut AppConfig) {
         render_speed_settings(ui, config);
         render_renderer_settings(ui, config);
         render_debug_overlay_settings(ui, config);
+        render_rom_loading_settings(ui, config);
+    });
+}
+
+fn render_rom_loading_settings(ui: &mut egui::Ui, config: &mut AppConfig) {
+    ui.collapsing("Rom Loading", |ui| {
+        ui.checkbox(&mut config.user_config.use_rom_db, "Use ROM header DB")
+            .on_hover_text("Use the bundled ROM DB for enhanced compatibility")
     });
 }
 

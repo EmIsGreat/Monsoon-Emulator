@@ -642,7 +642,7 @@ impl Display for RomTimingRegion {
 #[serde(into = "u16", from = "u16")]
 pub enum RomMapper {
     NRom = 0,
-    MMC1B = 1,
+    MMC1 = 1,
     UxROM = 2,
     CNROM = 3,
     MMC3 = 4,
@@ -717,17 +717,62 @@ pub enum RomMapper {
     VRC3 = 73,
     Waixing43393 = 74,
     VRC1 = 75,
-    NAMCOT3446 = 76,
+    Namcot108FamCHR128Coarse = 76,
     NapoleonSenki = 77,
     HolyDiver = 78,
     NINA03and06 = 79,
+    X1005 = 80,
+    NTDECSuperGun = 81,
+    X1017 = 82,
+    Cony = 83,
+    PCSMB2J = 84,
+    VRC7 = 85,
+    JF13 = 86,
+    J87 = 87,
+    Namcot108FamCHR128PPU = 88,
+    Sunsoft2B3 = 89,
+    JingtaiASICInhibited = 90,
+    JY830623C = 91,
+    JF17Alt = 92,
+    Sunsoft2B3R = 93,
     UN1ROM = 94,
+    Namcot108FamVariableArrangement = 95,
+    BandaiOekaKids = 96,
+    TAMS1 = 97,
+    GBCPort = 98,
+    VsSystemCNROM = 99,
+    NesticleMMC3Hack = 100,
+    J87Reverse = 101,
+    QuietustDripAlt = 102,
+    DokiDokiPanicPirate = 103,
+    Pegasus5in1 = 104,
     NesEvent = 105,
+    SMB3Bootleg = 106,
+    MagicDragon = 107,
+    FDSCartridgeMapper = 108,
+    GreatWall = 109,
+    HoneyPeach = 110,
+    GTROMorMMC1Unserial = 111,
+    NTDECScrambled = 112,
+    NTD8 = 113,
+    MMC3CloneScrambled = 114,
+    KashengMMC3 = 115,
+    SOMARIP = 116,
+    FutureMediaMapper = 117,
     TKLSROM = 118,
     TQROM = 119,
+    LH15 = 120,
+    A9711andA9713 = 121,
+    JY043 = 122,
+    H2288 = 123,
+    SuperGameMegaTypeIIIMapper = 124,
+    LH32 = 125,
+    TEC9719orING003CorING022RepurposedLines = 126,
+    DoubleDragonIIPirate = 127,
     MMC1A = 155,
     UNROMCrazyClimber = 180,
     CNROM8KB = 185,
+    Namcot108Fam = 206,
     #[num_enum(catch_all)]
     Unknown(u16),
 }
@@ -736,7 +781,7 @@ impl Display for RomMapper {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let str = match self {
             RomMapper::NRom => "NROM",
-            RomMapper::MMC1B => "MMC1B",
+            RomMapper::MMC1 => "MMC1",
             RomMapper::MMC1A => "MMC1A",
             RomMapper::NesEvent => "NES-EVENT",
             RomMapper::UxROM => "UxROM",
@@ -839,10 +884,61 @@ impl Display for RomMapper {
             RomMapper::VRC3 => "Konami VRC3",
             RomMapper::Waixing43393 => "Waixing 43-393/43-406/860908C",
             RomMapper::VRC1 => "Konami VRC1",
-            RomMapper::NAMCOT3446 => "Namcot 3446",
+            RomMapper::Namcot108FamCHR128Coarse => "Namcot 108 Family (Coarse Banking variant)",
             RomMapper::NapoleonSenki => "Napoleon Senki Mapper",
             RomMapper::HolyDiver => "Holy Diver and Uchuusen - Cosmo Carrier Mapper",
             RomMapper::NINA03and06 => "NINA-03 or NINA-06",
+            RomMapper::X1005 => "Taiko X1-005",
+            RomMapper::NTDECSuperGun => "NTDEC Super Gun Mapper",
+            RomMapper::X1017 => "Taiko X1-017",
+            RomMapper::Cony => "Cony",
+            RomMapper::PCSMB2J => "PC-SMB2J",
+            RomMapper::VRC7 => "Konami VRC7",
+            RomMapper::JF13 => "Jaleco JF-13",
+            RomMapper::J87 => "J87",
+            RomMapper::Namcot108FamCHR128PPU => {
+                "Namcot 108 Family (PPU A12 to CHR ROM A16 variant)"
+            }
+            RomMapper::Sunsoft2B3 => "Sunsoft-2 on Sunsoft-3 Board",
+            RomMapper::JingtaiASICInhibited => "晶太 (Jīngtài) ASIC (inhibited)",
+            RomMapper::JY830623C => "JY830623C or YY840238C (Sub 0.), or EJ-006-1 (Sub. 0)",
+            RomMapper::Namcot108Fam => "Namcot 108 Family (generic)",
+            RomMapper::JF17Alt => "Jaleco JV-17 with alternate PRG Setup",
+            RomMapper::Sunsoft2B3R => "Sunsoft-2 on Sunsoft-3R Board",
+            RomMapper::Namcot108FamVariableArrangement => {
+                "Namcot 108 Family (with changeable Nametable Arrangement)"
+            }
+            RomMapper::BandaiOekaKids => "Bandai Oeka Kids Tablet Mapper",
+            RomMapper::TAMS1 => "Irem TAM-S1",
+            RomMapper::GBCPort => "GBC-to-NES Porting Mapper",
+            RomMapper::VsSystemCNROM => "Vs. System CNROM Mapper",
+            RomMapper::NesticleMMC3Hack => "Nesticle MMC3 hack Mapper",
+            RomMapper::J87Reverse => "J87 Reversed",
+            RomMapper::QuietustDripAlt => "Quietust Drip alternative Mapper",
+            RomMapper::DokiDokiPanicPirate => "Doki Doki Panic FDS Pirate Mapper",
+            RomMapper::Pegasus5in1 => "PEGASUS 5 IN 1 Multicart Mapper",
+            RomMapper::SMB3Bootleg => "SMB3 Bootleg Mapper",
+            RomMapper::MagicDragon => "Magicseries Magic Dragon Mapper",
+            RomMapper::FDSCartridgeMapper => "FDS-to-Cartridge Mapper",
+            RomMapper::GreatWall => "Sachen The Great Wall legacy Mapper",
+            RomMapper::HoneyPeach => "Sache Honey Peach legacy Mapper",
+            RomMapper::GTROMorMMC1Unserial => "GTROM or Non-serialized MMC1 variant",
+            RomMapper::NTDECScrambled => "NTDEC Mapper similar to Namcot 108 Family",
+            RomMapper::NTD8 => "HES NTD-8",
+            RomMapper::MMC3CloneScrambled => "MMC3 Clone with scrambled registers",
+            RomMapper::KashengMMC3 => "卡聖 (Kǎshèng) SFC-02B/-03/-004",
+            RomMapper::SOMARIP => "哥德 (Gouder) SOMARI-P",
+            RomMapper::FutureMediaMapper => "Future Media Mapper",
+            RomMapper::LH15 => "LH15",
+            RomMapper::A9711andA9713 => "A9711 or A9713",
+            RomMapper::JY043 => "JY043",
+            RomMapper::H2288 => "卡聖 (Kǎshèng) H2288",
+            RomMapper::SuperGameMegaTypeIIIMapper => {
+                "Super Game Mega Type III pirate arcade Mapper"
+            }
+            RomMapper::LH32 => "LH32 FDS Mapper",
+            RomMapper::TEC9719orING003CorING022RepurposedLines => "TEC9719, ING003C or ING-022",
+            RomMapper::DoubleDragonIIPirate => "Double Dragon II Pirate Mapper",
         };
 
         let mapper_num: u16 = (*self).into();
@@ -1378,7 +1474,7 @@ mod tests {
         assert_eq!(serialized, "1");
 
         let serialized =
-            serde_json::to_string(&RomMapper::MMC1B).expect("failed to serialize rom mapper");
+            serde_json::to_string(&RomMapper::MMC1).expect("failed to serialize rom mapper");
         assert_eq!(serialized, "1");
     }
 
