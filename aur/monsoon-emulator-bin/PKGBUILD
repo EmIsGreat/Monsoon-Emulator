@@ -8,6 +8,7 @@ arch=('x86_64')
 url="https://github.com/EmIsGreat/Monsoon-Emulator"
 license=('Apache-2.0')
 
+provides=('monsoon-emulator')
 conflicts=('monsoon-emulator')
 options=('!debug')
 

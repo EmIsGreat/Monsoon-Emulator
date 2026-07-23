@@ -54,6 +54,9 @@ build() {
 }
 
 package() {
+	mv "Monsoon-Emulator-0.2.6/target/release/cli" "Monsoon-Emulator-0.2.6/target/release/${pkgname%-emulator}-cli"
+	mv "Monsoon-Emulator-${pkgver}/target/release/frontend" "Monsoon-Emulator-${pkgver}/target/release/${pkgname%-emulator}-frontend"
+
     install -Dm0755 -t "$pkgdir/usr/bin/" "Monsoon-Emulator-0.2.6/target/release/${pkgname%-emulator}-cli"
     install -Dm0755 -t "$pkgdir/usr/bin/" "Monsoon-Emulator-${pkgver}/target/release/${pkgname%-emulator}-frontend"
     install -Dm644 LICENSE "$pkgdir/usr/share/licenses/${pkgname}/LICENSE"
