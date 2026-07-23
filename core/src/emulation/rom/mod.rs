@@ -21,8 +21,8 @@ use crate::emulation::mem::Memory;
 use crate::emulation::nes::Nes;
 use crate::emulation::rom::formats::archaic_ines::ArchaicInes;
 use crate::emulation::rom::formats::ines::Ines;
-use crate::emulation::rom::formats::ines_07::Ines07;
 use crate::emulation::rom::formats::ines2::Ines2;
+use crate::emulation::rom::formats::ines_07::Ines07;
 
 /// Errors that can occur while parsing a ROM file.
 #[derive(Debug)]
@@ -711,7 +711,7 @@ pub enum RomMapper {
     Sunsoft3 = 67,
     Sunsoft4 = 68,
     SunsoftFME7 = 69,
-    Mapper70 = 70,
+    BandaiMapperFamilyMat = 70,
     Codemasters = 71,
     JF17 = 72,
     VRC3 = 73,
@@ -769,10 +769,59 @@ pub enum RomMapper {
     LH32 = 125,
     TEC9719orING003CorING022RepurposedLines = 126,
     DoubleDragonIIPirate = 127,
+    T262 = 128,
+    DuplicateNROMMulticart = 129,
+    Alternative331 = 130,
+    Alternative205 = 131,
+    TXC22Fam = 132,
+    SachenJovialMasterChu = 133,
+    T4A54A = 134,
+    Sachen8259AOld = 135,
+    Sachen3011 = 136,
+    Sachen8259D = 137,
+    Sachen8259B = 138,
+    Sachen8259C = 139,
+    JF11orJF14 = 140,
+    Sachen8259A = 141,
+    KS7032 = 142,
+    NROMCopyProt = 143,
+    DeathRaceMapper = 144,
+    SA72007 = 145,
+    Sachen3015 = 146,
+    Sachen3018 = 147,
+    SA008A = 148,
+    SA0036 = 149,
+    SA015 = 150,
+    VsSystemVRC1 = 151,
+    BandaiFamilyMatPlus = 152,
+    FCGWithLZ93D508KiBWRAM = 153,
+    NAMCOT3453 = 154,
     MMC1A = 155,
+    DIS23C01 = 156,
+    FCGDetachedJointRom = 157,
+    Tengen800037 = 158,
+    FCGWithLZ93D50EEPROM = 159,
+    JingtaiASICDuplicate = 160,
+    HanjukuHeroMMC1 = 161,
+    FS304 = 162,
+    FC001 = 163,
+    CY20003 = 164,
+    MMC2MMC3Mashup = 165,
+    IncorrectSuborLearning = 166,
+    SuborLearning = 167,
+    Racermate = 168,
+    Yuxing = 169,
+    ShikoGameSyu = 170,
+    Floppy1 = 171,
+    P4070 = 172,
+    IdeaTek = 173,
+    NROMMulticartShuffled = 174,
+    Kaiser15in1 = 175,
     UNROMCrazyClimber = 180,
     CNROM8KB = 185,
+    MMC3Multicart7 = 205,
     Namcot108Fam = 206,
+    NS037in0 = 331,
     #[num_enum(catch_all)]
     Unknown(u16),
 }
@@ -807,7 +856,7 @@ impl Display for RomMapper {
             }
             RomMapper::CPROM => "CPROM",
             RomMapper::SL1632 => "哥德 (Gouder) SL-1632",
-            RomMapper::K1029andK1030P => "K-1029 or K-1030P",
+            RomMapper::K1029andK1030P => "Kaiser K-1029 or K-1030P",
             RomMapper::FGC1and2orLZ93D50 => "Bandai FCG-1/2 (Sub. 4) or LZ93D50 (Sub. 5)",
             RomMapper::FrontFareastSuperMagicCard => "Front Fareast Super Magic Card",
             RomMapper::SS88006 => "Jaleco SS 88006",
@@ -872,13 +921,13 @@ impl Display for RomMapper {
             RomMapper::NTDECMulticartTH29913 => {
                 "NTDEC Multicart Mapper (Powerful 250-in-1 (Sub. 0) and 82-in-1 (Sub. 1))"
             }
-            RomMapper::RAMBO1 => "RAMBO-1",
+            RomMapper::RAMBO1 => "Tengen RAMBO-1",
             RomMapper::H3001 => "Irem H3001",
             RomMapper::GxROM => "GxROM",
             RomMapper::Sunsoft3 => "Sunsoft-3",
             RomMapper::Sunsoft4 => "Sunsoft-4",
             RomMapper::SunsoftFME7 => "Sunsoft FME-7, 5A, or 5B",
-            RomMapper::Mapper70 => "Bandai Mapper 70",
+            RomMapper::BandaiMapperFamilyMat => "Bandai Family Mat Mapper",
             RomMapper::Codemasters => "Codemasters Camerica Mapper",
             RomMapper::JF17 => "Jaleco JF-17",
             RomMapper::VRC3 => "Konami VRC3",
@@ -921,7 +970,7 @@ impl Display for RomMapper {
             RomMapper::MagicDragon => "Magicseries Magic Dragon Mapper",
             RomMapper::FDSCartridgeMapper => "FDS-to-Cartridge Mapper",
             RomMapper::GreatWall => "Sachen The Great Wall legacy Mapper",
-            RomMapper::HoneyPeach => "Sache Honey Peach legacy Mapper",
+            RomMapper::HoneyPeach => "Sachen Honey Peach legacy Mapper",
             RomMapper::GTROMorMMC1Unserial => "GTROM or Non-serialized MMC1 variant",
             RomMapper::NTDECScrambled => "NTDEC Mapper similar to Namcot 108 Family",
             RomMapper::NTD8 => "HES NTD-8",
@@ -930,7 +979,7 @@ impl Display for RomMapper {
             RomMapper::SOMARIP => "哥德 (Gouder) SOMARI-P",
             RomMapper::FutureMediaMapper => "Future Media Mapper",
             RomMapper::LH15 => "LH15",
-            RomMapper::A9711andA9713 => "A9711 or A9713",
+            RomMapper::A9711andA9713 => "卡聖 (Kǎshèng) A9711 or A9713",
             RomMapper::JY043 => "JY043",
             RomMapper::H2288 => "卡聖 (Kǎshèng) H2288",
             RomMapper::SuperGameMegaTypeIIIMapper => {
@@ -939,6 +988,73 @@ impl Display for RomMapper {
             RomMapper::LH32 => "LH32 FDS Mapper",
             RomMapper::TEC9719orING003CorING022RepurposedLines => "TEC9719, ING003C or ING-022",
             RomMapper::DoubleDragonIIPirate => "Double Dragon II Pirate Mapper",
+            RomMapper::T262 => "T-262 Multicart Mapper",
+            RomMapper::DuplicateNROMMulticart => {
+                "Duplicate of Mapper 58 (NROM-/CNROM based Multicart Mapper)"
+            }
+            RomMapper::Alternative331 => {
+                "Alternative assignment of Mapper 331 (MMC3 Multicart Mapper)"
+            }
+            RomMapper::Alternative205 => {
+                "Alternative assignment of Mapper 205 (NS03 7-in-1 Mapper)"
+            }
+            RomMapper::TXC22Fam => "TXC 01-22 Family",
+            RomMapper::SachenJovialMasterChu => {
+                "Sachen (Jovial Race and 盜帥 Master Chu and the Drunkard Hu). "
+            }
+            RomMapper::T4A54A => "MMC3 Multicart T4A54A, WX-KB4K, or BS-5652",
+            RomMapper::Sachen8259AOld => "Sachen 8259A (Old. Assignment moved to Mapper 141)",
+            RomMapper::Sachen3011 => "Sachen 3011",
+            RomMapper::Sachen8259D => "Sachen 8259D",
+            RomMapper::Sachen8259B => "Sachen 8259B",
+            RomMapper::Sachen8259C => "Sachen 8259C",
+            RomMapper::JF11orJF14 => "Jaleco JF11 or JF14",
+            RomMapper::Sachen8259A => "Sachen 8259A",
+            RomMapper::KS7032 => "Kaiser KS-7032",
+            RomMapper::NROMCopyProt => "NROM Variant (Copy Protected)",
+            RomMapper::MMC3Multicart7 => "MMC3 Multicart Mapper",
+            RomMapper::NS037in0 => "NS03 7-in-1 Mapper",
+            RomMapper::DeathRaceMapper => "Death Race Mapper",
+            RomMapper::SA72007 => "Sachen SA-72007",
+            RomMapper::Sachen3015 => "Sachen 3015",
+            RomMapper::Sachen3018 => "Sachen 3018",
+            RomMapper::SA008A => "Sachen SA-008-A",
+            RomMapper::SA0036 => "Sachen SA-0036",
+            RomMapper::SA015 => "Sachen SA-015",
+            RomMapper::VsSystemVRC1 => "VRC1 in Vs. System",
+            RomMapper::BandaiFamilyMatPlus => "Bandai Family Mat Mapper with arrangement control",
+            RomMapper::FCGWithLZ93D508KiBWRAM => "Bandai FCG with LZ93D508 and 8KiB of WRAM",
+            RomMapper::NAMCOT3453 => "Namcot-3453",
+            RomMapper::DIS23C01 => "DAOU ROM Controller DIS23C01 DAOU 245",
+            RomMapper::FCGDetachedJointRom => "Bandai Detached Joint ROM System",
+            RomMapper::Tengen800037 => "Tengen 800037",
+            RomMapper::FCGWithLZ93D50EEPROM => "Bandai FCG with LZ93D50 with EEPROM",
+            RomMapper::JingtaiASICDuplicate => {
+                "晶太 (Jīngtài) ASIC (inhibited) (Duplicate Assignment of Mapper 90)"
+            }
+            RomMapper::HanjukuHeroMMC1 => "Hanjuku Hero (Duplicate Assignment of MMC1)",
+            RomMapper::FS304 => "外星 (Wàixīng) FS304",
+            RomMapper::FC001 => "南晶 (Nánjīng) FC-001",
+            RomMapper::CY20003 => "燕城 (Yànchéng) cy2000-3",
+            RomMapper::MMC2MMC3Mashup => "MMC3 and MMC2 Hybrid",
+            RomMapper::IncorrectSuborLearning => {
+                "Incorrect version of 小霸王 中英文电脑学习机 IV (Subor
+                Chinese and English Computer Learning Machine IV
+                )"
+            }
+            RomMapper::SuborLearning => {
+                "小霸王 中英文电脑学习机 IV (Subor
+                Chinese and English Computer Learning Machine IV
+                ) Mapper"
+            }
+            RomMapper::Racermate => "Racermate Challenge 2 Mapper",
+            RomMapper::Yuxing => "Yuxing Mapper",
+            RomMapper::ShikoGameSyu => "Shiko Game Syu Mapper",
+            RomMapper::Floppy1 => "步步高 (Bùbùgāo, BBK) Floppy-1 and SC-98",
+            RomMapper::P4070 => "Super Mega P-4070",
+            RomMapper::IdeaTek => "Idea-Tek Mapper",
+            RomMapper::NROMMulticartShuffled => "NROM Multicart Mapper with shuffled bits",
+            RomMapper::Kaiser15in1 => "Kaiser 15-in-1 Multicart Mapper",
         };
 
         let mapper_num: u16 = (*self).into();

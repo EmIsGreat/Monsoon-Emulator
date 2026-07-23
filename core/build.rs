@@ -4,8 +4,8 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::PathBuf;
 
-use quick_xml::events::Event;
 use quick_xml::events::attributes::Attribute;
+use quick_xml::events::Event;
 use quick_xml::{Reader, XmlVersion};
 use serde::{Deserialize, Serialize};
 
@@ -30,6 +30,7 @@ fn main() {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 fn merge_rom_db() -> Result<(), Box<dyn std::error::Error>> {
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=../Cargo.toml");
@@ -243,7 +244,7 @@ fn merge_rom_db() -> Result<(), Box<dyn std::error::Error>> {
                     let game = games.get_mut(&hash);
 
                     if let Some(game) = game {
-                        game.orig_name = curr_name.clone();
+                        game.orig_name.clone_from(&curr_name);
                     } else {
                         games.insert(
                             hash,
