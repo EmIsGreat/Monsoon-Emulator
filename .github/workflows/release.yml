@@ -142,7 +142,7 @@ jobs:
             -   name: Download all artifacts
                 uses: actions/download-artifact@v8
                 with:
-                    pattern: monsoon-*
+                    pattern: binaries-*
                     path: artifacts
                     merge-multiple: true
 

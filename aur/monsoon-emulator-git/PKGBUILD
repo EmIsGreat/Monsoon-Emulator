@@ -1,7 +1,7 @@
 # Maintainer: EmIsGreat <monsoon-package@gemderbent.dev>
 
 pkgname="monsoon-emulator"
-pkgver="0.2.8"
+pkgver="0.2.9"
 pkgrel=1
 pkgdesc="A work-in-progress NES emulator"
 arch=('x86_64')
