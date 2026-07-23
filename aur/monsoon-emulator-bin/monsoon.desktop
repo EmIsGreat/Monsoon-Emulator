@@ -6,4 +6,5 @@ Comment=Cycle-accurate Nintendo Entertainment System emulator
 Exec=monsoon-frontend
 Categories=Game;Emulator;
 Keywords=NES;Nintendo;Emulator;Famicom;Retro;
+Icon=application-x-executable
 StartupNotify=true

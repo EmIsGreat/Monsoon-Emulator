@@ -7,3 +7,4 @@ Exec=monsoon-frontend
 Categories=Game;Emulator;
 Keywords=NES;Nintendo;Emulator;Famicom;Retro;
 StartupNotify=true
+Icon=application-x-executable
