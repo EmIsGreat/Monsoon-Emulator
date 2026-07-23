@@ -47,7 +47,7 @@ type ClockingFunction = fn(&mut Nes, last_cycle: u64) -> Result<ExecutionResult,
 ///
 /// let mut nes = Nes::default();
 /// let mut rom_bytes = std::fs::read("game.nes").unwrap();
-/// let rom = RomFile::load(&mut rom_bytes, None, false).unwrap();
+/// let rom = RomFile::load(&mut rom_bytes, None, false, None).unwrap();
 /// nes.load_rom(&rom);
 /// nes.power();
 ///

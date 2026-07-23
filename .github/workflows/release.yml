@@ -12,7 +12,53 @@ permissions:
     id-token: write
 
 jobs:
+    format:
+        runs-on: ubuntu-latest
+        steps:
+            -   name: Checkout code
+                uses: actions/checkout@v7
+                with:
+                    ref: ${{ github.head_ref }}
+                    token: ${{ secrets.GITHUB_TOKEN }}
+
+            -   uses: dtolnay/rust-toolchain@nightly
+                with:
+                    components: rustfmt
+
+            -   name: Cache Cargo
+                uses: Swatinem/rust-cache@v2
+
+            -   name: Run cargo fmt --all
+                run: cargo fmt --all
+
+            -   name: Commit formatting fixes
+                uses: stefanzweifel/git-auto-commit-action@v7
+                with:
+                    commit_message: "style: auto-format with cargo fmt --all"
+
+    clippy:
+        needs: format
+        runs-on: ubuntu-latest
+        steps:
+            -   name: Checkout code
+                uses: actions/checkout@v7
+
+            -   uses: dtolnay/rust-toolchain@nightly
+                with:
+                    components: clippy
+                    target: wasm32-unknown-unknown
+
+            -   name: Cache Cargo
+                uses: Swatinem/rust-cache@v2
+
+            -   name: Run clippy on workspace
+                run: cargo clippy --workspace -- -D warnings
+
+            -   name: Run clippy for WASM target
+                run: cargo clippy --workspace --target wasm32-unknown-unknown --exclude monsoon-cli -- -D warnings
+
     build:
+        needs: clippy
         strategy:
             matrix:
                 include:
@@ -109,6 +155,7 @@ jobs:
                     generate_release_notes: true
 
     publish-crates:
+        needs: release
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout code
@@ -172,67 +219,68 @@ jobs:
                     
                     publish_crate monsoon-frontend
 
-    publish-aur:
-        needs: publish-crates
-        runs-on: ubuntu-latest
-
-        steps:
-            -   name: Install AUR tooling
-                run: sudo apt-get update && sudo apt-get install -y pacman-package-manager
-
-            -   name: Setup SSH
-                run: |
-                    mkdir -p ~/.ssh
-                    echo "${{ secrets.AUR_SSH_KEY }}" > ~/.ssh/aur
-                    chmod 600 ~/.ssh/aur
-                    cat >> ~/.ssh/config <<EOF
-                    Host aur.archlinux.org
-                      IdentityFile ~/.ssh/aur
-                      StrictHostKeyChecking accept-new
-                    EOF
-
-            -   name: Get version
-                id: version
-                run: |
-                    VERSION=$(grep -m1 '^version = ' Cargo.toml | sed 's/version = "\(.*\)"/\1/')
-                    echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-
-            -   name: Update monsoon-emulator
-                run: |
-                    git clone ssh://aur@aur.archlinux.org/monsoon-emulator.git
-                    cd monsoon-emulator
-                    
-                    sed -i \
-                      "s/^pkgver=.*/pkgver=${{ steps.version.outputs.version }}/" \
-                      PKGBUILD
-                    
-                    updpkgsums
-                    
-                    git config user.name "GitHub Actions"
-                    git config user.email "actions@github.com"
-                    
-                    git commit -am "Update to ${{ steps.version.outputs.version }}" || exit 0
-                    git push
-
-            -   name: Update monsoon-emulator-bin
-                run: |
-                    git clone ssh://aur@aur.archlinux.org/monsoon-emulator-bin.git
-                    cd monsoon-emulator-bin
-                    
-                    sed -i \
-                      "s/^pkgver=.*/pkgver=${{ steps.version.outputs.version }}/" \
-                      PKGBUILD
-                    
-                    updpkgsums
-                    
-                    git config user.name "GitHub Actions"
-                    git config user.email "actions@github.com"
-                    
-                    git commit -am "Update to ${{ steps.version.outputs.version }}" || exit 0
-                    git push
+#    publish-aur:
+#        needs: publish-crates
+#        runs-on: ubuntu-latest
+#
+#        steps:
+#            -   name: Install AUR tooling
+#                run: sudo apt-get update && sudo apt-get install -y pacman-package-manager
+#
+#            -   name: Setup SSH
+#                run: |
+#                    mkdir -p ~/.ssh
+#                    echo "${{ secrets.AUR_SSH_KEY }}" > ~/.ssh/aur
+#                    chmod 600 ~/.ssh/aur
+#                    cat >> ~/.ssh/config <<EOF
+#                    Host aur.archlinux.org
+#                      IdentityFile ~/.ssh/aur
+#                      StrictHostKeyChecking accept-new
+#                    EOF
+#
+#            -   name: Get version
+#                id: version
+#                run: |
+#                    VERSION=$(grep -m1 '^version = ' Cargo.toml | sed 's/version = "\(.*\)"/\1/')
+#                    echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+#
+#            -   name: Update monsoon-emulator
+#                run: |
+#                    git clone ssh://aur@aur.archlinux.org/monsoon-emulator.git
+#                    cd monsoon-emulator
+#
+#                    sed -i \
+#                      "s/^pkgver=.*/pkgver=${{ steps.version.outputs.version }}/" \
+#                      PKGBUILD
+#
+#                    updpkgsums
+#
+#                    git config user.name "GitHub Actions"
+#                    git config user.email "actions@github.com"
+#
+#                    git commit -am "Update to ${{ steps.version.outputs.version }}" || exit 0
+#                    git push
+#
+#            -   name: Update monsoon-emulator-bin
+#                run: |
+#                    git clone ssh://aur@aur.archlinux.org/monsoon-emulator-bin.git
+#                    cd monsoon-emulator-bin
+#
+#                    sed -i \
+#                      "s/^pkgver=.*/pkgver=${{ steps.version.outputs.version }}/" \
+#                      PKGBUILD
+#
+#                    updpkgsums
+#
+#                    git config user.name "GitHub Actions"
+#                    git config user.email "actions@github.com"
+#
+#                    git commit -am "Update to ${{ steps.version.outputs.version }}" || exit 0
+#                    git push
 
     deploy-web:
         runs-on: ubuntu-latest
+        needs: clippy
         environment:
             name: github-pages
             url: ${{ steps.deploy.outputs.page_url }}

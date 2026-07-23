@@ -1336,6 +1336,7 @@ impl Cpu {
             MicroOp::ReadPageCrossAware(source, offset, target, schedule_read, callback) => {
                 let mut page_cross = false;
 
+                #[allow(clippy::expect_used)]
                 let address = self
                     .get_u16_address(&source)
                     .expect("ReadPageCrossAware needs a not-None source");

@@ -21,8 +21,8 @@ use crate::emulation::mem::Memory;
 use crate::emulation::nes::Nes;
 use crate::emulation::rom::formats::archaic_ines::ArchaicInes;
 use crate::emulation::rom::formats::ines::Ines;
-use crate::emulation::rom::formats::ines2::Ines2;
 use crate::emulation::rom::formats::ines_07::Ines07;
+use crate::emulation::rom::formats::ines2::Ines2;
 
 /// Errors that can occur while parsing a ROM file.
 #[derive(Debug)]
@@ -990,7 +990,7 @@ impl ChrMemory {
 }
 
 impl RomFile {
-    pub fn get_for_header(header: &Vec<u8>, name: String) -> Result<Self, ParseError> {
+    pub fn get_for_header(header: &[u8], name: String) -> Result<Self, ParseError> {
         let rom_type = RomFile::get_rom_type(header, true)?;
         let mut file = rom_type.parse(header, Some(&name))?;
         file.format_name = rom_type.get_name().to_string();
