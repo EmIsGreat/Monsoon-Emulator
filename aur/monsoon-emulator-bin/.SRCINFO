@@ -7,6 +7,7 @@ pkgbase = monsoon-emulator-bin
 	license = Apache-2.0
 	depends = glibc
 	depends = gcc-libs
+	provides = monsoon-emulator
 	conflicts = monsoon-emulator
 	options = !debug
 	source = monsoon-cli-0.2.6.tar.gz::https://github.com/EmIsGreat/Monsoon-Emulator/releases/download/v0.2.6/monsoon-cli-x86_64-unknown-linux-gnu.tar.gz
