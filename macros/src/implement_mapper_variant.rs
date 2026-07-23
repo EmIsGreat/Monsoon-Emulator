@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
-use proc_macro_crate::{FoundCrate, crate_name};
 use proc_macro2::{Ident, TokenStream};
-use quote::{ToTokens, format_ident, quote};
+use proc_macro_crate::{crate_name, FoundCrate};
+use quote::{format_ident, quote, ToTokens};
 use syn::parse::{Parse, ParseStream};
 use syn::spanned::Spanned;
-use syn::{ItemTrait, LitStr, Token, TraitItem, TraitItemConst, parse, parse_quote};
+use syn::{parse, parse_quote, ItemTrait, LitStr, Token, TraitItem, TraitItemConst};
 
 use crate::mapper_versions::{
     ImplicitTraitAssignment, MapperDefinition, MapperVersionsArgs, TraitAssignment, Variant,
@@ -68,7 +68,7 @@ impl ToTokens for Generate {
             &self.secondary_trait_def,
         );
 
-        generate_enum_froms(tokens, &self.mapper_versions_args, &valid_variants)
+        generate_enum_froms(tokens, &self.mapper_versions_args, &valid_variants);
     }
 }
 
@@ -113,7 +113,7 @@ fn generate_enum_froms(
                 }
             }
         }
-    })
+    });
 }
 
 fn get_crate_path() -> TokenStream {
@@ -190,6 +190,7 @@ fn generate_enum(
     idents
 }
 
+#[allow(clippy::too_many_lines)]
 fn generate_structs_and_trait_impls(
     tokens: &mut TokenStream,
     item_trait: &ItemTrait,
@@ -281,35 +282,31 @@ fn generate_structs_and_trait_impls(
                         })
                         .collect();
 
-                    trait_consts.iter().for_each(|(i, _)| {
+                    for i in trait_consts.keys() {
                         if !field_idents.contains(&i) {
                             tokens.extend(
                                 syn::Error::new_spanned(
                                     &variant.name,
                                     format!(
-                                        "Trait `{trait_ident}` has associated constant `{}` that \
-                                         is not provided by `{rev_name}`",
-                                        i
+                                        "Trait `{trait_ident}` has associated constant `{i}` that \
+                                         is not provided by `{rev_name}`"
                                     ),
                                 )
                                 .to_compile_error(),
                             );
-                        };
-                    });
-
-                    let def = match trait_consts.get(&field.ident) {
-                        None => {
-                            return syn::Error::new(
-                                field.span(),
-                                format!(
-                                    "Trait `{trait_ident}` does not have associated constant `{}` \
-                                     that is provided in `{rev_name}`",
-                                    field.ident
-                                ),
-                            )
-                            .to_compile_error();
                         }
-                        Some(d) => d,
+                    }
+
+                    let Some(def) = trait_consts.get(&field.ident) else {
+                        return syn::Error::new(
+                            field.span(),
+                            format!(
+                                "Trait `{trait_ident}` does not have associated constant `{}` \
+                                 that is provided in `{rev_name}`",
+                                field.ident
+                            ),
+                        )
+                        .to_compile_error();
                     };
 
                     let ident = &def.ident;

@@ -57,6 +57,7 @@ fn get_project_dirs() -> Option<&'static ProjectDirs> {
 }
 
 /// Get the config directory path, creating it if necessary
+#[must_use]
 pub fn get_config_dir() -> Option<PathBuf> {
     let dirs = get_project_dirs()?;
     let config_dir = dirs.config_dir();
@@ -67,6 +68,7 @@ pub fn get_config_dir() -> Option<PathBuf> {
 }
 
 /// Get the data directory path, creating it if necessary
+#[must_use]
 pub fn get_data_dir() -> Option<PathBuf> {
     let dirs = get_project_dirs()?;
     let data_dir = dirs.data_dir();
@@ -77,6 +79,7 @@ pub fn get_data_dir() -> Option<PathBuf> {
 }
 
 /// Get the cache directory path, creating it if necessary
+#[must_use]
 pub fn get_cache_dir() -> Option<PathBuf> {
     let dirs = get_project_dirs()?;
     let cache_dir = dirs.cache_dir();
@@ -87,16 +90,19 @@ pub fn get_cache_dir() -> Option<PathBuf> {
 }
 
 /// Get the path to a file in the config directory
+#[must_use]
 pub fn get_config_file_path(filename: &str) -> Option<PathBuf> {
     get_config_dir().map(|dir| dir.join(filename))
 }
 
 /// Get the path to a file in the data directory
+#[must_use]
 pub fn get_data_file_path(filename: &str) -> Option<PathBuf> {
     get_data_dir().map(|dir| dir.join(filename))
 }
 
 /// Get the path to a file in the cache directory
+#[must_use]
 pub fn get_cache_file_path(filename: &str) -> Option<PathBuf> {
     get_cache_dir().map(|dir| dir.join(filename))
 }
@@ -137,6 +143,7 @@ pub enum AsyncFileResult {
 ///     }
 /// }
 /// ```
+#[must_use]
 pub fn read_file_async(path: PathBuf) -> Receiver<AsyncFileResult> {
     let (tx, rx) = bounded(1);
     thread::spawn(move || {
@@ -153,6 +160,7 @@ pub fn read_file_async(path: PathBuf) -> Receiver<AsyncFileResult> {
 ///
 /// Note: For operations that must complete before proceeding (like saving
 /// config on exit), use the synchronous `save_config` function instead.
+#[must_use]
 pub fn write_file_async(
     path: PathBuf,
     data: Vec<u8>,
@@ -173,10 +181,10 @@ fn read_file_sync(path: &Path) -> AsyncFileResult {
             let mut contents = Vec::new();
             match file.read_to_end(&mut contents) {
                 Ok(_) => AsyncFileResult::ReadSuccess(contents),
-                Err(e) => AsyncFileResult::Error(format!("Failed to read file: {}", e)),
+                Err(e) => AsyncFileResult::Error(format!("Failed to read file: {e}")),
             }
         }
-        Err(e) => AsyncFileResult::Error(format!("Failed to open file: {}", e)),
+        Err(e) => AsyncFileResult::Error(format!("Failed to open file: {e}")),
     }
 }
 
@@ -187,15 +195,14 @@ fn write_file_sync(path: &Path, data: &[u8], overwrite: bool) -> AsyncFileResult
         && !parent.exists()
         && let Err(e) = fs::create_dir_all(parent)
     {
-        return AsyncFileResult::Error(format!("Failed to create directory: {}", e));
+        return AsyncFileResult::Error(format!("Failed to create directory: {e}"));
     }
 
     if path.exists() && !overwrite {
         let copy = path
             .file_stem()
             .map(extract)
-            .map(|s| s.parse::<u8>().unwrap_or(0))
-            .unwrap_or(0);
+            .map_or(0, |s| s.parse::<u8>().unwrap_or(0));
 
         let offset = if copy == 0 { 0 } else { 2 };
 
@@ -204,10 +211,10 @@ fn write_file_sync(path: &Path, data: &[u8], overwrite: bool) -> AsyncFileResult
     } else {
         match fs::File::create(path) {
             Ok(mut file) => match file.write_all(data) {
-                Ok(_) => AsyncFileResult::WriteSuccess,
-                Err(e) => AsyncFileResult::Error(format!("Failed to write file: {}", e)),
+                Ok(()) => AsyncFileResult::WriteSuccess,
+                Err(e) => AsyncFileResult::Error(format!("Failed to write file: {e}")),
             },
-            Err(e) => AsyncFileResult::Error(format!("Failed to create file: {}", e)),
+            Err(e) => AsyncFileResult::Error(format!("Failed to create file: {e}")),
         }
     }
 }
@@ -233,14 +240,15 @@ fn append_to_filename(path: &Path, suffix: &str, strip_chars: usize) -> PathBuf 
     };
 
     let new_filename = match ext {
-        Some(e) => format!("{}{}.{}", trimmed_stem, suffix, e),
-        None => format!("{}{}", trimmed_stem, suffix),
+        Some(e) => format!("{trimmed_stem}{suffix}.{e}"),
+        None => format!("{trimmed_stem}{suffix}"),
     };
 
     path.with_file_name(new_filename)
 }
 
 /// Save data to the data directory asynchronously
+#[must_use]
 pub fn save_to_data_dir(
     filename: &str,
     data: Vec<u8>,
@@ -251,6 +259,7 @@ pub fn save_to_data_dir(
 }
 
 /// Save data to the cache directory asynchronously
+#[must_use]
 pub fn save_to_cache_dir(
     filename: &str,
     data: Vec<u8>,
@@ -261,6 +270,7 @@ pub fn save_to_cache_dir(
 }
 
 /// Read data from the data directory asynchronously
+#[must_use]
 pub fn read_from_data_dir(filename: &str) -> Option<Receiver<AsyncFileResult>> {
     let path = get_data_file_path(filename)?;
     if path.exists() {
@@ -271,6 +281,7 @@ pub fn read_from_data_dir(filename: &str) -> Option<Receiver<AsyncFileResult>> {
 }
 
 /// Read data from the cache directory asynchronously
+#[must_use]
 pub fn read_from_cache_dir(filename: &str) -> Option<Receiver<AsyncFileResult>> {
     let path = get_cache_file_path(filename)?;
     if path.exists() {
@@ -323,7 +334,7 @@ impl From<&PersistentConfig> for AppConfig {
     }
 }
 
-/// Persistent View configuration with RendererKind for runtime switching.
+/// Persistent View configuration with `RendererKind` for runtime switching.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PersistentViewConfig {
     pub show_palette: bool,
@@ -362,7 +373,7 @@ impl From<&ViewConfig> for PersistentViewConfig {
             required_debug_fetches: config
                 .required_debug_fetches
                 .iter()
-                .map(|f| f.into())
+                .map(std::convert::Into::into)
                 .collect(),
             renderer: config.renderer.get_id().to_string(),
         }
@@ -372,7 +383,7 @@ impl From<&ViewConfig> for PersistentViewConfig {
 impl From<&PersistentViewConfig> for ViewConfig {
     fn from(config: &PersistentViewConfig) -> Self {
         // If renderer was persisted, use it; otherwise create a default
-        let renderer = create_renderer(Some(config.renderer.as_str()), get_all_renderers());
+        let renderer = create_renderer(Some(config.renderer.as_str()), &get_all_renderers());
 
         Self {
             palette_rgb_data: RgbPalette::default(),
@@ -635,7 +646,7 @@ pub async fn load_config() -> Option<PersistentConfig> {
     match storage_impl.exists(&key).await {
         Ok(false) => return None,
         Err(e) => {
-            eprintln!("Failed to check if config exists: {}", e);
+            eprintln!("Failed to check if config exists: {e}");
             return None;
         }
         Ok(true) => {}
@@ -645,12 +656,12 @@ pub async fn load_config() -> Option<PersistentConfig> {
         Ok(data) => match String::from_utf8(data) {
             Ok(s) => s,
             Err(e) => {
-                eprintln!("Config file is not valid UTF-8: {}", e);
+                eprintln!("Config file is not valid UTF-8: {e}");
                 return None;
             }
         },
         Err(e) => {
-            eprintln!("Failed to read config file: {}", e);
+            eprintln!("Failed to read config file: {e}");
             return None;
         }
     };
@@ -658,7 +669,7 @@ pub async fn load_config() -> Option<PersistentConfig> {
     match toml::from_str(&contents) {
         Ok(config) => Some(config),
         Err(e) => {
-            eprintln!("Failed to parse config file (using defaults): {}", e);
+            eprintln!("Failed to parse config file (using defaults): {e}");
             None
         }
     }
@@ -670,12 +681,12 @@ pub async fn save_config(config: &PersistentConfig) -> Result<(), String> {
     let storage_impl = storage::get_storage();
 
     let toml_string =
-        toml::to_string_pretty(config).map_err(|e| format!("Failed to serialize config: {}", e))?;
+        toml::to_string_pretty(config).map_err(|e| format!("Failed to serialize config: {e}"))?;
 
     storage_impl
         .set(&key, toml_string.as_bytes().to_vec())
         .await
-        .map_err(|e| format!("Failed to write config: {}", e))?;
+        .map_err(|e| format!("Failed to write config: {e}"))?;
 
     Ok(())
 }
@@ -688,6 +699,7 @@ pub async fn save_config(config: &PersistentConfig) -> Result<(), String> {
 ///
 /// This is used to enable egui's built-in persistence for window layout,
 /// theme, and other UI state.
+#[must_use]
 pub fn get_egui_storage_path() -> Option<PathBuf> {
     get_config_dir().map(|dir| dir.join("egui_state"))
 }

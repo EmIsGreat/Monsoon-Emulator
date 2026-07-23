@@ -28,7 +28,7 @@ fn main() -> ExitCode {
     let args = match parse_args() {
         Ok(args) => args,
         Err(e) => {
-            eprintln!("Error parsing arguments: {}", e);
+            eprintln!("Error parsing arguments: {e}");
             return ExitCode::from(EXIT_INVALID_ARGS);
         }
     };
@@ -40,21 +40,21 @@ fn main() -> ExitCode {
     }
 
     if let Err(e) = validate_args(&args) {
-        eprintln!("Invalid arguments: {}", e);
+        eprintln!("Invalid arguments: {e}");
         return ExitCode::from(EXIT_INVALID_ARGS);
     }
 
     let result = run_headless(&args);
 
     match result {
-        Ok(_) => {
+        Ok(()) => {
             if !args.quiet {
                 eprintln!("Emulator finished execution");
             }
             ExitCode::from(EXIT_SUCCESS)
         }
         Err(e) => {
-            eprintln!("Emulator finished with error: \"{}\"", e);
+            eprintln!("Emulator finished with error: \"{e}\"");
             ExitCode::from(EXIT_GENERAL_ERROR)
         }
     }

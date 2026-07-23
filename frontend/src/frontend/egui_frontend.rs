@@ -53,11 +53,11 @@ use crate::frontend::storage::{Storage, StorageKey};
 use crate::frontend::{storage, util};
 use crate::messages::{EmulatorMessage, FrontendMessage, SaveType};
 
-/// Key used for storing egui_tiles tree state in egui's persistence
+/// Key used for storing `egui_tiles` tree state in egui's persistence
 const EGUI_TILES_TREE_KEY: &str = "emulator_tiles_tree";
 
 /// Interval between periodic autosaves (5 minutes)
-const AUTOSAVE_INTERVAL: Duration = Duration::from_secs(5 * 60);
+const AUTOSAVE_INTERVAL: Duration = Duration::from_mins(5);
 
 /// Maximum number of autosaves to keep per game
 const MAX_AUTOSAVES_PER_GAME: usize = 1024;
@@ -173,13 +173,13 @@ impl EguiApp {
             .config
             .speed_config
             .app_speed
-            .get_fps(&self.config.speed_config);
+            .get_fps(self.config.speed_config);
 
         if speed == 0.0 {
             return Duration::from_secs(5);
         }
 
-        Duration::from_nanos((1_000_000_000.0 / speed as f64) as u64)
+        Duration::from_nanos((1_000_000_000.0 / f64::from(speed)) as u64)
     }
 
     /// Calculate the debug viewers frame budget based on current speed settings
@@ -188,7 +188,7 @@ impl EguiApp {
             .config
             .speed_config
             .debug_speed
-            .get_fps(&self.config.speed_config);
+            .get_fps(self.config.speed_config);
 
         if fps == 0.0 {
             return Duration::from_secs(5);
@@ -211,7 +211,7 @@ impl EguiApp {
         while let Some(event) = queue.pop_front() {
             match event {
                 FrontendEvent::ChangeWindowTitle(title) => {
-                    ctx.send_viewport_cmd(ViewportCommand::Title(title))
+                    ctx.send_viewport_cmd(ViewportCommand::Title(title));
                 }
                 FrontendEvent::RefreshPalette => {
                     // Only update tile textures if a tile viewer is visible
@@ -244,7 +244,7 @@ impl EguiApp {
         let window_title = if stem.is_empty() {
             "Monsoon".to_string()
         } else {
-            format!("Monsoon - {}", stem)
+            format!("Monsoon - {stem}")
         };
 
         self.config.user_config.previous_rom_name = Some(name);
@@ -311,8 +311,8 @@ impl EguiApp {
     }
 
     /// Remove the oldest autosaves if there are more than
-    /// MAX_AUTOSAVES_PER_GAME. Runs asynchronously in a background thread
-    /// (native) or spawn_local (WASM).
+    /// `MAX_AUTOSAVES_PER_GAME`. Runs asynchronously in a background thread
+    /// (native) or `spawn_local` (WASM).
     fn cleanup_old_autosaves_async(display_name: String) {
         util::spawn_async(async move {
             let prefix = storage::autosaves_prefix(&display_name);
@@ -444,7 +444,7 @@ impl EguiApp {
     /// Detect which tiles changed between old and new tile data
     pub(crate) fn detect_changed_tiles(
         &self,
-        new_tile_data: &Option<Box<[TileData; TILE_COUNT]>>,
+        new_tile_data: &Option<Box<[TileData; usize::from(TILE_COUNT)]>>,
     ) -> Vec<usize> {
         match (&self.emu_textures.tile_data, new_tile_data) {
             (Some(old), Some(new)) => old
@@ -492,7 +492,7 @@ impl EguiApp {
             if frame_budget < Duration::from_secs(5) {
                 while self.accumulator >= frame_budget || is_uncapped {
                     if let Err(e) = self.channel_emu.execute_frame() {
-                        eprintln!("Emulator error: {}", e);
+                        eprintln!("Emulator error: {e}");
                         ctx.send_viewport_cmd(ViewportCommand::Close);
                         break;
                     }
@@ -656,7 +656,7 @@ impl eframe::App for EguiApp {
             compute_required_fetches_from_tree(&self.tree, &self.config);
 
         if let Err(e) = self.channel_emu.process_messages() {
-            eprintln!("Emulator error: {}", e);
+            eprintln!("Emulator error: {e}");
             ctx.send_viewport_cmd(ViewportCommand::Close);
             return;
         }
@@ -725,7 +725,7 @@ impl eframe::App for EguiApp {
                 if let Err(e) = rt.block_on(crate::frontend::persistence::save_config(
                     &persistent_config,
                 )) {
-                    eprintln!("Failed to save configuration: {}", e);
+                    eprintln!("Failed to save configuration: {e}");
                 }
             });
         }
@@ -758,7 +758,7 @@ struct SetupResponse {
     persistence_path: Option<PathBuf>,
 }
 
-/// Native: common setup with PathBuf for command-line ROM loading
+/// Native: common setup with `PathBuf` for command-line ROM loading
 fn common_setup(rom: Option<PathBuf>) -> SetupResponse {
     // Create the emulator instance
     let console = Nes::default();
@@ -798,12 +798,12 @@ fn common_setup(rom: Option<PathBuf>) -> SetupResponse {
     let persistence_path = get_egui_storage_path();
 
     SetupResponse {
-        persistence_path,
         emu,
         to_emu,
         from_emu,
-        async_sender,
         from_async,
+        async_sender,
+        persistence_path,
     }
 }
 

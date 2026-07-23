@@ -220,7 +220,7 @@ pub struct VideoArgs {
     pub video_mode: VideoExportMode,
 
     /// Video output resolution (native, 2x, 3x, 4x, 720p, 1080p, 4k, or
-    /// WIDTHxHEIGHT)
+    /// `WIDTHxHEIGHT`)
     #[arg(long, default_value = "native")]
     pub video_scale: Option<String>,
 
@@ -249,7 +249,7 @@ pub enum VideoExportMode {
 /// Video format options
 #[derive(Debug, Clone, Copy, ValueEnum, Default, PartialEq, Eq)]
 pub enum VideoFormat {
-    /// Raw RGBA frames (for piping to FFmpeg)
+    /// Raw RGBA frames (for piping to `FFmpeg`)
     #[default]
     Raw,
     /// PPM image sequence
@@ -355,8 +355,7 @@ impl std::str::FromStr for OutputFormat {
             "toml" => Ok(OutputFormat::Toml),
             "binary" => Ok(OutputFormat::Binary),
             _ => Err(format!(
-                "Unknown output format: '{}'. Valid options: hex, json, toml, binary",
-                s
+                "Unknown output format: '{s}'. Valid options: hex, json, toml, binary"
             )),
         }
     }
@@ -372,8 +371,7 @@ impl std::str::FromStr for VideoFormat {
             "png" => Ok(VideoFormat::Png),
             "mp4" => Ok(VideoFormat::Mp4),
             _ => Err(format!(
-                "Unknown video format: '{}'. Valid options: raw, ppm, png, mp4",
-                s
+                "Unknown video format: '{s}'. Valid options: raw, ppm, png, mp4"
             )),
         }
     }
@@ -387,8 +385,7 @@ impl std::str::FromStr for VideoExportMode {
             "accurate" => Ok(VideoExportMode::Accurate),
             "smooth" => Ok(VideoExportMode::Smooth),
             _ => Err(format!(
-                "Unknown video export mode: '{}'. Valid options: accurate, smooth",
-                s
+                "Unknown video export mode: '{s}'. Valid options: accurate, smooth"
             )),
         }
     }
@@ -402,8 +399,7 @@ impl std::str::FromStr for BuiltinPalette {
             "2c02g" => Ok(BuiltinPalette::Nes2C02G),
             "composite" => Ok(BuiltinPalette::Composite),
             _ => Err(format!(
-                "Unknown palette: '{}'. Valid options: 2C02G, composite",
-                s
+                "Unknown palette: '{s}'. Valid options: 2C02G, composite"
             )),
         }
     }
@@ -411,6 +407,7 @@ impl std::str::FromStr for BuiltinPalette {
 
 impl OutputArgs {
     /// Get the effective output format, considering shorthand flags
+    #[must_use]
     pub fn effective_format(&self) -> OutputFormat {
         if self.json {
             OutputFormat::Json

@@ -61,8 +61,8 @@ pub struct LoadedPalette {
 #[derive(Clone, Hash, Debug)]
 /// Messages for async/deferred frontend operations.
 ///
-/// These messages are processed by EguiApp and allow UI components to request
-/// operations without directly sending FrontendMessages to the emulator.
+/// These messages are processed by `EguiApp` and allow UI components to request
+/// operations without directly sending `FrontendMessages` to the emulator.
 /// This consolidates all emulator communication logic in one place.
 pub enum AsyncFrontendMessage {
     /// Palette file was loaded asynchronously - includes the parsed palette
@@ -82,11 +82,6 @@ pub enum AsyncFrontendMessage {
     RomSelectedForSavestate(Box<SavestateLoadContext>, LoadedRom),
     /// Show checksum mismatch warning dialog
     ShowChecksumMismatchDialog(Box<SavestateLoadContext>, LoadedRom),
-    /// User chose to try loading with mismatched checksum anyway
-    LoadSavestateAnyway(Box<SavestateLoadContext>, LoadedRom),
-    /// User chose to select another ROM after checksum mismatch
-    SelectAnotherRom(Box<SavestateLoadContext>),
-    /// An error occurred while loading the savestate
     SavestateLoadFailed(SavestateLoadError),
     /// An error occurred while verifying the ROM
     RomVerificationFailed(Box<SavestateLoadContext>, SavestateLoadError),
@@ -120,7 +115,7 @@ pub enum AsyncFrontendMessage {
     // Consolidated emulator operations
     // These replace direct FrontendMessage sends from UI components
     // =========================================================================
-    /// Toggle Power State of the console (updates is_powered config)
+    /// Toggle Power State of the console (updates `is_powered` config)
     PowerToggle,
     /// Reset the console (soft reset)
     Reset,

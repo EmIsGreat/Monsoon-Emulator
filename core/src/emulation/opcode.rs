@@ -2,15 +2,15 @@ use std::sync::OnceLock;
 
 use crate::emulation::cpu::OpType::{
     AbsoluteIndexRMW, AbsoluteIndexRead, AbsoluteIndexWrite, AbsoluteRMW, AbsoluteRead,
-    AbsoluteWrite, AccumulatorOrImplied, BRK, ImmediateAddressing, IndexedIndirectRMW,
-    IndexedIndirectRead, IndexedIndirectWrite, IndirectIndexedRMW, IndirectIndexedRead,
-    IndirectIndexedWrite, JSR, JmpAbsolute, JmpIndirect, PH, PL, RTI, RTS, Relative,
-    ZeroPageIndexRMW, ZeroPageIndexRead, ZeroPageIndexWrite, ZeroPageRMW, ZeroPageRead,
-    ZeroPageWrite,
+    AbsoluteWrite, AccumulatorOrImplied, ImmediateAddressing, IndexedIndirectRMW, IndexedIndirectRead,
+    IndexedIndirectWrite, IndirectIndexedRMW, IndirectIndexedRead, IndirectIndexedWrite,
+    JmpAbsolute, JmpIndirect, Relative, ZeroPageIndexRMW, ZeroPageIndexRead, ZeroPageIndexWrite, ZeroPageRMW, ZeroPageRead, ZeroPageWrite,
+    BRK, JSR, PH, PL, RTI,
+    RTS,
 };
 use crate::emulation::cpu::{Condition, MicroOpCallback, OpType, Source, Target};
 
-/// Direct lookup table for opcodes - O(1) array access vs HashMap
+/// Direct lookup table for opcodes - O(1) array access vs `HashMap`
 pub static OPCODES_TABLE: OnceLock<[OpCode; 256]> = OnceLock::new();
 
 #[derive(Debug, Clone, Copy)]
@@ -21,6 +21,7 @@ pub struct OpCode {
 }
 
 #[inline]
+#[allow(clippy::too_many_lines)]
 pub fn init() -> [OpCode; 256] {
     let mut opcodes = [
         // ADC
@@ -783,7 +784,7 @@ pub fn init() -> [OpCode; 256] {
         OpCode::new(
             0x2B,
             "*ANC",
-            ImmediateAddressing(Target::DataBus, MicroOpCallback::ANC2),
+            ImmediateAddressing(Target::DataBus, MicroOpCallback::ANC),
         ),
         OpCode::new(
             0x8B,
@@ -1120,7 +1121,7 @@ pub fn init() -> [OpCode; 256] {
 }
 
 /// Fast opcode lookup - O(1) array access
-#[inline(always)]
+#[inline]
 pub fn get_opcode(opcode: u8) -> OpCode { OPCODES_TABLE.get_or_init(init)[opcode as usize] }
 
 impl OpCode {
@@ -1135,34 +1136,29 @@ impl OpCode {
 
 pub fn get_bytes_for_opcode(op: OpCode) -> u8 {
     match op.op_type {
-        ImmediateAddressing(..) => 1,
-        AbsoluteRead(..) => 2,
-        AbsoluteIndexRead(..) => 2,
-        ZeroPageRead(..) => 1,
-        ZeroPageIndexRead(..) => 1,
-        AccumulatorOrImplied(_) => 0,
-        IndexedIndirectRead(..) => 1,
-        IndirectIndexedRead(..) => 1,
-        BRK(_) => 0,
-        RTI(_) => 0,
-        RTS(_) => 0,
-        PH(..) => 0,
-        PL(..) => 0,
-        JSR(_) => 2,
-        JmpAbsolute(_) => 2,
-        AbsoluteRMW(..) => 2,
-        AbsoluteWrite(..) => 2,
-        ZeroPageRMW(..) => 1,
-        ZeroPageWrite(..) => 1,
-        ZeroPageIndexRMW(..) => 1,
-        ZeroPageIndexWrite(..) => 1,
-        AbsoluteIndexRMW(..) => 2,
-        AbsoluteIndexWrite(..) => 2,
-        IndexedIndirectWrite(..) => 1,
-        JmpIndirect(_) => 2,
-        IndirectIndexedWrite(..) => 1,
-        Relative(_) => 1,
-        IndexedIndirectRMW(_) => 1,
-        IndirectIndexedRMW(_) => 1,
+        AccumulatorOrImplied(_) | BRK(_) | RTI(_) | RTS(_) | PH(..) | PL(..) => 0,
+        ImmediateAddressing(..)
+        | ZeroPageRead(..)
+        | ZeroPageIndexRead(..)
+        | IndexedIndirectRead(..)
+        | IndirectIndexedRead(..)
+        | ZeroPageRMW(..)
+        | ZeroPageWrite(..)
+        | ZeroPageIndexRMW(..)
+        | ZeroPageIndexWrite(..)
+        | IndexedIndirectWrite(..)
+        | IndirectIndexedWrite(..)
+        | Relative(_)
+        | IndexedIndirectRMW(_)
+        | IndirectIndexedRMW(_) => 1,
+        AbsoluteRead(..)
+        | AbsoluteIndexRead(..)
+        | JSR(_)
+        | JmpAbsolute(_)
+        | AbsoluteRMW(..)
+        | AbsoluteWrite(..)
+        | AbsoluteIndexRMW(..)
+        | AbsoluteIndexWrite(..)
+        | JmpIndirect(_) => 2,
     }
 }

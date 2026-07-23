@@ -92,6 +92,7 @@ impl OamSprite {
     ///
     /// # Panics
     /// Panics if bytes slice has fewer than 4 elements.
+    #[must_use]
     pub fn from_bytes(index: u8, bytes: &[u8]) -> Self {
         assert!(
             bytes.len() >= 4,
@@ -132,6 +133,7 @@ pub struct InterpretedOam {
 impl InterpretedOam {
     /// Create interpreted OAM from raw OAM data (up to 256 bytes for 64
     /// sprites).
+    #[must_use]
     pub fn from_raw(data: &[u8]) -> Self {
         let mut sprites = Vec::with_capacity(64);
         let mut visible_count = 0u8;
@@ -180,6 +182,7 @@ impl InterpretedNametable {
     /// Layout:
     /// - Bytes 0x000-0x3BF: 960 tile indices (32 columns x 30 rows)
     /// - Bytes 0x3C0-0x3FF: 64 attribute bytes
+    #[must_use]
     pub fn from_raw(index: u8, data: &[u8]) -> Self {
         let base_addresses = [0x2000u16, 0x2400, 0x2800, 0x2C00];
         let base = base_addresses[index as usize % 4];
@@ -237,7 +240,7 @@ impl InterpretedNametable {
 
         Self {
             index,
-            base_address: format!("0x{:04X}", base),
+            base_address: format!("0x{base:04X}"),
             tiles,
             attributes,
             tile_palettes,
@@ -258,6 +261,7 @@ impl InterpretedNametables {
     /// Create interpreted nametables from raw data.
     ///
     /// Expects data for nametables at $2000-$2FFF (4 x 1024 bytes).
+    #[must_use]
     pub fn from_raw(data: &[u8]) -> Self {
         let mut nametables = Vec::with_capacity(4);
 
@@ -323,6 +327,7 @@ pub enum MemoryType {
 
 impl MemoryType {
     /// Get string representation
+    #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
             MemoryType::Cpu => "cpu",
@@ -342,6 +347,7 @@ impl std::fmt::Display for MemoryType {
 
 impl MemoryDump {
     /// Create a new memory dump
+    #[must_use]
     pub fn new(mem_type: MemoryType, start_addr: u16, data: Vec<u8>) -> Self {
         let end_addr = if data.is_empty() {
             start_addr
@@ -359,16 +365,19 @@ impl MemoryDump {
     }
 
     /// Create CPU memory dump
+    #[must_use]
     pub fn cpu(start_addr: u16, data: Vec<u8>) -> Self {
         Self::new(MemoryType::Cpu, start_addr, data)
     }
 
     /// Create PPU memory dump
+    #[must_use]
     pub fn ppu(start_addr: u16, data: Vec<u8>) -> Self {
         Self::new(MemoryType::Ppu, start_addr, data)
     }
 
     /// Create OAM memory dump with interpreted sprite data.
+    #[must_use]
     pub fn oam(data: Vec<u8>) -> Self {
         let interpreted = InterpretedOam::from_raw(&data);
         let mut dump = Self::new(MemoryType::Oam, 0, data);
@@ -377,6 +386,7 @@ impl MemoryDump {
     }
 
     /// Create nametables memory dump with interpreted data.
+    #[must_use]
     pub fn nametables(data: Vec<u8>) -> Self {
         let interpreted = InterpretedNametables::from_raw(&data);
         let mut dump = Self::new(MemoryType::Nametables, 0x2000, data);
@@ -386,6 +396,7 @@ impl MemoryDump {
 
     /// Create palette RAM memory dump.
     /// Palette RAM is 32 bytes at PPU addresses $3F00-$3F1F.
+    #[must_use]
     pub fn palette_ram(data: Vec<u8>) -> Self { Self::new(MemoryType::PaletteRam, 0x3F00, data) }
 }
 
@@ -459,9 +470,9 @@ impl MemoryFormatter for HexFormatter {
                 ));
                 output.push_str("  Tiles (32x30 grid, showing first 8 rows):\n");
                 for (row_idx, row) in nametable.tiles.iter().take(8).enumerate() {
-                    output.push_str(&format!("  Row {:2}: ", row_idx));
+                    output.push_str(&format!("  Row {row_idx:2}: "));
                     for tile in row.iter().take(32) {
-                        output.push_str(&format!("{:02X} ", tile));
+                        output.push_str(&format!("{tile:02X} "));
                     }
                     output.push('\n');
                 }
@@ -480,7 +491,7 @@ impl MemoryFormatter for HexFormatter {
                 dump.start_addr as usize + i * 16,
                 chunk
                     .iter()
-                    .map(|b| format!("{:02X}", b))
+                    .map(|b| format!("{b:02X}"))
                     .collect::<Vec<_>>()
                     .join(" ")
             );
@@ -554,7 +565,7 @@ struct NametablesDumpData {
 
 impl MemoryFormatter for JsonFormatter {
     fn format(&self, dump: &MemoryDump) -> Result<Vec<u8>, String> {
-        let data_hex: Vec<String> = dump.data.iter().map(|b| format!("0x{:02X}", b)).collect();
+        let data_hex: Vec<String> = dump.data.iter().map(|b| format!("0x{b:02X}")).collect();
 
         let json_str = match dump.mem_type {
             MemoryType::Oam => {
@@ -568,7 +579,7 @@ impl MemoryFormatter for JsonFormatter {
                         },
                     };
                     serde_json::to_string_pretty(&output)
-                        .map_err(|e| format!("Failed to serialize JSON: {}", e))?
+                        .map_err(|e| format!("Failed to serialize JSON: {e}"))?
                 } else {
                     // Fallback to basic output
                     let output = MemoryDumpOutput {
@@ -580,7 +591,7 @@ impl MemoryFormatter for JsonFormatter {
                         },
                     };
                     serde_json::to_string_pretty(&output)
-                        .map_err(|e| format!("Failed to serialize JSON: {}", e))?
+                        .map_err(|e| format!("Failed to serialize JSON: {e}"))?
                 }
             }
             MemoryType::Nametables => {
@@ -595,7 +606,7 @@ impl MemoryFormatter for JsonFormatter {
                         },
                     };
                     serde_json::to_string_pretty(&output)
-                        .map_err(|e| format!("Failed to serialize JSON: {}", e))?
+                        .map_err(|e| format!("Failed to serialize JSON: {e}"))?
                 } else {
                     // Fallback to basic output
                     let output = MemoryDumpOutput {
@@ -607,7 +618,7 @@ impl MemoryFormatter for JsonFormatter {
                         },
                     };
                     serde_json::to_string_pretty(&output)
-                        .map_err(|e| format!("Failed to serialize JSON: {}", e))?
+                        .map_err(|e| format!("Failed to serialize JSON: {e}"))?
                 }
             }
             _ => {
@@ -620,11 +631,11 @@ impl MemoryFormatter for JsonFormatter {
                     },
                 };
                 serde_json::to_string_pretty(&output)
-                    .map_err(|e| format!("Failed to serialize JSON: {}", e))?
+                    .map_err(|e| format!("Failed to serialize JSON: {e}"))?
             }
         };
 
-        Ok(format!("{}\n", json_str).into_bytes())
+        Ok(format!("{json_str}\n").into_bytes())
     }
 
     fn file_extension(&self) -> &'static str { "json" }
@@ -635,7 +646,7 @@ pub struct TomlFormatter;
 
 impl MemoryFormatter for TomlFormatter {
     fn format(&self, dump: &MemoryDump) -> Result<Vec<u8>, String> {
-        let data_hex: Vec<String> = dump.data.iter().map(|b| format!("0x{:02X}", b)).collect();
+        let data_hex: Vec<String> = dump.data.iter().map(|b| format!("0x{b:02X}")).collect();
 
         let toml_str = match dump.mem_type {
             MemoryType::Oam => {
@@ -649,7 +660,7 @@ impl MemoryFormatter for TomlFormatter {
                         },
                     };
                     toml::to_string_pretty(&output)
-                        .map_err(|e| format!("Failed to serialize TOML: {}", e))?
+                        .map_err(|e| format!("Failed to serialize TOML: {e}"))?
                 } else {
                     let output = MemoryDumpOutput {
                         memory_dump: MemoryDumpData {
@@ -660,7 +671,7 @@ impl MemoryFormatter for TomlFormatter {
                         },
                     };
                     toml::to_string_pretty(&output)
-                        .map_err(|e| format!("Failed to serialize TOML: {}", e))?
+                        .map_err(|e| format!("Failed to serialize TOML: {e}"))?
                 }
             }
             MemoryType::Nametables => {
@@ -675,7 +686,7 @@ impl MemoryFormatter for TomlFormatter {
                         },
                     };
                     toml::to_string_pretty(&output)
-                        .map_err(|e| format!("Failed to serialize TOML: {}", e))?
+                        .map_err(|e| format!("Failed to serialize TOML: {e}"))?
                 } else {
                     let output = MemoryDumpOutput {
                         memory_dump: MemoryDumpData {
@@ -686,7 +697,7 @@ impl MemoryFormatter for TomlFormatter {
                         },
                     };
                     toml::to_string_pretty(&output)
-                        .map_err(|e| format!("Failed to serialize TOML: {}", e))?
+                        .map_err(|e| format!("Failed to serialize TOML: {e}"))?
                 }
             }
             _ => {
@@ -699,11 +710,11 @@ impl MemoryFormatter for TomlFormatter {
                     },
                 };
                 toml::to_string_pretty(&output)
-                    .map_err(|e| format!("Failed to serialize TOML: {}", e))?
+                    .map_err(|e| format!("Failed to serialize TOML: {e}"))?
             }
         };
 
-        Ok(format!("{}\n", toml_str).into_bytes())
+        Ok(format!("{toml_str}\n").into_bytes())
     }
 
     fn file_extension(&self) -> &'static str { "toml" }
@@ -717,6 +728,7 @@ impl OutputFormat {
     /// Get the formatter for this output format.
     ///
     /// To add a new format, add a variant to the enum and a case here.
+    #[must_use]
     pub fn formatter(&self) -> Box<dyn MemoryFormatter> {
         match self {
             OutputFormat::Hex => Box::new(HexFormatter),
@@ -727,6 +739,7 @@ impl OutputFormat {
     }
 
     /// Get the file extension for this format.
+    #[must_use]
     pub fn extension(&self) -> &'static str {
         match self {
             OutputFormat::Hex => "hex",
@@ -742,7 +755,7 @@ impl OutputFormat {
 // =============================================================================
 
 /// Track whether the output file has been initialized (created/truncated).
-/// Note: This is intentionally global to support multiple OutputWriter
+/// Note: This is intentionally global to support multiple `OutputWriter`
 /// instances writing to the same file in append mode within a single CLI run.
 static OUTPUT_FILE_INITIALIZED: AtomicBool = AtomicBool::new(false);
 
@@ -756,6 +769,7 @@ pub struct OutputWriter {
 
 impl OutputWriter {
     /// Create a new output writer.
+    #[must_use]
     pub fn new(path: Option<PathBuf>, format: OutputFormat) -> Self {
         Self {
             path,
@@ -789,7 +803,7 @@ impl OutputWriter {
             } else {
                 OpenOptions::new().append(true).open(path)
             }
-            .map_err(|e| format!("Failed to open output file: {}", e))?;
+            .map_err(|e| format!("Failed to open output file: {e}"))?;
 
             Ok(Box::new(file))
         } else {

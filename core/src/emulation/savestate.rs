@@ -16,11 +16,11 @@ use static_assertions::assert_impl_all;
 
 use crate::emulation::apu::{Apu, FrameCounter};
 use crate::emulation::board::Board;
-use crate::emulation::cpu::{Cpu, MicroOp, OpQueue};
+use crate::emulation::cpu::{Cpu, DmaState, IRQState, MicroOp, NMIState, OpQueue};
 use crate::emulation::mapper::Mapper;
 use crate::emulation::mem::OpenBus;
 use crate::emulation::opcode;
-use crate::emulation::opcode::{OPCODES_TABLE, get_opcode};
+use crate::emulation::opcode::{get_opcode, OPCODES_TABLE};
 use crate::emulation::peripherals::Peripheral;
 use crate::emulation::ppu::{Ppu, SpriteFifo, TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH};
 use crate::emulation::rom::RomFile;
@@ -71,28 +71,9 @@ pub struct CpuState {
     pub is_halted: bool,
     /// Whether the current cycle is a read cycle.
     pub(crate) read_cycle: bool,
-    /// IRQ detection flag.
-    pub(crate) irq_detected: bool,
-    /// IRQ pending flag.
-    pub(crate) irq_pending: bool,
-    /// Whether the CPU is currently in an IRQ handler.
-    pub(crate) is_in_irq: bool,
-    /// Current interrupt vector address.
-    pub(crate) current_irq_vec: u16,
-    /// Locked interrupt vector address.
-    pub(crate) locked_irq_vec: u16,
-    /// DMA source page register.
-    pub(crate) dma_page: u8,
-    /// DMA read/write toggle.
-    pub(crate) dma_read: bool,
-    /// Whether a DMA transfer has been triggered.
-    pub(crate) dma_triggered: bool,
-    /// NMI detection flag.
-    pub(crate) nmi_detected: bool,
-    /// NMI pending flag.
-    pub(crate) nmi_pending: bool,
-    /// Previous NMI line state (for edge detection).
-    pub(crate) prev_nmi: bool,
+    pub(crate) dma_state: DmaState,
+    pub(crate) nmi_state: NMIState,
+    pub(crate) irq_state: IRQState,
     pub cycle: u64,
     pub remaining_dma_cycles: u16,
 }
@@ -114,18 +95,10 @@ impl From<&Cpu> for CpuState {
             data_bus: cpu.data_bus,
             ane_constant: cpu.ane_constant,
             is_halted: cpu.is_halted,
-            read_cycle: cpu.cpu_read_cycle,
-            irq_detected: cpu.irq_detected,
-            irq_pending: cpu.irq_pending,
-            is_in_irq: cpu.is_in_irq,
-            current_irq_vec: cpu.current_irq_vec,
-            locked_irq_vec: cpu.locked_irq_vec,
-            dma_page: cpu.dma_page,
-            dma_read: cpu.dma_read,
-            dma_triggered: cpu.dma_triggered,
-            nmi_detected: cpu.nmi_detected,
-            nmi_pending: cpu.nmi_pending,
-            prev_nmi: cpu.prev_nmi,
+            read_cycle: cpu.read_cycle,
+            irq_state: cpu.irq_state,
+            dma_state: cpu.dma_state,
+            nmi_state: cpu.nmi_state,
             cycle: cpu.cycle,
             remaining_dma_cycles: cpu.remaining_dma_cycles,
         }
@@ -152,18 +125,10 @@ impl From<&CpuState> for Cpu {
             data_bus: state.data_bus,
             ane_constant: state.ane_constant,
             is_halted: state.is_halted,
-            irq_pending: state.irq_pending,
-            nmi_pending: state.nmi_pending,
-            nmi_detected: state.nmi_detected,
-            irq_detected: state.irq_detected,
-            locked_irq_vec: state.locked_irq_vec,
-            current_irq_vec: state.current_irq_vec,
-            is_in_irq: state.is_in_irq,
-            prev_nmi: state.prev_nmi,
-            cpu_read_cycle: state.read_cycle,
-            dma_read: state.dma_read,
-            dma_triggered: state.dma_triggered,
-            dma_page: state.dma_page,
+            irq_state: state.irq_state,
+            nmi_state: state.nmi_state,
+            read_cycle: state.read_cycle,
+            dma_state: state.dma_state,
             last_memory_access: None,
             cycle: state.cycle,
         }
@@ -176,6 +141,7 @@ impl From<&CpuState> for Cpu {
 /// rendering state. This is part of a [`SaveState`] and is not typically
 /// constructed directly by library users.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct PpuState {
     /// Total dot cycles elapsed.
     pub cycle_counter: u64,
@@ -267,7 +233,7 @@ impl From<&Ppu> for PpuState {
             ppu_addr_register: ppu.v_register,
             oam_addr_register: ppu.oam_addr_register,
             write_latch: ppu.write_latch,
-            ppu_data_buffer: ppu.ppu_data_buffer,
+            ppu_data_buffer: ppu.data_buffer,
             t_register: ppu.t_register,
             bg_next_tile_id: ppu.bg_next_tile_id,
             bg_next_tile_lsb: ppu.bg_next_tile_lsb,
@@ -309,7 +275,7 @@ impl From<&PpuState> for Ppu {
             status_register: state.status_register,
             oam_addr_register: state.oam_addr_register,
             v_register: state.ppu_addr_register,
-            ppu_data_buffer: state.ppu_data_buffer,
+            data_buffer: state.ppu_data_buffer,
             nmi_requested: state.nmi_requested,
             oam: (&state.oam_mem, true).into(),
             write_latch: state.write_latch,
@@ -320,7 +286,10 @@ impl From<&PpuState> for Ppu {
             fine_x_scroll: state.fine_x_scroll,
             even_frame: state.even_frame,
             reset_signal: state.reset_signal,
-            pixel_buffer: vec![0; TOTAL_OUTPUT_WIDTH * TOTAL_OUTPUT_HEIGHT],
+            pixel_buffer: vec![
+                0;
+                usize::from(TOTAL_OUTPUT_WIDTH) * usize::from(TOTAL_OUTPUT_HEIGHT)
+            ],
             vbl_reset_counter: state.vbl_reset_counter,
             vbl_clear_scheduled: state.vbl_clear_scheduled,
             scanline: state.scanline,
@@ -345,7 +314,7 @@ impl From<&PpuState> for Ppu {
             current_sprite_y: 0,
             sprite_fifos: [SpriteFifo::default(); 8],
             sprite_zero_in_scanline: state.sprite_zero_in_scanline,
-            log: "".to_string(),
+            log: String::new(),
         };
 
         ppu.oam.load(state.oam_mem.clone().into_boxed_slice());
@@ -474,6 +443,7 @@ assert_impl_all!(SaveState: Sync);
 ///     println!("Loaded state at cycle {}", state.total_cycles);
 /// }
 /// ```
+#[must_use]
 pub fn try_load_state_from_bytes(encoded: &[u8]) -> Option<SaveState> {
     if encoded.len() < MAGIC.len() + 1 {
         return None;

@@ -9,29 +9,29 @@ use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 
 /// Total output width of the NES frame in pixels (256).
-pub const TOTAL_OUTPUT_WIDTH: usize = 256;
+pub const TOTAL_OUTPUT_WIDTH: u16 = 256;
 /// Total output height of the NES frame in pixels (240).
-pub const TOTAL_OUTPUT_HEIGHT: usize = 240;
+pub const TOTAL_OUTPUT_HEIGHT: u16 = 240;
 
 /// Total number of tiles across both pattern tables (512).
-pub const TILE_COUNT: usize = 512;
+pub const TILE_COUNT: u16 = 512;
 /// Number of palettes (8: 4 background + 4 sprite).
-pub const PALETTE_COUNT: usize = 8;
+pub const PALETTE_COUNT: u16 = 8;
 /// PPU address at which palette RAM begins (`$3F00`).
 pub const PALETTE_RAM_START_ADDRESS: u16 = 0x3F00;
 /// PPU address at which palette RAM ends (`$3FFF`).
 pub const PALETTE_RAM_END_ADDRESS: u16 = 0x3FFF;
 /// Size of a single tile in pixels (8×8).
-pub const TILE_SIZE: usize = 8;
+pub const TILE_SIZE: u16 = 8;
 
 /// Number of nametables in the PPU address space (4).
-pub const NAMETABLE_COUNT: usize = 4;
+pub const NAMETABLE_COUNT: u16 = 4;
 /// Number of tile rows per nametable (30).
-pub const NAMETABLE_ROWS: usize = 30;
+pub const NAMETABLE_ROWS: u16 = 30;
 /// Number of tile columns per nametable (32).
-pub const NAMETABLE_COLS: usize = 32;
+pub const NAMETABLE_COLS: u16 = 32;
 /// Max number of sprites possible
-pub const SPRITE_COUNT: usize = 64;
+pub const SPRITE_COUNT: u8 = 64;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum RegisterValue {
@@ -59,6 +59,7 @@ pub struct RegisterEntry {
 }
 
 impl RegisterEntry {
+    #[must_use]
     pub fn new(value: RegisterValue, format: RegisterFormat) -> Self {
         Self {
             value,
@@ -66,6 +67,7 @@ impl RegisterEntry {
         }
     }
 
+    #[must_use]
     pub fn formatted_value(&self) -> String {
         match (&self.value, self.format) {
             (RegisterValue::U8(value), RegisterFormat::Hex) => format!("0x{value:02X}"),
@@ -81,13 +83,14 @@ impl RegisterEntry {
             (RegisterValue::U32(value), RegisterFormat::Decimal) => value.to_string(),
             (RegisterValue::U64(value), RegisterFormat::Decimal) => value.to_string(),
             (RegisterValue::Bool(value), RegisterFormat::Bool) => value.to_string(),
-            (RegisterValue::Text(value), RegisterFormat::Text) => value.clone(),
-            (RegisterValue::Bool(value), RegisterFormat::Decimal) => (*value as u8).to_string(),
-            (RegisterValue::Bool(value), RegisterFormat::Hex) => format!("0x{:02X}", *value as u8),
-            (RegisterValue::Bool(value), RegisterFormat::Binary) => {
-                format!("0b{:08b}", *value as u8)
-            }
             (RegisterValue::Text(value), _) => value.clone(),
+            (RegisterValue::Bool(value), RegisterFormat::Decimal) => u8::from(*value).to_string(),
+            (RegisterValue::Bool(value), RegisterFormat::Hex) => {
+                format!("0x{:02X}", u8::from(*value))
+            }
+            (RegisterValue::Bool(value), RegisterFormat::Binary) => {
+                format!("0b{:08b}", u8::from(*value))
+            }
             (value, _) => match value {
                 RegisterValue::U8(value) => value.to_string(),
                 RegisterValue::U16(value) => value.to_string(),
@@ -119,7 +122,7 @@ pub enum EmulatorFetchable {
     /// Palette color data (4 bytes × 8 palettes).
     Palettes(Option<Box<PaletteData>>),
     /// Pattern table tile data for all 512 tiles.
-    Tiles(Option<Box<[TileData; TILE_COUNT]>>),
+    Tiles(Option<Box<[TileData; usize::from(TILE_COUNT)]>>),
     /// Nametable layout data for all 4 nametables.
     Nametables(Option<Box<NametableData>>),
     Sprites(Option<Box<SpriteData>>),
@@ -134,6 +137,7 @@ impl Hash for EmulatorFetchable {
 impl EmulatorFetchable {
     /// Returns an empty variant of the same kind (with `None` payload).
     #[inline]
+    #[must_use]
     pub fn get_empty(emulator_fetchable: &EmulatorFetchable) -> EmulatorFetchable {
         match emulator_fetchable {
             EmulatorFetchable::Palettes(_) => EmulatorFetchable::Palettes(None),
@@ -151,6 +155,7 @@ impl EmulatorFetchable {
     ///
     /// Passive fetches reduce CPU overhead for data that rarely changes.
     #[inline]
+    #[must_use]
     pub fn is_passive(&self) -> bool {
         matches!(
             self,
@@ -175,9 +180,10 @@ pub struct PaletteData {
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct NametableData {
     /// Tile indices for each nametable (30 rows × 32 columns each).
-    pub tiles: [[u16; NAMETABLE_ROWS * NAMETABLE_COLS]; NAMETABLE_COUNT],
+    pub tiles: [[u16; usize::from(NAMETABLE_ROWS) * usize::from(NAMETABLE_COLS)];
+        usize::from(NAMETABLE_COUNT)],
     /// Palette attribute bytes for each nametable.
-    pub palettes: [[u8; 64]; NAMETABLE_COUNT],
+    pub palettes: [[u8; 64]; usize::from(NAMETABLE_COUNT)],
 }
 
 /// Raw tile data from a pattern table entry.
@@ -196,7 +202,7 @@ pub struct TileData {
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct SpriteData {
-    pub sprites: [Sprite; SPRITE_COUNT],
+    pub sprites: [Sprite; usize::from(SPRITE_COUNT)],
     pub mode: SpriteMode,
 }
 
@@ -226,6 +232,7 @@ pub enum SpriteMode {
 }
 
 impl SpriteMode {
+    #[must_use]
     pub fn get_height_mult(&self) -> u8 {
         match self {
             SpriteMode::SMALL => 1,

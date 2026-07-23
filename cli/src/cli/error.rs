@@ -24,6 +24,7 @@
 //! }
 //! ```
 
+use std::clone::Clone;
 use std::fmt;
 use std::path::PathBuf;
 
@@ -347,6 +348,7 @@ impl CliError {
     // =========================================================================
 
     /// Check if this is a user error (invalid input).
+    #[must_use]
     pub fn is_user_error(&self) -> bool {
         matches!(
             self,
@@ -364,6 +366,7 @@ impl CliError {
     }
 
     /// Check if this is an I/O error.
+    #[must_use]
     pub fn is_io_error(&self) -> bool {
         matches!(
             self,
@@ -378,6 +381,7 @@ impl CliError {
     }
 
     /// Get the exit code for this error.
+    #[must_use]
     pub fn exit_code(&self) -> u8 {
         match self {
             // Invalid arguments
@@ -434,6 +438,7 @@ impl CliError {
 }
 
 impl fmt::Display for CliError {
+    #[allow(clippy::too_many_lines)]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             // Argument errors
@@ -445,11 +450,10 @@ impl fmt::Display for CliError {
             } => {
                 write!(
                     f,
-                    "Invalid value '{}' for argument '{}': {}",
-                    value, arg, reason
+                    "Invalid value '{value}' for argument '{arg}': {reason}"
                 )?;
                 if let Some(h) = hint {
-                    write!(f, "\nHint: {}", h)?;
+                    write!(f, "\nHint: {h}")?;
                 }
                 Ok(())
             }
@@ -457,7 +461,7 @@ impl fmt::Display for CliError {
                 arg,
                 context,
             } => {
-                write!(f, "Missing required argument '{}': {}", arg, context)
+                write!(f, "Missing required argument '{arg}': {context}")
             }
             Self::ConflictingArguments {
                 arg1,
@@ -466,8 +470,7 @@ impl fmt::Display for CliError {
             } => {
                 write!(
                     f,
-                    "Cannot use '{}' and '{}' together: {}",
-                    arg1, arg2, reason
+                    "Cannot use '{arg1}' and '{arg2}' together: {reason}"
                 )
             }
             Self::InvalidArgumentCombination {
@@ -501,9 +504,9 @@ impl fmt::Display for CliError {
             } => {
                 write!(f, "Failed to parse config file '{}'", path.display())?;
                 if let Some(l) = line {
-                    write!(f, " at line {}", l)?;
+                    write!(f, " at line {l}")?;
                 }
-                write!(f, ": {}", message)
+                write!(f, ": {message}")
             }
             Self::ConfigValue {
                 path,
@@ -545,7 +548,7 @@ impl fmt::Display for CliError {
                 source,
                 message,
             } => {
-                write!(f, "Failed to load savestate from {}: {}", source, message)
+                write!(f, "Failed to load savestate from {source}: {message}")
             }
             Self::SavestateSave {
                 destination,
@@ -553,15 +556,14 @@ impl fmt::Display for CliError {
             } => {
                 write!(
                     f,
-                    "Failed to save savestate to {}: {}",
-                    destination, message
+                    "Failed to save savestate to {destination}: {message}"
                 )
             }
             Self::SavestateInvalid {
                 source,
                 reason,
             } => {
-                write!(f, "Invalid savestate from {}: {}", source, reason)
+                write!(f, "Invalid savestate from {source}: {reason}")
             }
 
             // Memory errors
@@ -569,16 +571,16 @@ impl fmt::Display for CliError {
                 address,
                 reason,
             } => {
-                write!(f, "Invalid address '{}': {}", address, reason)
+                write!(f, "Invalid address '{address}': {reason}")
             }
             Self::InvalidMemoryRange {
                 range,
                 reason,
                 hint,
             } => {
-                write!(f, "Invalid memory range '{}': {}", range, reason)?;
+                write!(f, "Invalid memory range '{range}': {reason}")?;
                 if let Some(h) = hint {
-                    write!(f, "\nHint: {}", h)?;
+                    write!(f, "\nHint: {h}")?;
                 }
                 Ok(())
             }
@@ -589,8 +591,7 @@ impl fmt::Display for CliError {
             } => {
                 write!(
                     f,
-                    "Memory {} at 0x{:04X} failed: {}",
-                    operation, address, message
+                    "Memory {operation} at 0x{address:04X} failed: {message}"
                 )
             }
 
@@ -600,11 +601,11 @@ impl fmt::Display for CliError {
                 cycles,
                 frames,
             } => {
-                write!(f, "Execution error: {}", message)?;
+                write!(f, "Execution error: {message}")?;
                 if let Some(c) = cycles {
-                    write!(f, " (after {} cycles", c)?;
+                    write!(f, " (after {c} cycles")?;
                     if let Some(fr) = frames {
-                        write!(f, ", {} frames", fr)?;
+                        write!(f, ", {fr} frames")?;
                     }
                     write!(f, ")")?;
                 }
@@ -615,9 +616,9 @@ impl fmt::Display for CliError {
                 reason,
                 hint,
             } => {
-                write!(f, "Invalid stop condition '{}': {}", condition, reason)?;
+                write!(f, "Invalid stop condition '{condition}': {reason}")?;
                 if let Some(h) = hint {
-                    write!(f, "\nHint: {}", h)?;
+                    write!(f, "\nHint: {h}")?;
                 }
                 Ok(())
             }
@@ -627,7 +628,7 @@ impl fmt::Display for CliError {
                 destination,
                 message,
             } => {
-                write!(f, "Failed to write output to {}: {}", destination, message)
+                write!(f, "Failed to write output to {destination}: {message}")
             }
             Self::InvalidOutputFormat {
                 format,
@@ -646,12 +647,12 @@ impl fmt::Display for CliError {
                 operation,
                 message,
             } => {
-                write!(f, "I/O error during {}: {}", operation, message)
+                write!(f, "I/O error during {operation}: {message}")
             }
             Self::Internal {
                 message,
             } => {
-                write!(f, "Internal error: {}", message)
+                write!(f, "Internal error: {message}")
             }
         }
     }

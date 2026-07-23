@@ -33,7 +33,7 @@ pub fn render_pattern_table(
 
         // Palette selector and label in horizontal layout
         ui.horizontal(|ui| {
-            ui.label(format!("Pattern Tables (128x128x2 at {:.1}x scale)", scale));
+            ui.label(format!("Pattern Tables (128x128x2 at {scale:.1}x scale)"));
             ui.separator();
             ui.label("Debug Palette:");
             let palette_label = if config.user_config.debug_active_palette < 4 {

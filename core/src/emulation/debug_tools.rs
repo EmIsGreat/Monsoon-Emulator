@@ -1,5 +1,5 @@
-use crate::emulation::nes::{MASTER_CYCLES_PER_FRAME, Nes};
-use crate::util::{parse_hex_u8, parse_hex_u16};
+use crate::emulation::nes::{Nes, MASTER_CYCLES_PER_FRAME};
+use crate::util::{parse_hex_u16, parse_hex_u8};
 
 /// A stop condition that can be checked during execution
 #[derive(Debug, Clone)]
@@ -26,7 +26,7 @@ pub enum StopCondition {
     },
     /// Stop on HLT instruction
     OnHalt,
-    /// Breakpoint at address (alias for PcEquals, kept for backward
+    /// Breakpoint at address (alias for `PcEquals`, kept for backward
     /// compatibility)
     Breakpoint(u16),
     /// Watch memory address for access
@@ -38,6 +38,9 @@ pub enum StopCondition {
 
 impl StopCondition {
     /// Parse a memory condition string like "0x6000==0x80" or "0x6000!=0x00"
+    /// # Errors
+    ///
+    /// Will return `Err` if malformatted
     pub fn parse_memory_condition(vec: &Vec<String>) -> Result<Vec<Self>, String> {
         let mut res = Vec::new();
         for s in vec {
@@ -45,7 +48,7 @@ impl StopCondition {
 
             #[allow(clippy::question_mark)]
             if let Ok(cond) = cond {
-                res.push(cond)
+                res.push(cond);
             } else if let Err(cond) = cond {
                 return Err(cond);
             }
@@ -54,6 +57,9 @@ impl StopCondition {
         Ok(res)
     }
 
+    /// # Errors
+    ///
+    /// Will return `Err` if condition is malformatted
     pub fn parse_single_condition(s: &String) -> Result<Self, String> {
         if let Some((cond1, cond2)) = s.split_once("&&") {
             let cond1 = Self::parse_single_condition(&cond1.to_string());
@@ -106,13 +112,15 @@ impl StopCondition {
             })
         } else {
             Err(format!(
-                "Invalid memory condition '{}'. Expected format: ADDR==VALUE or ADDR!=VALUE",
-                s
+                "Invalid memory condition '{s}'. Expected format: ADDR==VALUE or ADDR!=VALUE"
             ))
         }
     }
 
     /// Parse a memory watch string like "0x2002" or "0x2002:r" or "0x4016:w"
+    /// # Errors
+    ///
+    /// Will return `Err` if the passed argument is not a valid memory watch
     pub fn parse_memory_watch(s: &str) -> Result<Self, String> {
         let (addr_str, access_type) = if let Some((addr_part, mode_part)) = s.split_once(':') {
             (addr_part, MemoryAccessType::parse(mode_part)?)
@@ -128,6 +136,9 @@ impl StopCondition {
     }
 
     /// Parse multiple memory watch conditions
+    /// # Errors
+    ///
+    /// Will return `Err` if the passed argument is not a valid memory watch
     pub fn parse_memory_watches(watches: &[String]) -> Result<Vec<Self>, String> {
         watches
             .iter()
@@ -139,7 +150,7 @@ impl StopCondition {
         match self {
             StopCondition::Cycles(target) => emu.total_cycles >= *target,
             StopCondition::Frames(target) => {
-                emu.total_cycles >= *target * MASTER_CYCLES_PER_FRAME as u64
+                emu.total_cycles >= *target * u64::from(MASTER_CYCLES_PER_FRAME)
             }
             StopCondition::PcEquals(addr) | StopCondition::Breakpoint(addr) => {
                 emu.program_counter() == *addr
@@ -152,7 +163,7 @@ impl StopCondition {
             } => {
                 let and = and.as_ref().map(|and| and.check(emu));
 
-                let mem_val = emu.get_memory_debug(Some(*addr..=*addr))[0]
+                let mem_val = emu.get_memory_debug(&Some(*addr..=*addr))[0]
                     .first()
                     .copied()
                     .unwrap_or(0);
@@ -170,7 +181,7 @@ impl StopCondition {
             } => {
                 let and = and.as_ref().map(|and| and.check(emu));
 
-                let mem_val = emu.get_memory_debug(Some(*addr..=*addr))[0]
+                let mem_val = emu.get_memory_debug(&Some(*addr..=*addr))[0]
                     .first()
                     .copied()
                     .unwrap_or(0);
@@ -209,7 +220,7 @@ impl StopCondition {
         match self {
             StopCondition::Cycles(_) => StopReason::CyclesReached(emu.total_cycles),
             StopCondition::Frames(_) => {
-                StopReason::FramesReached(emu.total_cycles / MASTER_CYCLES_PER_FRAME as u64)
+                StopReason::FramesReached(emu.total_cycles / u64::from(MASTER_CYCLES_PER_FRAME))
             }
             StopCondition::PcEquals(addr) | StopCondition::Breakpoint(addr) => {
                 StopReason::PcReached(*addr)
@@ -221,7 +232,7 @@ impl StopCondition {
             | StopCondition::MemoryNotEquals {
                 addr, ..
             } => {
-                let mem_val = emu.get_memory_debug(Some(*addr..=*addr))[0]
+                let mem_val = emu.get_memory_debug(&Some(*addr..=*addr))[0]
                     .first()
                     .copied()
                     .unwrap_or(0);
@@ -235,8 +246,7 @@ impl StopCondition {
             } => {
                 let was_read = emu
                     .last_memory_access()
-                    .map(|(_, was_read, _)| was_read)
-                    .unwrap_or(true);
+                    .is_none_or(|(_, was_read, _)| was_read);
                 StopReason::MemoryWatchpoint {
                     addr: *addr,
                     access_type: *access_type,
@@ -285,14 +295,16 @@ pub enum MemoryAccessType {
 
 impl MemoryAccessType {
     /// Parse access type from string (r, w, rw)
+    /// # Errors
+    ///
+    /// Will return `Err` if the passed argument is not a valid access type
     pub fn parse(s: &str) -> Result<Self, String> {
         match s.to_lowercase().as_str() {
             "r" | "read" => Ok(Self::Read),
             "w" | "write" => Ok(Self::Write),
             "rw" | "readwrite" | "both" => Ok(Self::ReadWrite),
             _ => Err(format!(
-                "Invalid memory access type '{}'. Expected: r, w, or rw",
-                s
+                "Invalid memory access type '{s}'. Expected: r, w, or rw"
             )),
         }
     }

@@ -41,7 +41,7 @@ pub fn render_sprite_viewer(ui: &mut egui::Ui, emu_textures: &EmuTextures) {
         let sprite_data = sprite_data.sprites;
 
         let available = ui.available_size();
-        let sprite_base_width = 64.0 * (sprite_mode.get_height_mult() as f32);
+        let sprite_base_width = 64.0 * f32::from(sprite_mode.get_height_mult());
         let sprite_base_height = 64.0;
         let logical_height = sprite_base_height + 20.0;
         let scale = (available.x / sprite_base_width)
@@ -115,7 +115,7 @@ pub fn render_soam_viewer(ui: &mut egui::Ui, config: &AppConfig, emu_textures: &
 
         let available = ui.available_size();
         let soam_base_width = 16.0;
-        let soam_base_height = 32.0 * (soam_mode.get_height_mult() as f32);
+        let soam_base_height = 32.0 * f32::from(soam_mode.get_height_mult());
         let logical_height = soam_base_height + 20.0;
         let scale = (available.x / soam_base_width)
             .min(available.y / logical_height)

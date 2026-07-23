@@ -11,7 +11,7 @@ use crate::frontend::egui::config::AppConfig;
 use crate::frontend::egui::keybindings::{HotkeyBinding, OnKeyAction};
 use crate::frontend::messages::AsyncFrontendMessage;
 
-/// Draw a colored cell with hover highlighting using RgbColor.
+/// Draw a colored cell with hover highlighting using `RgbColor`.
 ///
 /// This is a common pattern used in palette viewers, pattern tables, etc.
 /// It draws a filled rectangle and adds a white border when hovered.
@@ -19,7 +19,7 @@ use crate::frontend::messages::AsyncFrontendMessage;
 /// # Arguments
 /// * `ui` - The egui UI context
 /// * `rect` - The rectangle to draw in
-/// * `color` - The fill color as RgbColor tuple
+/// * `color` - The fill color as `RgbColor` tuple
 /// * `sense` - The interaction sense (click, hover, etc.)
 /// * `id_source` - A unique ID source for this widget (e.g., index in a grid)
 ///
@@ -107,7 +107,7 @@ pub fn image_cell_flipped(
 /// Draw two vertically stacked image cells with optional horizontal/vertical
 /// flip.
 ///
-/// When v_flip is set, each tile is flipped vertically and the top and bottom
+/// When `v_flip` is set, each tile is flipped vertically and the top and bottom
 /// tiles are swapped.
 #[allow(clippy::too_many_arguments)]
 pub fn image_cell_dual_vert_flipped(
@@ -234,7 +234,7 @@ impl<'a> HotKeyButton<'a> {
     }
 }
 
-impl<'a> Widget for HotKeyButton<'a> {
+impl Widget for HotKeyButton<'_> {
     fn ui(self, ui: &mut Ui) -> Response {
         // Width floor for menu-row consistency when labels are short.
         const DEFAULT_WIDTH_MULTIPLIER: f32 = 4.0;
@@ -266,7 +266,7 @@ impl<'a> Widget for HotKeyButton<'a> {
         let response = ui.add_sized(desired_size, egui::Button::new(""));
 
         if response.clicked() {
-            self.action.send(self.sender)
+            self.action.send(self.sender);
         }
 
         if ui.is_rect_visible(response.rect) {

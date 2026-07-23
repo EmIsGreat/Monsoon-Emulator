@@ -13,12 +13,12 @@
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
-use monsoon_core::emulation::debug_tools::{MemoryAccessType, StopCondition, StopReason};
+use monsoon_core::emulation::debug_tools::{MemoryAccessType, StopCondition};
 use monsoon_core::emulation::nes::{
-    ExecutionResult, MASTER_CYCLES_PER_FRAME, Nes, NesConfig, RunOptions,
+    ExecutionResult, Nes, NesConfig, RunOptions, MASTER_CYCLES_PER_FRAME,
 };
 use monsoon_core::emulation::rom::{ParseError, RomFile};
-use monsoon_core::emulation::savestate::{SaveState, try_load_state_from_bytes};
+use monsoon_core::emulation::savestate::{try_load_state_from_bytes, SaveState};
 use monsoon_core::util::{SerializationError, ToBytes};
 
 // =============================================================================
@@ -48,39 +48,46 @@ const DEFAULT_INTERNAL_TRACE_LOG_PATH: &str = "trace.log";
 
 impl ExecutionConfig {
     /// Create a new empty execution config
+    #[must_use]
     pub fn new() -> Self { Self::default() }
 
     /// Add a stop condition
+    #[must_use]
     pub fn with_stop_condition(mut self, condition: StopCondition) -> Self {
         self.stop_conditions.push(condition);
         self
     }
 
     /// Set stop after N cycles
+    #[must_use]
     pub fn with_cycles(mut self, cycles: u64) -> Self {
         self.stop_conditions.push(StopCondition::Cycles(cycles));
         self
     }
 
     /// Set stop after N frames
+    #[must_use]
     pub fn with_frames(mut self, frames: u64) -> Self {
         self.stop_conditions.push(StopCondition::Frames(frames));
         self
     }
 
     /// Set stop when PC equals address
+    #[must_use]
     pub fn with_pc_breakpoint(mut self, addr: u16) -> Self {
         self.stop_conditions.push(StopCondition::PcEquals(addr));
         self
     }
 
-    /// Add a breakpoint (alias for with_pc_breakpoint)
+    /// Add a breakpoint (alias for `with_pc_breakpoint`)
+    #[must_use]
     pub fn with_breakpoint(mut self, addr: u16) -> Self {
         self.stop_conditions.push(StopCondition::PcEquals(addr));
         self
     }
 
     /// Add a memory watchpoint
+    #[must_use]
     pub fn with_memory_watch(mut self, addr: u16, access_type: MemoryAccessType) -> Self {
         self.stop_conditions.push(StopCondition::MemoryWatch {
             addr,
@@ -90,18 +97,21 @@ impl ExecutionConfig {
     }
 
     /// Set trace log path
+    #[must_use]
     pub fn with_trace(mut self, path: PathBuf) -> Self {
         self.trace_path = Some(path);
         self
     }
 
     /// Enable verbose output
+    #[must_use]
     pub fn with_verbose(mut self, verbose: bool) -> Self {
         self.verbose = verbose;
         self
     }
 
     /// Enable stop on HLT
+    #[must_use]
     pub fn with_stop_on_halt(mut self, stop: bool) -> Self {
         self.stop_on_halt = stop;
         self
@@ -113,7 +123,7 @@ impl ExecutionConfig {
         for cond in &self.stop_conditions {
             match cond {
                 StopCondition::Cycles(c) => max = max.min(*c),
-                StopCondition::Frames(f) => max = max.min(*f * MASTER_CYCLES_PER_FRAME as u64),
+                StopCondition::Frames(f) => max = max.min(*f * u64::from(MASTER_CYCLES_PER_FRAME)),
                 _ => {}
             }
         }
@@ -145,9 +155,9 @@ pub enum SavestateDestination {
     Stdout,
 }
 
+pub use crate::cli::args::SavestateFormat;
 // Re-export SavestateFormat from args for use in this module
 use crate::cli::CliArgs;
-pub use crate::cli::args::SavestateFormat;
 
 /// Configuration for savestate operations
 #[derive(Debug, Clone, Default)]
@@ -162,33 +172,39 @@ pub struct SavestateConfig {
 
 impl SavestateConfig {
     /// Create a new empty savestate config
+    #[must_use]
     pub fn new() -> Self { Self::default() }
 
     /// Set load source to file
+    #[must_use]
     pub fn load_from_file(mut self, path: PathBuf) -> Self {
         self.load_from = Some(SavestateSource::File(path));
         self
     }
 
     /// Set load source to stdin
+    #[must_use]
     pub fn load_from_stdin(mut self) -> Self {
         self.load_from = Some(SavestateSource::Stdin);
         self
     }
 
     /// Set save destination to file
+    #[must_use]
     pub fn save_to_file(mut self, path: PathBuf) -> Self {
         self.save_to = Some(SavestateDestination::File(path));
         self
     }
 
     /// Set save destination to stdout
+    #[must_use]
     pub fn save_to_stdout(mut self) -> Self {
         self.save_to = Some(SavestateDestination::Stdout);
         self
     }
 
     /// Set savestate format
+    #[must_use]
     pub fn with_format(mut self, format: SavestateFormat) -> Self {
         self.format = format;
         self
@@ -230,6 +246,7 @@ pub struct ExecutionEngine {
 
 impl ExecutionEngine {
     /// Create a new execution engine with default emulator
+    #[must_use]
     pub fn new(nes_config: NesConfig) -> Self {
         Self {
             emu: Nes::with_config(nes_config),
@@ -242,6 +259,7 @@ impl ExecutionEngine {
     }
 
     /// Create execution engine with existing emulator
+    #[must_use]
     pub fn with_emulator(emu: Nes) -> Self {
         Self {
             emu,
@@ -254,12 +272,14 @@ impl ExecutionEngine {
     }
 
     /// Set execution configuration
+    #[must_use]
     pub fn with_config(mut self, config: ExecutionConfig) -> Self {
         self.config = config;
         self
     }
 
     /// Set savestate configuration
+    #[must_use]
     pub fn with_savestate_config(mut self, config: SavestateConfig) -> Self {
         self.savestate_config = config;
         self
@@ -304,7 +324,7 @@ impl ExecutionEngine {
                     let mut buffer = Vec::new();
                     std::io::stdin()
                         .read_to_end(&mut buffer)
-                        .map_err(|e| format!("Failed to read savestate from stdin: {}", e))?;
+                        .map_err(|e| format!("Failed to read savestate from stdin: {e}"))?;
                     decode_savestate(&buffer)?
                 }
                 SavestateSource::Bytes(bytes) => decode_savestate(bytes)?,
@@ -332,9 +352,9 @@ impl ExecutionEngine {
                             })?;
                         }
                         SavestateDestination::Stdout => {
-                            std::io::stdout().write_all(&data).map_err(|e| {
-                                format!("Failed to write savestate to stdout: {}", e)
-                            })?;
+                            std::io::stdout()
+                                .write_all(&data)
+                                .map_err(|e| format!("Failed to write savestate to stdout: {e}"))?;
                         }
                     }
 
@@ -359,21 +379,7 @@ impl ExecutionEngine {
         // Run frame by frame for stop condition checking
         let result = loop {
             // Run one frame
-            match self.emu.step_frame() {
-                Ok(_) => {}
-                Err(e) => {
-                    break ExecutionResult {
-                        last_cycle_reached: false,
-                        hlt_reached: false,
-                        cycle_completed: false,
-                        cpu_cycle_completed: false,
-                        ppu_cycle_completed: false,
-                        frame_done: false,
-                        scanline_done: false,
-                        stop_reason: Some(StopReason::Error(e)),
-                    };
-                }
-            }
+            self.emu.step_frame();
 
             // Only collect frames if in buffered mode
             if self.collect_frames {
@@ -478,33 +484,20 @@ impl ExecutionEngine {
                     -2
                 };
 
-                let base = (capture_idx + 1) as u64 * MASTER_CYCLES_PER_FRAME as u64;
+                let base = u64::from(capture_idx + 1) * u64::from(MASTER_CYCLES_PER_FRAME);
 
+                #[allow(clippy::cast_sign_loss)]
                 let base = if odd_frame_offset >= 0 {
                     base.saturating_add(odd_frame_offset as u64)
                 } else {
                     base.saturating_sub((-odd_frame_offset) as u64)
                 };
 
-                let capture_point = base / captures_per_frame as u64;
+                let capture_point = base / u64::from(captures_per_frame);
                 let target_cycles = frame_start_cycles + capture_point;
 
                 // Run until the target cycle
-                match self.emu.run_until(target_cycles, RunOptions::default()) {
-                    Ok(_) => {}
-                    Err(e) => {
-                        return Ok(ExecutionResult {
-                            last_cycle_reached: false,
-                            hlt_reached: false,
-                            cycle_completed: false,
-                            cpu_cycle_completed: false,
-                            ppu_cycle_completed: false,
-                            frame_done: false,
-                            scanline_done: false,
-                            stop_reason: Some(StopReason::Error(e)),
-                        });
-                    }
-                }
+                self.emu.run_until(target_cycles, RunOptions::default());
 
                 // Write frame directly to encoder (with upscaling if configured)
                 // This captures the current pixel buffer state, which may be mid-render
@@ -512,7 +505,7 @@ impl ExecutionEngine {
                 let rgb_frame = renderer.buffer_to_image(frame);
                 encoder
                     .write_frame(rgb_frame)
-                    .map_err(|e| format!("Video encoding error: {}", e))?;
+                    .map_err(|e| format!("Video encoding error: {e}"))?;
 
                 // Only increment frame_count at the end of a full PPU frame
                 // (when we've done all captures for this frame)
@@ -612,6 +605,7 @@ fn encode_savestate(
 
 impl ExecutionConfig {
     /// Build execution config from CLI arguments
+    #[must_use]
     pub fn from_cli_args(args: &CliArgs) -> Self {
         let mut config = Self::new();
 
@@ -677,6 +671,7 @@ impl ExecutionConfig {
 
 impl SavestateConfig {
     /// Build savestate config from CLI arguments
+    #[must_use]
     pub fn from_cli_args(args: &CliArgs) -> Self {
         let mut config = Self::new();
 
@@ -705,7 +700,7 @@ impl SavestateConfig {
 mod tests {
     use std::path::PathBuf;
 
-    use super::{DEFAULT_INTERNAL_TRACE_LOG_PATH, ExecutionConfig};
+    use super::{ExecutionConfig, DEFAULT_INTERNAL_TRACE_LOG_PATH};
     use crate::cli::CliArgs;
 
     #[test]

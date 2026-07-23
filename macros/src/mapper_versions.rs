@@ -2,15 +2,15 @@ use std::fmt::{Display, Formatter};
 use std::marker::PhantomData;
 
 use proc_macro2::{Ident, TokenStream};
-use quote::{IdentFragment, ToTokens, quote};
+use quote::{quote, IdentFragment, ToTokens};
 use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
 use syn::{
-    Expr, GenericParam, Generics, ItemStruct, LitInt, Token, TypeParamBound, WherePredicate,
-    braced, parse2,
+    braced, parse2, Expr, GenericParam, Generics, ItemStruct, LitInt, Token,
+    TypeParamBound, WherePredicate,
 };
 
-pub fn mapper_versions(attribute_args: TokenStream, item: TokenStream) -> TokenStream {
+pub fn mapper_versions(attribute_args: &TokenStream, item: &TokenStream) -> TokenStream {
     let parsed_struct: ItemStruct = match parse2(item.clone()) {
         Ok(parsed) => parsed,
         Err(error) => return error.to_compile_error(),
@@ -18,7 +18,7 @@ pub fn mapper_versions(attribute_args: TokenStream, item: TokenStream) -> TokenS
 
     let struct_ident = parsed_struct.ident.clone();
 
-    let (variant1_path, variant2_path) = match parse_generics(parsed_struct) {
+    let (variant1_path, variant2_path) = match parse_generics(&parsed_struct) {
         Ok(v) => v,
         Err(err) => return err.to_compile_error(),
     };
@@ -49,7 +49,7 @@ where
         ...
     }";
 
-fn parse_generics(parsed_struct: ItemStruct) -> Result<(Ident, Ident), syn::Error> {
+fn parse_generics(parsed_struct: &ItemStruct) -> Result<(Ident, Ident), syn::Error> {
     if parsed_struct.generics.params.len() < 2 {
         return Err(syn::Error::new_spanned(
             &parsed_struct.ident,
@@ -57,14 +57,14 @@ fn parse_generics(parsed_struct: ItemStruct) -> Result<(Ident, Ident), syn::Erro
         ));
     }
 
-    let valid_variant_bounds = get_valid_variant_bounds(parsed_struct.generics)?;
+    let valid_variant_bounds = get_valid_variant_bounds(&parsed_struct.generics);
 
     if valid_variant_bounds.len() < 2 {
         return Err(syn::Error::new_spanned(
             &parsed_struct.ident,
             GENERICS_ERROR_MESSAGE,
         ));
-    };
+    }
 
     Ok((
         valid_variant_bounds[0].clone(),
@@ -72,7 +72,7 @@ fn parse_generics(parsed_struct: ItemStruct) -> Result<(Ident, Ident), syn::Erro
     ))
 }
 
-fn get_valid_variant_bounds(generics: Generics) -> Result<Vec<Ident>, syn::Error> {
+fn get_valid_variant_bounds(generics: &Generics) -> Vec<Ident> {
     let mut res = Vec::new();
 
     for param in &generics.params {
@@ -109,15 +109,15 @@ fn get_valid_variant_bounds(generics: Generics) -> Result<Vec<Ident>, syn::Error
                     .collect();
 
                 if !where_bounds.is_empty() {
-                    res.push(where_bounds[0].clone())
+                    res.push(where_bounds[0].clone());
                 }
             } else {
-                res.push(bounds[0].clone())
+                res.push(bounds[0].clone());
             }
         }
     }
 
-    Ok(res)
+    res
 }
 
 mod kw {
@@ -338,7 +338,7 @@ impl ToTokens for EnumToGenerate {
 
         tokens.extend(quote! {
             enum = #ident
-        })
+        });
     }
 }
 
@@ -349,7 +349,7 @@ impl ToTokens for ExplicitTraitAssignment {
 
         tokens.extend(quote! {
             #ident = #value
-        })
+        });
     }
 }
 
@@ -359,7 +359,7 @@ impl ToTokens for ImplicitTraitAssignment {
 
         tokens.extend(quote! {
             #value
-        })
+        });
     }
 }
 
@@ -377,7 +377,7 @@ impl ToTokens for VariantIdentifier {
         match self {
             VariantIdentifier::Ident(i) => i.to_tokens(tokens),
             VariantIdentifier::Num(u) => u.to_tokens(tokens),
-        };
+        }
     }
 }
 
@@ -386,7 +386,7 @@ impl ToTokens for MapperDefinition {
         if let Some(p) = &self.0 {
             tokens.extend(quote! {
                 mapper = #p,
-            })
+            });
         }
     }
 }
@@ -402,7 +402,7 @@ impl ToTokens for Variant {
                 #mapper
                 #(#fields,)*
             }
-        })
+        });
     }
 }
 
@@ -412,7 +412,7 @@ impl<V: Parse> ToTokens for Variants<V> {
 
         tokens.extend(quote! {
             #(#variants,)*
-        })
+        });
     }
 }
 
@@ -430,6 +430,6 @@ impl ToTokens for MapperVersionsArgs {
             submappers {
                 #submappers
             }
-        })
+        });
     }
 }

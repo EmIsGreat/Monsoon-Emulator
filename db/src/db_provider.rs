@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use monsoon_core::rom_db::{DbParseError, RomDb};
 
+use crate::manifest::is_newer;
 #[cfg(feature = "online")]
 use crate::manifest::Manifest;
-use crate::manifest::is_newer;
 
 #[derive(Clone, Debug)]
 enum Source {
@@ -31,8 +31,10 @@ pub struct DbProvider {
 }
 
 impl DbProvider {
+    #[must_use]
     pub fn builder() -> DbProviderBuilder { DbProviderBuilder::default() }
 
+    #[must_use]
     pub fn database(&self) -> Arc<RomDb> { Arc::clone(&self.db) }
 }
 
@@ -54,6 +56,7 @@ pub struct DbProviderBuilder {
 
 impl DbProviderBuilder {
     #[cfg(feature = "online")]
+    #[must_use]
     pub fn with_update_url(mut self, url: &str) -> Self {
         self.update_url = Some(url.to_string());
         self
@@ -61,11 +64,13 @@ impl DbProviderBuilder {
 
     /// Supply previously-cached database bytes.  The bytes will be parsed and,
     /// if valid, treated as a `Local` candidate during selection.
+    #[must_use]
     pub fn with_cache_bytes(mut self, bytes: Vec<u8>) -> Self {
         self.cache_bytes = Some(bytes);
         self
     }
 
+    #[must_use]
     pub fn with_fallback(mut self, data: Arc<RomDb>) -> Self {
         self.fallback = Some(data);
         self
@@ -76,6 +81,8 @@ impl DbProviderBuilder {
     /// Returns `(provider, bytes_to_cache)`.  When `bytes_to_cache` is
     /// `Some(bytes)`, the caller should persist those bytes so they are
     /// available as cache input on the next run.
+    /// # Errors
+    /// Returns `err` if the DB could not be loaded
     pub async fn build(self) -> Result<(DbProvider, Option<Vec<u8>>), DbParseError> {
         let DbProviderBuilder {
             #[cfg(feature = "online")]
@@ -165,6 +172,8 @@ async fn try_load_source(source: Source) -> Result<(Arc<RomDb>, Option<Vec<u8>>)
         Source::Remote {
             url,
         } => {
+            let url =
+                reqwest::Url::parse(url.as_str()).map_err(|_| DbParseError::InvalidOnlineURL)?;
             let response = reqwest::get(url).await.map_err(|_| DbParseError::IOError)?;
             let bytes = response.bytes().await.map_err(|_| DbParseError::IOError)?;
             let bytes_vec = bytes.to_vec();

@@ -138,10 +138,10 @@ fn handle_pixel_edit(
     async_sender: &Sender<AsyncFrontendMessage>,
     clear: bool,
 ) {
-    let new_color = if !clear {
-        config.user_config.pattern_edit_color
-    } else {
+    let new_color = if clear {
         0
+    } else {
+        config.user_config.pattern_edit_color
     };
 
     let new_lo = new_color & 1;

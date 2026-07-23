@@ -3,7 +3,7 @@ use quote::{format_ident, quote, quote_spanned};
 use syn::spanned::Spanned;
 use syn::{ItemTrait, TraitItem, parse2};
 
-pub fn mapper_variants(attribute_args: TokenStream, item: TokenStream) -> TokenStream {
+pub fn mapper_variants(attribute_args: &TokenStream, item: TokenStream) -> TokenStream {
     if !attribute_args.is_empty() {
         let span = attribute_args.span();
         return quote_spanned!(span => compile_error!("this macro doesn't accept any arguments"););

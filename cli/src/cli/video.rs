@@ -9,12 +9,12 @@
 //! |--------|---------------|--------------|
 //! | PNG sequence | Pure Rust (image crate) | None - self-contained |
 //! | PPM sequence | Pure Rust | None - self-contained |
-//! | MP4 | FFmpeg subprocess | FFmpeg installed |
+//! | MP4 | `FFmpeg` subprocess | `FFmpeg` installed |
 //! | Raw | Writes raw BGRA bytes | None |
 //!
 //! # Scaling
 //!
-//! Video scaling is Handled natively by FFmpeg using the nearest neighbor
+//! Video scaling is Handled natively by `FFmpeg` using the nearest neighbor
 //! filter, which preserves sharp pixel edges for retro games.
 
 use std::fs::{self, File};
@@ -55,7 +55,7 @@ impl VideoResolution {
     /// - "native" - Native resolution
     /// - "2x", "3x", "4x" - Integer scales
     /// - "720p", "1080p", "4k" - Standard resolutions
-    /// - "WxH" or "WIDTHxHEIGHT" - Custom resolution (e.g., "1920x1080")
+    /// - "`WxH`" or "`WIDTHxHEIGHT`" - Custom resolution (e.g., "1920x1080")
     pub fn parse(s: &str) -> Result<Self, String> {
         let s = s.to_lowercase();
         match s.as_str() {
@@ -74,17 +74,16 @@ impl VideoResolution {
                     let width = w
                         .trim()
                         .parse()
-                        .map_err(|_| format!("Invalid width: {}", w))?;
+                        .map_err(|_| format!("Invalid width: {w}"))?;
                     let height = h
                         .trim()
                         .parse()
-                        .map_err(|_| format!("Invalid height: {}", h))?;
+                        .map_err(|_| format!("Invalid height: {h}"))?;
                     Ok(VideoResolution::Custom(width, height))
                 } else {
                     Err(format!(
-                        "Unknown resolution: '{}'. Try: native, 2x, 3x, 4x, 720p, 1080p, 4k, or \
-                         WxH",
-                        s
+                        "Unknown resolution: '{s}'. Try: native, 2x, 3x, 4x, 720p, 1080p, 4k, or \
+                         WxH"
                     ))
                 }
             }
@@ -95,6 +94,7 @@ impl VideoResolution {
     ///
     /// For preset resolutions (720p, 1080p, 4k), the output is scaled to fit
     /// within the target while maintaining aspect ratio with the NES PAR (8:7).
+    #[must_use]
     pub fn dimensions(&self, src_width: u32, src_height: u32) -> (u32, u32) {
         // NES pixel aspect ratio: 8:7 (pixels are slightly wider than tall)
         const NES_PAR: f64 = 8.0 / 7.0;
@@ -119,8 +119,8 @@ fn fit_to_bounds(
     par: f64,
 ) -> (u32, u32) {
     // Calculate the maximum integer scale that fits within bounds
-    let scale_x = max_width as f64 / (src_width as f64 * par);
-    let scale_y = max_height as f64 / src_height as f64;
+    let scale_x = f64::from(max_width) / (f64::from(src_width) * par);
+    let scale_y = f64::from(max_height) / f64::from(src_height);
     let scale = scale_x.min(scale_y);
 
     // Use integer scale for clean pixel scaling
@@ -128,7 +128,7 @@ fn fit_to_bounds(
     let int_scale = int_scale.max(1); // At least 1x
 
     // Calculate output dimensions
-    let out_width = (src_width as f64 * par * int_scale as f64).round() as u32;
+    let out_width = (f64::from(src_width) * par * f64::from(int_scale)).round() as u32;
     let out_height = src_height * int_scale;
 
     // Ensure dimensions are even (required for many video codecs)
@@ -145,11 +145,11 @@ fn fit_to_bounds(
 use crate::cli::args::VideoExportMode;
 
 /// NES NTSC framerate: 39375000 / 655171 ≈ 60.098814
-pub const NES_NTSC_FPS: f64 = 39375000.0 / 655171.0;
+pub const NES_NTSC_FPS: f64 = 39_375_000.0 / 655_171.0;
 
 /// NES NTSC framerate as exact numerator/denominator
-pub const NES_NTSC_FPS_NUM: u64 = 39375000;
-pub const NES_NTSC_FPS_DEN: u64 = 655171;
+pub const NES_NTSC_FPS_NUM: u64 = 39_375_000;
+pub const NES_NTSC_FPS_DEN: u64 = 655_171;
 
 /// Smooth framerate target (exactly 60 fps)
 pub const SMOOTH_FPS: f64 = 60.0;
@@ -182,7 +182,7 @@ impl FpsConfig {
         if let Some(mult_str) = s.strip_suffix('x') {
             let multiplier: u32 = mult_str
                 .parse()
-                .map_err(|_| format!("Invalid FPS multiplier: '{}'", s))?;
+                .map_err(|_| format!("Invalid FPS multiplier: '{s}'"))?;
             if multiplier == 0 {
                 return Err("FPS multiplier must be at least 1".to_string());
             }
@@ -195,8 +195,7 @@ impl FpsConfig {
         // Try parsing as a fixed FPS value
         let fps: f64 = s.parse().map_err(|_| {
             format!(
-                "Invalid FPS value: '{}'. Use multipliers like '2x' or fixed values like '60.0'",
-                s
+                "Invalid FPS value: '{s}'. Use multipliers like '2x' or fixed values like '60.0'"
             )
         })?;
 
@@ -221,29 +220,31 @@ impl FpsConfig {
     }
 
     /// Get the output framerate as a floating-point value.
+    #[must_use]
     pub fn output_fps(&self) -> f64 {
         match self.mode {
-            VideoExportMode::Accurate => NES_NTSC_FPS * self.multiplier as f64,
-            VideoExportMode::Smooth => SMOOTH_FPS * self.multiplier as f64,
+            VideoExportMode::Accurate => NES_NTSC_FPS * f64::from(self.multiplier),
+            VideoExportMode::Smooth => SMOOTH_FPS * f64::from(self.multiplier),
         }
     }
 
-    /// Get the output framerate as a rational string for FFmpeg.
+    /// Get the output framerate as a rational string for `FFmpeg`.
     ///
     /// For accurate mode, this returns the exact NES framerate fraction
     /// multiplied. For smooth mode, this returns clean integer multiples of
     /// 60.
+    #[must_use]
     pub fn output_fps_rational(&self) -> String {
         match self.mode {
             VideoExportMode::Accurate => {
                 // Use exact rational: (39375000 * multiplier) / 655171
-                let numerator = NES_NTSC_FPS_NUM * self.multiplier as u64;
-                format!("{}/{}", numerator, NES_NTSC_FPS_DEN)
+                let numerator = NES_NTSC_FPS_NUM * u64::from(self.multiplier);
+                format!("{numerator}/{NES_NTSC_FPS_DEN}")
             }
             VideoExportMode::Smooth => {
                 // Clean integer FPS
                 let fps = 60 * self.multiplier;
-                format!("{}/1", fps)
+                format!("{fps}/1")
             }
         }
     }
@@ -253,9 +254,11 @@ impl FpsConfig {
     /// For 1x, this is 1 (capture once per complete frame).
     /// For 2x, this is 2 (capture at mid-frame and end of frame).
     /// For 3x, this is 3 (capture at 1/3, 2/3, and end of frame).
+    #[must_use]
     pub fn captures_per_frame(&self) -> u32 { self.multiplier }
 
     /// Check if this configuration requires mid-frame captures.
+    #[must_use]
     pub fn needs_mid_frame_capture(&self) -> bool { self.multiplier > 1 }
 }
 
@@ -275,9 +278,9 @@ impl Default for FpsConfig {
 /// Video encoding error
 #[derive(Debug)]
 pub enum VideoError {
-    /// FFmpeg is not installed or not found in PATH
+    /// `FFmpeg` is not installed or not found in PATH
     FfmpegNotFound,
-    /// FFmpeg process failed
+    /// `FFmpeg` process failed
     FfmpegFailed(String),
     /// I/O error
     IoError(io::Error),
@@ -300,9 +303,9 @@ impl std::fmt::Display for VideoError {
                      format."
                 )
             }
-            VideoError::FfmpegFailed(msg) => write!(f, "FFmpeg encoding failed: {}", msg),
-            VideoError::IoError(e) => write!(f, "I/O error: {}", e),
-            VideoError::ImageError(e) => write!(f, "Image encoding error: {}", e),
+            VideoError::FfmpegFailed(msg) => write!(f, "FFmpeg encoding failed: {msg}"),
+            VideoError::IoError(e) => write!(f, "I/O error: {e}"),
+            VideoError::ImageError(e) => write!(f, "Image encoding error: {e}"),
             VideoError::InvalidDimensions {
                 expected,
                 got,
@@ -397,9 +400,9 @@ pub fn create_encoder(
     }
 }
 
-/// Create an MP4 encoder with FFmpeg native nearest-neighbor scaling.
+/// Create an MP4 encoder with `FFmpeg` native nearest-neighbor scaling.
 ///
-/// This passes scaling to FFmpeg using `-vf scale=W:H:flags=neighbor`,
+/// This passes scaling to `FFmpeg` using `-vf scale=W:H:flags=neighbor`,
 /// which is efficient and produces sharp pixel edges.
 pub fn create_encoder_with_scale(
     output_path: &Path,
@@ -450,14 +453,12 @@ impl PngSequenceEncoder {
     fn frame_path(&self, frame: u64) -> PathBuf {
         let stem = self
             .base_path
-            .file_stem()
-            .map(|s| s.to_string_lossy().to_string())
-            .unwrap_or_else(|| "frame".to_string());
+            .file_stem().map_or_else(|| "frame".to_string(), |s| s.to_string_lossy().to_string());
         let dir = self
             .base_path
             .parent()
             .unwrap_or(Path::new("../../../../../../.."));
-        dir.join(format!("{}_{:06}.png", stem, frame))
+        dir.join(format!("{stem}_{frame:06}.png"))
     }
 }
 
@@ -521,14 +522,12 @@ impl PpmSequenceEncoder {
     fn frame_path(&self, frame: u64) -> PathBuf {
         let stem = self
             .base_path
-            .file_stem()
-            .map(|s| s.to_string_lossy().to_string())
-            .unwrap_or_else(|| "frame".to_string());
+            .file_stem().map_or_else(|| "frame".to_string(), |s| s.to_string_lossy().to_string());
         let dir = self
             .base_path
             .parent()
             .unwrap_or(Path::new("../../../../../../.."));
-        dir.join(format!("{}_{:06}.ppm", stem, frame))
+        dir.join(format!("{stem}_{frame:06}.ppm"))
     }
 }
 
@@ -574,9 +573,9 @@ impl VideoEncoder for PpmSequenceEncoder {
 // FFmpeg MP4 Encoder
 // =============================================================================
 
-/// Encoder that pipes frames to FFmpeg for MP4 encoding.
+/// Encoder that pipes frames to `FFmpeg` for MP4 encoding.
 ///
-/// Supports native nearest-neighbor scaling via FFmpeg's scale filter.
+/// Supports native nearest-neighbor scaling via `FFmpeg`'s scale filter.
 pub struct FfmpegMp4Encoder {
     child: Option<Child>,
     stdin: Option<BufWriter<std::process::ChildStdin>>,
@@ -587,9 +586,9 @@ pub struct FfmpegMp4Encoder {
 }
 
 impl FfmpegMp4Encoder {
-    /// Create a new FFmpeg MP4 encoder.
+    /// Create a new `FFmpeg` MP4 encoder.
     ///
-    /// If `scale_to` is provided, FFmpeg will scale to that resolution using
+    /// If `scale_to` is provided, `FFmpeg` will scale to that resolution using
     /// nearest-neighbor interpolation (sharp pixel edges).
     pub fn new(
         output_path: &Path,
@@ -648,12 +647,11 @@ impl FfmpegMp4Encoder {
             && (dst_w != width || dst_h != height)
         {
             eprintln!(
-                "FFmpeg scaling {}x{} -> {}x{} (nearest neighbor)",
-                width, height, dst_w, dst_h
+                "FFmpeg scaling {width}x{height} -> {dst_w}x{dst_h} (nearest neighbor)"
             );
             args.extend([
                 "-vf".to_string(),
-                format!("scale={}:{}:flags=neighbor", dst_w, dst_h),
+                format!("scale={dst_w}:{dst_h}:flags=neighbor"),
             ]);
         }
 
@@ -864,7 +862,7 @@ impl VideoEncoder for RawEncoder {
 // Helper Functions
 // =============================================================================
 
-/// Convert FPS to a rational string representation for FFmpeg.
+/// Convert FPS to a rational string representation for `FFmpeg`.
 ///
 /// This function converts floating-point FPS values to precise fractional
 /// representations to avoid frame timing drift in video encoding.
@@ -881,16 +879,16 @@ fn fps_to_rational(fps: f64) -> String {
     // Check for NES NTSC framerate and its multiples (within tolerance)
     // NES NTSC framerate: 39375000 / 655171 ≈ 60.098814
     for multiplier in 1..=10 {
-        let target = NES_NTSC_FPS * multiplier as f64;
+        let target = NES_NTSC_FPS * f64::from(multiplier);
         if (fps - target).abs() < NES_TOLERANCE {
             let numerator = NES_NTSC_FPS_NUM * multiplier as u64;
-            return format!("{}/{}", numerator, NES_NTSC_FPS_DEN);
+            return format!("{numerator}/{NES_NTSC_FPS_DEN}");
         }
     }
 
     // Check for smooth framerate multiples (60, 120, 180, etc.)
     for multiplier in 1..=10 {
-        let target = SMOOTH_FPS * multiplier as f64;
+        let target = SMOOTH_FPS * f64::from(multiplier);
         if (fps - target).abs() < STANDARD_TOLERANCE {
             return format!("{}/1", 60 * multiplier);
         }
@@ -916,7 +914,7 @@ fn fps_to_rational(fps: f64) -> String {
     // For other framerates, use a high-precision rational approximation
     // by multiplying by 1000 and rounding to get integer numerator
     let numerator = (fps * 1000.0).round() as u64;
-    format!("{}/1000", numerator)
+    format!("{numerator}/1000")
 }
 
 /// Encode collected frames to video.
@@ -938,25 +936,25 @@ pub fn encode_frames(
     Ok(encoder.frames_written())
 }
 
-/// Check if FFmpeg is available for MP4 encoding.
+/// Check if `FFmpeg` is available for MP4 encoding.
+#[must_use]
 pub fn is_ffmpeg_available() -> bool {
     Command::new("ffmpeg")
         .arg("-version")
         .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
+        .is_ok_and(|o| o.status.success())
 }
 
 // =============================================================================
 // Streaming Video Encoder
 // =============================================================================
 
-/// A streaming video encoder that handles scaling via FFmpeg.
+/// A streaming video encoder that handles scaling via `FFmpeg`.
 ///
 /// This encoder is designed for use during emulation - frames are written
 /// immediately as they are generated, without buffering all frames in memory.
 ///
-/// Scaling is Handled natively by FFmpeg using nearest-neighbor interpolation,
+/// Scaling is Handled natively by `FFmpeg` using nearest-neighbor interpolation,
 /// which is efficient and produces sharp pixel edges.
 pub struct StreamingVideoEncoder {
     encoder: Box<dyn VideoEncoder>,
@@ -983,36 +981,33 @@ impl StreamingVideoEncoder {
         let (dst_width, dst_height) = resolution.dimensions(src_width, src_height);
         let fps = fps_config.output_fps();
 
-        let encoder: Box<dyn VideoEncoder> = match format {
-            VideoFormat::Mp4 => {
-                if dst_width != src_width || dst_height != src_height {
-                    // Use FFmpeg native scaling
-                    Box::new(FfmpegMp4Encoder::new(
-                        output_path,
-                        src_width,
-                        src_height,
-                        fps,
-                        Some((dst_width, dst_height)),
-                    )?)
-                } else {
-                    Box::new(FfmpegMp4Encoder::new(
-                        output_path,
-                        src_width,
-                        src_height,
-                        fps,
-                        None,
-                    )?)
-                }
+        let encoder: Box<dyn VideoEncoder> = if format == VideoFormat::Mp4 {
+            if dst_width != src_width || dst_height != src_height {
+                // Use FFmpeg native scaling
+                Box::new(FfmpegMp4Encoder::new(
+                    output_path,
+                    src_width,
+                    src_height,
+                    fps,
+                    Some((dst_width, dst_height)),
+                )?)
+            } else {
+                Box::new(FfmpegMp4Encoder::new(
+                    output_path,
+                    src_width,
+                    src_height,
+                    fps,
+                    None,
+                )?)
             }
-            _ => {
-                // For non-MP4 formats, no scaling (use native resolution)
-                if dst_width != src_width || dst_height != src_height {
-                    eprintln!(
-                        "Warning: Scaling only supported for MP4 format. Using native resolution."
-                    );
-                }
-                create_encoder(format, output_path, src_width, src_height, fps)?
+        } else {
+            // For non-MP4 formats, no scaling (use native resolution)
+            if dst_width != src_width || dst_height != src_height {
+                eprintln!(
+                    "Warning: Scaling only supported for MP4 format. Using native resolution."
+                );
             }
+            create_encoder(format, output_path, src_width, src_height, fps)?
         };
 
         Ok(Self {
@@ -1034,26 +1029,33 @@ impl StreamingVideoEncoder {
     pub fn finish(&mut self) -> Result<(), VideoError> { self.encoder.finish() }
 
     /// Get the number of frames written so far.
+    #[must_use]
     pub fn frames_written(&self) -> u64 { self.encoder.frames_written() }
 
     /// Get the source dimensions.
+    #[must_use]
     pub fn source_dimensions(&self) -> (u32, u32) { (self.src_width, self.src_height) }
 
     /// Get the output dimensions (after scaling).
+    #[must_use]
     pub fn output_dimensions(&self) -> (u32, u32) { (self.dst_width, self.dst_height) }
 
     /// Check if scaling is enabled.
+    #[must_use]
     pub fn is_scaling(&self) -> bool {
         self.dst_width != self.src_width || self.dst_height != self.src_height
     }
 
     /// Get the FPS configuration.
+    #[must_use]
     pub fn fps_config(&self) -> &FpsConfig { &self.fps_config }
 
     /// Check if mid-frame captures are needed.
+    #[must_use]
     pub fn needs_mid_frame_capture(&self) -> bool { self.fps_config.needs_mid_frame_capture() }
 
     /// Get the number of captures per PPU frame.
+    #[must_use]
     pub fn captures_per_frame(&self) -> u32 { self.fps_config.captures_per_frame() }
 }
 

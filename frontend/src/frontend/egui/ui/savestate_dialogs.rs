@@ -63,7 +63,7 @@ fn render_rom_selection_dialog(
     modal_window("Select ROM").show(ctx, |ui| {
         ui.label("Please select the ROM file for this savestate.");
         ui.add_space(8.0);
-        ui.label(format!("Expected ROM: {}", rom_name));
+        ui.label(format!("Expected ROM: {rom_name}"));
         ui.add_space(16.0);
         ui.horizontal(|ui| {
             if ui.button("Select ROM...").clicked() {
@@ -110,7 +110,7 @@ fn render_matching_rom_dialog(
     modal_window("Matching ROM Found").show(ctx, |ui| {
         ui.label("A ROM file matching the savestate was found:");
         ui.add_space(8.0);
-        ui.label(format!("ROM: {}", rom_name));
+        ui.label(format!("ROM: {rom_name}"));
         ui.add_space(8.0);
         ui.label("Would you like to use this ROM or select one manually?");
         ui.add_space(16.0);
@@ -169,8 +169,8 @@ fn render_checksum_mismatch_dialog(
     modal_window("⚠ Checksum Mismatch").show(ctx, |ui| {
         ui.label("Warning: The selected ROM's checksum doesn't match!");
         ui.add_space(8.0);
-        ui.label(format!("Expected ROM: {}", expected_name));
-        ui.label(format!("Selected ROM: {}", selected_name));
+        ui.label(format!("Expected ROM: {expected_name}"));
+        ui.label(format!("Selected ROM: {selected_name}"));
         ui.add_space(8.0);
         ui.label("Loading a savestate with a different ROM may cause issues or crashes.");
         ui.add_space(16.0);
@@ -191,9 +191,9 @@ fn render_checksum_mismatch_dialog(
 
     if close {
         if load_anyway {
-            let _ = sender.send(AsyncFrontendMessage::LoadSavestateAnyway(context, rom));
+            let _ = sender.send(AsyncFrontendMessage::UseMatchingRom(context, rom));
         } else if select_another {
-            let _ = sender.send(AsyncFrontendMessage::SelectAnotherRom(context));
+            let _ = sender.send(AsyncFrontendMessage::ManuallySelectRom(context));
         }
         dialogs.checksum_mismatch_dialog = None;
     }
@@ -210,7 +210,7 @@ fn render_error_dialog(ctx: &egui::Context, dialogs: &mut PendingDialogs) {
 
     let mut close = false;
 
-    modal_window(&format!("❌ {}", title)).show(ctx, |ui| {
+    modal_window(&format!("❌ {title}")).show(ctx, |ui| {
         ui.label(&message);
         ui.add_space(16.0);
         if ui.button("OK").clicked() {

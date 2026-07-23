@@ -50,7 +50,7 @@ impl PeripheralDevice for StandardController {
     #[inline]
     fn read(&mut self) -> u8 {
         if self.strobe {
-            self.shift = self.input
+            self.shift = self.input;
         }
 
         self.poll()
@@ -64,14 +64,14 @@ impl PeripheralDevice for StandardController {
             shift = self.input;
         }
 
-        self.poll_with_shift(shift)
+        StandardController::poll_with_shift(shift)
     }
 
     #[inline]
     fn handle_strobe_data(&mut self, data: u8) {
         self.strobe = (data & 1) == 1;
         if self.strobe {
-            self.shift = self.input
+            self.shift = self.input;
         }
     }
 }
@@ -85,5 +85,5 @@ impl StandardController {
     }
 
     #[inline]
-    fn poll_with_shift(&self, shift: u8) -> u8 { shift & 1 }
+    fn poll_with_shift(shift: u8) -> u8 { shift & 1 }
 }

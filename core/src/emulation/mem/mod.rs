@@ -78,12 +78,12 @@ impl OpenBus {
 
     #[inline]
     pub fn tick(&mut self, times: u8) {
-        let times = times as u32;
+        let times = u32::from(times);
         for (i, bit) in &mut self.bits.iter_mut().enumerate() {
             self.timers[i] += times;
             if self.timers[i] > self.decay_time {
                 *bit = false;
-                self.timers[i] = 0
+                self.timers[i] = 0;
             }
         }
     }
@@ -91,16 +91,16 @@ impl OpenBus {
     #[inline]
     pub fn read(&self) -> u8 { Self::bools_to_u8(self.bits) }
 
-    #[inline(always)]
+    #[inline]
     fn bools_to_u8(bits: [bool; 8]) -> u8 {
-        (bits[0] as u8)
-            | (bits[1] as u8) << 1
-            | (bits[2] as u8) << 2
-            | (bits[3] as u8) << 3
-            | (bits[4] as u8) << 4
-            | (bits[5] as u8) << 5
-            | (bits[6] as u8) << 6
-            | (bits[7] as u8) << 7
+        u8::from(bits[0])
+            | u8::from(bits[1]) << 1
+            | u8::from(bits[2]) << 2
+            | u8::from(bits[3]) << 3
+            | u8::from(bits[4]) << 4
+            | u8::from(bits[5]) << 5
+            | u8::from(bits[6]) << 6
+            | u8::from(bits[7]) << 7
     }
 }
 

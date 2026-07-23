@@ -76,14 +76,14 @@ impl<V: MMC1Variant, S: MMC1Submapper> MapperLike for MMC1Common<V, S> {
                 if (6000..=0x7FFF).contains(&addr) {
                     if let Some(prg_ram) = &mut self.prg_ram {
                         let addr = ((addr - 0x6000) + self.prg_ram_bank_offset) % self.prg_ram_size;
-                        prg_ram.write(addr as u32, data);
+                        prg_ram.write(u32::from(addr), data);
                     }
                 }
 
                 if addr >= 0x8000 {
                     if data & 0x80 != 0 {
                         self.shift = 0;
-                        self.set_ctrl(self.ctrl_reg | 0x0C)
+                        self.set_ctrl(self.ctrl_reg | 0x0C);
                     } else {
                         if self.last_shift_write != cycle - 1 {
                             self.shift = (self.shift >> 1) | ((data & 1) << 4);
@@ -96,7 +96,7 @@ impl<V: MMC1Variant, S: MMC1Submapper> MapperLike for MMC1Common<V, S> {
                             }
                         }
 
-                        self.last_shift_write = cycle
+                        self.last_shift_write = cycle;
                     }
                 }
 
@@ -121,7 +121,7 @@ impl<V: MMC1Variant, S: MMC1Submapper> MapperLike for MMC1Common<V, S> {
                 0x6000..=0x7FFF => {
                     if let Some(prg_ram) = &self.prg_ram {
                         let addr = ((addr - 0x6000) + self.prg_ram_bank_offset) % self.prg_ram_size;
-                        (prg_ram.read(addr as u32, open_bus), true)
+                        (prg_ram.read(u32::from(addr), open_bus), true)
                     } else {
                         (open_bus.read(), false)
                     }
@@ -148,7 +148,9 @@ impl<V: MMC1Variant, S: MMC1Submapper> MapperLike for MMC1Common<V, S> {
     #[inline]
     fn ppu_read_debug(&self, addr: u16, open_bus: &OpenBus) -> PpuReadResult {
         match addr {
-            0..=0x1FFF => {
+            0..=0x1FFF =>
+            {
+                #[allow(clippy::cast_possible_truncation)]
                 if let Some(rom) = &self.chr_rom {
                     PpuReadResult::Handled(
                         rom.read(self.get_chr_rom_address(addr), open_bus),
@@ -179,6 +181,7 @@ impl<V: MMC1Variant, S: MMC1Submapper> MapperLike for MMC1Common<V, S> {
     #[inline]
     fn ppu_init(&mut self, addr: u16, data: u8) -> PpuWriteResult { self.ppu_write(addr, data) }
 
+    #[allow(clippy::too_many_lines)]
     fn get_registers_debug(&self) -> MapperRegisterTables {
         let mut general = RegisterMap::new();
         general.insert(
@@ -305,12 +308,12 @@ impl<V: MMC1Variant, S: MMC1Submapper> MMC1Common<V, S> {
     #[inline]
     fn get_prg_rom_address(&self, addr: u16) -> u32 {
         // should be between 0x4000 and 0x7FFF
-        let addr = (addr - 0x8000) as u32;
+        let addr = u32::from(addr - 0x8000);
         let bank = self.prg_bank & 0b1111;
 
         // we're in 32kb mode
         if self.prg_rom_bank_mode <= 1 {
-            return 0x8000 * ((bank as u32) >> 1) + addr;
+            return 0x8000 * (u32::from(bank) >> 1) + addr;
         }
 
         // were in 16kb mode, so the half determines what logic gets used
@@ -321,12 +324,12 @@ impl<V: MMC1Variant, S: MMC1Submapper> MMC1Common<V, S> {
                 if is_in_first_half {
                     addr
                 } else {
-                    (bank as u32 * KB_16) + addr
+                    (u32::from(bank) * KB_16) + addr
                 }
             }
             3 => {
                 if is_in_first_half {
-                    (bank as u32 * KB_16) + addr
+                    (u32::from(bank) * KB_16) + addr
                 } else {
                     addr + (6 * KB_16)
                 }
@@ -339,10 +342,10 @@ impl<V: MMC1Variant, S: MMC1Submapper> MMC1Common<V, S> {
 
     #[inline]
     fn get_chr_rom_address(&self, addr: u16) -> u32 {
-        let addr = addr as u32;
+        let addr = u32::from(addr);
 
         if self.chr_rom_bank_mode == 0 {
-            (self.chr_bank_0 as u32 >> 1) * 0x2000 + addr
+            (u32::from(self.chr_bank_0) >> 1) * 0x2000 + addr
         } else {
             let is_in_first_half = addr / 0x1000 == 0;
             let bank = if is_in_first_half {
@@ -351,7 +354,7 @@ impl<V: MMC1Variant, S: MMC1Submapper> MMC1Common<V, S> {
                 self.chr_bank_1
             };
 
-            (0x1000 * bank as u32) + (addr & 0x0FFF)
+            (0x1000 * u32::from(bank)) + (addr & 0x0FFF)
         }
     }
 
@@ -369,7 +372,7 @@ impl<V: MMC1Variant, S: MMC1Submapper> MMC1Common<V, S> {
 
     fn set_ctrl(&mut self, val: u8) {
         self.ctrl_reg = val;
-        self.process_ctrl_change()
+        self.process_ctrl_change();
     }
 
     fn process_ctrl_change(&mut self) {
@@ -393,6 +396,7 @@ impl<V: MMC1Variant, S: MMC1Submapper> From<&RomFile> for MMC1Common<V, S> {
         let prg_ram_size = Mapper::get_likely_correct_ram_size(value);
         let battery_backed = value.is_battery_backed || value.prg_memory.prg_nvram_size > 0;
 
+        #[allow(clippy::cast_possible_truncation)]
         let mut mmc1 = MMC1Common {
             prg_ram_size: prg_ram_size as u16,
             prg_ram_battery_backed: battery_backed,

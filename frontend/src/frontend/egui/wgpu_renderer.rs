@@ -53,7 +53,7 @@ const PALETTE_LUT_SIZE: u32 = 512;
 /// 1. Maps the fragment's NDC position to a texel in the 256×240 index texture.
 /// 2. Reads the 9-bit palette index stored as a `u32`.
 /// 3. Looks up the corresponding RGBA entry in the 512×1 palette texture.
-const SHADER_SRC: &str = r#"
+const SHADER_SRC: &str = r"
 // ---- Vertex shader -------------------------------------------------------
 
 struct VertexOutput {
@@ -98,7 +98,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let rgba   = textureLoad(palette_tex, vec2<i32>(i32(index), 0), 0);
     return vec4<f32>(rgba.rgb, 1.0);
 }
-"#;
+";
 
 /// All persistent wgpu resources needed to render the NES frame.
 ///
@@ -206,8 +206,8 @@ impl NesWgpuRenderer {
         let index_texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("nes_index_tex"),
             size: wgpu::Extent3d {
-                width: TOTAL_OUTPUT_WIDTH as u32,
-                height: TOTAL_OUTPUT_HEIGHT as u32,
+                width: u32::from(TOTAL_OUTPUT_WIDTH),
+                height: u32::from(TOTAL_OUTPUT_HEIGHT),
                 depth_or_array_layers: 1,
             },
             mip_level_count: 1,
@@ -272,9 +272,9 @@ impl NesWgpuRenderer {
         // Widen u16 → u32 (4 bytes per texel for R32Uint).
         let data: Vec<u8> = buffer
             .iter()
-            .map(|v| *v as u32)
-            .map(|v| v.to_ne_bytes())
-            .flat_map(|b| b.into_iter())
+            .map(|v| u32::from(*v))
+            .map(u32::to_ne_bytes)
+            .flat_map(std::iter::IntoIterator::into_iter)
             .collect();
 
         queue.write_texture(
@@ -287,12 +287,12 @@ impl NesWgpuRenderer {
             &data,
             wgpu::TexelCopyBufferLayout {
                 offset: 0,
-                bytes_per_row: Some(TOTAL_OUTPUT_WIDTH as u32 * 4), // 4 bytes per R32Uint texel
+                bytes_per_row: Some(u32::from(TOTAL_OUTPUT_WIDTH) * 4), // 4 bytes per R32Uint texel
                 rows_per_image: None,
             },
             wgpu::Extent3d {
-                width: TOTAL_OUTPUT_WIDTH as u32,
-                height: TOTAL_OUTPUT_HEIGHT as u32,
+                width: u32::from(TOTAL_OUTPUT_WIDTH),
+                height: u32::from(TOTAL_OUTPUT_HEIGHT),
                 depth_or_array_layers: 1,
             },
         );

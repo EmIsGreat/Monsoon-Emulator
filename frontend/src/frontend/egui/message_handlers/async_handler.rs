@@ -3,6 +3,8 @@
 //! This module handles messages from async operations such as file dialogs,
 //! savestate loading workflows, and other deferred operations.
 
+use std::path::Path;
+
 use egui::{Context, Id, ViewportCommand};
 use monsoon_core::emulation::palette_util::RgbPalette;
 use monsoon_core::emulation::ppu_util::EmulatorFetchable;
@@ -10,7 +12,7 @@ use monsoon_core::emulation::savestate;
 use monsoon_core::util::{SerializationError, ToBytes};
 
 use crate::frontend::egui::config::AutoPauseReason;
-use crate::frontend::egui::tiles::{Pane, add_pane_if_missing};
+use crate::frontend::egui::tiles::{add_pane_if_missing, Pane};
 use crate::frontend::egui_frontend::EguiApp;
 use crate::frontend::messages::{AsyncFrontendMessage, LoadedRom, SavestateLoadContext};
 use crate::frontend::savestates::{
@@ -19,7 +21,7 @@ use crate::frontend::savestates::{
 };
 use crate::frontend::storage::{Storage, StorageKey};
 use crate::frontend::util::{
-    SavestateLoadError, spawn_rom_picker, spawn_savestate_picker, try_parse_savestate,
+    spawn_rom_picker, spawn_savestate_picker, try_parse_savestate, SavestateLoadError,
 };
 use crate::frontend::{storage, util};
 use crate::messages::{FrontendMessage, SaveType};
@@ -43,11 +45,12 @@ impl AsyncMessageHandler for EguiApp {
 
 impl EguiApp {
     /// Handle a single async message.
+    #[allow(clippy::too_many_lines)]
     pub(crate) fn handle_single_async_message(&mut self, msg: AsyncFrontendMessage, ctx: &Context) {
         match msg {
             AsyncFrontendMessage::PaletteLoaded(loaded) => {
                 self.config.user_config.previous_palette_load_dir = Some(loaded.directory);
-                self.handle_palette_loaded(ctx, loaded.palette);
+                self.handle_palette_loaded(ctx, &loaded.palette);
             }
             AsyncFrontendMessage::RomDbReady(db) => {
                 let _ = self.to_emulator.send(FrontendMessage::UpdateRomDb(db));
@@ -58,7 +61,7 @@ impl EguiApp {
                 file_type,
             } => {
                 if let Some(e) = error {
-                    eprintln!("File save error: {}", e);
+                    eprintln!("File save error: {e}");
                 }
                 if let Some(dir) = directory {
                     match file_type {
@@ -101,16 +104,6 @@ impl EguiApp {
                         context,
                         selected_rom: rom,
                     });
-            }
-            AsyncFrontendMessage::LoadSavestateAnyway(context, rom) => {
-                self.load_savestate_with_rom(&context, rom);
-            }
-            AsyncFrontendMessage::SelectAnotherRom(context) => {
-                util::spawn_rom_picker_for_savestate(
-                    &self.async_sender,
-                    context,
-                    self.config.user_config.previous_rom_load_dir.as_ref(),
-                );
             }
             AsyncFrontendMessage::SavestateLoadFailed(error) => {
                 self.handle_savestate_load_failed(error);
@@ -194,7 +187,7 @@ impl EguiApp {
                     .send(FrontendMessage::CreateSaveState(SaveType::Manual));
             }
             AsyncFrontendMessage::SetPalette(palette) => {
-                self.handle_set_palette(ctx, palette);
+                self.handle_set_palette(ctx, &palette);
             }
             AsyncFrontendMessage::WritePpuPalette {
                 address,
@@ -334,10 +327,10 @@ impl EguiApp {
         self.config.sync_dialog_pause_reason();
     }
 
-    fn handle_palette_loaded(&mut self, ctx: &Context, palette: RgbPalette) {
-        self.config.view_config.palette_rgb_data = palette;
+    fn handle_palette_loaded(&mut self, ctx: &Context, palette: &RgbPalette) {
+        self.config.view_config.palette_rgb_data = *palette;
         // Update the CPU renderer's palette
-        self.config.view_config.renderer.set_palette(palette);
+        self.config.view_config.renderer.set_palette(*palette);
         // Re-render the current frame with the new palette (CPU path only;
         // the GPU path picks up the new palette automatically on the next
         // paint via WgpuFrameCallback::prepare).
@@ -450,7 +443,7 @@ impl EguiApp {
         };
         self.config.pending_dialogs.error_dialog = Some(ErrorDialogState {
             title: "ROM Verification Error".to_string(),
-            message: format!("{}\n\nWould you like to select a different ROM?", message),
+            message: format!("{message}\n\nWould you like to select a different ROM?"),
         });
         self.config.pending_dialogs.rom_selection_dialog = Some(RomSelectionDialogState {
             context,
@@ -478,7 +471,7 @@ impl EguiApp {
                 let entries = match storage_impl.list(&prefix).await {
                     Ok(e) => e,
                     Err(e) => {
-                        eprintln!("Failed to list quicksaves: {}", e);
+                        eprintln!("Failed to list quicksaves: {e}");
                         let _ = sender.send(AsyncFrontendMessage::SavestateLoadFailed(
                             SavestateLoadError::FailedToLoadSavestate,
                         ));
@@ -486,16 +479,15 @@ impl EguiApp {
                     }
                 };
 
-                let key = match EguiApp::find_newest_quicksave(entries) {
-                    Some(k) => k,
-                    None => return,
+                let Some(key) = EguiApp::find_newest_quicksave(entries) else {
+                    return;
                 };
 
                 // Read the savestate
                 let data = match storage_impl.get(&key).await {
                     Ok(d) => d,
                     Err(e) => {
-                        eprintln!("Failed to read quicksave: {}", e);
+                        eprintln!("Failed to read quicksave: {e}");
                         let _ = sender.send(AsyncFrontendMessage::SavestateLoadFailed(
                             SavestateLoadError::FailedToLoadSavestate,
                         ));
@@ -503,9 +495,7 @@ impl EguiApp {
                     }
                 };
 
-                let savestate = if let Some(savestate) = try_parse_savestate(&sender, &data) {
-                    savestate
-                } else {
+                let Some(savestate) = try_parse_savestate(&sender, &data) else {
                     return;
                 };
 
@@ -523,10 +513,10 @@ impl EguiApp {
         }
     }
 
-    fn handle_set_palette(&mut self, ctx: &Context, palette: RgbPalette) {
-        self.config.view_config.palette_rgb_data = palette;
+    fn handle_set_palette(&mut self, ctx: &Context, palette: &RgbPalette) {
+        self.config.view_config.palette_rgb_data = *palette;
         // Update the CPU renderer's palette
-        self.config.view_config.renderer.set_palette(palette);
+        self.config.view_config.renderer.set_palette(*palette);
         // Re-render the current frame with the new palette (CPU path only;
         // the GPU path picks up the new palette automatically on the next
         // paint via WgpuFrameCallback::prepare).
@@ -605,7 +595,7 @@ impl EguiApp {
                     }
                 },
                 Err(e) => {
-                    eprintln!("Failed to read save: {}", e);
+                    eprintln!("Failed to read save: {e}");
                     let _ = sender.send(AsyncFrontendMessage::SavestateLoadFailed(
                         SavestateLoadError::FailedToLoadSavestate,
                     ));
@@ -636,7 +626,7 @@ impl EguiApp {
                     );
                 }
                 Err(e) => {
-                    eprintln!("Failed to read save for export: {}", e);
+                    eprintln!("Failed to read save for export: {e}");
                 }
             }
         });
@@ -649,7 +639,7 @@ impl EguiApp {
 ///
 /// On native, `rom_dir` should be the resolved filesystem path of the user's
 /// ROM directory. On WASM, `rom_dir` is ignored (always None) and only the
-/// IndexedDB cache is searched.
+/// `IndexedDB` cache is searched.
 async fn find_matching_rom(
     context: &SavestateLoadContext,
     #[allow(unused)] rom_dir: Option<String>,
@@ -769,7 +759,7 @@ fn find_matching_rom_in_directory(dir: &str, context: &SavestateLoadContext) -> 
     None
 }
 
-/// Wrapper for raw bytes that implements ToBytes for the save dialog export.
+/// Wrapper for raw bytes that implements `ToBytes` for the save dialog export.
 struct ExportableData(Vec<u8>);
 
 impl ToBytes for ExportableData {
@@ -804,7 +794,9 @@ async fn add_save_entries(
 
     if let Ok(storage_entries) = storage_impl.list(prefix).await {
         for entry in storage_entries {
-            if entry.key.sub_path.ends_with(".sav")
+            if Path::new(&entry.key.sub_path)
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("sav"))
                 && let Some(save_entry) = parse_save_entry(entry.key, save_type)
             {
                 entries.push(save_entry);
@@ -813,7 +805,8 @@ async fn add_save_entries(
     }
 }
 
-/// Parse a storage key into a SaveEntry, extracting display name and timestamp.
+/// Parse a storage key into a `SaveEntry`, extracting display name and
+/// timestamp.
 fn parse_save_entry(key: StorageKey, save_type: SaveEntryType) -> Option<SaveEntry> {
     // Keys look like: saves/<game>/quicksaves/quicksave_2024-01-15_14-30-00.sav
     // or: saves/<game>/autosaves/autosaves_2024-01-15_14-30-00.sav
@@ -833,13 +826,13 @@ fn parse_save_entry(key: StorageKey, save_type: SaveEntryType) -> Option<SaveEnt
         let date_display = date.replacen('-', "/", 2);
         // Time: 14-30-00 → 14:30:00
         let time_display = time.replacen('-', ":", 2);
-        format!("{} {}", date_display, time_display)
+        format!("{date_display} {time_display}")
     } else {
         timestamp_str.to_string()
     };
 
     // Display name uses the timestamp for uniqueness
-    let display_name = format!("{}", save_type);
+    let display_name = format!("{save_type}");
 
     Some(SaveEntry {
         key,

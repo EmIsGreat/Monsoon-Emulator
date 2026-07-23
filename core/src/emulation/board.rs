@@ -10,8 +10,8 @@ use crate::emulation::mem::palette_ram::PaletteRam;
 use crate::emulation::mem::{Memory, OpenBus};
 use crate::emulation::peripherals::{Peripheral, PeripheralDevice};
 use crate::emulation::ppu::{
-    OPEN_BUS_DECAY_DELAY, PALETTE_RAM_END_ADDRESS, PALETTE_RAM_SIZE, PALETTE_RAM_START_ADDRESS,
-    Ppu, VRAM_SIZE,
+    Ppu, OPEN_BUS_DECAY_DELAY, PALETTE_RAM_END_ADDRESS, PALETTE_RAM_SIZE,
+    PALETTE_RAM_START_ADDRESS, VRAM_SIZE,
 };
 use crate::emulation::rom::RomFile;
 use crate::emulation::savestate::BoardState;
@@ -24,7 +24,7 @@ pub struct ReadResult {
 }
 
 impl From<u8> for ReadResult {
-    #[inline(always)]
+    #[inline]
     fn from(value: u8) -> Self {
         ReadResult {
             value,
@@ -35,19 +35,19 @@ impl From<u8> for ReadResult {
 }
 
 impl ReadResult {
-    #[inline(always)]
+    #[inline]
     pub fn to_false(mut self) -> Self {
         self.update_open_bus = false;
         self
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn with_mask(mut self, mask: u8) -> Self {
         self.mask = mask;
         self
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn with_update(mut self, update: bool) -> Self {
         self.update_open_bus = update;
         self
@@ -92,7 +92,7 @@ pub trait PpuBus {
     fn get_ppu_open_bus(&self) -> &OpenBus;
 }
 
-impl<'a> CpuBus for CpuBusView<'a> {
+impl CpuBus for CpuBusView<'_> {
     #[inline]
     fn read(&mut self, addr: u16) -> u8 {
         let res = self.mapper.read(addr, self.cpu_open_bus);
@@ -100,7 +100,7 @@ impl<'a> CpuBus for CpuBusView<'a> {
         let res = match res {
             CpuReadResult::Handled(data, update) => ReadResult::from(data).with_update(update),
             CpuReadResult::Registered => match addr {
-                0..=0x1FFF => self.cpu_ram.read(addr as u32, self.cpu_open_bus).into(),
+                0..=0x1FFF => self.cpu_ram.read(u32::from(addr), self.cpu_open_bus).into(),
                 0x2000..=0x3FFF => self.read_ppu_reg(addr),
                 0x4000..=0x401F => self.read_apu_io(addr),
                 _ => ReadResult::from(self.cpu_open_bus.read()).to_false(),
@@ -127,7 +127,7 @@ impl<'a> CpuBus for CpuBusView<'a> {
         match res {
             CpuReadResult::Handled(data, _) => data,
             CpuReadResult::Registered => match addr {
-                0..=0x1FFF => self.cpu_ram.snapshot(addr as u32, self.cpu_open_bus),
+                0..=0x1FFF => self.cpu_ram.snapshot(u32::from(addr), self.cpu_open_bus),
                 0x2000..=0x3FFF => self.snapshot_ppu_reg(addr, 0),
                 0x4000..=0x401F => self.snapshot_apu_io(addr, self.cpu_open_bus),
                 _ => self.cpu_open_bus.read(),
@@ -151,7 +151,7 @@ impl<'a> CpuBus for CpuBusView<'a> {
             CpuWriteResult::Handled => {}
             CpuWriteResult::Registered => match addr {
                 0..=0x1FFF => {
-                    self.cpu_ram.write(addr as u32, data);
+                    self.cpu_ram.write(u32::from(addr), data);
                 }
                 0x2000..=0x3FFF => {
                     self.write_ppu_reg(addr, data);
@@ -171,7 +171,7 @@ impl<'a> CpuBus for CpuBusView<'a> {
 
             CpuWriteResult::Registered => {
                 if let 0..=0x1FFF = addr {
-                    self.cpu_ram.init(addr as u32, data);
+                    self.cpu_ram.init(u32::from(addr), data);
                 }
             }
         }
@@ -190,7 +190,7 @@ impl<'a> CpuBus for CpuBusView<'a> {
     fn set_irq(&mut self, val: bool) { *self.irq = val }
 }
 
-impl<'a> PpuBus for PpuBusView<'a> {
+impl PpuBus for PpuBusView<'_> {
     #[inline]
     fn read(&mut self, addr: u16) -> u8 {
         let res = self.mapper.ppu_read(addr, self.ppu_io_bus);
@@ -198,7 +198,8 @@ impl<'a> PpuBus for PpuBusView<'a> {
         let res = match res {
             PpuReadResult::Handled(data, update) => ReadResult::from(data).with_update(update),
             PpuReadResult::Nametable(addr) => {
-                ReadResult::from(self.nametable_ram.read(addr as u32, self.ppu_io_bus)).to_false()
+                ReadResult::from(self.nametable_ram.read(u32::from(addr), self.ppu_io_bus))
+                    .to_false()
             }
             PpuReadResult::Registered => match addr {
                 0x3F00..=0x3FFF => {
@@ -207,11 +208,12 @@ impl<'a> PpuBus for PpuBusView<'a> {
                         .read((addr - 0x3F00) % PALETTE_RAM_SIZE, self.ppu_io_bus);
 
                     // Zeroes the four low bits in case grayscale is enabled
-                    let mask = !((self.grayscale_enabled as u8).wrapping_neg() & 0x0F);
+                    let mask = !(u8::from(self.grayscale_enabled).wrapping_neg() & 0x0F);
 
                     ReadResult::from(val & mask)
                 }
                 .to_false(),
+                #[allow(clippy::cast_possible_truncation)]
                 _ => ReadResult::from(addr as u8).to_false(),
             },
         };
@@ -235,16 +237,16 @@ impl<'a> PpuBus for PpuBusView<'a> {
 
         match res {
             PpuReadResult::Handled(data, _) => data,
-            PpuReadResult::Nametable(addr) => {
-                self.nametable_ram.snapshot(addr as u32, self.ppu_io_bus)
-            }
+            PpuReadResult::Nametable(addr) => self
+                .nametable_ram
+                .snapshot(u32::from(addr), self.ppu_io_bus),
             PpuReadResult::Registered => match addr {
                 0x3F00..=0x3FFF => {
                     self
                         .palette_ram
                         .snapshot((addr - 0x3F00) % PALETTE_RAM_SIZE, self.ppu_io_bus)
                         // Zeroes the four low bits in case grayscale is enabled
-                        & !((self.grayscale_enabled as u8).wrapping_neg() & 0x0F)
+                        & !(u8::from(self.grayscale_enabled).wrapping_neg() & 0x0F)
                 }
                 _ => self.ppu_io_bus.read(),
             },
@@ -257,7 +259,7 @@ impl<'a> PpuBus for PpuBusView<'a> {
 
         match res {
             PpuWriteResult::Handled => {}
-            PpuWriteResult::Nametable(addr) => self.nametable_ram.write(addr as u32, data),
+            PpuWriteResult::Nametable(addr) => self.nametable_ram.write(u32::from(addr), data),
             #[allow(clippy::single_match)]
             PpuWriteResult::Registered => match addr {
                 0x3F00..=0x3FFF => {
@@ -273,9 +275,9 @@ impl<'a> PpuBus for PpuBusView<'a> {
                             // Zeroes the four low bits in case grayscale is enabled, and then
                             // or's in the previous palette ram value. Effectively ignores the
                             // lower four bits completely in case of grayscale enable
-                            & (!((self.grayscale_enabled as u8).wrapping_neg() & 0x0F)
+                            & (!(u8::from(self.grayscale_enabled).wrapping_neg() & 0x0F)
                         ) | prev,
-                    )
+                    );
                 }
                 _ => {}
             },
@@ -289,12 +291,12 @@ impl<'a> PpuBus for PpuBusView<'a> {
         match res {
             PpuWriteResult::Handled => {}
             PpuWriteResult::Nametable(addr) => {
-                self.nametable_ram.init(addr as u32, data);
+                self.nametable_ram.init(u32::from(addr), data);
             }
             PpuWriteResult::Registered => {
                 if let 0x3F00..=0x3FFF = addr {
                     self.palette_ram
-                        .init((addr - 0x3F00) % PALETTE_RAM_SIZE, data)
+                        .init((addr - 0x3F00) % PALETTE_RAM_SIZE, data);
                 }
             }
         }
@@ -378,7 +380,7 @@ impl<'a> CpuBusView<'a> {
                 {
                     self.ppu_io_bus.set_masked(val, 0b0011_1111);
                 } else {
-                    self.ppu_io_bus.set_masked(val, 0xFF)
+                    self.ppu_io_bus.set_masked(val, 0xFF);
                 }
 
                 val.into()
@@ -390,7 +392,6 @@ impl<'a> CpuBusView<'a> {
     #[inline]
     fn snapshot_apu_io(&self, addr: u16, open_bus: &OpenBus) -> u8 {
         match addr {
-            0x4000..=0x4014 => open_bus.read(),
             0x4015 => {
                 let frame_interrupt = if self.apu.frame_counter.frame_interrupt {
                     0b0100_0000
@@ -414,7 +415,6 @@ impl<'a> CpuBusView<'a> {
                     open_bus.read()
                 }
             }
-            0x4018..=0x401F => open_bus.read(),
             _ => open_bus.read(),
         }
     }
@@ -422,7 +422,6 @@ impl<'a> CpuBusView<'a> {
     #[inline]
     fn read_apu_io(&mut self, addr: u16) -> ReadResult {
         match addr {
-            0x4000..=0x4014 => ReadResult::from(self.cpu_open_bus.read()).to_false(),
             0x4015 => {
                 let frame_interrupt = if self.apu.frame_counter.get_frame_interrupt_for_register() {
                     0b0100_0000
@@ -434,14 +433,13 @@ impl<'a> CpuBusView<'a> {
                     .to_false()
             }
             0x4016 => match self.controller1.as_mut() {
-                Some(controller) => ReadResult::from(controller.read()).with_mask(!0b11100000),
+                Some(controller) => ReadResult::from(controller.read()).with_mask(!0b1110_0000),
                 None => ReadResult::from(self.cpu_open_bus.read()).to_false(),
             },
             0x4017 => match self.controller2.as_mut() {
-                Some(controller) => ReadResult::from(controller.read()).with_mask(!0b11100000),
+                Some(controller) => ReadResult::from(controller.read()).with_mask(!0b1110_0000),
                 None => ReadResult::from(self.cpu_open_bus.read()).to_false(),
             },
-            0x4018..=0x401F => ReadResult::from(self.cpu_open_bus.read()).to_false(),
             _ => ReadResult::from(self.cpu_open_bus.read()).to_false(),
         }
     }
@@ -492,7 +490,7 @@ impl<'a> CpuBusView<'a> {
                 self.ppu.write_vram(data, &mut bus);
             }
             _ => (),
-        };
+        }
     }
 
     #[inline]
@@ -504,8 +502,8 @@ impl<'a> CpuBusView<'a> {
                 Board::update_controllers(
                     self.controller1,
                     self.controller2,
-                    self.joystick_strobe_data,
-                )
+                    *self.joystick_strobe_data,
+                );
             }
             0x4017 => {
                 self.apu.frame_counter.five_step = data & 0x80 != 0;
@@ -573,26 +571,26 @@ impl Board {
         Board::update_controllers(
             &mut self.controller1,
             &mut self.controller2,
-            &self.joystick_strobe_data,
-        )
+            self.joystick_strobe_data,
+        );
     }
 
     pub fn update_controllers(
         controller1: &mut Option<Peripheral>,
         controller2: &mut Option<Peripheral>,
-        joystick_strobe_data: &u8,
+        joystick_strobe_data: u8,
     ) {
         if let Some(c1) = controller1 {
-            c1.handle_strobe_data(*joystick_strobe_data);
+            c1.handle_strobe_data(joystick_strobe_data);
         }
         if let Some(c2) = controller2 {
-            c2.handle_strobe_data(*joystick_strobe_data);
+            c2.handle_strobe_data(joystick_strobe_data);
         }
     }
 
     pub fn reset(&mut self) {
         self.cpu.reset();
-        self.ppu.reset()
+        self.ppu.reset();
     }
 
     pub fn load_rom(&mut self, rom_file: &RomFile) { self.mapper = rom_file.into() }

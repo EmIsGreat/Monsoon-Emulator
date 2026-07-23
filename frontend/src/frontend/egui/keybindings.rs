@@ -5,7 +5,7 @@
 //! - Emulation controls (Pause, Reset, Quicksave, Quickload)
 //! - Debug controls (Cycle palette)
 //!
-//! This module includes a port of the egui_hotkey crate's functionality
+//! This module includes a port of the `egui_hotkey` crate's functionality
 //! updated to work with egui 0.33.
 
 use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
@@ -86,7 +86,7 @@ pub(crate) fn hotkey_set_suppressed_binding(
 // Binding types (ported from egui_hotkey)
 // ============================================================================
 
-/// A standalone modifier key (Shift, Ctrl, Alt, Command, or MacCmd) used as a
+/// A standalone modifier key (Shift, Ctrl, Alt, Command, or `MacCmd`) used as a
 /// binding target.
 ///
 /// Unlike regular [`Key`] variants, these modifier keys are not part of egui's
@@ -103,7 +103,7 @@ pub enum ModifierKey {
 
 impl ModifierKey {
     /// Returns `true` if this modifier key is currently held down.
-    pub fn is_down(&self, input: &InputState) -> bool {
+    pub fn is_down(self, input: &InputState) -> bool {
         match self {
             ModifierKey::Shift => input.modifiers.shift,
             ModifierKey::Ctrl => input.modifiers.ctrl,
@@ -120,8 +120,7 @@ impl Display for ModifierKey {
             ModifierKey::Shift => f.write_str("Shift"),
             ModifierKey::Ctrl => f.write_str("Ctrl"),
             ModifierKey::Alt => f.write_str("Alt"),
-            ModifierKey::Command => f.write_str("Command"),
-            ModifierKey::MacCmd => f.write_str("Command"),
+            ModifierKey::Command | ModifierKey::MacCmd => f.write_str("Command"),
         }
     }
 }
@@ -134,7 +133,7 @@ pub enum BindVariant {
     Unbound,
     Mouse(PointerButton),
     Keyboard(Key),
-    /// A bare modifier key (e.g., Shift / Ctrl / Alt / Command / MacCmd) used
+    /// A bare modifier key (e.g., Shift / Ctrl / Alt / Command / `MacCmd`) used
     /// on its own.
     ModifierKey(ModifierKey),
 }
@@ -146,15 +145,14 @@ impl BindVariant {
     /// does not emit single-frame press events for modifier keys.  Use
     /// [`down`](Self::down) for continuous (held) checks instead, which is
     /// what controller inputs use.
-    pub fn pressed(&self, input_state: &InputState) -> bool {
+    pub fn pressed(self, input_state: &InputState) -> bool {
         match self {
-            BindVariant::Unbound => false,
             BindVariant::Mouse(mb) => input_state.events.iter().any(|e| {
                 matches!(e, Event::PointerButton {
                     button,
                     pressed: true,
                     ..
-                } if mb == button)
+                } if mb == *button)
             }),
             BindVariant::Keyboard(kb) => input_state.events.iter().any(|e| match e {
                 Event::Key {
@@ -162,21 +160,21 @@ impl BindVariant {
                     pressed: true,
                     modifiers,
                     ..
-                } => key_matches_event(*kb, *key, *modifiers),
+                } => key_matches_event(kb, *key, *modifiers),
                 _ => false,
             }),
             // egui doesn't emit Event::Key for modifier-only presses, so we
             // cannot distinguish "just pressed" from "still held".
-            BindVariant::ModifierKey(_) => false,
+            BindVariant::ModifierKey(_) | BindVariant::Unbound => false,
         }
     }
 
     /// Returns true if the variant is down.
-    pub fn down(&self, input_state: &InputState) -> bool {
+    pub fn down(self, input_state: &InputState) -> bool {
         match self {
             BindVariant::Unbound => false,
-            BindVariant::Mouse(mb) => input_state.pointer.button_down(*mb),
-            BindVariant::Keyboard(kb) => input_state.key_down(*kb),
+            BindVariant::Mouse(mb) => input_state.pointer.button_down(mb),
+            BindVariant::Keyboard(kb) => input_state.key_down(kb),
             BindVariant::ModifierKey(mk) => mk.is_down(input_state),
         }
     }
@@ -274,7 +272,7 @@ pub enum KeybindCategory {
 }
 
 impl KeybindCategory {
-    pub fn get_name(&self) -> &'static str {
+    pub fn get_name(self) -> &'static str {
         match self {
             KeybindCategory::Controller => "Controller Keybinds",
             KeybindCategory::Debug => "Debug Keybinds",
@@ -285,7 +283,7 @@ impl KeybindCategory {
 }
 
 impl OnKeyAction {
-    pub fn get_display_name(&self) -> &'static str {
+    pub fn get_display_name(self) -> &'static str {
         match self {
             OnKeyAction::ChangeDebugPalette => "Change Debug Palette",
             OnKeyAction::ControllerUp => "DPad Up",
@@ -326,7 +324,7 @@ impl OnKeyAction {
         }
     }
 
-    pub fn get_trigger_type(&self) -> TriggerType {
+    pub fn get_trigger_type(self) -> TriggerType {
         match self {
             OnKeyAction::ControllerUp
             | OnKeyAction::ControllerDown
@@ -342,7 +340,7 @@ impl OnKeyAction {
         }
     }
 
-    pub fn get_category(&self) -> KeybindCategory {
+    pub fn get_category(self) -> KeybindCategory {
         match self {
             OnKeyAction::ControllerUp
             | OnKeyAction::ControllerDown
@@ -389,20 +387,18 @@ impl OnKeyAction {
     /// When enabled, overlapping bindings can activate simultaneously instead
     /// of being filtered by specificity (for example, both `Shift` and
     /// `Shift+Enter` can trigger together).
-    pub fn allows_multi_trigger(&self) -> bool {
-        self.get_category() == KeybindCategory::Controller
-    }
+    pub fn allows_multi_trigger(self) -> bool { self.get_category() == KeybindCategory::Controller }
 
     /// Returns whether modifier matching for this action should permit extra
     /// held modifiers beyond those explicitly required by the binding.
     ///
     /// For example, a binding that requires `Shift` will still match while
     /// `Shift+Ctrl` is held when this returns `true`.
-    pub fn allows_extra_modifiers(&self) -> bool {
+    pub fn allows_extra_modifiers(self) -> bool {
         self.get_category() == KeybindCategory::Controller
     }
 
-    pub fn get_associated_message(&self) -> AsyncFrontendMessage {
+    pub fn get_associated_message(self) -> AsyncFrontendMessage {
         match self {
             OnKeyAction::ControllerUp => AsyncFrontendMessage::ControllerInput(ControllerEvent::Up),
             OnKeyAction::ControllerDown => {
@@ -457,7 +453,7 @@ impl OnKeyAction {
         }
     }
 
-    pub fn send(&self, sender: &Sender<AsyncFrontendMessage>) {
+    pub fn send(self, sender: &Sender<AsyncFrontendMessage>) {
         let _ = sender.send(self.get_associated_message());
     }
 }
@@ -475,6 +471,7 @@ impl Debug for Binding {
         f.debug_struct("Binding")
             .field("variant", &self.variant)
             .field("modifiers", &self.modifiers)
+            .field("action", &self.action.get_display_name())
             .finish()
     }
 }
@@ -499,7 +496,7 @@ impl Binding {
     }
 
     /// Format as a short string for display.
-    pub fn get_string_rep(&self) -> String {
+    pub fn get_string_rep(self) -> String {
         if self.variant == BindVariant::Unbound {
             return "None".to_string();
         }
@@ -528,12 +525,12 @@ impl Binding {
     ///
     /// Note: always returns `false` for [`ModifierKey`] bindings — see
     /// [`BindVariant::pressed`] for details.
-    pub fn pressed(&self, input_state: &InputState) -> bool {
+    pub fn pressed(self, input_state: &InputState) -> bool {
         self.pressed_with_modifier_matching(input_state, false)
     }
 
     fn pressed_with_modifier_matching(
-        &self,
+        self,
         input_state: &InputState,
         allow_extra_modifiers: bool,
     ) -> bool {
@@ -549,12 +546,12 @@ impl Binding {
     }
 
     /// Returns true if the variant is down and input modifiers are matching.
-    pub fn down(&self, input_state: &InputState) -> bool {
+    pub fn down(self, input_state: &InputState) -> bool {
         self.down_with_modifier_matching(input_state, false)
     }
 
     fn down_with_modifier_matching(
-        &self,
+        self,
         input_state: &InputState,
         allow_extra_modifiers: bool,
     ) -> bool {
@@ -719,6 +716,7 @@ impl<B> Widget for Hotkey<'_, B>
 where
     B: HotkeyBinding,
 {
+    #[allow(clippy::too_many_lines)]
     fn ui(self, ui: &mut Ui) -> Response {
         let size = ui.spacing().interact_size;
         let (rect, mut response) = ui.allocate_exact_size(size * vec2(2.0, 1.0), Sense::click());

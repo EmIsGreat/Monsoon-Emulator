@@ -93,6 +93,7 @@ impl ChannelEmulator {
         FETCH_DEPS.get_or_init(|| deps);
     }
 
+    #[must_use]
     pub fn new(nes: Nes) -> (Self, Sender<FrontendMessage>, Receiver<EmulatorMessage>) {
         Self::setup_fetch_deps();
 
@@ -105,7 +106,10 @@ impl ChannelEmulator {
             from_frontend: rx_from_frontend,
             input_1: 0,
             input_2: 0,
-            back_buffer: vec![0u16; TOTAL_OUTPUT_HEIGHT * TOTAL_OUTPUT_WIDTH],
+            back_buffer: vec![
+                0u16;
+                usize::from(TOTAL_OUTPUT_HEIGHT) * usize::from(TOTAL_OUTPUT_WIDTH)
+            ],
             last_palette_data: None,
             last_pattern_table_hash: None,
         };
@@ -196,7 +200,7 @@ impl ChannelEmulator {
                     if is_powered {
                         self.nes.power();
                     } else {
-                        self.nes.power_off()
+                        self.nes.power_off();
                     }
                 }
                 FrontendMessage::CreateSaveState(t) => {
@@ -215,7 +219,7 @@ impl ChannelEmulator {
                 FrontendMessage::StepMasterCycle => self.execute_master_cycle()?,
                 FrontendMessage::StepScanline => self.execute_scanline()?,
                 FrontendMessage::AttachPeripherals((peripheral1, peripheral2)) => {
-                    self.nes.attach_peripherals((peripheral1, peripheral2))
+                    self.nes.attach_peripherals((peripheral1, peripheral2));
                 }
                 FrontendMessage::UpdateRomDb(db) => self.nes.rom_db = db,
             }
@@ -227,109 +231,90 @@ impl ChannelEmulator {
     pub fn execute_master_cycle(&mut self) -> Result<(), String> {
         self.nes.set_controller_input(self.input_1, self.input_2);
 
-        match self.nes.step() {
-            Ok(_) => {
-                // Copy (not swap) so the PPU's accumulated mid-frame render is
-                // preserved in the work buffer for subsequent debug steps.
-                self.back_buffer
-                    .copy_from_slice(self.nes.get_pixel_buffer());
-                if self.to_frontend.send(EmulatorMessage::FrameReady).is_err() {
-                    return Err("Frontend disconnected".to_string());
-                }
+        self.nes.step();
 
-                // Check if debug data has changed and notify frontend
-                self.check_debug_data_changed();
-
-                Ok(())
-            }
-            Err(e) => Err(format!("Emulator error: {}", e)),
+        // Copy (not swap) so the PPU's accumulated mid-frame render is
+        // preserved in the work buffer for subsequent debug steps.
+        self.back_buffer
+            .copy_from_slice(self.nes.get_pixel_buffer());
+        if self.to_frontend.send(EmulatorMessage::FrameReady).is_err() {
+            return Err("Frontend disconnected".to_string());
         }
+
+        // Check if debug data has changed and notify frontend
+        self.check_debug_data_changed();
+
+        Ok(())
     }
 
     pub fn execute_ppu_cycle(&mut self) -> Result<(), String> {
         self.nes.set_controller_input(self.input_1, self.input_2);
 
-        match self.nes.step_ppu_cycle() {
-            Ok(_) => {
-                // Copy (not swap) so the PPU's accumulated mid-frame render is
-                // preserved in the work buffer for subsequent debug steps.
-                self.back_buffer
-                    .copy_from_slice(self.nes.get_pixel_buffer());
-                if self.to_frontend.send(EmulatorMessage::FrameReady).is_err() {
-                    return Err("Frontend disconnected".to_string());
-                }
-
-                // Check if debug data has changed and notify frontend
-                self.check_debug_data_changed();
-
-                Ok(())
-            }
-            Err(e) => Err(format!("Emulator error: {}", e)),
+        self.nes.step_ppu_cycle();
+        // Copy (not swap) so the PPU's accumulated mid-frame render is
+        // preserved in the work buffer for subsequent debug steps.
+        self.back_buffer
+            .copy_from_slice(self.nes.get_pixel_buffer());
+        if self.to_frontend.send(EmulatorMessage::FrameReady).is_err() {
+            return Err("Frontend disconnected".to_string());
         }
+
+        // Check if debug data has changed and notify frontend
+        self.check_debug_data_changed();
+
+        Ok(())
     }
 
     pub fn execute_cpu_cycle(&mut self) -> Result<(), String> {
         self.nes.set_controller_input(self.input_1, self.input_2);
 
-        match self.nes.step_cpu_cycle() {
-            Ok(_) => {
-                // Copy (not swap) so the PPU's accumulated mid-frame render is
-                // preserved in the work buffer for subsequent debug steps.
-                self.back_buffer
-                    .copy_from_slice(self.nes.get_pixel_buffer());
-                if self.to_frontend.send(EmulatorMessage::FrameReady).is_err() {
-                    return Err("Frontend disconnected".to_string());
-                }
-
-                // Check if debug data has changed and notify frontend
-                self.check_debug_data_changed();
-
-                Ok(())
-            }
-            Err(e) => Err(format!("Emulator error: {}", e)),
+        self.nes.step_cpu_cycle();
+        // Copy (not swap) so the PPU's accumulated mid-frame render is
+        // preserved in the work buffer for subsequent debug steps.
+        self.back_buffer
+            .copy_from_slice(self.nes.get_pixel_buffer());
+        if self.to_frontend.send(EmulatorMessage::FrameReady).is_err() {
+            return Err("Frontend disconnected".to_string());
         }
+
+        // Check if debug data has changed and notify frontend
+        self.check_debug_data_changed();
+
+        Ok(())
     }
 
     pub fn execute_scanline(&mut self) -> Result<(), String> {
         self.nes.set_controller_input(self.input_1, self.input_2);
 
-        match self.nes.step_scanline() {
-            Ok(_) => {
-                // Copy (not swap) so the PPU's accumulated mid-frame render is
-                // preserved in the work buffer for subsequent debug steps.
-                self.back_buffer
-                    .copy_from_slice(self.nes.get_pixel_buffer());
-                if self.to_frontend.send(EmulatorMessage::FrameReady).is_err() {
-                    return Err("Frontend disconnected".to_string());
-                }
-
-                // Check if debug data has changed and notify frontend
-                self.check_debug_data_changed();
-
-                Ok(())
-            }
-            Err(e) => Err(format!("Emulator error: {}", e)),
+        self.nes.step_scanline();
+        // Copy (not swap) so the PPU's accumulated mid-frame render is
+        // preserved in the work buffer for subsequent debug steps.
+        self.back_buffer
+            .copy_from_slice(self.nes.get_pixel_buffer());
+        if self.to_frontend.send(EmulatorMessage::FrameReady).is_err() {
+            return Err("Frontend disconnected".to_string());
         }
+
+        // Check if debug data has changed and notify frontend
+        self.check_debug_data_changed();
+
+        Ok(())
     }
 
     pub fn execute_frame(&mut self) -> Result<(), String> {
         self.nes.set_controller_input(self.input_1, self.input_2);
 
-        match self.nes.step_frame() {
-            Ok(_) => {
-                // Swap the PPU work buffer with the back buffer (zero-copy).
-                self.nes.swap_pixel_buffer(&mut self.back_buffer);
-                if self.to_frontend.send(EmulatorMessage::FrameReady).is_err() {
-                    return Err("Frontend disconnected".to_string());
-                }
-
-                // Check if debug data has changed and notify frontend
-                self.check_debug_data_changed();
-
-                Ok(())
-            }
-            Err(e) => Err(format!("Emulator error: {}", e)),
+        self.nes.step_frame();
+        // Swap the PPU work buffer with the back buffer (zero-copy).
+        self.nes.swap_pixel_buffer(&mut self.back_buffer);
+        if self.to_frontend.send(EmulatorMessage::FrameReady).is_err() {
+            return Err("Frontend disconnected".to_string());
         }
+
+        // Check if debug data has changed and notify frontend
+        self.check_debug_data_changed();
+
+        Ok(())
     }
 
     /// Check if debug data has changed since last check, and send the data if
@@ -357,12 +342,10 @@ impl ChannelEmulator {
 
         // Check tile/pattern table data using a fast hash of raw PPU memory
         // Pattern tables occupy 0x0000-0x1FFF (8KB) in PPU address space
-        let pattern_table_memory = self.nes.get_memory_debug(Some(0x0000..=0x1FFF))[1].to_vec();
+        let pattern_table_memory = self.nes.get_memory_debug(&Some(0x0000..=0x1FFF))[1].clone();
         let current_hash = pattern_table_memory.hash();
 
-        let current_hash = if let Ok(hash) = current_hash {
-            hash
-        } else {
+        let Ok(current_hash) = current_hash else {
             return;
         };
 
@@ -400,6 +383,7 @@ impl ChannelEmulator {
         }
     }
 
+    #[must_use]
     pub fn compute_required_fetches(
         enabled: &HashSet<EmulatorFetchable>,
         deps: &HashMap<EmulatorFetchable, Vec<EmulatorFetchable>>,
@@ -407,7 +391,7 @@ impl ChannelEmulator {
         let mut fetch = HashSet::new();
         let mut stack: Vec<_> = Vec::with_capacity(enabled.len());
 
-        for x in enabled.iter() {
+        for x in enabled {
             stack.push(EmulatorFetchable::get_empty(x));
         }
 

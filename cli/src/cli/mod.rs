@@ -303,7 +303,7 @@ fn validate_output_format(args: &CliArgs) -> Result<(), CliError> {
 
     if format_flags.len() > 1 {
         return Err(CliError::InvalidArgumentCombination {
-            args: format_flags.iter().map(|s| s.to_string()).collect(),
+            args: format_flags.iter().map(std::string::ToString::to_string).collect(),
             reason: "can only specify one output format flag".to_string(),
         });
     }
@@ -396,8 +396,7 @@ pub fn parse_memory_range(range: &str) -> Result<(u16, u16), String> {
         let end = parse_hex_u16(end_str)?;
         if end < start {
             return Err(format!(
-                "Invalid memory range '{}': end address (0x{:04X}) is less than start (0x{:04X})",
-                range, end, start
+                "Invalid memory range '{range}': end address (0x{end:04X}) is less than start (0x{start:04X})"
             ));
         }
         Ok((start, end))
@@ -407,8 +406,7 @@ pub fn parse_memory_range(range: &str) -> Result<(u16, u16), String> {
 
         if len == 0 {
             return Err(format!(
-                "Invalid memory range '{}': length cannot be zero",
-                range
+                "Invalid memory range '{range}': length cannot be zero"
             ));
         }
 
@@ -421,9 +419,8 @@ pub fn parse_memory_range(range: &str) -> Result<(u16, u16), String> {
         Ok((start, end))
     } else {
         Err(format!(
-            "Invalid memory range format: '{}'. Use START-END or START:LENGTH (e.g., \
-             0x0000-0x07FF or 0x6000:0x100)",
-            range
+            "Invalid memory range format: '{range}'. Use START-END or START:LENGTH (e.g., \
+             0x0000-0x07FF or 0x6000:0x100)"
         ))
     }
 }

@@ -1,7 +1,7 @@
 //! Save browser dialog for listing and loading internal saves.
 //!
 //! Shows quicksaves and autosaves stored in the application's storage
-//! (filesystem on native, IndexedDB on WASM). Users can load saves directly
+//! (filesystem on native, `IndexedDB` on WASM). Users can load saves directly
 //! or export them to files on disk.
 
 use crossbeam_channel::Sender;

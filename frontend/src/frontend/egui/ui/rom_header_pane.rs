@@ -82,30 +82,24 @@ pub fn render_rom_header(ui: &mut egui::Ui, config: &AppConfig) {
 
                 ui.label("Extended Console Type");
                 ui.label(
-                    rom.extended_console_type
-                        .map(|v| v.to_string())
-                        .unwrap_or_else(|| "(none)".to_string()),
+                    rom.extended_console_type.map_or_else(|| "(none)".to_string(), |v| v.to_string()),
                 );
                 ui.end_row();
 
                 ui.label("VS System Hardware Type");
                 ui.label(
-                    rom.vs_system_hardware_type
-                        .map(|v| v.to_string())
-                        .unwrap_or_else(|| "(none)".to_string()),
+                    rom.vs_system_hardware_type.map_or_else(|| "(none)".to_string(), |v| v.to_string()),
                 );
                 ui.end_row();
 
                 ui.label("VS System PPU Type");
                 ui.label(
-                    rom.vs_system_ppu_type
-                        .map(|v| v.to_string())
-                        .unwrap_or_else(|| "(none)".to_string()),
+                    rom.vs_system_ppu_type.map_or_else(|| "(none)".to_string(), |v| v.to_string()),
                 );
                 ui.end_row();
                 ui.label("File Type");
                 ui.label(&rom.format_name);
-                ui.end_row()
+                ui.end_row();
             });
     } else {
         ui.label("No ROM loaded.");

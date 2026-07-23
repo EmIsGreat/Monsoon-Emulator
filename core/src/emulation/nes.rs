@@ -5,10 +5,11 @@ use std::ops::RangeInclusive;
 use std::sync::Arc;
 
 use crate::emulation::board::{Board, CpuBus, CpuBusView, PpuBus, PpuBusView};
+use crate::emulation::cpu::Cpu;
 use crate::emulation::debug_tools::{StopCondition, StopReason};
 use crate::emulation::mapper::MapperLike;
 use crate::emulation::peripherals::Peripheral;
-use crate::emulation::ppu::EmulatorFetchable;
+use crate::emulation::ppu::{EmulatorFetchable, Ppu};
 use crate::emulation::ppu_util::{RegisterDebugData, RegisterEntry, RegisterFormat, RegisterValue};
 use crate::emulation::rom::{ExpansionDevice, RomFile, RomMapper};
 use crate::emulation::savestate::{BoardState, SaveState, VERSION};
@@ -21,8 +22,8 @@ use crate::{cpu_bus_view, ppu_bus_view};
 /// The NES master clock runs at ~21.477 MHz. The CPU divides this by 12 and
 /// the PPU divides it by 4, so one master cycle is the finest timing
 /// granularity.
-pub const MASTER_CYCLES_PER_FRAME: u32 = 357366;
-type ClockingFunction = fn(&mut Nes, last_cycle: u64) -> Result<ExecutionResult, String>;
+pub const MASTER_CYCLES_PER_FRAME: u32 = 357_366;
+type ClockingFunction = fn(&mut Nes, last_cycle: u64) -> ExecutionResult;
 /// The top-level NES emulator.
 ///
 /// `Nes` orchestrates the CPU, PPU, and memory subsystems to provide
@@ -101,6 +102,7 @@ impl Nes {
     /// [`swap_pixel_buffer`](Nes::swap_pixel_buffer) to transfer ownership
     /// of a completed frame without any allocation.
     #[inline]
+    #[must_use]
     pub fn get_pixel_buffer(&self) -> &[u16] { &self.board.ppu.pixel_buffer }
 
     /// Swaps the internal PPU pixel buffer with `other` in place, with no
@@ -160,9 +162,9 @@ impl Nes {
     /// # Panics
     ///
     /// Panics if an internal emulation error occurs during execution.
-    pub fn run(&mut self) -> Result<ExecutionResult, String> {
-        self.run_until(u64::MAX, RunOptions::default())
-    }
+    ///
+    /// # Errors
+    pub fn run(&mut self) -> ExecutionResult { self.run_until(u64::MAX, RunOptions::default()) }
 
     /// Runs the emulator until a specific cycle count is reached, or until a
     /// frame boundary if `stop_at_frame` is `true`.
@@ -185,40 +187,35 @@ impl Nes {
     /// # Panics
     ///
     /// Panics if an internal emulation error occurs during execution.
-    pub fn run_until(
-        &mut self,
-        last_cycle: u64,
-        run_option: RunOptions,
-    ) -> Result<ExecutionResult, String> {
+    pub fn run_until(&mut self, last_cycle: u64, run_option: RunOptions) -> ExecutionResult {
         loop {
             let res = self.step_internal(last_cycle);
 
-            let res = res?;
             if run_option.stop_at_scanline && res.scanline_done {
-                return Ok(res);
+                return res;
             }
 
             if run_option.stop_at_frame && res.frame_done {
-                return Ok(res);
+                return res;
             }
 
             if run_option.stop_at_cpu_cycle && res.cpu_cycle_completed {
-                return Ok(res);
+                return res;
             }
 
             if run_option.stop_at_ppu_cycle && res.ppu_cycle_completed {
-                return Ok(res);
+                return res;
             }
 
             if res.last_cycle_reached || res.hlt_reached {
-                return Ok(res);
+                return res;
             }
 
             if res.cycle_completed {
                 continue;
             }
 
-            return Ok(res);
+            return res;
         }
     }
 
@@ -235,16 +232,12 @@ impl Nes {
     ///   mapped memory.
     ///
     /// This is a side-effect-free read intended for debugger UIs.
-    pub fn get_memory_debug(&mut self, range: Option<RangeInclusive<u16>>) -> Vec<Vec<u8>> {
+    pub fn get_memory_debug(&mut self, range: &Option<RangeInclusive<u16>>) -> Vec<Vec<u8>> {
         let grayscale = self.board.ppu.get_grayscale_enabled();
 
         vec![
-            self.board
-                .cpu
-                .get_memory_debug(range.clone(), &cpu_bus_view!(self)),
-            self.board
-                .ppu
-                .get_memory_debug(range.clone(), &ppu_bus_view!(self, grayscale)),
+            Cpu::get_memory_debug(range.clone(), &cpu_bus_view!(self)),
+            Ppu::get_memory_debug(range.clone(), &ppu_bus_view!(self, grayscale)),
         ]
     }
 
@@ -253,7 +246,7 @@ impl Nes {
     ///
     /// This is the recommended method for frame-based emulation loops.
     #[inline]
-    pub fn step_frame(&mut self) -> Result<ExecutionResult, String> {
+    pub fn step_frame(&mut self) -> ExecutionResult {
         self.run_until(
             u64::MAX,
             RunOptions {
@@ -266,7 +259,7 @@ impl Nes {
     /// Runs the emulator until the next scanline completion (until the PPU
     /// completes dot 340).
     #[inline]
-    pub fn step_scanline(&mut self) -> Result<ExecutionResult, String> {
+    pub fn step_scanline(&mut self) -> ExecutionResult {
         self.run_until(
             u64::MAX,
             RunOptions {
@@ -279,7 +272,7 @@ impl Nes {
     /// Runs the emulator for until the next cpu cycle completes (<=12 master
     /// cycles)
     #[inline]
-    pub fn step_cpu_cycle(&mut self) -> Result<ExecutionResult, String> {
+    pub fn step_cpu_cycle(&mut self) -> ExecutionResult {
         self.run_until(
             u64::MAX,
             RunOptions {
@@ -292,7 +285,7 @@ impl Nes {
     /// Runs the emulator for until the next ppu cycle completes (<=4 master
     /// cycles)
     #[inline]
-    pub fn step_ppu_cycle(&mut self) -> Result<ExecutionResult, String> {
+    pub fn step_ppu_cycle(&mut self) -> ExecutionResult {
         self.run_until(
             u64::MAX,
             RunOptions {
@@ -323,6 +316,7 @@ impl Nes {
     /// For most use cases, prefer [`Nes::default()`] which creates a standard
     /// NES configuration. Use this constructor when you need to supply a
     /// pre-configured CPU or PPU (e.g., for testing).
+    #[must_use]
     pub fn new(board: Board, config: NesConfig) -> Self {
         Self {
             board,
@@ -347,6 +341,9 @@ impl Nes {
     /// the reset vector (`$FFFC`).
     pub fn reset(&mut self) { self.board.reset(); }
 
+    /// # Errors
+    ///
+    /// Returns `err` if the passed argument is not a valid rom file
     pub fn load_rom<T>(&mut self, rom_get: T) -> Result<RomMapper, T::Error>
     where
         T: TryInto<RomFile>,
@@ -366,6 +363,7 @@ impl Nes {
     /// be serialized with
     /// [`ToBytes::to_bytes()`](crate::util::ToBytes::to_bytes)
     /// and later restored with [`load_state()`](Nes::load_state).
+    #[must_use]
     pub fn save_state(&self) -> Option<SaveState> {
         self.rom_file.as_ref().map(|rom| SaveState {
             board: BoardState::from(&self.board),
@@ -406,7 +404,7 @@ impl Nes {
     ///
     /// For most use cases, prefer [`step_frame()`](Nes::step_frame).
     #[inline]
-    pub fn step(&mut self) -> Result<ExecutionResult, String> { self.step_internal(u64::MAX) }
+    pub fn step(&mut self) -> ExecutionResult { self.step_internal(u64::MAX) }
 
     #[cold]
     pub fn check_stop_conditions(
@@ -424,11 +422,11 @@ impl Nes {
 
     #[allow(unused)]
     #[cold]
-    fn step_debug(&mut self, last_cycle: u64) -> Result<ExecutionResult, String> {
+    fn step_debug(&mut self, last_cycle: u64) -> ExecutionResult {
         if let Some(conditions) = &self.stop_conditions
             && let Some(reason) = self.check_stop_conditions(&conditions.clone())
         {
-            return Ok(ExecutionResult {
+            return ExecutionResult {
                 last_cycle_reached: false,
                 hlt_reached: false,
                 cycle_completed: false,
@@ -437,14 +435,14 @@ impl Nes {
                 frame_done: false,
                 scanline_done: false,
                 stop_reason: Some(reason),
-            });
+            };
         }
 
         self.step_internal(last_cycle)
     }
 
-    #[inline(always)]
-    fn step_internal(&mut self, last_cycle: u64) -> Result<ExecutionResult, String> {
+    #[inline]
+    fn step_internal(&mut self, last_cycle: u64) -> ExecutionResult {
         let grayscale = self.board.ppu.get_grayscale_enabled();
 
         let ppu = &mut self.board.ppu;
@@ -462,7 +460,7 @@ impl Nes {
         let cpu_step = self.cpu_cycle_counter == self.alignment;
 
         if self.ppu_cycle_counter != 0 && !cpu_step {
-            return Ok(ExecutionResult::default());
+            return ExecutionResult::default();
         }
 
         if self.cpu_cycle_counter == 0 {
@@ -476,8 +474,8 @@ impl Nes {
 
         if unlikely(self.total_cycles > last_cycle) {
             res.last_cycle_reached = true;
-            return Ok(res);
-        };
+            return res;
+        }
 
         if self.ppu_cycle_counter == 0 {
             res = res.merge(ppu.step(&mut ppu_bus_view!(self, grayscale)));
@@ -498,16 +496,11 @@ impl Nes {
                 self.apu_counter = 2;
             }
 
-            #[allow(clippy::question_mark)]
-            if let Ok(cpu_res) = cpu_res {
-                res = res.merge(cpu_res);
-                res.cpu_cycle_completed = true;
-            } else {
-                return cpu_res;
-            }
+            res = res.merge(cpu_res);
+            res.cpu_cycle_completed = true;
         }
 
-        Ok(res)
+        res
     }
 
     /// Enables CPU instruction tracing for debugging purposes.
@@ -539,6 +532,7 @@ impl Nes {
     }
 
     /// Returns whether CPU instruction tracing is currently enabled.
+    #[must_use]
     pub fn trace_enabled(&self) -> bool { self.trace_enabled }
 
     /// Clears the currently collected CPU trace log without changing enable
@@ -570,7 +564,7 @@ impl Nes {
                 &mut self.board.controller2,
                 &mut self.board.joystick_strobe_data,
             );
-            trace.trace(cpu, &bus, self.total_cycles)
+            trace.trace(cpu, &bus, self.total_cycles);
         }
     }
 
@@ -587,7 +581,7 @@ impl Nes {
         let controller_1 = expansion_devices.0.map(Peripheral::from);
         let controller_2 = expansion_devices.1.map(Peripheral::from);
 
-        self.board.attach_controllers(controller_1, controller_2)
+        self.board.attach_controllers(controller_1, controller_2);
     }
 
     pub fn set_controller_input(&mut self, input_1: u8, input_2: u8) {
@@ -604,6 +598,7 @@ impl Nes {
         }
     }
 
+    #[must_use]
     pub fn get_rom_db(&self) -> Arc<RomDb> { self.rom_db.clone() }
 }
 
@@ -615,6 +610,7 @@ impl Default for Nes {
 }
 
 impl Nes {
+    #[must_use]
     pub fn with_config(nes_config: NesConfig) -> Self {
         let board = Board::default();
         Nes::new(board, nes_config)
@@ -625,17 +621,21 @@ impl Nes {
     // --- CPU debug accessors ---
 
     /// Returns the current program counter value.
+    #[must_use]
     pub fn program_counter(&self) -> u16 { self.board.cpu.program_counter }
 
     /// Returns the opcode byte of the instruction currently being executed.
+    #[must_use]
     pub fn current_opcode_byte(&self) -> u8 { self.board.cpu.current_opcode.opcode }
 
     /// Returns `true` if the CPU has executed a halt (KIL) instruction.
+    #[must_use]
     pub fn is_halted(&self) -> bool { self.board.cpu.is_halted }
 
     /// Returns the last memory access `(address, was_read, value)`, where
     /// `value` is the byte that was read (if `was_read` is `true`) or written
     /// (if `was_read` is `false`), or `None` if no access has occurred yet.
+    #[must_use]
     pub fn last_memory_access(&self) -> Option<(u16, bool, u8)> {
         self.board.cpu.last_memory_access
     }
@@ -643,28 +643,24 @@ impl Nes {
     // --- PPU debug accessors ---
 
     /// Returns `true` if the current frame is an even frame.
+    #[must_use]
     pub fn is_even_frame(&self) -> bool { self.board.ppu.even_frame }
 
     /// Returns `true` if the PPU is currently rendering (background or sprites
     /// enabled).
+    #[must_use]
     pub fn is_rendering(&self) -> bool { self.board.ppu.is_rendering() }
 
     /// Returns debug palette data from the PPU.
     pub fn get_palettes_debug(&mut self) -> EmulatorFetchable {
         let grayscale = self.board.ppu.get_grayscale_enabled();
-
-        self.board
-            .ppu
-            .get_palettes_debug(&ppu_bus_view!(self, grayscale))
+        Ppu::get_palettes_debug(&ppu_bus_view!(self, grayscale))
     }
 
     /// Returns debug tile data from the PPU.
     pub fn get_tiles_debug(&mut self) -> EmulatorFetchable {
         let grayscale = self.board.ppu.get_grayscale_enabled();
-
-        self.board
-            .ppu
-            .get_tiles_debug(&ppu_bus_view!(self, grayscale))
+        Ppu::get_tiles_debug(&ppu_bus_view!(self, grayscale))
     }
 
     /// Returns debug nametable data from the PPU.
@@ -676,8 +672,10 @@ impl Nes {
             .get_nametable_debug(&ppu_bus_view!(self, grayscale))
     }
 
+    #[must_use]
     pub fn get_sprites_debug(&self) -> EmulatorFetchable { self.board.ppu.get_sprites_debug() }
 
+    #[must_use]
     pub fn get_soam_sprites_debug(&self) -> EmulatorFetchable {
         self.board.ppu.get_soam_sprites_debug()
     }
@@ -715,6 +713,7 @@ impl Nes {
     }
 
     /// Returns OAM (sprite memory) contents for debugging.
+    #[must_use]
     pub fn get_oam_debug(&self) -> Vec<u8> { self.board.ppu.oam.snapshot_all() }
 
     // --- Memory write methods ---
@@ -741,7 +740,7 @@ impl Nes {
     pub fn ppu_mem_write(&mut self, addr: u16, value: u8) {
         let grayscale = self.board.ppu.get_grayscale_enabled();
 
-        PpuBus::write(&mut ppu_bus_view!(self, grayscale), addr, value)
+        PpuBus::write(&mut ppu_bus_view!(self, grayscale), addr, value);
     }
 
     /// Initializes PPU memory at the given address (for
@@ -755,10 +754,11 @@ impl Nes {
     /// Writes a value to OAM (sprite memory) at the given address (for
     /// initialization/debugging).
     pub fn oam_write(&mut self, addr: u16, value: u8) {
-        self.board.ppu.oam.write(addr as u32, value);
+        self.board.ppu.oam.write(u32::from(addr), value);
     }
 
     /// Returns a reference to the trace log, if tracing is enabled.
+    #[must_use]
     pub fn trace_log(&self) -> Option<&TraceLog> { self.trace_log.as_ref() }
 }
 
@@ -766,6 +766,7 @@ impl Nes {
 ///
 /// Returned by [`Nes::run()`], [`Nes::run_until()`], [`Nes::step()`], and
 /// [`Nes::step_frame()`] to indicate the reason execution stopped.
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ExecutionResult {
     pub last_cycle_reached: bool,
@@ -794,6 +795,7 @@ impl Default for ExecutionResult {
     }
 }
 impl ExecutionResult {
+    #[must_use]
     pub fn merge(self, with: ExecutionResult) -> Self {
         Self {
             last_cycle_reached: self.last_cycle_reached || with.last_cycle_reached,
@@ -808,6 +810,7 @@ impl ExecutionResult {
     }
 }
 
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
 pub struct RunOptions {
     pub stop_at_frame: bool,

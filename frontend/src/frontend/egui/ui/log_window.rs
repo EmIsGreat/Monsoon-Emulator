@@ -4,7 +4,7 @@ use crate::channel_emu::ChannelEmulator;
 use crate::frontend::egui::config::AppConfig;
 use crate::frontend::util::{self, FileType};
 
-/// Wrapper for raw bytes that implements ToBytes for save dialog export.
+/// Wrapper for raw bytes that implements `ToBytes` for save dialog export.
 struct ExportableData(Vec<u8>);
 
 impl ToBytes for ExportableData {

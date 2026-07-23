@@ -1,8 +1,8 @@
-use egui::{ColorImage, Context, TextureHandle, TextureOptions};
+use egui::{ColorImage, Context, TextureHandle, TextureOptions, Vec2};
 use monsoon_core::emulation::palette_util::{RgbColor, RgbPalette};
 use monsoon_core::emulation::ppu_util::{
-    NametableData, PALETTE_COUNT, PaletteData, RegisterDebugData, SoamData, SpriteData, TILE_COUNT,
-    TILE_SIZE, TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH, TileData,
+    NametableData, PaletteData, RegisterDebugData, SoamData, SpriteData, TileData, PALETTE_COUNT,
+    TILE_COUNT, TILE_SIZE, TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH,
 };
 use monsoon_core::emulation::screen_renderer::ScreenRenderer;
 use web_time::Instant;
@@ -22,9 +22,10 @@ pub struct EmuTextures {
     pub frame_texture: Option<TextureHandle>,
     pub last_debug_request: Instant,
     pub last_frame_request: Instant,
-    pub tile_textures: Option<[[TextureHandle; TILE_COUNT]; PALETTE_COUNT]>,
+    pub tile_textures:
+        Option<[[TextureHandle; usize::from(TILE_COUNT)]; usize::from(PALETTE_COUNT)]>,
     pub palette_data: Option<Box<PaletteData>>,
-    pub tile_data: Option<Box<[TileData; TILE_COUNT]>>,
+    pub tile_data: Option<Box<[TileData; usize::from(TILE_COUNT)]>>,
     pub nametable_data: Option<Box<NametableData>>,
     pub sprite_data: Option<Box<SpriteData>>,
     pub soam_data: Option<Box<SoamData>>,
@@ -34,9 +35,12 @@ pub struct EmuTextures {
 impl Default for EmuTextures {
     fn default() -> Self {
         Self {
-            front_buffer: vec![0u16; TOTAL_OUTPUT_HEIGHT * TOTAL_OUTPUT_WIDTH],
+            front_buffer: vec![
+                0u16;
+                usize::from(TOTAL_OUTPUT_HEIGHT) * usize::from(TOTAL_OUTPUT_WIDTH)
+            ],
             has_received_frame: false,
-            frame_texture: Default::default(),
+            frame_texture: Option::default(),
             last_debug_request: Instant::now(),
             last_frame_request: Instant::now(),
             tile_textures: None,
@@ -51,7 +55,7 @@ impl Default for EmuTextures {
 }
 
 impl EmuTextures {
-    /// Convert RgbColor pixel data to egui ColorImage
+    /// Convert `RgbColor` pixel data to egui `ColorImage`
     pub fn rgb_to_color_image(data: &[RgbColor], width: usize, height: usize) -> ColorImage {
         let mut pixels = Vec::with_capacity(width * height);
         for color in data {
@@ -59,12 +63,12 @@ impl EmuTextures {
         }
         ColorImage {
             size: [width, height],
-            source_size: Default::default(),
+            source_size: Vec2::default(),
             pixels,
         }
     }
 
-    /// Update the main emulator display texture using a RendererKind.
+    /// Update the main emulator display texture using a `RendererKind`.
     ///
     /// The actual conversion from palette indices to RGB colors is done by the
     /// renderer implementation.
@@ -102,7 +106,7 @@ impl EmuTextures {
     /// Create a texture for a single tile
     pub fn get_texture_for_tile(
         tile: &TileData,
-        palette: &[u8; 4],
+        palette: [u8; 4],
         backdrop: u8,
         rgb_palette_map: &RgbPalette,
         emph: u8,
@@ -120,11 +124,15 @@ impl EmuTextures {
             if color_index != 0 {
                 *color = rgb_palette_map.colors[emph as usize][palette[color_index] as usize];
             } else {
-                *color = rgb_palette_map.colors[emph as usize][backdrop as usize]
+                *color = rgb_palette_map.colors[emph as usize][backdrop as usize];
             }
         }
 
-        let image = Self::rgb_to_color_image(data.as_ref(), TILE_SIZE, TILE_SIZE);
+        let image = Self::rgb_to_color_image(
+            data.as_ref(),
+            usize::from(TILE_SIZE),
+            usize::from(TILE_SIZE),
+        );
 
         ctx.load_texture(
             format!("tile_{:16X}", tile.address),
@@ -185,7 +193,7 @@ impl EmuTextures {
                 for tile_idx in tile_range {
                     let texture = Self::get_texture_for_tile(
                         &tiles[tile_idx],
-                        &palette,
+                        palette,
                         palettes.colors[0][0],
                         rgb_palette_map,
                         0,

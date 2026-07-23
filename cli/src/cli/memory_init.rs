@@ -48,17 +48,14 @@ impl MemoryInit {
     /// ```
     pub fn parse(s: &str) -> Result<Self, String> {
         let (addr_str, values_str) = s.split_once('=').ok_or_else(|| {
-            format!(
-                "Invalid memory init format '{}'. Expected ADDR=VALUE or ADDR=V1,V2,...",
-                s
-            )
+            format!("Invalid memory init format '{s}'. Expected ADDR=VALUE or ADDR=V1,V2,...")
         })?;
 
         let address = parse_hex_u16(addr_str.trim())?;
         let values = parse_values(values_str.trim())?;
 
         if values.is_empty() {
-            return Err(format!("Memory init '{}' has no values", s));
+            return Err(format!("Memory init '{s}' has no values"));
         }
 
         Ok(Self {
@@ -77,7 +74,7 @@ fn parse_values(s: &str) -> Result<Vec<u8>, String> {
                 .strip_prefix("0x")
                 .or_else(|| v.strip_prefix("0X"))
                 .unwrap_or(v);
-            u8::from_str_radix(v, 16).map_err(|e| format!("Invalid hex value '{}': {}", v, e))
+            u8::from_str_radix(v, 16).map_err(|e| format!("Invalid hex value '{v}': {e}"))
         })
         .collect()
 }
@@ -109,8 +106,7 @@ impl MemoryInitConfig {
             "toml" => Self::load_toml(path),
             "bin" | "binary" => Self::load_binary(path),
             _ => Err(format!(
-                "Unsupported init file format '{}'. Use .json, .toml, or .bin",
-                extension
+                "Unsupported init file format '{extension}'. Use .json, .toml, or .bin"
             )),
         }
     }
@@ -121,7 +117,7 @@ impl MemoryInitConfig {
             .map_err(|e| format!("Failed to read init file '{}': {}", path.display(), e))?;
 
         let json: serde_json::Value = serde_json::from_str(&content)
-            .map_err(|e| format!("Failed to parse JSON init file: {}", e))?;
+            .map_err(|e| format!("Failed to parse JSON init file: {e}"))?;
 
         Self::from_json_value(&json)
     }
@@ -133,7 +129,7 @@ impl MemoryInitConfig {
 
         let toml: toml::Value = content
             .parse()
-            .map_err(|e| format!("Failed to parse TOML init file: {}", e))?;
+            .map_err(|e| format!("Failed to parse TOML init file: {e}"))?;
 
         Self::from_toml_value(&toml)
     }
@@ -150,7 +146,7 @@ impl MemoryInitConfig {
 
         let mut data = Vec::new();
         file.read_to_end(&mut data)
-            .map_err(|e| format!("Failed to read binary init file: {}", e))?;
+            .map_err(|e| format!("Failed to read binary init file: {e}"))?;
 
         let mut config = Self::default();
         config.cpu.insert(0x0000, data);
@@ -226,28 +222,29 @@ fn parse_json_array(value: &serde_json::Value) -> Result<Vec<u8>, String> {
         serde_json::Value::Array(arr) => arr
             .iter()
             .map(|v| match v {
+                #[allow(clippy::cast_possible_truncation)]
                 serde_json::Value::Number(n) => n
                     .as_u64()
                     .filter(|&n| n <= 255)
                     .map(|n| n as u8)
-                    .ok_or_else(|| format!("Value {} out of range for u8", n)),
+                    .ok_or_else(|| format!("Value {n} out of range for u8")),
                 serde_json::Value::String(s) => {
                     let s = s
                         .strip_prefix("0x")
                         .or_else(|| s.strip_prefix("0X"))
                         .unwrap_or(s);
-                    u8::from_str_radix(s, 16)
-                        .map_err(|e| format!("Invalid hex value '{}': {}", s, e))
+                    u8::from_str_radix(s, 16).map_err(|e| format!("Invalid hex value '{s}': {e}"))
                 }
                 _ => Err("Expected number or hex string".to_string()),
             })
             .collect(),
+        #[allow(clippy::cast_possible_truncation)]
         serde_json::Value::Number(n) => {
             let val = n
                 .as_u64()
                 .filter(|&n| n <= 255)
                 .map(|n| n as u8)
-                .ok_or_else(|| format!("Value {} out of range for u8", n))?;
+                .ok_or_else(|| format!("Value {n} out of range for u8"))?;
             Ok(vec![val])
         }
         _ => Err("Expected array or number".to_string()),
@@ -260,11 +257,13 @@ fn parse_toml_array(value: &toml::Value) -> Result<Vec<u8>, String> {
         toml::Value::Array(arr) => arr
             .iter()
             .map(|v| match v {
+                #[allow(clippy::cast_possible_truncation)]
+                #[allow(clippy::cast_sign_loss)]
                 toml::Value::Integer(n) => {
                     if *n >= 0 && *n <= 255 {
                         Ok(*n as u8)
                     } else {
-                        Err(format!("Value {} out of range for u8", n))
+                        Err(format!("Value {n} out of range for u8"))
                     }
                 }
                 toml::Value::String(s) => {
@@ -272,17 +271,17 @@ fn parse_toml_array(value: &toml::Value) -> Result<Vec<u8>, String> {
                         .strip_prefix("0x")
                         .or_else(|| s.strip_prefix("0X"))
                         .unwrap_or(s);
-                    u8::from_str_radix(s, 16)
-                        .map_err(|e| format!("Invalid hex value '{}': {}", s, e))
+                    u8::from_str_radix(s, 16).map_err(|e| format!("Invalid hex value '{s}': {e}"))
                 }
                 _ => Err("Expected integer or hex string".to_string()),
             })
             .collect(),
+        #[allow(clippy::cast_possible_truncation)]
         toml::Value::Integer(n) => {
             if *n >= 0 && *n <= 255 {
                 Ok(vec![*n as u8])
             } else {
-                Err(format!("Value {} out of range for u8", n))
+                Err(format!("Value {n} out of range for u8"))
             }
         }
         _ => Err("Expected array or integer".to_string()),
@@ -298,6 +297,7 @@ pub fn apply_memory_init(
 ) {
     // Apply CPU memory initializations
     for init in cpu_inits {
+        #[allow(clippy::cast_possible_truncation)]
         for (offset, &value) in init.values.iter().enumerate() {
             let addr = init.address.wrapping_add(offset as u16);
             emu.cpu_mem_write(addr, value);
@@ -306,6 +306,7 @@ pub fn apply_memory_init(
 
     // Apply PPU memory initializations
     for init in ppu_inits {
+        #[allow(clippy::cast_possible_truncation)]
         for (offset, &value) in init.values.iter().enumerate() {
             let addr = init.address.wrapping_add(offset as u16);
             emu.ppu_mem_write(addr, value);
@@ -314,6 +315,7 @@ pub fn apply_memory_init(
 
     // Apply OAM memory initializations
     for init in oam_inits {
+        #[allow(clippy::cast_possible_truncation)]
         for (offset, &value) in init.values.iter().enumerate() {
             // OAM is limited to 256 bytes (addresses 0x00-0xFF)
             let addr = (init.address.wrapping_add(offset as u16)) & 0xFF;
@@ -326,6 +328,7 @@ pub fn apply_memory_init(
 pub fn apply_memory_init_config(emu: &mut Nes, config: &MemoryInitConfig) {
     // Apply CPU memory initializations
     for (&addr, values) in &config.cpu {
+        #[allow(clippy::cast_possible_truncation)]
         for (offset, &value) in values.iter().enumerate() {
             let target_addr = addr.wrapping_add(offset as u16);
             emu.cpu_mem_write(target_addr, value);
@@ -334,6 +337,7 @@ pub fn apply_memory_init_config(emu: &mut Nes, config: &MemoryInitConfig) {
 
     // Apply PPU memory initializations
     for (&addr, values) in &config.ppu {
+        #[allow(clippy::cast_possible_truncation)]
         for (offset, &value) in values.iter().enumerate() {
             let target_addr = addr.wrapping_add(offset as u16);
             emu.ppu_mem_write(target_addr, value);
@@ -342,6 +346,7 @@ pub fn apply_memory_init_config(emu: &mut Nes, config: &MemoryInitConfig) {
 
     // Apply OAM memory initializations
     for (&addr, values) in &config.oam {
+        #[allow(clippy::cast_possible_truncation)]
         for (offset, &value) in values.iter().enumerate() {
             let target_addr = (addr.wrapping_add(offset as u16)) & 0xFF;
             emu.oam_write(target_addr, value);

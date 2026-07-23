@@ -4,34 +4,33 @@ use crate::emulation::rom::{ParseError, RomBuilder, RomFile, RomParser};
 pub struct Ines;
 
 impl RomParser for Ines {
-    fn get_name(&self) -> &str { "iNES" }
+    fn get_name(&self) -> &'static str { "iNES" }
 
+    #[allow(clippy::similar_names)]
     fn parse(&self, rom: &[u8], name: Option<&String>) -> Result<RomFile, ParseError> {
-        let prg_rom_size = rom[4] as u32 * 16 * 1024;
-        let chr_rom_size = rom[5] as u32 * 8 * 1024;
+        let prg_rom_size = u32::from(rom[4]) * 16 * 1024;
+        let chr_rom_size = u32::from(rom[5]) * 8 * 1024;
 
-        let alternative_nametables = rom[6] & 0b00001000 != 0;
-        let trainer_present = rom[6] & 0b00000100 != 0;
-        let is_battery_backed = rom[6] & 0b00000010 != 0;
-        let hard_wired_nametable_layout = rom[6] & 0b0000001 != 0;
+        let alternative_nametables = rom[6] & 0b0000_1000 != 0;
+        let trainer_present = rom[6] & 0b0000_0100 != 0;
+        let is_battery_backed = rom[6] & 0b0000_0010 != 0;
+        let hard_wired_nametable_layout = rom[6] & 0b000_0001 != 0;
 
-        let mapper_number = (rom[6] >> 4) as u16 | (rom[7] & 0xF0) as u16;
+        let mapper_number = u16::from(rom[6] >> 4) | u16::from(rom[7] & 0xF0);
         let playchoice_10_data = rom[7] & 0x2 != 0;
         let vs_unisystem = rom[7] & 0x1 != 0;
         let prg_ram_size = if rom[8] == 0 {
             8 * 1024
         } else {
-            rom[8] as u32 * 8 * 1024
+            u32::from(rom[8]) * 8 * 1024
         };
 
         let tv_system = rom[9] & 0x1;
 
         let console_type = if playchoice_10_data {
             2
-        } else if vs_unisystem {
-            1
         } else {
-            0
+            u8::from(vs_unisystem)
         };
 
         Ok(RomBuilder::default()

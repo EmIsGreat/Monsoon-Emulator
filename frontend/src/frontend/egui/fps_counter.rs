@@ -28,6 +28,7 @@ impl FpsCounter {
             .retain(|&t| now.duration_since(t) < Duration::from_secs(1));
 
         // Update FPS counter every 0.5 seconds
+        #[allow(clippy::cast_precision_loss)]
         if now.duration_since(self.last_update) >= Duration::from_millis(500) {
             self.current_fps = self.frame_times.len() as f32;
             self.last_update = now;

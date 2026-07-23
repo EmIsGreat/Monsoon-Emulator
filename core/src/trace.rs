@@ -26,6 +26,7 @@ impl Default for TraceLog {
 }
 
 impl TraceLog {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             log: String::new(),
@@ -46,8 +47,8 @@ impl TraceLog {
         };
 
         let relevant_mem_start = cpu.program_counter.wrapping_sub(1);
-        let relevant_mem_end =
-            relevant_mem_start.wrapping_add(opcode::get_bytes_for_opcode(current_opcode) as u16);
+        let relevant_mem_end = relevant_mem_start
+            .wrapping_add(u16::from(opcode::get_bytes_for_opcode(current_opcode)));
         let relevant_mem: Vec<u8> = bus.get_range(relevant_mem_start..=relevant_mem_end);
 
         let mut mem_formatted = String::with_capacity(8);
@@ -77,15 +78,16 @@ impl TraceLog {
     }
 }
 
+#[must_use]
 pub fn get_str_for_src(source: Source) -> String {
     match source {
         Source::X => String::from("X"),
         Source::Y => String::from("Y"),
-        Source::None => String::new(),
         _ => String::new(),
     }
 }
 
+#[allow(clippy::too_many_lines)]
 pub fn get_opcode_descriptor(opcode: OpCode, cpu: &CpuTraceState, bus: &impl CpuBus) -> String {
     match opcode.op_type {
         OpType::ImmediateAddressing(..) => {
@@ -105,15 +107,15 @@ pub fn get_opcode_descriptor(opcode: OpCode, cpu: &CpuTraceState, bus: &impl Cpu
             }
         }
         OpType::AbsoluteRead(..) | OpType::AbsoluteRMW(..) | OpType::AbsoluteWrite(..) => {
-            let address = ((bus.read_debug(cpu.program_counter.wrapping_add(1)) as u16) << 8)
-                | bus.read_debug(cpu.program_counter) as u16;
+            let address = (u16::from(bus.read_debug(cpu.program_counter.wrapping_add(1))) << 8)
+                | u16::from(bus.read_debug(cpu.program_counter));
             format!("${:04X} = {:02X}", address, bus.read_debug(address))
         }
         OpType::AbsoluteIndexRead(source, ..)
         | OpType::AbsoluteIndexRMW(source, ..)
         | OpType::AbsoluteIndexWrite(_, source, ..) => {
-            let address = (bus.read_debug(cpu.program_counter.wrapping_add(1)) as u16) << 8
-                | (bus.read_debug(cpu.program_counter) as u16);
+            let address = u16::from(bus.read_debug(cpu.program_counter.wrapping_add(1))) << 8
+                | u16::from(bus.read_debug(cpu.program_counter));
 
             let reg_string = get_str_for_src(source);
 
@@ -123,7 +125,7 @@ pub fn get_opcode_descriptor(opcode: OpCode, cpu: &CpuTraceState, bus: &impl Cpu
                 _ => 0,
             };
 
-            let effective_address = address.wrapping_add(val as u16);
+            let effective_address = address.wrapping_add(u16::from(val));
 
             format!(
                 "${:04X},{} @ {:04X} = {:02X}",
@@ -135,7 +137,11 @@ pub fn get_opcode_descriptor(opcode: OpCode, cpu: &CpuTraceState, bus: &impl Cpu
         }
         OpType::ZeroPageRead(..) | OpType::ZeroPageRMW(..) | OpType::ZeroPageWrite(..) => {
             let address = bus.read_debug(cpu.program_counter);
-            format!("${:02X} = {:02X}", address, bus.read_debug(address as u16))
+            format!(
+                "${:02X} = {:02X}",
+                address,
+                bus.read_debug(u16::from(address))
+            )
         }
         OpType::ZeroPageIndexRead(source, ..)
         | OpType::ZeroPageIndexRMW(source, ..)
@@ -157,7 +163,7 @@ pub fn get_opcode_descriptor(opcode: OpCode, cpu: &CpuTraceState, bus: &impl Cpu
                 address,
                 reg_string,
                 effective_address,
-                bus.read_debug(effective_address as u16)
+                bus.read_debug(u16::from(effective_address))
             )
         }
         OpType::IndexedIndirectRead(..)
@@ -166,56 +172,51 @@ pub fn get_opcode_descriptor(opcode: OpCode, cpu: &CpuTraceState, bus: &impl Cpu
             let address = bus.read_debug(cpu.program_counter);
 
             let effective_address = address.wrapping_add(cpu.x_register);
-            let lookup_addr = ((bus.read_debug(effective_address.wrapping_add(1) as u16) as u16)
-                << 8)
-                | bus.read_debug(effective_address as u16) as u16;
+            let lookup_addr =
+                (u16::from(bus.read_debug(u16::from(effective_address.wrapping_add(1)))) << 8)
+                    | u16::from(bus.read_debug(u16::from(effective_address)));
 
             let val = bus.read_debug(lookup_addr);
 
-            format!(
-                "(${:02X},X) @ {:02X} = {:04X} = {:02X}",
-                address, effective_address, lookup_addr, val
-            )
+            format!("(${address:02X},X) @ {effective_address:02X} = {lookup_addr:04X} = {val:02X}")
         }
         OpType::IndirectIndexedRead(..)
         | OpType::IndirectIndexedRMW(_)
         | OpType::IndirectIndexedWrite(..) => {
             let address = bus.read_debug(cpu.program_counter);
 
-            let effective_addr = ((bus.read_debug(address.wrapping_add(1) as u16) as u16) << 8)
-                | bus.read_debug(address as u16) as u16;
+            let effective_addr = (u16::from(bus.read_debug(u16::from(address.wrapping_add(1))))
+                << 8)
+                | u16::from(bus.read_debug(u16::from(address)));
 
-            let lookup_addr = effective_addr.wrapping_add(cpu.y_register as u16);
+            let lookup_addr = effective_addr.wrapping_add(u16::from(cpu.y_register));
 
             let val = bus.read_debug(lookup_addr);
 
-            format!(
-                "(${:02X}),Y = {:04X} @ {:04X} = {:02X}",
-                address, effective_addr, lookup_addr, val
-            )
+            format!("(${address:02X}),Y = {effective_addr:04X} @ {lookup_addr:04X} = {val:02X}")
         }
         OpType::BRK(_) | OpType::RTI(..) | OpType::RTS(..) | OpType::PH(..) | OpType::PL(..) => {
             String::new()
         }
         OpType::JSR(_) | OpType::JmpAbsolute(_) => {
-            let address = ((bus.read_debug(cpu.program_counter.wrapping_add(1)) as u16) << 8)
-                | bus.read_debug(cpu.program_counter) as u16;
-            format!("${:04X}", address)
+            let address = (u16::from(bus.read_debug(cpu.program_counter.wrapping_add(1))) << 8)
+                | u16::from(bus.read_debug(cpu.program_counter));
+            format!("${address:04X}")
         }
         OpType::JmpIndirect(_) => {
-            let address = ((bus.read_debug(cpu.program_counter.wrapping_add(1)) as u16) << 8)
-                | bus.read_debug(cpu.program_counter) as u16;
+            let address = (u16::from(bus.read_debug(cpu.program_counter.wrapping_add(1))) << 8)
+                | u16::from(bus.read_debug(cpu.program_counter));
 
-            let val = ((bus.read_debug(add_to_low_byte(address, 1)) as u16) << 8)
-                | bus.read_debug(address) as u16;
-            format!("(${:04X}) = {:04X}", address, val)
+            let val = (u16::from(bus.read_debug(add_to_low_byte(address, 1))) << 8)
+                | u16::from(bus.read_debug(address));
+            format!("(${address:04X}) = {val:04X}")
         }
         OpType::Relative(..) => {
             let base_address = cpu.program_counter.wrapping_add(1);
-            let offset = bus.read_debug(cpu.program_counter) as i8;
-            let val = base_address.wrapping_add(offset as i16 as u16);
+            let offset = bus.read_debug(cpu.program_counter).cast_signed();
+            let val = base_address.wrapping_add_signed(i16::from(offset));
 
-            format!("${:04X}", val)
+            format!("${val:04X}")
         }
     }
 }

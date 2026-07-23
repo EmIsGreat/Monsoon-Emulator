@@ -22,7 +22,7 @@ pub enum SavestateLoadError {
     FailedToComputeChecksum,
 }
 
-/// Extract the parent directory from a FileHandle.
+/// Extract the parent directory from a `FileHandle`.
 /// On native, this uses the file's path. On WASM, returns None.
 #[cfg(not(target_arch = "wasm32"))]
 fn get_file_directory(handle: &FileHandle) -> Option<String> {
@@ -82,10 +82,10 @@ impl FromU32 for egui::Color32 {
 
 impl AsU32 for egui::Color32 {
     fn as_u32(&self) -> u32 {
-        ((self.a() as u32) << 24)
-            | ((self.r() as u32) << 16)
-            | ((self.g() as u32) << 8)
-            | (self.b() as u32)
+        (u32::from(self.a()) << 24)
+            | (u32::from(self.r()) << 16)
+            | (u32::from(self.g()) << 8)
+            | u32::from(self.b())
     }
 }
 
@@ -127,6 +127,7 @@ pub enum FileType {
 }
 
 impl FileType {
+    #[must_use]
     pub fn add_filters(&self, dialog: AsyncFileDialog) -> AsyncFileDialog {
         match self {
             FileType::Rom => dialog.add_filter("NES ROM File", &[self.get_default_extension()]),
@@ -140,6 +141,7 @@ impl FileType {
         }
     }
 
+    #[must_use]
     pub fn get_default_extension(&self) -> &str {
         match self {
             FileType::Rom => "nes",
@@ -176,11 +178,10 @@ pub fn spawn_palette_picker(sender: &Sender<AsyncFrontendMessage>, dir: Option<&
             let data = handle.read().await;
             let palette = parse_palette_from_bytes(&data);
             let directory = get_file_directory(&handle)
-                .map(|f| StorageKey::from(&f))
-                .unwrap_or(StorageKey {
+                .map_or(StorageKey {
                     category: StorageCategory::Cache,
                     sub_path: "upload_cache/palettes/".to_string(),
-                });
+                }, |f| StorageKey::from(&f));
             let _ = sender.send(AsyncFrontendMessage::PaletteLoaded(LoadedPalette {
                 palette,
                 directory,
@@ -203,11 +204,10 @@ pub fn spawn_rom_picker(sender: &Sender<AsyncFrontendMessage>, dir: Option<&Stor
             let data = handle.read().await;
             let name = handle.file_name();
             let directory = get_file_directory(&handle)
-                .map(|f| StorageKey::from(&f))
-                .unwrap_or(StorageKey {
+                .map_or(StorageKey {
                     category: StorageCategory::Cache,
                     sub_path: "upload_cache/roms/".to_string(),
-                });
+                }, |f| StorageKey::from(&f));
 
             // Cache ROM in storage for later access (ROM matching, etc.)
             let cache_key = storage::rom_cache_key(&name);
@@ -276,11 +276,11 @@ pub fn spawn_save_dialog(
                 let result = {
                     if get_extension(&filename).is_none() {
                         let ext = file_type.get_default_extension();
-                        if !ext.is_empty() {
+                        if ext.is_empty() {
+                            handle.write(&bytes).await
+                        } else {
                             let path = handle.path().with_extension(ext);
                             std::fs::write(&path, &bytes)
-                        } else {
-                            handle.write(&bytes).await
                         }
                     } else {
                         handle.write(&bytes).await
@@ -291,7 +291,7 @@ pub fn spawn_save_dialog(
                 let result = handle.write(&bytes).await;
 
                 // Notify completion if a sender was provided
-                let error = result.err().map(|e| format!("Failed to write file: {}", e));
+                let error = result.err().map(|e| format!("Failed to write file: {e}"));
                 if let Some(sender) = sender {
                     let _ = sender.send(AsyncFrontendMessage::FileSaveCompleted {
                         error,
@@ -358,6 +358,7 @@ pub fn color_radio<Value: PartialEq>(
 }
 
 /// Compute SHA256 checksum for data
+#[must_use]
 pub fn compute_data_checksum(data: &[u8]) -> [u8; 32] {
     let mut hasher = Sha256::new();
     hasher.update(data);
@@ -393,16 +394,13 @@ pub fn spawn_savestate_picker(sender: &Sender<AsyncFrontendMessage>, dir: Option
             let _ = get_storage().set(&cache_key, data.clone()).await;
 
             // Try to parse the savestate from the data
-            let savestate = match try_parse_savestate(&sender, &data) {
-                Some(value) => value,
-                None => {
-                    let _ = sender.send(AsyncFrontendMessage::AutoPauseSignal {
-                        signal: AutoPauseSignal::SavestateLoadPicker,
-                        active: false,
-                    });
+            let savestate = if let Some(value) = try_parse_savestate(&sender, &data) { value } else {
+                let _ = sender.send(AsyncFrontendMessage::AutoPauseSignal {
+                    signal: AutoPauseSignal::SavestateLoadPicker,
+                    active: false,
+                });
 
-                    return;
-                }
+                return;
             };
 
             let context = SavestateLoadContext {
@@ -422,19 +420,17 @@ pub fn spawn_savestate_picker(sender: &Sender<AsyncFrontendMessage>, dir: Option
     });
 }
 
+#[must_use]
 pub fn try_parse_savestate(
     sender: &Sender<AsyncFrontendMessage>,
     data: &[u8],
 ) -> Option<SaveState> {
-    let savestate = match savestate::try_load_state_from_bytes(data) {
-        Some(s) => s,
-        None => {
-            // Failed to load savestate - send error notification
-            let _ = sender.send(AsyncFrontendMessage::SavestateLoadFailed(
-                SavestateLoadError::FailedToLoadSavestate,
-            ));
-            return None;
-        }
+    let savestate = if let Some(s) = savestate::try_load_state_from_bytes(data) { s } else {
+        // Failed to load savestate - send error notification
+        let _ = sender.send(AsyncFrontendMessage::SavestateLoadFailed(
+            SavestateLoadError::FailedToLoadSavestate,
+        ));
+        return None;
     };
     Some(savestate)
 }
@@ -459,11 +455,10 @@ pub fn spawn_rom_picker_for_savestate(
             let data = handle.read().await;
             let name = handle.file_name();
             let directory = get_file_directory(&handle)
-                .map(|f| StorageKey::from(&f))
-                .unwrap_or(StorageKey {
+                .map_or(StorageKey {
                     category: StorageCategory::Cache,
                     sub_path: "upload_cache/roms/".to_string(),
-                });
+                }, |f| StorageKey::from(&f));
 
             // Cache ROM in storage for later access (ROM matching, etc.)
             let cache_key = storage::rom_cache_key(&name);
@@ -482,23 +477,25 @@ pub fn spawn_rom_picker_for_savestate(
 }
 
 /// Get a display name for a ROM based on its name and checksum
+#[must_use]
 pub fn rom_display_name(name: &str, sha256: &[u8; 32]) -> String {
     // Extract stem (filename without extension)
-    let stem = name.rsplit_once('.').map(|(s, _)| s).unwrap_or(name);
-    if !stem.is_empty() {
-        stem.to_owned()
-    } else {
+    let stem = name.rsplit_once('.').map_or(name, |(s, _)| s);
+    if stem.is_empty() {
         format!("Unknown ROM ({})", short_hash_hex(sha256))
+    } else {
+        stem.to_owned()
     }
 }
 
+#[must_use]
 pub fn short_hash_hex(hash: &[u8; 32]) -> String {
     use std::fmt::Write;
     let mut s = String::with_capacity(12);
 
     #[allow(clippy::unwrap_used)]
     for b in &hash[..6] {
-        write!(&mut s, "{:02x}", b).unwrap();
+        write!(&mut s, "{b:02x}").unwrap();
     }
 
     s

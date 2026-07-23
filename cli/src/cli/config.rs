@@ -9,7 +9,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use monsoon_core::util::{parse_hex_u8_opt, parse_hex_u16_opt};
+use monsoon_core::util::{parse_hex_u16_opt, parse_hex_u8_opt};
 use serde::Deserialize;
 
 use crate::cli::args::BuiltinPalette;
@@ -143,7 +143,7 @@ pub struct VideoConfig {
     /// Video export mode: "accurate" or "smooth"
     pub video_mode: Option<String>,
     pub video_scale: Option<String>,
-    /// Screen renderer ID (e.g., "PaletteLookup")
+    /// Screen renderer ID (e.g., "`PaletteLookup`")
     pub renderer: Option<String>,
 }
 
@@ -163,7 +163,7 @@ pub struct ExecutionConfig {
     /// Memory watchpoints (format: "ADDR" or "ADDR:r" or "ADDR:w" or "ADDR:rw")
     #[serde(default)]
     pub watch_mem: Vec<String>,
-    /// Alternative: stop_conditions as array of strings
+    /// Alternative: `stop_conditions` as array of strings
     #[serde(default)]
     pub stop_conditions: Vec<String>,
     pub alignment: Option<u8>,
@@ -191,9 +191,10 @@ impl ConfigFile {
 
     /// Merge config file values with CLI arguments.
     /// CLI arguments take precedence over config file values.
+    #[allow(clippy::too_many_lines)]
     pub fn merge_with_cli(&self, cli: &mut CliArgs) {
         if cli.console.alignment == 2 {
-            cli.console.alignment = self.console_config.alignment.unwrap_or(2)
+            cli.console.alignment = self.console_config.alignment.unwrap_or(2);
         }
 
         // Global options
@@ -206,7 +207,7 @@ impl ConfigFile {
 
         // ROM options
         if cli.rom.rom.is_none() {
-            cli.rom.rom = self.rom.path.clone();
+            cli.rom.rom.clone_from(&self.rom.path);
         }
         if !cli.rom.rom_info {
             cli.rom.rom_info = self.rom.rom_info.unwrap_or(false);
@@ -214,10 +215,10 @@ impl ConfigFile {
 
         // Savestate options
         if cli.savestate.load_state.is_none() {
-            cli.savestate.load_state = self.savestate.load.clone();
+            cli.savestate.load_state.clone_from(&self.savestate.load);
         }
         if cli.savestate.save_state.is_none() {
-            cli.savestate.save_state = self.savestate.save.clone();
+            cli.savestate.save_state.clone_from(&self.savestate.save);
         }
         if !cli.savestate.state_stdin {
             cli.savestate.state_stdin = self.savestate.state_stdin.unwrap_or(false);
@@ -226,7 +227,9 @@ impl ConfigFile {
             cli.savestate.state_stdout = self.savestate.state_stdout.unwrap_or(false);
         }
         if cli.savestate.save_state_on.is_none() {
-            cli.savestate.save_state_on = self.savestate.save_on.clone();
+            cli.savestate
+                .save_state_on
+                .clone_from(&self.savestate.save_on);
         }
         if cli.savestate.state_format == SavestateFormat::Binary {
             cli.savestate.state_format = self.savestate.format;
@@ -234,10 +237,10 @@ impl ConfigFile {
 
         // Memory options
         if cli.memory.read_cpu.is_none() {
-            cli.memory.read_cpu = self.memory.read_cpu.clone();
+            cli.memory.read_cpu.clone_from(&self.memory.read_cpu);
         }
         if cli.memory.read_ppu.is_none() {
-            cli.memory.read_ppu = self.memory.read_ppu.clone();
+            cli.memory.read_ppu.clone_from(&self.memory.read_ppu);
         }
         if !cli.memory.dump_oam {
             cli.memory.dump_oam = self.memory.dump_oam.unwrap_or(false);
@@ -249,17 +252,17 @@ impl ConfigFile {
             cli.memory.dump_palette = self.memory.dump_palette.unwrap_or(false);
         }
         if cli.memory.init_file.is_none() {
-            cli.memory.init_file = self.memory.init_file.clone();
+            cli.memory.init_file.clone_from(&self.memory.init_file);
         }
         // Merge init_cpu from config if CLI has none
         if cli.memory.init_cpu.is_empty() {
             for (addr, values) in &self.memory.init_cpu {
                 let values_str = values
                     .iter()
-                    .map(|v| format!("0x{:02X}", v))
+                    .map(|v| format!("0x{v:02X}"))
                     .collect::<Vec<_>>()
                     .join(",");
-                cli.memory.init_cpu.push(format!("{}={}", addr, values_str));
+                cli.memory.init_cpu.push(format!("{addr}={values_str}"));
             }
         }
         // Merge init_ppu from config if CLI has none
@@ -267,10 +270,10 @@ impl ConfigFile {
             for (addr, values) in &self.memory.init_ppu {
                 let values_str = values
                     .iter()
-                    .map(|v| format!("0x{:02X}", v))
+                    .map(|v| format!("0x{v:02X}"))
                     .collect::<Vec<_>>()
                     .join(",");
-                cli.memory.init_ppu.push(format!("{}={}", addr, values_str));
+                cli.memory.init_ppu.push(format!("{addr}={values_str}"));
             }
         }
         // Merge init_oam from config if CLI has none
@@ -278,10 +281,10 @@ impl ConfigFile {
             for (addr, values) in &self.memory.init_oam {
                 let values_str = values
                     .iter()
-                    .map(|v| format!("0x{:02X}", v))
+                    .map(|v| format!("0x{v:02X}"))
                     .collect::<Vec<_>>()
                     .join(",");
-                cli.memory.init_oam.push(format!("{}={}", addr, values_str));
+                cli.memory.init_oam.push(format!("{addr}={values_str}"));
             }
         }
 
@@ -295,7 +298,7 @@ impl ConfigFile {
 
         // Palette options
         if cli.palette.palette.is_none() {
-            cli.palette.palette = self.palette.path.clone();
+            cli.palette.palette.clone_from(&self.palette.path);
         }
         if cli.palette.palette_builtin.is_none()
             && let Some(ref builtin) = self.palette.builtin
@@ -305,13 +308,15 @@ impl ConfigFile {
 
         // Video options
         if cli.video.screenshot.is_none() {
-            cli.video.screenshot = self.video.screenshot.clone();
+            cli.video.screenshot.clone_from(&self.video.screenshot);
         }
         if cli.video.screenshot_on.is_none() {
-            cli.video.screenshot_on = self.video.screenshot_on.clone();
+            cli.video
+                .screenshot_on
+                .clone_from(&self.video.screenshot_on);
         }
         if cli.video.video_path.is_none() {
-            cli.video.video_path = self.video.video_path.clone();
+            cli.video.video_path.clone_from(&self.video.video_path);
         }
         if let Some(ref fmt) = self.video.video_format {
             // Only override if CLI is at default
@@ -323,14 +328,14 @@ impl ConfigFile {
             if self.video.video_scale.is_none() {
                 cli.video.video_scale = Some("native".to_string());
             } else {
-                cli.video.video_scale = self.video.video_scale.clone();
+                cli.video.video_scale.clone_from(&self.video.video_scale);
             }
         }
         // Only override video_fps if CLI is at default
         if cli.video.video_fps == DEFAULT_VIDEO_FPS
             && let Some(ref fps) = self.video.video_fps
         {
-            cli.video.video_fps = fps.clone();
+            cli.video.video_fps.clone_from(fps);
         }
         // Only override video_mode if CLI is at default
         if cli.video.video_mode == VideoExportMode::Accurate
@@ -341,7 +346,7 @@ impl ConfigFile {
         }
         // Renderer option
         if cli.video.renderer.is_none() {
-            cli.video.renderer = self.video.renderer.clone();
+            cli.video.renderer.clone_from(&self.video.renderer);
         }
 
         // Execution options
@@ -357,19 +362,19 @@ impl ConfigFile {
             cli.execution.until_opcode = parse_hex_u8_opt(op);
         }
         if cli.execution.until_mem.is_none() {
-            cli.execution.until_mem = self.execution.until_mem.clone();
+            cli.execution.until_mem.clone_from(&self.execution.until_mem);
         }
         if !cli.execution.until_hlt {
             cli.execution.until_hlt = self.execution.until_hlt.unwrap_or(false);
         }
         if cli.execution.trace.is_none() {
-            cli.execution.trace = self.execution.trace.clone();
+            cli.execution.trace.clone_from(&self.execution.trace);
         }
         if !cli.execution.trace_log {
             cli.execution.trace_log = self.execution.trace_log.unwrap_or(false);
         }
         if cli.execution.trace_log_path.is_none() {
-            cli.execution.trace_log_path = self.execution.trace_log_path.clone();
+            cli.execution.trace_log_path.clone_from(&self.execution.trace_log_path);
         }
         if cli.execution.breakpoint.is_empty() {
             for bp in &self.execution.breakpoints {
@@ -379,7 +384,7 @@ impl ConfigFile {
             }
         }
         if cli.execution.watch_mem.is_empty() {
-            cli.execution.watch_mem = self.execution.watch_mem.clone();
+            cli.execution.watch_mem.clone_from(&self.execution.watch_mem);
         }
 
         // Parse stop_conditions into appropriate fields
@@ -402,7 +407,7 @@ impl ConfigFile {
 
         // Output options
         if cli.output.output.is_none() {
-            cli.output.output = self.output.path.clone();
+            cli.output.output.clone_from(&self.output.path);
         }
         // Handle shorthand flags from config (precedence: json > toml > binary >
         // format) This matches the CLI behavior in OutputArgs::effective_format()
@@ -438,8 +443,8 @@ pub enum ConfigError {
 impl std::fmt::Display for ConfigError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ConfigError::IoError(e) => write!(f, "Failed to read config file: {}", e),
-            ConfigError::ParseError(e) => write!(f, "Failed to parse config file: {}", e),
+            ConfigError::IoError(e) => write!(f, "Failed to read config file: {e}"),
+            ConfigError::ParseError(e) => write!(f, "Failed to parse config file: {e}"),
         }
     }
 }

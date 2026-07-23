@@ -40,12 +40,12 @@ fn main() -> ExitCode {
     let result = run_gui(&args);
 
     match result {
-        Ok(_) => {
+        Ok(()) => {
             eprintln!("Emulator finished execution");
             ExitCode::from(EXIT_SUCCESS)
         }
         Err(e) => {
-            eprintln!("Emulator finished with error: \"{}\"", e);
+            eprintln!("Emulator finished with error: \"{e}\"");
             ExitCode::from(EXIT_GENERAL_ERROR)
         }
     }

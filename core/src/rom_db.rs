@@ -11,12 +11,15 @@ pub struct RomDb {
 }
 
 impl RomDb {
+    #[must_use]
     pub fn get_all_entries(&self) -> Vec<&RomDbEntry> { self.data.values().collect() }
 
+    #[must_use]
     pub fn get_entry(&self, full_hash: &[u8; 32]) -> Option<&RomDbEntry> {
         self.data.get(full_hash)
     }
 
+    #[must_use]
     pub fn get_entry_by_headerless(&self, headerless_hash: &[u8; 32]) -> Option<&RomDbEntry> {
         self.data
             .iter()
@@ -62,6 +65,7 @@ pub enum DbParseError {
     AllOptionsFailed,
     NotSet,
     DeserializationError(postcard::Error),
+    InvalidOnlineURL,
 }
 
 impl From<postcard::Error> for DbParseError {
@@ -69,6 +73,8 @@ impl From<postcard::Error> for DbParseError {
 }
 
 impl RomDb {
+    /// # Errors
+    /// Returns `err` if the data parsed is not a valid db
     pub fn deserialize(data: &[u8]) -> Result<Self, DbParseError> {
         postcard::from_bytes::<RomDb>(data).map_err(DbParseError::from)
     }
@@ -84,7 +90,7 @@ impl Default for RomDb {
         } else {
             RomDb {
                 version: "0".to_string(),
-                data: Default::default(),
+                data: HashMap::default(),
             }
         }
     }

@@ -147,9 +147,10 @@ macro_rules! declare_renderers {
 /// * `name` — The renderer key to look up, or `None` for the fallback.
 /// * `renderers` — Available renderer registrations (typically from
 ///   [`declare_renderers!`](crate::declare_renderers)).
+#[must_use]
 pub fn create_renderer(
     name: Option<&str>,
-    renderers: Vec<RendererRegistration>,
+    renderers: &[RendererRegistration],
 ) -> Box<dyn ScreenRenderer> {
     if let Some(name) = name {
         let renderer = renderers.iter().find(|r| r.key == name);
@@ -178,6 +179,7 @@ impl Default for NoneRenderer {
 
 impl NoneRenderer {
     /// Creates a new `NoneRenderer`.
+    #[must_use]
     pub fn new() -> Self {
         NoneRenderer {
             image: [RgbColor::default()],

@@ -1,4 +1,6 @@
 #![feature(likely_unlikely)]
+#![feature(const_trait_impl)]
+#![feature(const_convert)]
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]

@@ -3,8 +3,8 @@ use egui::{Context, FocusDirection};
 
 use crate::frontend::egui::config::{AppConfig, KeybindingsConfig};
 use crate::frontend::egui::keybindings::{
-    BindVariant, Binding, HotkeyBinding, hotkey_get_suppressed_binding, hotkey_is_any_expecting,
-    hotkey_set_suppressed_binding, hotkey_take_just_set_this_frame,
+    hotkey_get_suppressed_binding, hotkey_is_any_expecting, hotkey_set_suppressed_binding, hotkey_take_just_set_this_frame, BindVariant,
+    Binding, HotkeyBinding,
 };
 use crate::frontend::messages::AsyncFrontendMessage;
 
@@ -98,7 +98,7 @@ fn resolve_active_key_actions(
             continue;
         }
 
-        let specificity = binding_specificity(binding);
+        let specificity = binding_specificity(*binding);
         match highest_non_controller_specificity {
             None => {
                 highest_non_controller_specificity = Some(specificity);
@@ -132,14 +132,14 @@ fn resolve_active_key_actions(
 /// clicking a focused button, or Tab advancing widget focus).
 fn consume_triggered_keys(input: &mut egui::InputState, consumed_bindings: &[Binding]) {
     for binding in consumed_bindings {
-        consume_binding(input, &Some(*binding))
+        consume_binding(input, Some(binding));
     }
 }
 
 /// Consume the key-press event for a single binding, if it is a keyboard
 /// binding.  Mouse bindings are not consumed because they do not interfere
 /// with egui's focus system.
-fn consume_binding(input: &mut egui::InputState, binding: &Option<Binding>) {
+fn consume_binding(input: &mut egui::InputState, binding: Option<&Binding>) {
     if let Some(b) = binding
         && let BindVariant::Keyboard(key) = b.variant
     {
@@ -151,15 +151,14 @@ fn consume_binding(input: &mut egui::InputState, binding: &Option<Binding>) {
 ///
 /// Score = number of required modifier flags + 1 for non-modifier key/mouse
 /// variants. Higher scores are considered more specific.
-fn binding_specificity(binding: &Binding) -> usize {
-    binding.modifiers.alt as usize
-        + binding.modifiers.ctrl as usize
-        + binding.modifiers.shift as usize
-        + binding.modifiers.command as usize
-        + binding.modifiers.mac_cmd as usize
+fn binding_specificity(binding: Binding) -> usize {
+    usize::from(binding.modifiers.alt)
+        + usize::from(binding.modifiers.ctrl)
+        + usize::from(binding.modifiers.shift)
+        + usize::from(binding.modifiers.command)
+        + usize::from(binding.modifiers.mac_cmd)
         + match binding.variant {
-            BindVariant::ModifierKey(_) => 0,
-            BindVariant::Unbound => 0,
+            BindVariant::ModifierKey(_) | BindVariant::Unbound => 0,
             _ => 1,
         }
 }

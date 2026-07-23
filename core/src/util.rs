@@ -15,9 +15,9 @@ use crate::emulation::savestate::{BINARY_FORMAT_VERSION, JSON_FORMAT_VERSION, MA
 /// boundary.
 ///
 /// This is used by the 6502 CPU for relative branch offset calculations.
-#[inline(always)]
+#[inline]
 pub(crate) fn crosses_page_boundary_i8(base: u16, offset: i8) -> bool {
-    let target = base.wrapping_add(offset as i16 as u16);
+    let target = base.wrapping_add_signed(i16::from(offset));
     (base & UPPER_BYTE) != (target & UPPER_BYTE)
 }
 
@@ -25,11 +25,11 @@ pub(crate) fn crosses_page_boundary_i8(base: u16, offset: i8) -> bool {
 ///
 /// This emulates the 6502 bug where some addressing modes wrap within
 /// a page instead of crossing into the next page.
-#[inline(always)]
+#[inline]
 pub(crate) fn add_to_low_byte(val: u16, add: u8) -> u16 {
     let high = val & 0xFF00; // preserve high byte
     let low = ((val & 0x00FF) as u8).wrapping_add(add); // add with wrapping
-    high | low as u16
+    high | u16::from(low)
 }
 
 #[derive(Debug)]
@@ -42,7 +42,7 @@ impl Display for HashError {
         f.write_str("Error hashing data")?;
         match self {
             HashError::SerializationError(err) => {
-                write!(f, "{}", err)
+                write!(f, "{err}")
             }
         }
     }
@@ -60,6 +60,8 @@ impl From<SerializationError> for HashError {
 /// modified) rather than for security purposes.
 pub trait Hashable {
     /// Computes a 64-bit FNV-1a hash of this value.
+    /// # Errors
+    /// Returns `err` if the passed value could not be hashed
     fn hash(&self) -> Result<u64, HashError>;
 }
 
@@ -74,11 +76,11 @@ impl Display for SerializationError {
         match self {
             SerializationError::SerdeJsonError(err) => {
                 f.write_str("Error serializing data to json")?;
-                write!(f, "{}", err)
+                write!(f, "{err}")
             }
             SerializationError::PostcardError(err) => {
                 f.write_str("Error serializing data using postcard")?;
-                write!(f, "{}", err)
+                write!(f, "{err}")
             }
         }
     }
@@ -101,6 +103,8 @@ impl From<postcard::Error> for SerializationError {
 /// - `Some("json")` — human-readable JSON format.
 pub trait ToBytes {
     /// Serializes this value to bytes in the specified format.
+    /// # Errors
+    /// Returns `err` if the passed value could not be hashed
     fn to_bytes(&self, format: Option<String>) -> Result<Vec<u8>, SerializationError>;
 }
 
@@ -121,7 +125,7 @@ impl ToBytes for SaveState {
             res.extend(serde_json::to_vec_pretty(self)?);
         } else {
             res.push(BINARY_FORMAT_VERSION);
-            res.extend(postcard::to_stdvec(self)?)
+            res.extend(postcard::to_stdvec(self)?);
         }
 
         Ok(res)
@@ -144,21 +148,22 @@ impl Hashable for Vec<u8> {
 /// Uses FNV-1a algorithm which is fast and has good distribution.
 #[inline]
 pub(crate) fn compute_hash(data: &[u8]) -> u64 {
-    const FNV_OFFSET_BASIS: u64 = 0xCBF29CE484222325;
-    const FNV_PRIME: u64 = 0x100000001B3;
+    const FNV_OFFSET_BASIS: u64 = 0xCBF2_9CE4_8422_2325;
+    const FNV_PRIME: u64 = 0x100_0000_01B3;
 
     let mut hash = FNV_OFFSET_BASIS;
     for &byte in data {
-        hash ^= byte as u64;
+        hash ^= u64::from(byte);
         hash = hash.wrapping_mul(FNV_PRIME);
     }
     hash
 }
 
+#[must_use]
 pub fn format_bytes_human_readable(bytes: u32) -> String {
     const UNITS: [&str; 3] = ["Bytes", "KB", "MB"];
 
-    let mut value = bytes as f64;
+    let mut value = f64::from(bytes);
     let mut unit_idx = 0usize;
     while value >= 1024.0 && unit_idx < UNITS.len() - 1 {
         value /= 1024.0;
@@ -173,24 +178,29 @@ pub fn format_bytes_human_readable(bytes: u32) -> String {
 }
 
 /// Parse a hexadecimal u16 value (with or without 0x prefix)
+/// # Errors
+/// Returns `err` if the passed value is not a valid hex number
 pub fn parse_hex_u16(s: &str) -> Result<u16, String> {
     let s = s
         .strip_prefix("0x")
         .or_else(|| s.strip_prefix("0X"))
         .unwrap_or(s);
-    u16::from_str_radix(s, 16).map_err(|e| format!("Invalid hex value '{}': {}", s, e))
+    u16::from_str_radix(s, 16).map_err(|e| format!("Invalid hex value '{s}': {e}"))
 }
 
 /// Parse a hexadecimal u8 value (with or without 0x prefix)
+/// # Errors
+/// Returns `err` if the passed value is not a valid hex number
 pub fn parse_hex_u8(s: &str) -> Result<u8, String> {
     let s = s
         .strip_prefix("0x")
         .or_else(|| s.strip_prefix("0X"))
         .unwrap_or(s);
-    u8::from_str_radix(s, 16).map_err(|e| format!("Invalid hex value '{}': {}", s, e))
+    u8::from_str_radix(s, 16).map_err(|e| format!("Invalid hex value '{s}': {e}"))
 }
 
 /// Parse a hex string to u16, returning None on failure
+#[must_use]
 pub fn parse_hex_u16_opt(s: &str) -> Option<u16> {
     let s = s
         .strip_prefix("0x")
@@ -200,6 +210,7 @@ pub fn parse_hex_u16_opt(s: &str) -> Option<u16> {
 }
 
 /// Parse a hex string to u8, returning None on failure
+#[must_use]
 pub fn parse_hex_u8_opt(s: &str) -> Option<u8> {
     let s = s
         .strip_prefix("0x")

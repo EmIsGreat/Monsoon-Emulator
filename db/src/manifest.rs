@@ -12,4 +12,5 @@ pub struct Manifest {
     pub rom_info_db: ManifestEntry,
 }
 
+#[must_use]
 pub fn is_newer(a: &str, b: &str) -> bool { a > b }

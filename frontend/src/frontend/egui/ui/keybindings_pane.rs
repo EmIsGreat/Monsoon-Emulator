@@ -91,7 +91,7 @@ pub fn render_keybindings(ui: &mut egui::Ui, config: &mut AppConfig) -> bool {
                                 egui::Label::new(action.get_display_name()),
                             );
                             changed |= ui.add(Hotkey::with_id(binding, action)).changed();
-                            ui.end_row()
+                            ui.end_row();
                         }
                     });
             });

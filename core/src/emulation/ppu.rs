@@ -7,13 +7,13 @@ use crate::emulation::nes::ExecutionResult;
 // Re-import public constants/types from ppu_util so internal code can use them
 // with short names.
 pub use crate::emulation::ppu_util::{
-    EmulatorFetchable, NAMETABLE_COLS, NAMETABLE_COUNT, NAMETABLE_ROWS, NametableData,
-    PALETTE_RAM_END_ADDRESS, PALETTE_RAM_START_ADDRESS, PaletteData, RegisterEntry, RegisterFormat,
-    RegisterMap, RegisterValue, SPRITE_COUNT, SoamData, Sprite, SpriteData, SpriteMode, TILE_SIZE,
-    TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH, TileData,
+    EmulatorFetchable, NametableData, PaletteData, RegisterEntry, RegisterFormat,
+    RegisterMap, RegisterValue, SoamData, Sprite, SpriteData,
+    SpriteMode, TileData, NAMETABLE_COLS, NAMETABLE_COUNT, NAMETABLE_ROWS, PALETTE_RAM_END_ADDRESS, PALETTE_RAM_START_ADDRESS, SPRITE_COUNT,
+    TILE_SIZE, TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH,
 };
 
-pub const PATTERN_TABLE_SIZE: usize = 256;
+pub const PATTERN_TABLE_SIZE: u16 = 256;
 pub const VBLANK_NMI_BIT: u8 = 0x80;
 pub const VRAM_ADDR_INC_BIT: u8 = 0x4;
 pub const BACKGROUND_RENDER_BIT: u8 = 0x8;
@@ -27,8 +27,8 @@ pub const DOTS_PER_SCANLINE: u16 = 340;
 pub const OPEN_BUS_DECAY_DELAY: u32 = 420_000;
 pub const SPRITE_OVERFLOW_FLAG: u8 = 0b0010_0000;
 pub const SPRITE_ZERO_FLAG: u8 = 0b0100_0000;
-pub const BYTES_PER_TILE: usize = 16; // 8 low plane + 8 high plane
-pub const TABLE_BYTES: usize = 0x1000; // 256 tiles * 16 bytes
+pub const BYTES_PER_TILE: u16 = 16; // 8 low plane + 8 high plane
+pub const TABLE_BYTES: u16 = 0x1000; // 256 tiles * 16 bytes
 pub const VBL_START_SCANLINE: u16 = 241;
 pub const VISIBLE_SCANLINES: u16 = 239;
 pub const PRE_RENDER_SCANLINE: u16 = 261;
@@ -40,6 +40,7 @@ pub const ATTRIBUTE_TABLE_BASE_ADDRESS: u16 = 0x23C0;
 pub const SCREEN_RENDER_WIDTH: usize = 256;
 
 #[derive(Debug, Clone)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct Ppu {
     pub dot_counter: u64,
     pub ctrl_register: u8,
@@ -47,7 +48,7 @@ pub struct Ppu {
     pub status_register: u8,
     pub oam_addr_register: u8,
     pub v_register: u16,
-    pub ppu_data_buffer: u8,
+    pub data_buffer: u8,
     pub nmi_requested: bool,
     pub oam: Memory,
     pub write_latch: bool,
@@ -99,7 +100,7 @@ impl Ppu {
             status_register: 0,
             oam_addr_register: 0,
             v_register: 0,
-            ppu_data_buffer: 0,
+            data_buffer: 0,
             bg_next_tile_id: 0,
             bg_next_tile_attribute: 0,
             bg_next_tile_lsb: 0,
@@ -110,7 +111,10 @@ impl Ppu {
             t_register: 0,
             even_frame: false,
             reset_signal: false,
-            pixel_buffer: vec![0; TOTAL_OUTPUT_HEIGHT * TOTAL_OUTPUT_WIDTH],
+            pixel_buffer: vec![
+                0;
+                usize::from(TOTAL_OUTPUT_HEIGHT) * usize::from(TOTAL_OUTPUT_WIDTH)
+            ],
             vbl_reset_counter: 0,
             vbl_clear_scheduled: None,
             scanline: 0,
@@ -135,13 +139,14 @@ impl Ppu {
             current_sprite_tile_id: 0,
             oam_fetch: 0,
             sprite_zero_in_scanline: false,
-            log: "".to_string(),
+            log: String::new(),
         }
     }
 
     fn get_default_oam() -> Memory { Memory::new(OAM_SIZE + OAM_SIZE / 8, true) }
 
-    #[inline(always)]
+    #[inline]
+    #[allow(clippy::too_many_lines)]
     pub fn step(&mut self, bus: &mut impl PpuBus) -> ExecutionResult {
         self.prev_vbl = self.status_register & VBLANK_NMI_BIT;
 
@@ -149,7 +154,7 @@ impl Ppu {
             self.ctrl_register = 0;
             self.mask_register = 0;
             self.write_latch = false;
-            self.ppu_data_buffer = 0;
+            self.data_buffer = 0;
             self.t_register = 0;
         }
 
@@ -172,7 +177,7 @@ impl Ppu {
             if self.scanline == PRE_RENDER_SCANLINE && self.dot == 1 {
                 self.set_soam_disable(true);
                 self.clear_sprite_overflow();
-                self.clear_sprite_zero()
+                self.clear_sprite_zero();
             }
 
             if self.dot >= 1 && self.dot <= 64 {
@@ -204,7 +209,7 @@ impl Ppu {
                 }
 
                 if self.dot == 339 {
-                    for s in self.sprite_fifos.iter_mut() {
+                    for s in &mut self.sprite_fifos {
                         s.is_counting = true;
                     }
                 }
@@ -223,8 +228,8 @@ impl Ppu {
 
                     for (i, s) in self.sprite_fifos.iter_mut().enumerate() {
                         if s.down_counter == 0 && !s.is_counting {
-                            let shift_out_lo = (s.shifter_pattern_lo & 0x80 != 0) as u8;
-                            let shift_out_hi = (s.shifter_pattern_hi & 0x80 != 0) as u8;
+                            let shift_out_lo = u8::from(s.shifter_pattern_lo & 0x80 != 0);
+                            let shift_out_hi = u8::from(s.shifter_pattern_hi & 0x80 != 0);
 
                             s.shifter_pattern_lo <<= 1;
                             s.shifter_pattern_hi <<= 1;
@@ -247,8 +252,8 @@ impl Ppu {
                         0x3F10
                     } else {
                         0x3F10
-                            + ((sprite_pixel_palette as u16) << 2)
-                            + (sprite_pixel_pattern as u16)
+                            + (u16::from(sprite_pixel_palette) << 2)
+                            + u16::from(sprite_pixel_pattern)
                     };
 
                     let pixel_color_address = if bg_color_address == PALETTE_RAM_START_ADDRESS
@@ -283,10 +288,11 @@ impl Ppu {
 
                     self.pixel_buffer
                         [self.scanline as usize * SCREEN_RENDER_WIDTH + (self.dot - 1) as usize] =
-                        ((pixel_color & 0b0011_1111) as u16) | ((self.get_emph_bits() as u16) << 6);
+                        u16::from(pixel_color & 0b0011_1111)
+                            | (u16::from(self.get_emph_bits()) << 6);
                 }
 
-                for s in self.sprite_fifos.iter_mut() {
+                for s in &mut self.sprite_fifos {
                     if s.is_counting && s.down_counter > 0 {
                         s.down_counter -= 1;
 
@@ -304,7 +310,7 @@ impl Ppu {
                 }
 
                 if self.dot == 256 {
-                    self.inc_y_scroll()
+                    self.inc_y_scroll();
                 }
             }
 
@@ -325,7 +331,7 @@ impl Ppu {
         {
             self.pixel_buffer
                 [self.scanline as usize * SCREEN_RENDER_WIDTH + (self.dot - 1) as usize] =
-                (bus.read(PALETTE_RAM_START_ADDRESS) & 0b0011_1111) as u16;
+                u16::from(bus.read(PALETTE_RAM_START_ADDRESS) & 0b0011_1111);
         }
 
         if self.scanline == VBL_START_SCANLINE && self.dot == 1 {
@@ -384,7 +390,7 @@ impl Ppu {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn get_emph_bits(&self) -> u8 { self.get_mask_register() >> 5 }
 
     #[inline]
@@ -399,15 +405,16 @@ impl Ppu {
                 self.get_sprite_fifo_for_soam_index().attribute =
                     self.secondary_oam_read(self.soam_index + 2, open_bus);
             }
+            #[allow(clippy::cast_possible_truncation)]
             2 => {
                 self.current_sprite_tile_id =
                     self.secondary_oam_read(self.soam_index + 1, open_bus);
                 let sprite_height = self.get_sprite_height();
 
                 let table_base = if sprite_height == 8 {
-                    ((self.ctrl_register & 0x8) as u16) << 9
+                    u16::from(self.ctrl_register & 0x8) << 9
                 } else {
-                    ((self.current_sprite_tile_id & 1) as u16) << 12
+                    u16::from(self.current_sprite_tile_id & 1) << 12
                 };
 
                 let raw_row = (self.scanline as u8).wrapping_sub(self.current_sprite_y);
@@ -419,10 +426,10 @@ impl Ppu {
                 };
 
                 let tile_id = if sprite_height == 8 {
-                    self.current_sprite_tile_id as u16
+                    u16::from(self.current_sprite_tile_id)
                 } else {
                     // Strip bit 0 (used for table select), then select top or bottom tile
-                    let base_tile = (self.current_sprite_tile_id & 0xFE) as u16;
+                    let base_tile = u16::from(self.current_sprite_tile_id & 0xFE);
                     if row_offset < 8 {
                         base_tile
                     } else {
@@ -432,7 +439,7 @@ impl Ppu {
 
                 let fine_y = row_offset % 8;
 
-                self.address_bus = table_base + (tile_id * 16) + fine_y as u16;
+                self.address_bus = table_base + (tile_id * 16) + u16::from(fine_y);
 
                 let mut pattern = bus.read(self.address_bus);
 
@@ -473,12 +480,13 @@ impl Ppu {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn get_sprite_fifo_for_soam_index(&mut self) -> &mut SpriteFifo {
         &mut self.sprite_fifos[(self.soam_index as usize / 4) % 8]
     }
 
     #[inline]
+    #[allow(clippy::cast_possible_truncation)]
     pub fn is_sprite_in_range(&self) -> bool {
         let (diff, o) = (self.scanline as u8).overflowing_sub(self.current_sprite_y);
 
@@ -487,60 +495,57 @@ impl Ppu {
 
     #[inline]
     pub fn sprite_eval(&mut self, open_bus: &OpenBus) {
-        match ((self.dot - 1) & 1) == 0 {
-            true => {
-                self.oam_addr_register = self.oam_index;
-                self.oam_fetch = self.get_oam_at_addr(open_bus);
+        if ((self.dot - 1) & 1) == 0 {
+            self.oam_addr_register = self.oam_index;
+            self.oam_fetch = self.get_oam_at_addr(open_bus);
 
-                if self.soam_write_counter == 0 {
-                    self.current_sprite_y = self.oam_fetch;
-                }
+            if self.soam_write_counter == 0 {
+                self.current_sprite_y = self.oam_fetch;
             }
-            false => {
-                let write = if self.scanline != PRE_RENDER_SCANLINE {
-                    self.oam_fetch
-                } else {
-                    self.secondary_oam_read(self.soam_index, open_bus)
-                };
+        } else {
+            let write = if self.scanline == PRE_RENDER_SCANLINE {
+                self.secondary_oam_read(self.soam_index, open_bus)
+            } else {
+                self.oam_fetch
+            };
 
-                self.secondary_oam_write(self.soam_index, write, open_bus);
+            self.secondary_oam_write(self.soam_index, write, open_bus);
 
-                if self.is_sprite_in_range() {
-                    self.oam_increment = 1;
+            if self.is_sprite_in_range() {
+                self.oam_increment = 1;
 
-                    self.soam_index += 1;
+                self.soam_index += 1;
 
-                    if self.soam_write_counter == 3 {
-                        self.soam_write_counter = 0;
-                    } else {
-                        self.soam_write_counter += 1;
-                    }
-
-                    if self.scanline == PRE_RENDER_SCANLINE {
-                        self.soam_write_counter = 0;
-                    }
-
-                    if self.dot == 66 {
-                        self.sprite_zero_in_scanline = true;
-                    }
-                } else {
+                if self.soam_write_counter == 3 {
                     self.soam_write_counter = 0;
-                    self.oam_increment = 4;
+                } else {
+                    self.soam_write_counter += 1;
                 }
 
-                if self.soam_index >= 32 {
-                    self.oam_increment = 5;
+                if self.scanline == PRE_RENDER_SCANLINE {
+                    self.soam_write_counter = 0;
+                }
+
+                if self.dot == 66 {
+                    self.sprite_zero_in_scanline = true;
+                }
+            } else {
+                self.soam_write_counter = 0;
+                self.oam_increment = 4;
+            }
+
+            if self.soam_index >= 32 {
+                self.oam_increment = 5;
+                self.set_soam_disable(true);
+                self.set_sprite_overflow();
+            }
+
+            if self.scanline != PRE_RENDER_SCANLINE {
+                let (i, o) = self.oam_index.overflowing_add(self.oam_increment);
+                self.oam_index = i;
+
+                if o {
                     self.set_soam_disable(true);
-                    self.set_sprite_overflow();
-                }
-
-                if self.scanline != PRE_RENDER_SCANLINE {
-                    let (i, o) = self.oam_index.overflowing_add(self.oam_increment);
-                    self.oam_index = i;
-
-                    if o {
-                        self.set_soam_disable(true);
-                    }
                 }
             }
         }
@@ -550,14 +555,12 @@ impl Ppu {
 
     #[inline]
     pub fn init_soam(&mut self, open_bus: &OpenBus) {
-        match ((self.dot - 1) & 1) == 0 {
-            true => {
-                self.oam_addr_register = (self.dot - 1) as u8;
-                self.oam_fetch = self.get_oam_at_addr(open_bus);
-            }
-            false => {
-                self.secondary_oam_write(((self.dot - 1) / 2) as u8, self.oam_fetch, open_bus);
-            }
+        #[allow(clippy::cast_possible_truncation)]
+        if ((self.dot - 1) & 1) == 0 {
+            self.oam_addr_register = (self.dot - 1) as u8;
+            self.oam_fetch = self.get_oam_at_addr(open_bus);
+        } else {
+            self.secondary_oam_write(((self.dot - 1) / 2) as u8, self.oam_fetch, open_bus);
         }
     }
 
@@ -566,21 +569,21 @@ impl Ppu {
         self.shift_pattern_lo <<= 1;
         self.shift_pattern_hi <<= 1;
         self.shift_attr_lo <<= 1;
-        self.shift_attr_lo |= self.shift_in_attr_lo as u8;
+        self.shift_attr_lo |= u8::from(self.shift_in_attr_lo);
         self.shift_attr_hi <<= 1;
-        self.shift_attr_hi |= self.shift_in_attr_hi as u8;
+        self.shift_attr_hi |= u8::from(self.shift_in_attr_hi);
     }
 
     #[inline]
     pub fn get_bg_pixel(&self) -> u16 {
         let mux = 0x80 >> self.fine_x_scroll;
         // pattern shifters (16-bit)
-        let bit0 = ((self.shift_pattern_lo & (mux as u16) << 8) != 0) as u8;
-        let bit1 = ((self.shift_pattern_hi & (mux as u16) << 8) != 0) as u8;
+        let bit0 = u8::from((self.shift_pattern_lo & u16::from(mux) << 8) != 0);
+        let bit1 = u8::from((self.shift_pattern_hi & u16::from(mux) << 8) != 0);
 
         // attribute shifters (8-bit)
-        let attr0 = ((self.shift_attr_lo & mux) != 0) as u8;
-        let attr1 = ((self.shift_attr_hi & mux) != 0) as u8;
+        let attr0 = u8::from((self.shift_attr_lo & mux) != 0);
+        let attr1 = u8::from((self.shift_attr_hi & mux) != 0);
 
         let pattern_index = (bit1 << 1) | bit0;
         let palette_index = (attr1 << 1) | attr0;
@@ -588,7 +591,7 @@ impl Ppu {
         if pattern_index == 0 {
             PALETTE_RAM_START_ADDRESS
         } else {
-            PALETTE_RAM_START_ADDRESS + ((palette_index as u16) << 2) + (pattern_index as u16)
+            PALETTE_RAM_START_ADDRESS + (u16::from(palette_index) << 2) + u16::from(pattern_index)
         }
     }
 
@@ -626,7 +629,7 @@ impl Ppu {
                 };
 
                 self.address_bus =
-                    table_base + ((self.bg_next_tile_id as u16) * 16) + fine_y as u16;
+                    table_base + (u16::from(self.bg_next_tile_id) * 16) + u16::from(fine_y);
             }
             5 => {
                 self.bg_next_tile_lsb = self.address_latch;
@@ -640,7 +643,7 @@ impl Ppu {
                 };
 
                 self.address_bus =
-                    table_base + ((self.bg_next_tile_id as u16) * 16) + (fine_y + 8) as u16;
+                    table_base + (u16::from(self.bg_next_tile_id) * 16) + u16::from(fine_y + 8);
             }
             7 => {}
             _ => unreachable!(),
@@ -661,22 +664,22 @@ impl Ppu {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn get_grayscale_enabled(&self) -> bool { self.mask_register & 1 == 1 }
 
-    #[inline(always)]
+    #[inline]
     pub fn set_sprite_overflow(&mut self) { self.status_register |= SPRITE_OVERFLOW_FLAG; }
 
-    #[inline(always)]
+    #[inline]
     pub fn clear_sprite_overflow(&mut self) { self.status_register &= !SPRITE_OVERFLOW_FLAG; }
 
-    #[inline(always)]
+    #[inline]
     pub fn set_sprite_zero(&mut self) { self.status_register |= SPRITE_ZERO_FLAG; }
 
-    #[inline(always)]
+    #[inline]
     pub fn clear_sprite_zero(&mut self) { self.status_register &= !SPRITE_ZERO_FLAG; }
 
-    #[inline(always)]
+    #[inline]
     pub fn get_vram_addr_step(&self) -> u8 {
         if self.ctrl_register & VRAM_ADDR_INC_BIT == 0 {
             1
@@ -685,24 +688,24 @@ impl Ppu {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn update_nmi(&mut self) {
         self.nmi_requested = (self.status_register & self.ctrl_register & VBLANK_NMI_BIT) != 0;
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn clear_vbl_bit(&mut self) {
         self.status_register &= !VBLANK_NMI_BIT;
-        self.update_nmi()
+        self.update_nmi();
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn set_vbl_bit(&mut self) {
         self.status_register |= VBLANK_NMI_BIT;
-        self.update_nmi()
+        self.update_nmi();
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn snapshot_ppu_status(&self) -> u8 {
         (self.status_register & !VBLANK_NMI_BIT) | self.prev_vbl
     }
@@ -717,7 +720,7 @@ impl Ppu {
         result
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn get_ppu_ctrl(&self) -> u8 { self.ctrl_register }
 
     #[inline]
@@ -725,23 +728,23 @@ impl Ppu {
         if !self.reset_signal {
             self.ctrl_register = value;
 
-            self.t_register = (self.t_register & 0xF3FF) | (((value as u16) & 0x03) << 10)
+            self.t_register = (self.t_register & 0xF3FF) | ((u16::from(value) & 0x03) << 10);
         }
 
         self.update_nmi();
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn get_mask_register(&self) -> u8 { self.mask_register }
 
-    #[inline(always)]
+    #[inline]
     pub fn set_mask_register(&mut self, value: u8) {
         if !self.reset_signal {
             self.mask_register = value;
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn set_oam_addr_register(&mut self, value: u8) { self.oam_addr_register = value }
 
     #[inline]
@@ -749,39 +752,38 @@ impl Ppu {
         self.oam_read(self.oam_addr_register, open_bus)
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn get_oam_at_addr(&self, open_bus: &OpenBus) -> u8 {
         self.oam_read(self.oam_addr_register, open_bus)
     }
 
-    #[inline(always)]
-    pub fn snapshot_vram_at_addr(&self) -> u8 { self.ppu_data_buffer }
+    #[inline]
+    pub fn snapshot_vram_at_addr(&self) -> u8 { self.data_buffer }
 
     #[inline]
     pub fn get_vram_at_addr(&mut self, bus: &mut impl PpuBus) -> u8 {
-        let mut ret = self.ppu_data_buffer;
+        let mut ret = self.data_buffer;
 
-        if !(self.v_register >= PALETTE_RAM_START_ADDRESS
-            && self.v_register <= PALETTE_RAM_END_ADDRESS)
+        if self.v_register >= PALETTE_RAM_START_ADDRESS
+            && self.v_register <= PALETTE_RAM_END_ADDRESS
         {
-            self.ppu_data_buffer = bus.read(self.v_register);
-        } else {
             ret = bus.read(self.v_register);
-            self.ppu_data_buffer = bus.read(self.v_register - 0x1000);
+            self.data_buffer = bus.read(self.v_register - 0x1000);
+        } else {
+            self.data_buffer = bus.read(self.v_register);
         }
 
         if (!self.is_visible_scanline() && !self.is_pre_render_scanline()) || !self.is_rendering() {
             self.v_register = self
                 .v_register
-                .wrapping_add(self.get_vram_addr_step() as u16);
+                .wrapping_add(u16::from(self.get_vram_addr_step()));
         } else {
-            self.v_register = self.v_register.wrapping_add(0x1001)
+            self.v_register = self.v_register.wrapping_add(0x1001);
         }
 
         ret
     }
 
-    // todo: Fails accuracy coin, ask 100 whats up with that once they're online
     #[inline]
     pub fn write_oam(&mut self, mut data: u8) {
         if self.is_visible_scanline() || self.is_pre_render_scanline() {
@@ -793,7 +795,7 @@ impl Ppu {
 
             let row = self.oam_addr_register / 8;
             let byte = self.oam_addr_register % 8;
-            self.oam.write((row as u32 * 9) + byte as u32, data);
+            self.oam.write((u32::from(row) * 9) + u32::from(byte), data);
 
             self.oam_addr_register = self.oam_addr_register.wrapping_add(1);
         }
@@ -804,7 +806,7 @@ impl Ppu {
         bus.write(self.v_register, data);
         self.v_register = self
             .v_register
-            .wrapping_add(self.get_vram_addr_step() as u16);
+            .wrapping_add(u16::from(self.get_vram_addr_step()));
     }
 
     #[inline]
@@ -813,18 +815,18 @@ impl Ppu {
             return;
         }
 
-        if !self.write_latch {
-            // First write to $2005 (horizontal)
-            // coarse X = bits 3–7, fine X = bits 0–2
-            self.t_register = (self.t_register & !0b1_1111) | ((data >> 3) as u16);
-            self.fine_x_scroll = data & 0x07;
-        } else {
+        if self.write_latch {
             // Second write to $2005 (vertical)
             // coarse Y = bits 3–7 → t[5–9]
             // fine Y = bits 0–2 → t[12–14]
             self.t_register = (self.t_register & !((0b1_1111u16 << 5) | (0x7 << 12)))
-                | ((data as u16 & 0b1111_1000) << 2) // bits 3–7 → bits 5–9
-                | ((data as u16 & !0b1111_1000) << 12); // bits 0–2 → bits 12–14
+                | ((u16::from(data) & 0b1111_1000) << 2) // bits 3–7 → bits 5–9
+                | ((u16::from(data) & !0b1111_1000) << 12); // bits 0–2 → bits 12–14
+        } else {
+            // First write to $2005 (horizontal)
+            // coarse X = bits 3–7, fine X = bits 0–2
+            self.t_register = (self.t_register & !0b1_1111) | u16::from(data >> 3);
+            self.fine_x_scroll = data & 0x07;
         }
 
         self.write_latch = !self.write_latch;
@@ -832,40 +834,41 @@ impl Ppu {
 
     #[inline]
     pub fn write_vram_addr(&mut self, data: u8) {
-        if !self.write_latch {
-            // First write: upper byte (but only lower 6 bits valid)
-            self.t_register = (self.t_register & 0x00FF) | ((data as u16 & 0b00111111) << 8);
-        } else {
+        if self.write_latch {
             // Second write: lower byte
-            self.t_register = (self.t_register & 0xFF00) | data as u16;
+            self.t_register = (self.t_register & 0xFF00) | u16::from(data);
             self.v_register = self.t_register;
+        } else {
+            // First write: upper byte (but only lower 6 bits valid)
+            self.t_register = (self.t_register & 0x00FF) | ((u16::from(data) & 0b0011_1111) << 8);
         }
 
-        self.write_latch = !self.write_latch
+        self.write_latch = !self.write_latch;
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn poll_nmi(&self) -> bool { self.nmi_requested }
 
-    #[inline(always)]
+    #[inline]
     pub fn is_background_rendering(&self) -> bool {
         self.mask_register & BACKGROUND_RENDER_BIT != 0
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn is_sprite_rendering(&self) -> bool { self.mask_register & SPRITE_RENDER_BIT != 0 }
 
-    #[inline(always)]
+    #[inline]
     pub fn get_coarse_x_scroll(&self) -> u8 {
         (self.v_register & VRAM_ADDR_COARSE_X_SCROLL_MASK) as u8
     }
 
-    #[inline(always)]
+    #[inline]
+    #[allow(clippy::cast_possible_truncation)]
     pub fn get_coarse_y_scroll(&self) -> u8 {
         (self.v_register & VRAM_ADDR_COARSE_Y_SCROLL_MASK) as u8
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn get_fine_y_scroll(&self) -> u8 {
         ((self.v_register & VRAM_ADDR_FINE_Y_SCROLL_MASK) >> 12) as u8
     }
@@ -882,9 +885,7 @@ impl Ppu {
 
     #[inline]
     pub fn inc_y_scroll(&mut self) {
-        if (self.v_register & VRAM_ADDR_FINE_Y_SCROLL_MASK) != VRAM_ADDR_FINE_Y_SCROLL_MASK {
-            self.v_register += 0x1000;
-        } else {
+        if (self.v_register & VRAM_ADDR_FINE_Y_SCROLL_MASK) == VRAM_ADDR_FINE_Y_SCROLL_MASK {
             self.v_register &= !VRAM_ADDR_FINE_Y_SCROLL_MASK;
             let mut y = ((self.v_register & 0x03E0) >> 5) as u8;
             if y == 29 {
@@ -896,14 +897,16 @@ impl Ppu {
                 y += 1;
             }
 
-            self.v_register = (self.v_register & !0x03E0) | ((y as u16) << 5);
+            self.v_register = (self.v_register & !0x03E0) | (u16::from(y) << 5);
+        } else {
+            self.v_register += 0x1000;
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn is_pre_render_scanline(&self) -> bool { self.scanline == PRE_RENDER_SCANLINE }
 
-    #[inline(always)]
+    #[inline]
     pub fn is_visible_scanline(&self) -> bool { self.scanline <= VISIBLE_SCANLINES }
 
     #[inline]
@@ -918,7 +921,8 @@ impl Ppu {
         } else {
             let row = addr / 8;
             let byte = addr % 8;
-            self.oam.read((row as u32 * 9) + byte as u32, open_bus)
+            self.oam
+                .read((u32::from(row) * 9) + u32::from(byte), open_bus)
         }
     }
 
@@ -926,7 +930,9 @@ impl Ppu {
     pub fn oam_snapshot(&self, addr: u8, open_bus: &OpenBus) -> u8 {
         let row = addr / 8;
         let byte = addr % 8;
-        let mut res = self.oam.snapshot((row as u32 * 9) + byte as u32, open_bus);
+        let mut res = self
+            .oam
+            .snapshot((u32::from(row) * 9) + u32::from(byte), open_bus);
 
         if self.is_soam_clear_active {
             res = 0xFF;
@@ -941,7 +947,8 @@ impl Ppu {
         let row = addr & 0x1F;
         let byte = 8u8;
 
-        self.oam.read((row as u32 * 9) + byte as u32, open_bus)
+        self.oam
+            .read((u32::from(row) * 9) + u32::from(byte), open_bus)
     }
 
     #[inline]
@@ -950,7 +957,8 @@ impl Ppu {
         let row = addr & 0x1F;
         let byte = 8u8;
 
-        self.oam.snapshot((row as u32 * 9) + byte as u32, open_bus)
+        self.oam
+            .snapshot((u32::from(row) * 9) + u32::from(byte), open_bus)
     }
 
     #[inline]
@@ -959,10 +967,11 @@ impl Ppu {
         let row = addr & 0x1F;
         let byte = 8u8;
 
-        if !self.soam_disable {
-            self.oam.write((row as u32 * 9) + byte as u32, data);
+        if self.soam_disable {
+            self.oam
+                .read((u32::from(row) * 9) + u32::from(byte), open_bus);
         } else {
-            self.oam.read((row as u32 * 9) + byte as u32, open_bus);
+            self.oam.write((u32::from(row) * 9) + u32::from(byte), data);
         }
     }
 
@@ -987,8 +996,8 @@ impl Ppu {
 
     #[inline]
     fn reload_shifters(&mut self) {
-        self.shift_pattern_lo = (self.shift_pattern_lo & 0xFF00) | self.bg_next_tile_lsb as u16;
-        self.shift_pattern_hi = (self.shift_pattern_hi & 0xFF00) | self.address_latch as u16;
+        self.shift_pattern_lo = (self.shift_pattern_lo & 0xFF00) | u16::from(self.bg_next_tile_lsb);
+        self.shift_pattern_hi = (self.shift_pattern_hi & 0xFF00) | u16::from(self.address_latch);
 
         // Decode the attribute bits for this tile (2 bits)
         let attr_low_bit = self.bg_next_tile_attribute & 0b01 != 0;
@@ -999,13 +1008,14 @@ impl Ppu {
         self.shift_in_attr_hi = attr_high_bit;
     }
 
-    fn load_palette_colors(&self, bus: &impl PpuBus) -> [[u8; 4]; 8] {
+    fn load_palette_colors(bus: &impl PpuBus) -> [[u8; 4]; 8] {
         let mut data = [[0; 4]; 8];
 
         for palette in 0..8 {
             let mut colors = [0; 4];
             let base = PALETTE_RAM_START_ADDRESS + palette * 4;
 
+            #[allow(clippy::cast_possible_truncation)]
             for (i, color) in colors.iter_mut().enumerate() {
                 let idx = bus.read_debug(base + i as u16) & 0b0011_1111;
                 *color = idx;
@@ -1019,17 +1029,14 @@ impl Ppu {
 }
 
 impl Ppu {
-    pub fn get_memory_debug(
-        &self,
-        range: Option<RangeInclusive<u16>>,
-        bus: &impl PpuBus,
-    ) -> Vec<u8> {
+    pub fn get_memory_debug(range: Option<RangeInclusive<u16>>, bus: &impl PpuBus) -> Vec<u8> {
         let range = range.unwrap_or(0u16..=0x3FFF);
         let mut vec = Vec::with_capacity(range.len());
         range.for_each(|addr| vec.push(bus.read_debug(addr)));
         vec
     }
 
+    #[allow(clippy::too_many_lines)]
     pub fn get_registers_debug(&self) -> RegisterMap {
         let mut registers = RegisterMap::new();
         registers.insert(
@@ -1081,7 +1088,7 @@ impl Ppu {
         );
         registers.insert(
             "ppu_data_buffer".to_string(),
-            RegisterEntry::new(RegisterValue::U8(self.ppu_data_buffer), RegisterFormat::Hex),
+            RegisterEntry::new(RegisterValue::U8(self.data_buffer), RegisterFormat::Hex),
         );
         registers.insert(
             "scanline".to_string(),
@@ -1150,8 +1157,7 @@ impl Ppu {
             RegisterEntry::new(
                 RegisterValue::Text(
                     self.vbl_clear_scheduled
-                        .map(|value| value.to_string())
-                        .unwrap_or_else(|| "None".to_string()),
+                        .map_or_else(|| "None".to_string(), |value| value.to_string()),
                 ),
                 RegisterFormat::Text,
             ),
@@ -1159,27 +1165,28 @@ impl Ppu {
         registers
     }
 
-    pub fn get_palettes_debug(&self, bus: &impl PpuBus) -> EmulatorFetchable {
+    pub fn get_palettes_debug(bus: &impl PpuBus) -> EmulatorFetchable {
         EmulatorFetchable::Palettes(Some(Box::new(PaletteData {
-            colors: self.load_palette_colors(bus),
+            colors: Ppu::load_palette_colors(bus),
         })))
     }
 
-    pub fn get_tiles_debug(&self, bus: &impl PpuBus) -> EmulatorFetchable {
+    pub fn get_tiles_debug(bus: &impl PpuBus) -> EmulatorFetchable {
         let mut tiles = [TileData::default(); 512];
-        for table_ix in 0..2 {
-            let table_base = (table_ix * TABLE_BYTES) as u16;
-            for tile_index in 0..256 {
-                let tile_addr = table_base + (tile_index * BYTES_PER_TILE) as u16;
+        #[allow(clippy::cast_possible_truncation)]
+        for table_ix in 0..2u16 {
+            let table_base = table_ix * TABLE_BYTES;
+            for tile_index in 0..256u16 {
+                let tile_addr = table_base + (tile_index * BYTES_PER_TILE);
                 let mut plane_0: u64 = 0;
                 let mut plane_1: u64 = 0;
 
                 for y in 0..TILE_SIZE {
-                    let p0 = bus.read_debug(tile_addr + y as u16);
-                    let p1 = bus.read_debug(tile_addr + y as u16 + 8);
+                    let p0 = bus.read_debug(tile_addr + y);
+                    let p1 = bus.read_debug(tile_addr + y + 8);
 
-                    plane_0 = (plane_0 << 8) | p0 as u64;
-                    plane_1 = (plane_1 << 8) | p1 as u64;
+                    plane_0 = (plane_0 << 8) | u64::from(p0);
+                    plane_1 = (plane_1 << 8) | u64::from(p1);
                 }
 
                 let tile: TileData = TileData {
@@ -1188,7 +1195,7 @@ impl Ppu {
                     plane_1,
                 };
 
-                tiles[tile_index + table_ix * PATTERN_TABLE_SIZE] = tile;
+                tiles[usize::from(tile_index + table_ix * PATTERN_TABLE_SIZE)] = tile;
             }
         }
 
@@ -1197,28 +1204,32 @@ impl Ppu {
 
     pub fn get_nametable_debug(&self, bus: &impl PpuBus) -> EmulatorFetchable {
         let nametable_start = 0x2000u16;
-        let pattern_table = ((self.ctrl_register & 0b1_0000) as u16) << 4;
-        let mut nametables = [[0; NAMETABLE_ROWS * NAMETABLE_COLS]; NAMETABLE_COUNT];
-        let mut attributes = [[0; 64]; NAMETABLE_COUNT];
+        let pattern_table = u16::from(self.ctrl_register & 0b1_0000) << 4;
+        let mut nametables = [[0; usize::from(NAMETABLE_ROWS) * usize::from(NAMETABLE_COLS)];
+            usize::from(NAMETABLE_COUNT)];
+        let mut attributes = [[0; 64]; usize::from(NAMETABLE_COUNT)];
 
         // Attribute table offset within each nametable (0x3C0 = 960 = 30 * 32)
         let attr_offset = NAMETABLE_TILE_AREA_SIZE;
 
         for nametable_index in 0..NAMETABLE_COUNT {
-            let nametable_base = nametable_start + (nametable_index as u16) * NAMETABLE_SIZE;
+            let nametable_base = nametable_start + (nametable_index) * NAMETABLE_SIZE;
 
             // Read tile indices
             for row in 0..NAMETABLE_ROWS {
                 for col in 0..NAMETABLE_COLS {
-                    let addr = nametable_base + (row * NAMETABLE_COLS + col) as u16;
-                    let tile = (bus.read_debug(addr) as u16) | pattern_table;
-                    nametables[nametable_index][row * NAMETABLE_COLS + col] = tile;
+                    let addr = nametable_base + (row * NAMETABLE_COLS + col);
+                    let tile = u16::from(bus.read_debug(addr)) | pattern_table;
+                    nametables[nametable_index as usize]
+                        [row as usize * NAMETABLE_COLS as usize + col as usize] = tile;
                 }
             }
 
             // Read attribute table (64 bytes per nametable)
             let attr_base = nametable_base + attr_offset;
-            for (i, attr) in attributes[nametable_index].iter_mut().enumerate() {
+
+            #[allow(clippy::cast_possible_truncation)]
+            for (i, attr) in attributes[nametable_index as usize].iter_mut().enumerate() {
                 *attr = bus.read_debug(attr_base + i as u16);
             }
         }
@@ -1236,7 +1247,7 @@ impl Ppu {
             SpriteMode::TALL
         };
 
-        let base_pattern_table = ((self.ctrl_register & 0b1000) as u16) << 5;
+        let base_pattern_table = u16::from(self.ctrl_register & 0b1000) << 5;
 
         let mut sprites = SpriteData {
             sprites: [Sprite::default(); 64],
@@ -1247,24 +1258,24 @@ impl Ppu {
 
         for sprite in 0..SPRITE_COUNT {
             let sprite_base_address = sprite * 4;
-            let y_pos = self.oam_snapshot(sprite_base_address as u8, &open_bus_mock);
-            let x_pos = self.oam_snapshot((sprite_base_address + 3) as u8, &open_bus_mock);
-            let tile_byte = self.oam_snapshot((sprite_base_address + 1) as u8, &open_bus_mock);
+            let y_pos = self.oam_snapshot(sprite_base_address, &open_bus_mock);
+            let x_pos = self.oam_snapshot(sprite_base_address + 3, &open_bus_mock);
+            let tile_byte = self.oam_snapshot(sprite_base_address + 1, &open_bus_mock);
 
             let tile = Self::get_top_tile(sprite_mode, base_pattern_table, tile_byte);
 
             let bottom_tile = Self::get_bottom_tile(sprite_mode, tile_byte);
 
-            let attribute_byte = self.oam_snapshot((sprite_base_address + 2) as u8, &open_bus_mock);
+            let attribute_byte = self.oam_snapshot(sprite_base_address + 2, &open_bus_mock);
             let priority = (attribute_byte << 2) >> 7 == 0;
             let h_flip = (attribute_byte << 1) >> 7 == 1;
             let v_flip = attribute_byte >> 7 == 1;
 
             let palette = (attribute_byte & 0b11) + 4;
 
-            sprites.sprites[sprite] = Sprite {
-                y_pos: y_pos as u16,
-                x_pos: x_pos as u16,
+            sprites.sprites[sprite as usize] = Sprite {
+                y_pos: u16::from(y_pos),
+                x_pos: u16::from(x_pos),
                 tile,
                 bottom_tile,
                 palette,
@@ -1284,7 +1295,7 @@ impl Ppu {
             SpriteMode::TALL
         };
 
-        let base_pattern_table = ((self.ctrl_register & 0b1000) as u16) << 5;
+        let base_pattern_table = u16::from(self.ctrl_register & 0b1000) << 5;
 
         let mut sprites = SoamData {
             sprites: [Sprite::default(); 8],
@@ -1293,29 +1304,27 @@ impl Ppu {
 
         let open_bus_mock = OpenBus::new(0);
 
-        for sprite in 0..8 {
+        for sprite in 0..8u8 {
             let sprite_base_address = sprite * 4;
-            let y_pos = self.secondary_oam_snapshot(sprite_base_address as u8, &open_bus_mock);
-            let x_pos =
-                self.secondary_oam_snapshot((sprite_base_address + 3) as u8, &open_bus_mock);
-            let tile_byte =
-                self.secondary_oam_snapshot((sprite_base_address + 1) as u8, &open_bus_mock);
+            let y_pos = self.secondary_oam_snapshot(sprite_base_address, &open_bus_mock);
+            let x_pos = self.secondary_oam_snapshot(sprite_base_address + 3, &open_bus_mock);
+            let tile_byte = self.secondary_oam_snapshot(sprite_base_address + 1, &open_bus_mock);
 
             let tile = Self::get_top_tile(sprite_mode, base_pattern_table, tile_byte);
 
             let bottom_tile = Self::get_bottom_tile(sprite_mode, tile_byte);
 
             let attribute_byte =
-                self.secondary_oam_snapshot((sprite_base_address + 2) as u8, &open_bus_mock);
+                self.secondary_oam_snapshot(sprite_base_address + 2, &open_bus_mock);
             let priority = (attribute_byte << 2) >> 7 == 0;
             let h_flip = (attribute_byte << 1) >> 7 == 1;
             let v_flip = attribute_byte >> 7 == 1;
 
             let palette = (attribute_byte & 0b11) + 4;
 
-            sprites.sprites[sprite] = Sprite {
-                y_pos: y_pos as u16,
-                x_pos: x_pos as u16,
+            sprites.sprites[usize::from(sprite)] = Sprite {
+                y_pos: u16::from(y_pos),
+                x_pos: u16::from(x_pos),
                 tile,
                 bottom_tile,
                 palette,
@@ -1330,9 +1339,9 @@ impl Ppu {
 
     fn get_top_tile(sprite_mode: SpriteMode, base_pattern_table: u16, tile_byte: u8) -> u16 {
         if sprite_mode == SpriteMode::SMALL {
-            (tile_byte as u16) | base_pattern_table
+            u16::from(tile_byte) | base_pattern_table
         } else {
-            ((tile_byte & !1) as u16) | (((tile_byte & 1) as u16) << 8)
+            u16::from(tile_byte & !1) | (u16::from(tile_byte & 1) << 8)
         }
     }
 
@@ -1340,7 +1349,7 @@ impl Ppu {
         if sprite_mode == SpriteMode::SMALL {
             0
         } else {
-            ((tile_byte & !1) as u16 + 1) | (((tile_byte & 1) as u16) << 8)
+            (u16::from(tile_byte & !1) + 1) | (u16::from(tile_byte & 1) << 8)
         }
     }
 }

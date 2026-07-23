@@ -26,7 +26,7 @@ impl PaletteRam {
             0x0 | 0x4 | 0x8 | 0xC | 0x10 | 0x14 | 0x18 | 0x1C => {
                 self.zero_bits[(addr % 0x10) as usize / 4usize]
             }
-            _ => self.palettes.read(addr as u32, open_bus),
+            _ => self.palettes.read(u32::from(addr), open_bus),
         };
 
         (val & 0b0011_1111) | (open_bus.read() & 0b1100_0000)
@@ -37,12 +37,12 @@ impl PaletteRam {
 
     #[inline]
     pub fn write(&mut self, addr: u16, data: u8) {
-        let data = data & 0b00111111;
+        let data = data & 0b0011_1111;
         match addr {
             0x0 | 0x4 | 0x8 | 0xC | 0x10 | 0x14 | 0x18 | 0x1C => {
-                self.zero_bits[(addr % 0x10) as usize / 4usize] = data
+                self.zero_bits[(addr % 0x10) as usize / 4usize] = data;
             }
-            _ => self.palettes.write(addr as u32, data),
+            _ => self.palettes.write(u32::from(addr), data),
         }
     }
 
@@ -59,6 +59,7 @@ impl PaletteRam {
 }
 
 impl From<&Vec<u8>> for PaletteRam {
+    #[allow(clippy::cast_possible_truncation)]
     fn from(value: &Vec<u8>) -> Self {
         let mut palette_ram = PaletteRam::default();
         value

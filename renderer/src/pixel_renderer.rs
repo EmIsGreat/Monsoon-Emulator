@@ -81,6 +81,7 @@ impl Default for LookupPaletteRenderer {
 
 impl LookupPaletteRenderer {
     /// Create a new renderer with the default palette
+    #[must_use]
     pub fn new() -> Self {
         Self {
             palette: RgbPalette::default().into(),
@@ -99,12 +100,12 @@ impl ScreenRenderer for LookupPaletteRenderer {
     fn buffer_to_image(&mut self, buffer: &[u16]) -> &[RgbColor] {
         if self.image.len() != buffer.len() {
             self.image = Vec::with_capacity(buffer.len());
-        };
+        }
 
         self.image.clear();
-        for x in buffer.iter() {
+        for x in buffer {
             self.image
-                .push(self.palette.palette[(*x as usize) & PALETTE_INDEX_MASK])
+                .push(self.palette.palette[(*x as usize) & PALETTE_INDEX_MASK]);
         }
 
         &self.image
@@ -112,9 +113,9 @@ impl ScreenRenderer for LookupPaletteRenderer {
 
     fn set_palette(&mut self, rgb_palette: RgbPalette) { self.palette = rgb_palette.into(); }
 
-    fn get_width(&self) -> usize { TOTAL_OUTPUT_WIDTH * 8 / 7 }
+    fn get_width(&self) -> usize { (TOTAL_OUTPUT_WIDTH * 8 / 7) as usize }
 
-    fn get_height(&self) -> usize { TOTAL_OUTPUT_HEIGHT }
+    fn get_height(&self) -> usize { TOTAL_OUTPUT_HEIGHT as usize }
 
     fn get_id(&self) -> &'static str { "PaletteLookup" }
 

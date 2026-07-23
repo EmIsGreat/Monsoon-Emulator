@@ -4,7 +4,7 @@
 //! frame updates, debug data, and savestate operations.
 
 use egui::{Context, ViewportCommand};
-use monsoon_core::emulation::ppu_util::{EmulatorFetchable, PaletteData, TILE_COUNT, TileData};
+use monsoon_core::emulation::ppu_util::{EmulatorFetchable, PaletteData, TileData, TILE_COUNT};
 use monsoon_core::emulation::savestate::SaveState;
 use monsoon_core::util::ToBytes;
 
@@ -116,7 +116,7 @@ impl EguiApp {
     fn handle_tile_data(
         &mut self,
         ctx: &Context,
-        new_tile_data: Option<Box<[TileData; TILE_COUNT]>>,
+        new_tile_data: Option<Box<[TileData; usize::from(TILE_COUNT)]>>,
     ) {
         let changed_tiles = self.detect_changed_tiles(&new_tile_data);
         self.emu_textures.tile_data = new_tile_data;
@@ -153,7 +153,7 @@ impl EguiApp {
                 );
             }
             SaveType::Quicksave => {
-                self.handle_quicksave(savestate);
+                self.handle_quicksave(&savestate);
             }
             SaveType::Autosave => {
                 self.create_auto_save(savestate);
@@ -161,7 +161,7 @@ impl EguiApp {
         }
     }
 
-    fn handle_quicksave(&self, savestate: Box<SaveState>) {
+    fn handle_quicksave(&self, savestate: &SaveState) {
         if let Some(rom) = &self.config.console_config.loaded_rom {
             let rom_hash = &rom.0.data_checksum;
             let prev_name = &self.config.user_config.previous_rom_name;

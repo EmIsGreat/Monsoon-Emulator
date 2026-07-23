@@ -46,15 +46,14 @@ pub fn render_emulator_output(
     });
     let available_height = (available.y - label_height - ui.spacing().item_spacing.y).max(0.0);
     let available_for_image = egui::vec2(available.x, available_height);
-    let logical_width = TOTAL_OUTPUT_WIDTH as f32 * NES_PIXEL_ASPECT_RATIO;
-    let logical_height = TOTAL_OUTPUT_HEIGHT as f32;
+    let logical_width = f32::from(TOTAL_OUTPUT_WIDTH) * NES_PIXEL_ASPECT_RATIO;
+    let logical_height = f32::from(TOTAL_OUTPUT_HEIGHT);
     let scale = (available_for_image.x / logical_width).min(available_for_image.y / logical_height);
     let display_width = logical_width * scale;
     let display_height = logical_height * scale;
 
     ui.label(format!(
-        "{}x{} at {:.1}x scale",
-        TOTAL_OUTPUT_WIDTH, TOTAL_OUTPUT_HEIGHT, scale
+        "{TOTAL_OUTPUT_WIDTH}x{TOTAL_OUTPUT_HEIGHT} at {scale:.1}x scale"
     ));
 
     let image_size = egui::vec2(display_width, display_height);
@@ -102,7 +101,7 @@ pub fn render_emulator_output(
     render_debug_overlays(
         ui,
         response.rect,
-        &view_config.debug_overlays,
+        view_config.debug_overlays,
         emu_textures,
         is_paused,
     );

@@ -42,6 +42,7 @@ pub struct RgbColor {
 
 impl RgbColor {
     /// Creates a new [`RgbColor`] from individual channel values.
+    #[must_use]
     pub fn new(r: u8, g: u8, b: u8) -> Self {
         Self {
             r,
@@ -51,6 +52,7 @@ impl RgbColor {
     }
 
     /// Converts this color to a `(r, g, b)` tuple.
+    #[must_use]
     pub fn to_tuple(self) -> (u8, u8, u8) { (self.r, self.g, self.b) }
 }
 
@@ -102,6 +104,7 @@ static DEFAULT_PALETTE: &[u8] = include_bytes!("../../assets/2C02G_wiki.pal");
 /// let palette = RgbPalette::default();
 /// assert_eq!(palette.colors[0].len(), 64);
 /// ```
+#[must_use]
 pub fn parse_palette_from_bytes(bytes: &[u8]) -> RgbPalette {
     let mut colors: [[RgbColor; 64]; 8] = [[RgbColor::default(); 64]; 8];
 

@@ -12,7 +12,7 @@ pub struct Apu {
 }
 
 impl Apu {
-    #[inline(always)]
+    #[inline]
     pub fn clock_frame_counter(&mut self, is_proper: bool) {
         if let Some(res) = self.frame_counter.clock(is_proper) {
             match res {
@@ -29,6 +29,7 @@ impl Apu {
     pub fn clock_quarter_frame(&mut self) {}
 
     #[inline]
+    #[must_use]
     pub fn poll_irq(&self) -> bool { self.frame_counter.frame_interrupt }
 }
 
@@ -50,17 +51,19 @@ impl FrameCounter {
             self.apu_cycle_counter += 1;
 
             match self.apu_cycle_counter {
-                FRAME_COUNTER_STEP_1 => Some(FrameCounterClockResult::QuarterFrame),
-                FRAME_COUNTER_STEP_2 => Some(FrameCounterClockResult::HalfFrame),
-                FRAME_COUNTER_STEP_3 => Some(FrameCounterClockResult::QuarterFrame),
+                FRAME_COUNTER_STEP_1 | FRAME_COUNTER_STEP_3 => {
+                    Some(FrameCounterClockResult::QuarterFrame)
+                }
+                FRAME_COUNTER_STEP_2 | FRAME_COUNTER_STEP_5 => {
+                    Some(FrameCounterClockResult::HalfFrame)
+                }
                 FRAME_COUNTER_STEP_4 => {
-                    if !self.five_step {
-                        Some(FrameCounterClockResult::HalfFrame)
-                    } else {
+                    if self.five_step {
                         None
+                    } else {
+                        Some(FrameCounterClockResult::HalfFrame)
                     }
                 }
-                FRAME_COUNTER_STEP_5 => Some(FrameCounterClockResult::HalfFrame),
                 _ => None,
             }
         } else {
@@ -71,20 +74,18 @@ impl FrameCounter {
                     self.frame_interrupt = !self.interrupt_inhibit;
 
                     if self.apu_cycle_counter == FRAME_COUNTER_STEP_4 {
-                        self.apu_cycle_counter = 0
+                        self.apu_cycle_counter = 0;
                     }
                 }
-            } else {
-                if self.apu_cycle_counter == FRAME_COUNTER_STEP_5 {
-                    self.apu_cycle_counter = 0;
-                }
+            } else if self.apu_cycle_counter == FRAME_COUNTER_STEP_5 {
+                self.apu_cycle_counter = 0;
             }
 
             None
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn get_frame_interrupt_for_register(&mut self) -> bool {
         let res = self.frame_interrupt;
         self.frame_interrupt = false;

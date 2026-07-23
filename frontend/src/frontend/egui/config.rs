@@ -5,7 +5,7 @@ use egui::{Key, Modifiers};
 use monsoon_core::emulation::palette_util::RgbPalette;
 use monsoon_core::emulation::ppu_util::EmulatorFetchable;
 use monsoon_core::emulation::rom::RomFile;
-use monsoon_core::emulation::screen_renderer::{ScreenRenderer, create_renderer};
+use monsoon_core::emulation::screen_renderer::{create_renderer, ScreenRenderer};
 use serde::{Deserialize, Serialize};
 
 use crate::frontend::egui::keybindings::{
@@ -53,7 +53,7 @@ impl Default for ViewConfig {
             show_nametable: false,
             debug_overlays: DebugOverlayConfig::default(),
             required_debug_fetches: HashSet::new(),
-            renderer: create_renderer(Some("PaletteLookup"), get_all_renderers()),
+            renderer: create_renderer(Some("PaletteLookup"), &get_all_renderers()),
             palette_rgb_data: RgbPalette::default(),
         }
     }
@@ -190,11 +190,11 @@ pub enum AppSpeed {
 }
 
 impl AppSpeed {
-    pub fn get_fps(&self, speed_config: &SpeedConfig) -> f32 {
+    pub fn get_fps(self, speed_config: SpeedConfig) -> f32 {
         match self {
             AppSpeed::DefaultSpeed => 60.0988,
             AppSpeed::Uncapped => f32::MAX,
-            AppSpeed::Custom => 60.0988 * (speed_config.custom_speed as f32 / 100.0),
+            AppSpeed::Custom => 60.0988 * (f32::from(speed_config.custom_speed) / 100.0),
         }
     }
 }
@@ -209,10 +209,11 @@ pub enum DebugSpeed {
 }
 
 impl DebugSpeed {
-    pub fn get_fps(&self, speed_config: &SpeedConfig) -> f32 {
+    pub fn get_fps(self, speed_config: SpeedConfig) -> f32 {
         match self {
             DebugSpeed::DefaultSpeed => 10.0,
             DebugSpeed::InStep => speed_config.app_speed.get_fps(speed_config),
+            #[allow(clippy::cast_possible_truncation)]
             DebugSpeed::Custom => {
                 if speed_config.debug_custom_speed == 0 {
                     return 0.0;
@@ -222,9 +223,9 @@ impl DebugSpeed {
                     return 10.0;
                 }
 
-                ((speed_config.debug_custom_speed as f64 / 100.0)
-                    * speed_config.app_speed.get_fps(speed_config) as f64)
-                    .max(1.0) as f32
+                ((f64::from(speed_config.debug_custom_speed) / 100.0)
+                    * f64::from(speed_config.app_speed.get_fps(speed_config)))
+                .max(1.0) as f32
             }
         }
     }
@@ -243,8 +244,8 @@ pub struct SpeedConfig {
 impl Default for SpeedConfig {
     fn default() -> Self {
         Self {
-            app_speed: Default::default(),
-            debug_speed: Default::default(),
+            app_speed: AppSpeed::default(),
+            debug_speed: DebugSpeed::default(),
             is_paused: false,
             custom_speed: 100,
             debug_custom_speed: 10,

@@ -129,7 +129,7 @@ impl Behavior<Pane> for TreeBehavior<'_> {
                 render_nametable(ui, self.emu_textures);
             }
             Pane::Palettes => {
-                render_palettes(ui, self.config, self.emu_textures, self.async_sender)
+                render_palettes(ui, self.config, self.emu_textures, self.async_sender);
             }
             Pane::Keybindings => {
                 self.keybindings_changed |= render_keybindings(ui, self.config);
@@ -264,14 +264,12 @@ pub fn compute_required_fetches_from_tree(
         explicit_fetches.insert(EmulatorFetchable::Registers(None));
     }
 
-    if !explicit_fetches.is_empty() {
-        if let Some(fetch_deps) = FETCH_DEPS.get() {
-            ChannelEmulator::compute_required_fetches(&explicit_fetches, fetch_deps)
-        } else {
-            // FETCH_DEPS not yet initialized, return explicit fetches as-is
-            explicit_fetches
-        }
+    if explicit_fetches.is_empty() {
+        explicit_fetches
+    } else if let Some(fetch_deps) = FETCH_DEPS.get() {
+        ChannelEmulator::compute_required_fetches(&explicit_fetches, fetch_deps)
     } else {
+        // FETCH_DEPS not yet initialized, return explicit fetches as-is
         explicit_fetches
     }
 }

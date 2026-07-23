@@ -28,7 +28,7 @@ pub fn render_palettes(
                 ui.label(format!("Background Palette {}", i + 1));
             } else {
                 ui.label(format!("Sprite Palette {}", i - 3));
-            };
+            }
 
             let grid_config =
                 PainterGridConfig::rect(single_color_width * 4.0, single_color_height, 4, 1);
@@ -59,7 +59,7 @@ pub fn render_palettes(
 
                 response.on_hover_ui(|ui| {
                     ui.label(format!("Global palette index: ${color}"));
-                    ui.label(format!("Address: ${:0X}", address));
+                    ui.label(format!("Address: ${address:0X}"));
                     ui.label(format!(
                         "Palette RGB mapping: #{:02X}{:02X}{:02X}",
                         rgb_color.r, rgb_color.g, rgb_color.b

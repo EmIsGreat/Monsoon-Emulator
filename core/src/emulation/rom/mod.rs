@@ -53,7 +53,7 @@ impl Display for ParseError {
             }
             ParseError::IoError(err) => {
                 write!(f, "IO Error while parsing rom")?;
-                write!(f, "{}", err)
+                write!(f, "{err}")
             }
         }
     }
@@ -100,6 +100,7 @@ pub trait RomParser: Debug {
 /// Use [`RomBuilder`] for test scenarios where you need custom ROM metadata
 /// without providing actual ROM data.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct RomFile {
     /// Human-readable name of the ROM (typically the file name).
     pub name: Option<String>,
@@ -248,6 +249,7 @@ pub enum ExpansionDevice {
 }
 
 impl Display for ExpansionDevice {
+    #[allow(clippy::too_many_lines)]
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let str: &str = match self {
             ExpansionDevice::Unspecified => "Unspecified",
@@ -369,7 +371,7 @@ impl Display for ExpansionDevice {
 
         let id: u8 = (*self).into();
 
-        write!(f, "{str} (Header: {})", id)
+        write!(f, "{str} (Header: {id})")
     }
 }
 
@@ -431,7 +433,7 @@ impl Display for ExtendedConsoleType {
 
         let id: u8 = (*self).into();
 
-        write!(f, "{str} (Header: {})", id)
+        write!(f, "{str} (Header: {id})")
     }
 }
 
@@ -483,7 +485,7 @@ impl Display for VsHardwareType {
 
         let id: u8 = (*self).into();
 
-        write!(f, "{str} (Header: {})", id)
+        write!(f, "{str} (Header: {id})")
     }
 }
 
@@ -535,7 +537,7 @@ impl Display for VsSystemPpuType {
 
         let id: u8 = (*self).into();
 
-        write!(f, "{str} (Header: {})", id)
+        write!(f, "{str} (Header: {id})")
     }
 }
 
@@ -577,7 +579,7 @@ impl Display for ConsoleType {
 
         let id: u8 = (*self).into();
 
-        write!(f, "{str} (Header: {})", id)
+        write!(f, "{str} (Header: {id})")
     }
 }
 
@@ -619,7 +621,7 @@ impl Display for RomTimingRegion {
 
         let id: u8 = (*self).into();
 
-        write!(f, "{str} (Header: {})", id)
+        write!(f, "{str} (Header: {id})")
     }
 }
 
@@ -827,6 +829,7 @@ pub enum RomMapper {
 }
 
 impl Display for RomMapper {
+    #[allow(clippy::too_many_lines)]
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let str = match self {
             RomMapper::NRom => "NROM",
@@ -1059,7 +1062,7 @@ impl Display for RomMapper {
 
         let mapper_num: u16 = (*self).into();
 
-        write!(f, "{str} (INes Mapper {:03})", mapper_num)
+        write!(f, "{str} (INes Mapper {mapper_num:03})")
     }
 }
 
@@ -1075,11 +1078,12 @@ pub struct PrgMemory {
 }
 
 impl PrgMemory {
+    #[allow(clippy::similar_names)]
     fn new(prg_rom_size: u32, prg_ram_size: u32, prg_nvram_size: u32) -> PrgMemory {
         Self {
             prg_rom_size,
-            prg_nvram_size,
             prg_ram_size,
+            prg_nvram_size,
         }
     }
 }
@@ -1096,19 +1100,22 @@ pub struct ChrMemory {
 }
 
 impl ChrMemory {
+    #[allow(clippy::similar_names)]
     fn new(chr_rom_size: u32, chr_ram_size: u32, chr_nvram_size: u32) -> ChrMemory {
         Self {
             chr_rom_size,
-            chr_nvram_size,
             chr_ram_size,
+            chr_nvram_size,
         }
     }
 }
 
 impl RomFile {
-    pub fn get_for_header(header: &[u8], name: String) -> Result<Self, ParseError> {
+    /// # Errors
+    /// Returns `err` if the passed header is not a valid Ines/NES 2.0 header
+    pub fn get_for_header(header: &[u8], name: &String) -> Result<Self, ParseError> {
         let rom_type = RomFile::get_rom_type(header, true)?;
-        let mut file = rom_type.parse(header, Some(&name))?;
+        let mut file = rom_type.parse(header, Some(name))?;
         file.format_name = rom_type.get_name().to_string();
         Ok(file)
     }
@@ -1120,6 +1127,9 @@ impl RomFile {
         arr[start..end].iter().all(|&x| x == 0)
     }
 
+    /// # Errors
+    /// Returns `err` if the passed data is not a valid rom file
+    #[allow(clippy::similar_names)]
     fn get_rom_type(rom: &[u8], header_only: bool) -> Result<Box<dyn RomParser>, ParseError> {
         // iNES and NES 2.0 headers are 16 bytes minimum
         if rom.len() < 16 {
@@ -1127,27 +1137,27 @@ impl RomFile {
         }
 
         if rom.starts_with(&[0x4E, 0x45, 0x53, 0x1A]) {
-            let prg_rom_size_lsb = rom[4] as u16;
-            let prg_rom_size_msb = (rom[9] & 0xF) as u16;
+            let prg_rom_size_lsb = u16::from(rom[4]);
+            let prg_rom_size_msb = u16::from(rom[9] & 0xF);
 
             let prg_rom_size = Ines2::get_prg_rom_size(prg_rom_size_lsb, prg_rom_size_msb);
 
-            let chr_rom_size_lsb = rom[5] as u16;
-            let chr_rom_size_msb = (rom[9] & 0xF0) as u16;
+            let chr_rom_size_lsb = u16::from(rom[5]);
+            let chr_rom_size_msb = u16::from(rom[9] & 0xF0);
 
             let chr_rom_size = Ines2::get_chr_rom_size(chr_rom_size_lsb, chr_rom_size_msb);
 
-            if rom[7] & 0b00001100 == 8
+            if rom[7] & 0b0000_1100 == 8
                 && ((prg_rom_size as usize + chr_rom_size as usize) < rom.len() || header_only)
             {
                 return Ok(Box::new(Ines2));
             }
 
-            if rom[7] & 0b00001100 == 4 {
+            if rom[7] & 0b0000_1100 == 4 {
                 return Ok(Box::new(ArchaicInes));
             }
 
-            if rom[7] & 0b00001100 == 0 && Self::range_all_zeros(rom, 12, 16) {
+            if rom[7] & 0b0000_1100 == 0 && Self::range_all_zeros(rom, 12, 16) {
                 return Ok(Box::new(Ines));
             }
 
@@ -1216,7 +1226,7 @@ impl RomFile {
 
             if let Some(entry) = headerless {
                 rom_file.name = Some(entry.name.clone());
-                rom_file.original_name = entry.orig_name.clone();
+                rom_file.original_name.clone_from(&entry.orig_name);
             }
         }
 
@@ -1228,6 +1238,7 @@ impl RomFile {
     /// This is used internally to populate the CPU memory map at addresses
     /// `$8000`-`$FFFF`.
     #[doc(hidden)]
+    #[must_use]
     pub fn get_prg_rom(&self) -> Memory {
         let mut rom = Memory::new(self.prg_memory.prg_rom_size as usize, false);
 
@@ -1251,6 +1262,7 @@ impl RomFile {
     /// Returns `None` when the ROM uses CHR RAM instead of CHR ROM
     /// (i.e., `chr_rom_size == 0`).
     #[doc(hidden)]
+    #[must_use]
     pub fn get_chr_rom(&self) -> Option<Memory> {
         if self.chr_memory.chr_rom_size == 0 {
             return None;
@@ -1280,6 +1292,7 @@ impl RomFile {
     /// This is mapped at CPU addresses `$6000`-`$7FFF` and may be
     /// battery-backed for save data.
     #[doc(hidden)]
+    #[must_use]
     pub fn get_prg_ram(&self) -> Option<Memory> {
         if self.prg_memory.prg_ram_size > 0 {
             let mut ram = Memory::new(self.prg_memory.prg_ram_size as usize, true);
@@ -1308,10 +1321,12 @@ impl RomFile {
     /// Returns a [`Memory`] device configured for either horizontal or vertical
     /// nametable mirroring, as specified by the ROM header.
     #[doc(hidden)]
+    #[must_use]
     pub fn get_nametable_arrangement(&self) -> NametableArrangement {
-        match self.hardwired_nametable_layout {
-            true => NametableArrangement::Horizontal,
-            false => NametableArrangement::Vertical,
+        if self.hardwired_nametable_layout {
+            NametableArrangement::Horizontal
+        } else {
+            NametableArrangement::Vertical
         }
     }
 }
@@ -1372,6 +1387,7 @@ impl TryFrom<(&String, bool, Option<&Nes>)> for RomFile {
 ///
 /// assert_eq!(rom.mapper, RomMapper::NRom);
 /// ```
+#[allow(clippy::struct_excessive_bools)]
 pub struct RomBuilder {
     name: Option<String>,
     prg_rom_size: u32,
@@ -1425,81 +1441,95 @@ impl Default for RomBuilder {
 impl RomBuilder {
     /// Creates a new builder with default values (mapper 0, 8 KB PRG RAM,
     /// all other sizes zero).
+    #[must_use]
     pub fn new() -> Self { Self::default() }
 
     /// Sets the PRG ROM size in bytes.
+    #[must_use]
     pub fn prg_rom_size(mut self, size: u32) -> Self {
         self.prg_rom_size = size;
         self
     }
 
     /// Sets the CHR ROM size in bytes.
+    #[must_use]
     pub fn chr_rom_size(mut self, size: u32) -> Self {
         self.chr_rom_size = size;
         self
     }
 
     /// Sets the iNES mapper number.
+    #[must_use]
     pub fn mapper_number(mut self, number: u16) -> Self {
         self.mapper_number = number;
         self
     }
 
     /// Sets the default expansion device (NES 2.0).
+    #[must_use]
     pub fn default_expansion_device(mut self, device: u8) -> Self {
         self.default_expansion_device = device;
         self
     }
 
     /// Sets the miscellaneous ROM count (NES 2.0).
+    #[must_use]
     pub fn misc_rom_count(mut self, count: u8) -> Self {
         self.misc_rom_count = count;
         self
     }
 
     /// Sets the extended console type (NES 2.0).
+    #[must_use]
     pub fn extended_console_type(mut self, console_type: Option<u8>) -> Self {
         self.extended_console_type = console_type;
         self
     }
 
     /// Sets the VS System hardware type.
+    #[must_use]
     pub fn vs_system_hardware_type(mut self, hardware_type: Option<u8>) -> Self {
         self.vs_system_hardware_type = hardware_type;
         self
     }
 
     /// Sets the VS System PPU type.
+    #[must_use]
     pub fn vs_system_ppu_type(mut self, ppu_type: Option<u8>) -> Self {
         self.vs_system_ppu_type = ppu_type;
         self
     }
 
     /// Sets the CPU/PPU timing mode (0 = NTSC, 1 = PAL, 2 = Multi, 3 = Dendy).
+    #[must_use]
     pub fn cpu_ppu_timing(mut self, timing: u8) -> Self {
         self.rom_timing_region = timing;
         self
     }
 
     /// Sets the CHR NVRAM (non-volatile) size in bytes.
+    #[must_use]
     pub fn chr_nvram_size(mut self, size: u32) -> Self {
         self.chr_nvram_size = size;
         self
     }
 
     /// Sets the CHR RAM (volatile) size in bytes.
+    #[must_use]
     pub fn chr_ram_size(mut self, size: u32) -> Self {
         self.chr_ram_size = size;
         self
     }
 
     /// Sets the PRG NVRAM (non-volatile / battery-backed) size in bytes.
+    #[must_use]
     pub fn prg_nvram_size(mut self, size: u32) -> Self {
         self.prg_nvram_size = size;
         self
     }
 
     /// Sets the PRG RAM (volatile) size in bytes.
+    #[must_use]
     pub fn prg_ram_size(mut self, size: u32) -> Self {
         self.prg_ram_size = size;
         self
@@ -1507,42 +1537,49 @@ impl RomBuilder {
 
     /// Sets the console type (0 = NES, 1 = VS System, 2 = Playchoice-10, 3 =
     /// Extended).
+    #[must_use]
     pub fn console_type(mut self, console_type: u8) -> Self {
         self.console_type = console_type;
         self
     }
 
     /// Sets the nametable mirroring (`true` = vertical, `false` = horizontal).
+    #[must_use]
     pub fn hardwired_nametable_layout(mut self, value: bool) -> Self {
         self.hardwired_nametable_layout = value;
         self
     }
 
     /// Sets whether the cartridge has battery-backed memory.
+    #[must_use]
     pub fn battery_backed(mut self, value: bool) -> Self {
         self.is_battery_backed = value;
         self
     }
 
     /// Sets whether a 512-byte trainer is present in the ROM.
+    #[must_use]
     pub fn trainer_present(mut self, value: bool) -> Self {
         self.trainer_present = value;
         self
     }
 
     /// Sets whether the ROM uses alternative nametable layouts.
+    #[must_use]
     pub fn alternative_nametables(mut self, value: bool) -> Self {
         self.alternative_nametables = value;
         self
     }
 
     /// Sets the submapper number (NES 2.0).
+    #[must_use]
     pub fn submapper_number(mut self, number: u8) -> Self {
         self.submapper_number = number;
         self
     }
 
     /// Sets the ROM name.
+    #[must_use]
     pub fn name(mut self, value: Option<String>) -> Self {
         self.name = value;
         self

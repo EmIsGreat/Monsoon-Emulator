@@ -4,16 +4,16 @@
 //! across:
 //! - **Native**: Uses the file system via the `directories` crate for
 //!   OS-appropriate paths
-//! - **WASM**: Uses IndexedDB via `rexie` for structured data storage
+//! - **WASM**: Uses `IndexedDB` via `rexie` for structured data storage
 //!
 //! # Architecture
 //!
 //! The storage system is built around three main concepts:
 //!
-//! 1. **StorageKey**: Identifies what data is being stored (config, saves,
+//! 1. **`StorageKey`**: Identifies what data is being stored (config, saves,
 //!    palettes, etc.)
 //! 2. **Storage trait**: Async interface for get/set/delete/list operations
-//! 3. **Platform-specific implementations**: NativeStorage and WasmStorage
+//! 3. **Platform-specific implementations**: `NativeStorage` and `WasmStorage`
 //!
 //! # Usage
 //!
@@ -36,10 +36,10 @@
 //! On WASM, storage has different characteristics:
 //! - **localStorage**: ~5MB limit, synchronous, string-only (not suitable for
 //!   binary data)
-//! - **IndexedDB**: Larger storage (~50MB+), async, supports binary data
+//! - **`IndexedDB`**: Larger storage (~50MB+), async, supports binary data
 //!   (recommended)
 //!
-//! This module uses IndexedDB for WASM to support save states and other binary
+//! This module uses `IndexedDB` for WASM to support save states and other binary
 //! data.
 
 use std::fmt::Display;
@@ -75,11 +75,11 @@ impl Display for StorageError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             StorageError::NotFound => write!(f, "Key not found"),
-            StorageError::ReadError(e) => write!(f, "Read error: {}", e),
-            StorageError::WriteError(e) => write!(f, "Write error: {}", e),
-            StorageError::DeleteError(e) => write!(f, "Delete error: {}", e),
+            StorageError::ReadError(e) => write!(f, "Read error: {e}"),
+            StorageError::WriteError(e) => write!(f, "Write error: {e}"),
+            StorageError::DeleteError(e) => write!(f, "Delete error: {e}"),
             StorageError::NotAvailable => write!(f, "Storage not available"),
-            StorageError::SerializationError(e) => write!(f, "Serialization error: {}", e),
+            StorageError::SerializationError(e) => write!(f, "Serialization error: {e}"),
             #[cfg(target_arch = "wasm32")]
             StorageError::IndexedDbError(e) => write!(f, "IndexedDB error: {}", e),
         }
@@ -98,7 +98,7 @@ pub struct StorageMetadata {
 /// Storage categories for organizing data
 ///
 /// These categories help organize data and may map to different directories
-/// on native platforms or different IndexedDB object stores on WASM.
+/// on native platforms or different `IndexedDB` object stores on WASM.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub enum StorageCategory {
     /// Application configuration (config.toml, keybindings, etc.)
@@ -158,6 +158,7 @@ impl From<&String> for StorageKey {
 
 impl StorageCategory {
     /// Get the string prefix for this category
+    #[must_use]
     pub fn prefix(&self) -> &'static str {
         match self {
             StorageCategory::Config => "config",
@@ -237,6 +238,7 @@ mod native {
     }
 
     impl NativeStorage {
+        #[must_use]
         pub fn new() -> Self { NativeStorage }
 
         fn get_base_dir(&self, category: &StorageCategory) -> Option<PathBuf> {
@@ -326,9 +328,7 @@ mod native {
         }
 
         fn get_display_path(&self, key: &StorageKey) -> String {
-            self.key_to_path(key)
-                .map(|p| p.display().to_string())
-                .unwrap_or_else(|| key.sub_path.to_string())
+            self.key_to_path(key).map_or_else(|| key.sub_path.clone(), |p| p.display().to_string())
         }
 
         fn key_to_path_opt(&self, key: Option<&StorageKey>) -> Option<PathBuf> {
@@ -580,6 +580,7 @@ pub use wasm::WasmStorage;
 
 /// Get the platform-appropriate storage implementation
 #[cfg(not(target_arch = "wasm32"))]
+#[must_use]
 pub fn get_storage() -> impl Storage { NativeStorage::new() }
 
 /// Get the platform-appropriate storage implementation
@@ -591,8 +592,9 @@ pub fn get_storage() -> impl Storage { WasmStorage::new() }
 // ============================================================================
 
 /// Generate a storage key for a quicksave
+#[must_use]
 pub fn quicksave_key(game_name: &str, timestamp: &str) -> StorageKey {
-    let sub = format!("saves/{}/quicksaves/quicksave_{}.sav", game_name, timestamp);
+    let sub = format!("saves/{game_name}/quicksaves/quicksave_{timestamp}.sav");
 
     StorageKey {
         category: StorageCategory::Data,
@@ -601,8 +603,9 @@ pub fn quicksave_key(game_name: &str, timestamp: &str) -> StorageKey {
 }
 
 /// Generate a storage key for an autosave
+#[must_use]
 pub fn autosave_key(game_name: &str, timestamp: &str) -> StorageKey {
-    let sub = format!("saves/{}/autosaves/autosave_{}.sav", game_name, timestamp);
+    let sub = format!("saves/{game_name}/autosaves/autosave_{timestamp}.sav");
 
     StorageKey {
         category: StorageCategory::Data,
@@ -611,8 +614,9 @@ pub fn autosave_key(game_name: &str, timestamp: &str) -> StorageKey {
 }
 
 /// Generate the prefix for listing autosaves for a game
+#[must_use]
 pub fn autosaves_prefix(game_name: &str) -> StorageKey {
-    let sub = format!("saves/{}/autosaves/", game_name);
+    let sub = format!("saves/{game_name}/autosaves/");
 
     StorageKey {
         category: StorageCategory::Data,
@@ -621,8 +625,9 @@ pub fn autosaves_prefix(game_name: &str) -> StorageKey {
 }
 
 /// Generate the prefix for listing quicksaves for a game
+#[must_use]
 pub fn quicksaves_prefix(game_name: &str) -> StorageKey {
-    let sub = format!("saves/{}/quicksaves/", game_name);
+    let sub = format!("saves/{game_name}/quicksaves/");
 
     StorageKey {
         category: StorageCategory::Data,
@@ -631,6 +636,7 @@ pub fn quicksaves_prefix(game_name: &str) -> StorageKey {
 }
 
 /// Generate a storage key for the application config
+#[must_use]
 pub fn config_key() -> StorageKey {
     StorageKey {
         category: StorageCategory::Config,
@@ -639,6 +645,7 @@ pub fn config_key() -> StorageKey {
 }
 
 /// Generate a storage key for egui state
+#[must_use]
 pub fn egui_state_key() -> StorageKey {
     StorageKey {
         category: StorageCategory::Config,
@@ -647,14 +654,16 @@ pub fn egui_state_key() -> StorageKey {
 }
 
 /// Generate a storage key for a cached ROM file
+#[must_use]
 pub fn rom_cache_key(filename: &str) -> StorageKey {
     StorageKey {
         category: StorageCategory::Data,
-        sub_path: format!("roms/{}", filename),
+        sub_path: format!("roms/{filename}"),
     }
 }
 
 /// Generate the prefix for listing all cached ROMs
+#[must_use]
 pub fn roms_prefix() -> StorageKey {
     StorageKey {
         category: StorageCategory::Data,
@@ -663,14 +672,16 @@ pub fn roms_prefix() -> StorageKey {
 }
 
 /// Generate a storage key for a cached uploaded savestate
+#[must_use]
 pub fn uploaded_savestate_key(filename: &str) -> StorageKey {
     StorageKey {
         category: StorageCategory::Data,
-        sub_path: format!("uploads/savestates/{}", filename),
+        sub_path: format!("uploads/savestates/{filename}"),
     }
 }
 
 /// Generate a storage key for the cached ROM-info database binary
+#[must_use]
 pub fn db_cache_key() -> StorageKey {
     StorageKey {
         category: StorageCategory::Cache,
@@ -697,6 +708,7 @@ mod sync_wrappers {
     fn get_storage_instance() -> &'static NativeStorage { STORAGE.get_or_init(NativeStorage::new) }
 
     /// Get the full filesystem path for a storage key (native only)
+    #[must_use]
     pub fn get_path_for_key(key: &StorageKey) -> Option<std::path::PathBuf> {
         get_storage_instance().key_to_path(key)
     }
@@ -771,6 +783,7 @@ mod sync_wrappers {
     }
 
     /// Get the display path for a key
+    #[must_use]
     pub fn get_display_path(key: &StorageKey) -> String {
         get_storage_instance().get_display_path(key)
     }

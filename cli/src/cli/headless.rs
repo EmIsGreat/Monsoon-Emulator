@@ -7,21 +7,22 @@
 //! - Screenshot capture
 //! - Memory dump output
 
+use std::fmt::Write;
 use std::path::Path;
 use std::time::Instant;
 
 use monsoon_core::emulation::debug_tools::StopReason;
-use monsoon_core::emulation::nes::{ExecutionResult, MASTER_CYCLES_PER_FRAME, Nes, NesConfig};
+use monsoon_core::emulation::nes::{ExecutionResult, Nes, NesConfig, MASTER_CYCLES_PER_FRAME};
 use monsoon_core::emulation::palette_util::RgbColor;
 use monsoon_core::emulation::ppu_util::{TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH};
 use monsoon_core::emulation::rom::RomFile;
-use monsoon_core::emulation::screen_renderer::{ScreenRenderer, create_renderer};
+use monsoon_core::emulation::screen_renderer::{create_renderer, ScreenRenderer};
 use monsoon_core::util::format_bytes_human_readable;
 
 use crate::cli::{
-    CliArgs, ExecutionConfig, ExecutionEngine, FpsConfig, MemoryDump, MemoryInit, MemoryInitConfig,
-    MemoryType, OutputWriter, SavestateConfig, StreamingVideoEncoder, VideoFormat, VideoResolution,
-    apply_memory_init, apply_memory_init_config, is_ffmpeg_available, parse_memory_range,
+    apply_memory_init, apply_memory_init_config, is_ffmpeg_available, parse_memory_range, CliArgs, ExecutionConfig, ExecutionEngine,
+    FpsConfig, MemoryDump, MemoryInit, MemoryInitConfig, MemoryType, OutputWriter,
+    SavestateConfig, StreamingVideoEncoder, VideoFormat, VideoResolution,
 };
 
 // =============================================================================
@@ -39,11 +40,12 @@ pub const NES_HEIGHT: u32 = TOTAL_OUTPUT_HEIGHT as u32;
 /// Create a screen renderer based on CLI arguments.
 ///
 /// Uses the `--renderer` argument to select a renderer by ID.
-/// Falls back to "PaletteLookup" if no renderer is specified.
+/// Falls back to "`PaletteLookup`" if no renderer is specified.
+#[must_use]
 pub fn create_renderer_from_args(args: &CliArgs) -> Box<dyn ScreenRenderer> {
     let renderer_name = args.video.renderer.as_deref().unwrap_or("PaletteLookup");
     let renderers = crate::get_all_renderers();
-    create_renderer(Some(renderer_name), renderers)
+    create_renderer(Some(renderer_name), &renderers)
 }
 
 /// List all available renderers and print them to stdout.
@@ -133,7 +135,7 @@ pub fn run_headless(args: &CliArgs) -> Result<(), String> {
         eprintln!("Total cycles: {}", engine.emu.total_cycles);
         eprintln!(
             "Total frames: {}",
-            engine.emu.total_cycles / MASTER_CYCLES_PER_FRAME as u64
+            engine.emu.total_cycles / u64::from(MASTER_CYCLES_PER_FRAME)
         );
         eprintln!("Stop reason: {:?}", result.stop_reason);
     }
@@ -177,28 +179,29 @@ fn handle_rom_info(args: &CliArgs) -> Result<(), String> {
 }
 
 /// Print ROM information to stdout.
+#[allow(clippy::cast_possible_truncation)]
+#[allow(clippy::too_many_lines)]
 pub fn print_rom_info(rom_path: &Path) -> Result<(), String> {
     let path_str = rom_path.to_string_lossy().to_string();
-    let mut data =
-        std::fs::read(rom_path).map_err(|e| format!("Failed to read ROM file: {}", e))?;
+    let mut data = std::fs::read(rom_path).map_err(|e| format!("Failed to read ROM file: {e}"))?;
     let rom = RomFile::load(&mut data, Some(&path_str), true, Some(&Nes::default()))
-        .map_err(|e| format!("Failed to parse ROM: {}", e))?;
+        .map_err(|e| format!("Failed to parse ROM: {e}"))?;
     println!("NES ROM image ({})", rom.format_name);
     println!();
     println!("ROM Information:");
     println!("  File: {}", rom_path.display());
     println!(
         "  Filename: {}",
-        rom_path
-            .file_name()
-            .map(|name| name.to_string_lossy().to_string())
-            .unwrap_or_else(|| "(unknown)".to_string())
+        rom_path.file_name().map_or_else(
+            || "(unknown)".to_string(),
+            |name| name.to_string_lossy().to_string()
+        )
     );
     if let Some(ref name) = rom.name {
-        println!("  Name: {}", name);
+        println!("  Name: {name}");
     }
     if let Some(ref name) = rom.original_name {
-        println!("  Original Name: {}", name);
+        println!("  Original Name: {name}");
     }
     println!(
         "  File Size: {}",
@@ -251,34 +254,33 @@ pub fn print_rom_info(rom_path: &Path) -> Result<(), String> {
     println!(
         "  Extended Console Type: {}",
         rom.extended_console_type
-            .map(|v| v.to_string())
-            .unwrap_or_else(|| "(none)".to_string())
+            .map_or_else(|| "(none)".to_string(), |v| v.to_string())
     );
     println!(
         "  VS System Hardware Type: {}",
         rom.vs_system_hardware_type
-            .map(|v| v.to_string())
-            .unwrap_or_else(|| "(none)".to_string())
+            .map_or_else(|| "(none)".to_string(), |v| v.to_string())
     );
     println!(
         "  VS System PPU Type: {}",
         rom.vs_system_ppu_type
-            .map(|v| v.to_string())
-            .unwrap_or_else(|| "(none)".to_string())
+            .map_or_else(|| "(none)".to_string(), |v| v.to_string())
     );
     println!(
         "  Checksum (SHA-256): {}",
-        rom.data_checksum
-            .iter()
-            .map(|b| format!("{:02x}", b))
-            .collect::<String>()
+        rom.data_checksum.iter().fold(String::new(), |mut out, b| {
+            let _ = write!(out, "{b:02x}");
+            out
+        })
     );
     println!(
         "  Headerless Checksum (SHA-256): {}",
         rom.checksum_headerless
             .iter()
-            .map(|b| format!("{:02x}", b))
-            .collect::<String>()
+            .fold(String::new(), |mut out, b| {
+                let _ = write!(out, "{b:02x}");
+                out
+            })
     );
 
     Ok(())
@@ -358,9 +360,7 @@ fn run_with_streaming_video(
     renderer: &mut Box<dyn ScreenRenderer>,
     args: &CliArgs,
 ) -> Result<ExecutionResult, String> {
-    let video_path = if let Some(video_path) = args.video.video_path.as_ref() {
-        video_path
-    } else {
+    let Some(video_path) = args.video.video_path.as_ref() else {
         return Err("No Video Path specified".to_string());
     };
 
@@ -373,19 +373,17 @@ fn run_with_streaming_video(
         );
     }
 
-    let video_scale = if let Some(video_scale) = args.video.video_scale.as_ref() {
-        video_scale
-    } else {
+     let Some(video_scale) = args.video.video_scale.as_ref() else {
         return Err("No Video Path specified".to_string());
     };
 
     // Parse video resolution
     let resolution =
-        VideoResolution::parse(video_scale).map_err(|e| format!("Invalid video scale: {}", e))?;
+        VideoResolution::parse(video_scale).map_err(|e| format!("Invalid video scale: {e}"))?;
 
     // Parse FPS configuration
     let fps_config = FpsConfig::parse(&args.video.video_fps, args.video.video_mode)
-        .map_err(|e| format!("Invalid video FPS: {}", e))?;
+        .map_err(|e| format!("Invalid video FPS: {e}"))?;
 
     let (dst_width, dst_height) = resolution.dimensions(NES_WIDTH, NES_HEIGHT);
 
@@ -393,7 +391,7 @@ fn run_with_streaming_video(
     if !args.quiet {
         print_video_info(
             video_path,
-            &args.video.video_format,
+            args.video.video_format,
             &resolution,
             NES_WIDTH,
             NES_HEIGHT,
@@ -413,7 +411,7 @@ fn run_with_streaming_video(
         &resolution,
         fps_config,
     )
-    .map_err(|e| format!("Failed to create video encoder: {}", e))?;
+    .map_err(|e| format!("Failed to create video encoder: {e}"))?;
 
     // Run with streaming video export
     let result = engine.run_with_video_encoder(&mut encoder, renderer)?;
@@ -421,7 +419,7 @@ fn run_with_streaming_video(
     // Finalize encoder
     encoder
         .finish()
-        .map_err(|e| format!("Failed to finalize video: {}", e))?;
+        .map_err(|e| format!("Failed to finalize video: {e}"))?;
 
     if !args.quiet {
         eprintln!("Exported {} frames successfully", encoder.frames_written());
@@ -441,7 +439,7 @@ fn run_with_streaming_video(
 #[allow(clippy::too_many_arguments)]
 fn print_video_info(
     video_path: &Path,
-    format: &VideoFormat,
+    format: VideoFormat,
     resolution: &VideoResolution,
     src_width: u32,
     src_height: u32,
@@ -521,7 +519,7 @@ fn save_single_screenshot(frame: &[RgbColor], args: &CliArgs) -> Result<(), Stri
         });
 
         img.save(screenshot_path)
-            .map_err(|e| format!("Failed to save screenshot: {}", e))?;
+            .map_err(|e| format!("Failed to save screenshot: {e}"))?;
 
         if !args.quiet {
             eprintln!("Screenshot saved to {}", screenshot_path.display());
@@ -543,9 +541,7 @@ pub fn save_screenshot(
         }
 
         // Use the last frame for screenshot
-        let frame = if let Some(frame) = frames.last() {
-            frame
-        } else {
+        let Some(frame) = frames.last() else {
             return Err("Can't screenshot as there is no frame produced yet".to_string());
         };
 
@@ -564,7 +560,7 @@ pub fn save_screenshot(
                 .ok_or_else(|| "Failed to create image buffer".to_string())?;
 
         img.save(screenshot_path)
-            .map_err(|e| format!("Failed to save screenshot: {}", e))?;
+            .map_err(|e| format!("Failed to save screenshot: {e}"))?;
 
         if !args.quiet {
             eprintln!("Screenshot saved successfully");
@@ -599,19 +595,17 @@ pub fn save_video(
             return Ok(());
         }
 
-        let video_scale = if let Some(video_scale) = args.video.video_scale.as_ref() {
-            video_scale
-        } else {
+         let Some(video_scale) = args.video.video_scale.as_ref() else {
             return Err("No Video Path specified".to_string());
         };
 
         // Parse video resolution
-        let resolution = VideoResolution::parse(video_scale)
-            .map_err(|e| format!("Invalid video scale: {}", e))?;
+        let resolution =
+            VideoResolution::parse(video_scale).map_err(|e| format!("Invalid video scale: {e}"))?;
 
         // Parse FPS configuration
         let fps_config = FpsConfig::parse(&args.video.video_fps, args.video.video_mode)
-            .map_err(|e| format!("Invalid video FPS: {}", e))?;
+            .map_err(|e| format!("Invalid video FPS: {e}"))?;
 
         let (dst_width, dst_height) = resolution.dimensions(NES_WIDTH, NES_HEIGHT);
 
@@ -627,8 +621,8 @@ pub fn save_video(
             if resolution != VideoResolution::Native && args.video.video_format == VideoFormat::Mp4
             {
                 eprintln!(
-                    "  Resolution: {}x{} → {}x{} via FFmpeg nearest-neighbor",
-                    NES_WIDTH, NES_HEIGHT, dst_width, dst_height
+                    "  Resolution: {NES_WIDTH}x{NES_HEIGHT} → {dst_width}x{dst_height} via FFmpeg \
+                     nearest-neighbor"
                 );
             }
         }
@@ -642,7 +636,7 @@ pub fn save_video(
             &resolution,
             fps_config,
         )
-        .map_err(|e| format!("Failed to create video encoder: {}", e))?;
+        .map_err(|e| format!("Failed to create video encoder: {e}"))?;
 
         for frame in frames {
             let rgb_frame = renderer.buffer_to_image(frame);
@@ -707,15 +701,15 @@ pub fn output_results(emu: &mut Nes, args: &CliArgs) -> Result<(), String> {
 /// Create a CPU memory dump from the emulator
 fn create_cpu_dump(emu: &mut Nes, range: &str) -> Result<MemoryDump, String> {
     let (start, end) = parse_memory_range(range)?;
-    let mem = &emu.get_memory_debug(Some(start..=end))[0];
-    Ok(MemoryDump::new(MemoryType::Cpu, start, mem.to_vec()))
+    let mem = &emu.get_memory_debug(&Some(start..=end))[0];
+    Ok(MemoryDump::new(MemoryType::Cpu, start, mem.clone()))
 }
 
 /// Create a PPU memory dump from the emulator
 fn create_ppu_dump(emu: &mut Nes, range: &str) -> Result<MemoryDump, String> {
     let (start, end) = parse_memory_range(range)?;
-    let mem = &emu.get_memory_debug(Some(start..=end))[1];
-    Ok(MemoryDump::new(MemoryType::Ppu, start, mem.to_vec()))
+    let mem = &emu.get_memory_debug(&Some(start..=end))[1];
+    Ok(MemoryDump::new(MemoryType::Ppu, start, mem.clone()))
 }
 
 /// Create an OAM memory dump from the emulator
@@ -726,13 +720,13 @@ fn create_oam_dump(emu: &Nes) -> MemoryDump {
 
 /// Create a nametables memory dump from the emulator
 fn create_nametables_dump(emu: &mut Nes) -> MemoryDump {
-    let mem = emu.get_memory_debug(Some(0x2000..=0x2FFF))[1].to_vec();
+    let mem = emu.get_memory_debug(&Some(0x2000..=0x2FFF))[1].clone();
     MemoryDump::nametables(mem)
 }
 
 /// Create a palette RAM memory dump from the emulator
 fn create_palette_dump(emu: &mut Nes) -> MemoryDump {
     // Palette RAM is at PPU addresses $3F00-$3F1F (32 bytes)
-    let mem = emu.get_memory_debug(Some(0x3F00..=0x3F1F))[1].to_vec();
+    let mem = emu.get_memory_debug(&Some(0x3F00..=0x3F1F))[1].clone();
     MemoryDump::palette_ram(mem)
 }
