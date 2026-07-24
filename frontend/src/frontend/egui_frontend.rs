@@ -640,7 +640,23 @@ impl eframe::App for EguiApp {
     /// This keeps simulation, message processing, and timing updates in
     /// `logic`, while `ui` stays focused on widget/layout rendering and UI
     /// interactions.
-    fn logic(&mut self, ctx: &Context, _: &mut Frame) {
+    fn logic(&mut self, ctx: &Context, frame: &mut Frame) {
+        if self.wgpu_nes_renderer.is_none()
+            && let Some(rs) = frame.wgpu_render_state()
+        {
+            let renderer = Arc::new(NesWgpuRenderer::new(
+                &rs.device,
+                &rs.queue,
+                rs.target_format,
+                &self.config.view_config.palette_rgb_data,
+            ));
+            rs.renderer
+                .write()
+                .callback_resources
+                .insert(Arc::clone(&renderer));
+            self.wgpu_nes_renderer = Some(renderer);
+        }
+
         ctx.memory_mut(|mem| {
             mem.data
                 .insert_temp::<bool>(Id::new(AsyncFrontendMessage::Speedup), false);
