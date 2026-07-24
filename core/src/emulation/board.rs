@@ -177,16 +177,16 @@ impl CpuBus for CpuBusView<'_> {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn get_ppu_open_bus(&mut self) -> &mut OpenBus { self.ppu_io_bus }
 
-    #[inline(always)]
+    #[inline]
     fn poll_nmi(&mut self) -> bool { self.ppu.poll_nmi() }
 
-    #[inline(always)]
+    #[inline]
     fn poll_irq(&mut self) -> bool { self.mapper.poll_irq() || self.apu.poll_irq() }
 
-    #[inline(always)]
+    #[inline]
     fn set_irq(&mut self, val: bool) { *self.irq = val }
 }
 
@@ -302,7 +302,7 @@ impl PpuBus for PpuBusView<'_> {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn get_ppu_open_bus(&self) -> &OpenBus { self.ppu_io_bus }
 }
 

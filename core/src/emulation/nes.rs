@@ -101,7 +101,7 @@ impl Nes {
     /// This method borrows the internal buffer without copying. Use
     /// [`swap_pixel_buffer`](Nes::swap_pixel_buffer) to transfer ownership
     /// of a completed frame without any allocation.
-    #[inline(always)]
+    #[inline]
     #[must_use]
     pub fn get_pixel_buffer(&self) -> &[u16] { &self.board.ppu.pixel_buffer }
 
@@ -122,7 +122,7 @@ impl Nes {
     ///
     /// `other` must have the same length as the internal pixel buffer
     /// (`TOTAL_OUTPUT_WIDTH × TOTAL_OUTPUT_HEIGHT`).
-    #[inline(always)]
+    #[inline]
     pub fn swap_pixel_buffer(&mut self, other: &mut Vec<u16>) {
         std::mem::swap(&mut self.board.ppu.pixel_buffer, other);
     }
@@ -403,7 +403,7 @@ impl Nes {
     /// respective clock dividers.
     ///
     /// For most use cases, prefer [`step_frame()`](Nes::step_frame).
-    #[inline(always)]
+    #[inline]
     pub fn step(&mut self) -> ExecutionResult { self.step_internal(u64::MAX) }
 
     #[cold]
@@ -441,7 +441,7 @@ impl Nes {
         self.step_internal(last_cycle)
     }
 
-    #[inline]
+    #[inline(always)]
     fn step_internal(&mut self, last_cycle: u64) -> ExecutionResult {
         let grayscale = self.board.ppu.get_grayscale_enabled();
 

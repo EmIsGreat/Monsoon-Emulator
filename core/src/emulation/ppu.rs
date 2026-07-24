@@ -145,7 +145,7 @@ impl Ppu {
 
     fn get_default_oam() -> Memory { Memory::new(OAM_SIZE + OAM_SIZE / 8, true) }
 
-    #[inline]
+    #[inline(always)]
     #[allow(clippy::too_many_lines)]
     pub fn step(&mut self, bus: &mut impl PpuBus) -> ExecutionResult {
         self.prev_vbl = self.status_register & VBLANK_NMI_BIT;
@@ -485,7 +485,7 @@ impl Ppu {
         &mut self.sprite_fifos[(self.soam_index as usize / 4) % 8]
     }
 
-    #[inline(always)]
+    #[inline]
     #[allow(clippy::cast_possible_truncation)]
     pub fn is_sprite_in_range(&self) -> bool {
         let (diff, o) = (self.scanline as u8).overflowing_sub(self.current_sprite_y);
@@ -564,7 +564,7 @@ impl Ppu {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn shift_bg_shifters(&mut self) {
         self.shift_pattern_lo <<= 1;
         self.shift_pattern_hi <<= 1;
@@ -574,7 +574,7 @@ impl Ppu {
         self.shift_attr_hi |= u8::from(self.shift_in_attr_hi);
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn get_bg_pixel(&self) -> u16 {
         let mux = 0x80 >> self.fine_x_scroll;
         // pattern shifters (16-bit)
@@ -650,12 +650,12 @@ impl Ppu {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn is_rendering(&self) -> bool {
         self.is_background_rendering() || self.is_sprite_rendering()
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn get_sprite_height(&self) -> u8 {
         if self.ctrl_register & 0x20 == 0 {
             8
@@ -710,7 +710,7 @@ impl Ppu {
         (self.status_register & !VBLANK_NMI_BIT) | self.prev_vbl
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn get_ppu_status(&mut self) -> u8 {
         let result = (self.status_register & !VBLANK_NMI_BIT) | self.prev_vbl;
         self.vbl_clear_scheduled = Some(2);
@@ -723,7 +723,7 @@ impl Ppu {
     #[inline(always)]
     pub fn get_ppu_ctrl(&self) -> u8 { self.ctrl_register }
 
-    #[inline(always)]
+    #[inline]
     pub fn set_ppu_ctrl(&mut self, value: u8) {
         if !self.reset_signal {
             self.ctrl_register = value;
@@ -747,7 +747,7 @@ impl Ppu {
     #[inline(always)]
     pub fn set_oam_addr_register(&mut self, value: u8) { self.oam_addr_register = value }
 
-    #[inline(always)]
+    #[inline]
     pub fn snapshot_oam_at_addr(&self, open_bus: &OpenBus) -> u8 {
         self.oam_read(self.oam_addr_register, open_bus)
     }
@@ -760,7 +760,7 @@ impl Ppu {
     #[inline(always)]
     pub fn snapshot_vram_at_addr(&self) -> u8 { self.data_buffer }
 
-    #[inline(always)]
+    #[inline]
     pub fn get_vram_at_addr(&mut self, bus: &mut impl PpuBus) -> u8 {
         let mut ret = self.data_buffer;
 
@@ -784,7 +784,7 @@ impl Ppu {
         ret
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn write_oam(&mut self, mut data: u8) {
         if self.is_visible_scanline() || self.is_pre_render_scanline() {
             self.oam_addr_register = self.oam_addr_register.wrapping_add(4);
@@ -801,7 +801,7 @@ impl Ppu {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn write_vram(&mut self, data: u8, bus: &mut impl PpuBus) {
         bus.write(self.v_register, data);
         self.v_register = self
@@ -809,7 +809,7 @@ impl Ppu {
             .wrapping_add(u16::from(self.get_vram_addr_step()));
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn write_ppu_scroll(&mut self, data: u8) {
         if self.reset_signal {
             return;
@@ -832,7 +832,7 @@ impl Ppu {
         self.write_latch = !self.write_latch;
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn write_vram_addr(&mut self, data: u8) {
         if self.write_latch {
             // Second write: lower byte
@@ -873,7 +873,7 @@ impl Ppu {
         ((self.v_register & VRAM_ADDR_FINE_Y_SCROLL_MASK) >> 12) as u8
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn inc_coarse_x_scroll(&mut self) {
         if self.get_coarse_x_scroll() == 31 {
             self.v_register &= !VRAM_ADDR_COARSE_X_SCROLL_MASK;
@@ -883,7 +883,7 @@ impl Ppu {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn inc_y_scroll(&mut self) {
         if (self.v_register & VRAM_ADDR_FINE_Y_SCROLL_MASK) == VRAM_ADDR_FINE_Y_SCROLL_MASK {
             self.v_register &= !VRAM_ADDR_FINE_Y_SCROLL_MASK;
@@ -909,7 +909,7 @@ impl Ppu {
     #[inline(always)]
     pub fn is_visible_scanline(&self) -> bool { self.scanline <= VISIBLE_SCANLINES }
 
-    #[inline(always)]
+    #[inline]
     pub fn oam_read(&self, addr: u8, open_bus: &OpenBus) -> u8 {
         if self.is_rendering() && (self.dot >= 256 && self.dot <= 320) && self.is_visible_scanline()
         {
@@ -926,7 +926,7 @@ impl Ppu {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn oam_snapshot(&self, addr: u8, open_bus: &OpenBus) -> u8 {
         let row = addr / 8;
         let byte = addr % 8;
@@ -941,7 +941,7 @@ impl Ppu {
         res
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn secondary_oam_read(&mut self, addr: u8, open_bus: &OpenBus) -> u8 {
         // Mask for only 0-32
         let row = addr & 0x1F;
@@ -951,7 +951,7 @@ impl Ppu {
             .read((u32::from(row) * 9) + u32::from(byte), open_bus)
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn secondary_oam_snapshot(&self, addr: u8, open_bus: &OpenBus) -> u8 {
         // Mask for only 0-32
         let row = addr & 0x1F;
@@ -961,7 +961,7 @@ impl Ppu {
             .snapshot((u32::from(row) * 9) + u32::from(byte), open_bus)
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn secondary_oam_write(&mut self, addr: u8, data: u8, open_bus: &OpenBus) {
         // Mask for only 0-32
         let row = addr & 0x1F;
@@ -977,10 +977,10 @@ impl Ppu {
 
     pub fn reset(&mut self) { self.reset_signal = false; }
 
-    #[inline(always)]
+    #[inline]
     pub fn get_pixel_buffer(&self) -> &Vec<u16> { &self.pixel_buffer }
 
-    #[inline(always)]
+    #[inline]
     pub fn process_vbl_clear_scheduled(&mut self) {
         if let Some(vbl_clear_cycle) = self.vbl_clear_scheduled {
             if vbl_clear_cycle >= self.vbl_reset_counter {
@@ -994,7 +994,7 @@ impl Ppu {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn reload_shifters(&mut self) {
         self.shift_pattern_lo = (self.shift_pattern_lo & 0xFF00) | u16::from(self.bg_next_tile_lsb);
         self.shift_pattern_hi = (self.shift_pattern_hi & 0xFF00) | u16::from(self.address_latch);

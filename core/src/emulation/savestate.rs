@@ -69,8 +69,6 @@ pub struct CpuState {
     pub(crate) ane_constant: u8,
     /// Whether the CPU has executed a halt (KIL) instruction.
     pub is_halted: bool,
-    /// Whether the current cycle is a read cycle.
-    pub(crate) read_cycle: bool,
     pub(crate) dma_state: DmaState,
     pub(crate) nmi_state: NMIState,
     pub(crate) irq_state: IRQState,
@@ -95,7 +93,6 @@ impl From<&Cpu> for CpuState {
             data_bus: cpu.data_bus,
             ane_constant: cpu.ane_constant,
             is_halted: cpu.is_halted,
-            read_cycle: cpu.read_cycle,
             irq_state: cpu.irq_state,
             dma_state: cpu.dma_state,
             nmi_state: cpu.nmi_state,
@@ -127,7 +124,6 @@ impl From<&CpuState> for Cpu {
             is_halted: state.is_halted,
             irq_state: state.irq_state,
             nmi_state: state.nmi_state,
-            read_cycle: state.read_cycle,
             dma_state: state.dma_state,
             last_memory_access: None,
             cycle: state.cycle,

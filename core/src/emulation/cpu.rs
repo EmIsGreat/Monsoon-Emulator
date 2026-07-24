@@ -91,7 +91,6 @@ pub struct Cpu {
     pub data_bus: u8,
     pub ane_constant: u8,
     pub is_halted: bool,
-    pub read_cycle: bool,
     pub dma_state: DmaState,
     pub nmi_state: NMIState,
     pub irq_state: IRQState,
@@ -170,7 +169,6 @@ impl Default for Cpu {
             is_halted: false,
             irq_state: IRQState::default(),
             nmi_state: NMIState::default(),
-            read_cycle: true,
             dma_state: DmaState::default(),
             last_memory_access: None,
             cycle: 0,
@@ -183,7 +181,6 @@ impl Cpu {
 
     #[inline(always)]
     pub fn mem_read(&mut self, addr: u16, bus: &mut impl CpuBus) -> u8 {
-        self.read_cycle = true;
         let res = bus.read(addr);
 
         self.last_memory_access = Some((addr, true, res));
@@ -193,7 +190,6 @@ impl Cpu {
 
     #[inline(always)]
     pub fn mem_write(&mut self, addr: u16, data: u8, bus: &mut impl CpuBus) {
-        self.read_cycle = false;
         self.last_memory_access = Some((addr, false, data));
 
         if addr == DMA_ADDRESS {
@@ -221,19 +217,19 @@ impl Cpu {
         self.mem_write(addr + 1, highest_significant_bits, bus);
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn stack_pop(&mut self, bus: &mut impl CpuBus) -> u8 {
         let val = self.mem_read(STACK_START_ADDRESS + u16::from(self.stack_pointer), bus);
         self.stack_pointer = self.stack_pointer.wrapping_add(1);
         val
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn stack_peek(&mut self, bus: &mut impl CpuBus) -> u8 {
         self.mem_read(STACK_START_ADDRESS + u16::from(self.stack_pointer), bus)
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn stack_push(&mut self, data: Option<u8>, bus: &mut impl CpuBus) {
         if let Some(data) = data {
             let addr = STACK_START_ADDRESS + u16::from(self.stack_pointer);
@@ -258,19 +254,19 @@ impl Cpu {
         self.stack_push(Option::from(lo), bus);
     }
 
-    #[inline(always)]
+    #[inline]
     fn set_zero_flag(&mut self) { self.processor_status |= ZERO_BIT; }
 
-    #[inline(always)]
+    #[inline]
     fn clear_zero_flag(&mut self) { self.processor_status &= !ZERO_BIT; }
 
-    #[inline(always)]
+    #[inline]
     fn set_negative_flag(&mut self) { self.processor_status |= NEGATIVE_BIT }
 
-    #[inline(always)]
+    #[inline]
     fn clear_negative_flag(&mut self) { self.processor_status &= !NEGATIVE_BIT }
 
-    #[inline(always)]
+    #[inline]
     fn update_zero_flag(&mut self, result: u8) {
         if result == 0 {
             self.set_zero_flag();
@@ -279,7 +275,7 @@ impl Cpu {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn update_negative_flag(&mut self, result: u8) {
         if result & NEGATIVE_BIT != 0 {
             self.set_negative_flag();
@@ -288,61 +284,61 @@ impl Cpu {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn update_negative_and_zero_flags(&mut self, result: u8) {
         self.update_negative_flag(result);
         self.update_zero_flag(result);
     }
 
-    #[inline(always)]
+    #[inline]
     fn set_carry_flag(&mut self) { self.processor_status |= CARRY_BIT; }
 
-    #[inline(always)]
+    #[inline]
     fn clear_carry_flag(&mut self) { self.processor_status &= !CARRY_BIT; }
 
-    #[inline(always)]
+    #[inline]
     fn set_overflow_flag(&mut self) { self.processor_status |= OVERFLOW_BIT; }
 
-    #[inline(always)]
+    #[inline]
     fn clear_overflow_flag(&mut self) { self.processor_status &= !OVERFLOW_BIT; }
 
-    #[inline(always)]
+    #[inline]
     fn set_interrupt_disable(&mut self) { self.processor_status |= IRQ_BIT; }
 
-    #[inline(always)]
+    #[inline]
     fn clear_interrupt_disable(&mut self) { self.processor_status &= !IRQ_BIT; }
 
-    #[inline(always)]
+    #[inline]
     fn set_decimal_flag(&mut self) { self.processor_status |= DECIMAL_BIT; }
 
-    #[inline(always)]
+    #[inline]
     fn clear_decimal_flag(&mut self) { self.processor_status &= !DECIMAL_BIT; }
 
-    #[inline(always)]
+    #[inline]
     pub fn get_zero_flag(&self) -> bool { (self.processor_status & ZERO_BIT) != 0 }
 
-    #[inline(always)]
+    #[inline]
     pub fn get_negative_flag(&self) -> bool { (self.processor_status & NEGATIVE_BIT) != 0 }
 
-    #[inline(always)]
+    #[inline]
     pub fn get_carry_flag(&self) -> bool { (self.processor_status & CARRY_BIT) != 0 }
 
-    #[inline(always)]
+    #[inline]
     pub fn get_overflow_flag(&self) -> bool { (self.processor_status & OVERFLOW_BIT) != 0 }
 
-    #[inline(always)]
+    #[inline]
     pub fn get_decimal_flag(&self) -> bool { (self.processor_status & DECIMAL_BIT) != 0 }
 
-    #[inline(always)]
+    #[inline]
     pub fn get_interrupt_disable_flag(&self) -> bool { (self.processor_status & IRQ_BIT) != 0 }
 
-    #[inline(always)]
+    #[inline]
     pub fn get_break_flag(&self) -> bool { (self.processor_status & BREAK_BIT) != 0 }
 
-    #[inline(always)]
+    #[inline]
     pub fn get_unused_flag(&self) -> bool { (self.processor_status & UNUSED_BIT) != 0 }
 
-    #[inline(always)]
+    #[inline]
     fn shift_left(&mut self, data: u8) -> u8 {
         let res = data << 1;
 
@@ -356,7 +352,7 @@ impl Cpu {
         res
     }
 
-    #[inline(always)]
+    #[inline]
     fn shift_right(&mut self, data: u8) -> u8 {
         let res = data >> 1;
 
@@ -370,7 +366,7 @@ impl Cpu {
         res
     }
 
-    #[inline(always)]
+    #[inline]
     fn rotate_left(&mut self, data: u8) -> u8 {
         let mut res = data << 1;
 
@@ -386,7 +382,7 @@ impl Cpu {
         res
     }
 
-    #[inline(always)]
+    #[inline]
     fn rotate_right(&mut self, data: u8) -> u8 {
         let mut res = data >> 1;
 
@@ -405,9 +401,8 @@ impl Cpu {
     }
 
     #[inline(always)]
-    fn get_addr_latch(&self) -> u16 { (u16::from(self.hi) << 8) | u16::from(self.lo) }
+    fn get_addr_latch(&self) -> u16 { ((self.hi as u16) << 8) | (self.lo as u16) }
 
-    #[inline]
     #[allow(clippy::too_many_lines)]
     fn get_instructions_for_op_type(&mut self) {
         let op = self.current_opcode;
@@ -1063,7 +1058,6 @@ impl Cpu {
         }
     }
 
-    #[inline]
     fn get_instructions_for_irq() -> OpQueue<8> {
         let mut instructions = OpQueue::new();
 
@@ -1112,7 +1106,6 @@ impl Cpu {
         instructions
     }
 
-    #[inline]
     fn get_instructions_for_reset() -> OpQueue<8> {
         let mut instructions = OpQueue::new();
 
@@ -1199,7 +1192,7 @@ impl Cpu {
         vec
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn step(&mut self, bus: &mut impl CpuBus) -> ExecutionResult {
         self.cycle += 1;
 
@@ -1293,7 +1286,7 @@ impl Cpu {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     #[allow(clippy::too_many_lines)]
     fn execute_micro_op(&mut self, micro_op: MicroOp, bus: &mut impl CpuBus) {
         match micro_op {
@@ -1506,7 +1499,6 @@ impl Cpu {
         }
     }
 
-    #[inline]
     fn run_op(&mut self, op: MicroOpCallback, bus: &mut impl CpuBus) {
         match op {
             MicroOpCallback::None => {}
@@ -1933,7 +1925,7 @@ impl Cpu {
     }
 }
 
-#[inline(always)]
+#[inline]
 #[allow(clippy::cast_possible_truncation)]
 pub fn adc(cpu: &mut Cpu) {
     let target_value = cpu.data_bus;
@@ -1963,7 +1955,7 @@ pub fn adc(cpu: &mut Cpu) {
     cpu.update_negative_and_zero_flags(cpu.accumulator);
 }
 
-#[inline(always)]
+#[inline]
 fn rol(cpu: &mut Cpu) {
     if matches!(
         &cpu.current_opcode.op_type,
@@ -1978,7 +1970,7 @@ fn rol(cpu: &mut Cpu) {
     }
 }
 
-#[inline(always)]
+#[inline]
 fn ror(cpu: &mut Cpu) {
     if matches!(
         &cpu.current_opcode.op_type,
@@ -1993,7 +1985,7 @@ fn ror(cpu: &mut Cpu) {
     }
 }
 
-#[inline(always)]
+#[inline]
 fn asl(cpu: &mut Cpu) {
     if matches!(
         &cpu.current_opcode.op_type,
@@ -2008,7 +2000,7 @@ fn asl(cpu: &mut Cpu) {
     }
 }
 
-#[inline(always)]
+#[inline]
 fn lsr(cpu: &mut Cpu) {
     if matches!(
         &cpu.current_opcode.op_type,
@@ -2023,89 +2015,89 @@ fn lsr(cpu: &mut Cpu) {
     }
 }
 
-#[inline(always)]
+#[inline]
 fn tax(cpu: &mut Cpu) {
     cpu.x_register = cpu.accumulator;
     cpu.update_negative_and_zero_flags(cpu.x_register);
 }
 
-#[inline(always)]
+#[inline]
 fn tay(cpu: &mut Cpu) {
     cpu.y_register = cpu.accumulator;
     cpu.update_negative_and_zero_flags(cpu.y_register);
 }
 
-#[inline(always)]
+#[inline]
 fn txa(cpu: &mut Cpu) {
     cpu.accumulator = cpu.x_register;
     cpu.update_negative_and_zero_flags(cpu.accumulator);
 }
 
-#[inline(always)]
+#[inline]
 fn tya(cpu: &mut Cpu) {
     cpu.accumulator = cpu.y_register;
     cpu.update_negative_and_zero_flags(cpu.accumulator);
 }
 
-#[inline(always)]
+#[inline]
 fn tsx(cpu: &mut Cpu) {
     cpu.x_register = cpu.stack_pointer;
     cpu.update_negative_and_zero_flags(cpu.x_register);
 }
 
-#[inline(always)]
+#[inline]
 fn txs(cpu: &mut Cpu) { cpu.stack_pointer = cpu.x_register; }
 
-#[inline(always)]
+#[inline]
 fn clc(cpu: &mut Cpu) { cpu.clear_carry_flag(); }
 
-#[inline(always)]
+#[inline]
 fn cld(cpu: &mut Cpu) { cpu.clear_decimal_flag(); }
 
-#[inline(always)]
+#[inline]
 fn cli(cpu: &mut Cpu) { cpu.clear_interrupt_disable(); }
 
-#[inline(always)]
+#[inline]
 fn clv(cpu: &mut Cpu) { cpu.clear_overflow_flag(); }
 
-#[inline(always)]
+#[inline]
 fn sec(cpu: &mut Cpu) { cpu.set_carry_flag(); }
 
-#[inline(always)]
+#[inline]
 fn sed(cpu: &mut Cpu) { cpu.set_decimal_flag(); }
 
-#[inline(always)]
+#[inline]
 fn sei(cpu: &mut Cpu) { cpu.set_interrupt_disable(); }
 
-#[inline(always)]
+#[inline]
 fn dex(cpu: &mut Cpu) {
     let mod_value = cpu.x_register.wrapping_sub(1);
     cpu.x_register = mod_value;
     cpu.update_negative_and_zero_flags(cpu.x_register);
 }
 
-#[inline(always)]
+#[inline]
 fn dey(cpu: &mut Cpu) {
     let mod_value = cpu.y_register.wrapping_sub(1);
     cpu.y_register = mod_value;
     cpu.update_negative_and_zero_flags(cpu.y_register);
 }
 
-#[inline(always)]
+#[inline]
 fn inx(cpu: &mut Cpu) {
     let mod_value = cpu.x_register.wrapping_add(1);
     cpu.x_register = mod_value;
     cpu.update_negative_and_zero_flags(cpu.x_register);
 }
 
-#[inline(always)]
+#[inline]
 fn iny(cpu: &mut Cpu) {
     let mod_value = cpu.y_register.wrapping_add(1);
     cpu.y_register = mod_value;
     cpu.update_negative_and_zero_flags(cpu.y_register);
 }
 
-#[inline(always)]
+#[inline]
 fn cmp(cpu: &mut Cpu) {
     let target_value = cpu.data_bus;
 
@@ -2128,7 +2120,7 @@ fn cmp(cpu: &mut Cpu) {
     }
 }
 
-#[inline(always)]
+#[inline]
 fn cpx(cpu: &mut Cpu) {
     let target_value = cpu.data_bus;
 
@@ -2151,7 +2143,7 @@ fn cpx(cpu: &mut Cpu) {
     }
 }
 
-#[inline(always)]
+#[inline]
 fn cpy(cpu: &mut Cpu) {
     let target_value = cpu.data_bus;
 
@@ -2174,28 +2166,28 @@ fn cpy(cpu: &mut Cpu) {
     }
 }
 
-#[inline(always)]
+#[inline]
 fn and(cpu: &mut Cpu) {
     let target_val = cpu.data_bus;
     cpu.accumulator &= target_val;
     cpu.update_negative_and_zero_flags(cpu.accumulator);
 }
 
-#[inline(always)]
+#[inline]
 fn eor(cpu: &mut Cpu) {
     let target_val = cpu.data_bus;
     cpu.accumulator ^= target_val;
     cpu.update_negative_and_zero_flags(cpu.accumulator);
 }
 
-#[inline(always)]
+#[inline]
 fn ora(cpu: &mut Cpu) {
     let target_val = cpu.data_bus;
     cpu.accumulator |= target_val;
     cpu.update_negative_and_zero_flags(cpu.accumulator);
 }
 
-#[inline(always)]
+#[inline]
 #[allow(clippy::cast_possible_truncation)]
 fn sbc(cpu: &mut Cpu) {
     let target_value = cpu.data_bus;
@@ -2224,7 +2216,7 @@ fn sbc(cpu: &mut Cpu) {
     cpu.update_negative_and_zero_flags(cpu.accumulator);
 }
 
-#[inline(always)]
+#[inline]
 fn bit(cpu: &mut Cpu) {
     let target_val = cpu.data_bus;
     let res = cpu.accumulator & target_val;
@@ -2243,7 +2235,7 @@ fn bit(cpu: &mut Cpu) {
     }
 }
 
-#[inline(always)]
+#[inline]
 fn inc(cpu: &mut Cpu) {
     let target_value = cpu.data_bus;
     let mod_value = target_value.wrapping_add(1);
@@ -2251,7 +2243,7 @@ fn inc(cpu: &mut Cpu) {
     cpu.update_negative_and_zero_flags(cpu.data_bus);
 }
 
-#[inline(always)]
+#[inline]
 fn dec(cpu: &mut Cpu) {
     let target_value = cpu.data_bus;
     let mod_value = target_value.wrapping_sub(1);
@@ -2259,14 +2251,14 @@ fn dec(cpu: &mut Cpu) {
     cpu.update_negative_and_zero_flags(cpu.data_bus);
 }
 
-#[inline(always)]
+#[inline]
 fn branch(cpu: &mut Cpu, condition: Condition) {
     if cpu.check_condition(condition) {
         cpu.op_queue.push_back(MicroOp::BranchIncrement(Source::LO));
     }
 }
 
-#[inline]
+#[cold]
 #[allow(clippy::cast_possible_truncation)]
 fn isb(cpu: &mut Cpu, bus: &mut impl CpuBus) {
     // Inc
@@ -2304,7 +2296,7 @@ fn isb(cpu: &mut Cpu, bus: &mut impl CpuBus) {
     }
 }
 
-#[inline]
+#[cold]
 fn alr(cpu: &mut Cpu) {
     let target_val = cpu.data_bus;
     cpu.accumulator &= target_val;
@@ -2314,7 +2306,7 @@ fn alr(cpu: &mut Cpu) {
     cpu.update_negative_and_zero_flags(cpu.accumulator);
 }
 
-#[inline]
+#[cold]
 fn anc(cpu: &mut Cpu) {
     let target_val = cpu.data_bus;
     cpu.accumulator &= target_val;
@@ -2327,12 +2319,12 @@ fn anc(cpu: &mut Cpu) {
     }
 }
 
-#[inline]
+#[cold]
 fn ane(cpu: &mut Cpu) {
     cpu.accumulator = (cpu.accumulator | cpu.ane_constant) & cpu.x_register & cpu.data_bus;
 }
 
-#[inline]
+#[cold]
 fn arr(cpu: &mut Cpu) {
     let target_val = cpu.data_bus;
     cpu.accumulator &= target_val;
@@ -2354,13 +2346,13 @@ fn arr(cpu: &mut Cpu) {
     }
 }
 
-#[inline]
+#[cold]
 fn dcp(cpu: &mut Cpu) {
     dec(cpu);
     cmp(cpu);
 }
 
-#[inline]
+#[cold]
 fn las(cpu: &mut Cpu) {
     let res = cpu.data_bus & cpu.stack_pointer;
     cpu.accumulator = res;
@@ -2368,21 +2360,21 @@ fn las(cpu: &mut Cpu) {
     cpu.stack_pointer = res;
 }
 
-#[inline]
+#[cold]
 fn lax(cpu: &mut Cpu) {
     cpu.accumulator = cpu.data_bus;
     cpu.x_register = cpu.data_bus;
     cpu.update_negative_and_zero_flags(cpu.accumulator);
 }
 
-#[inline]
+#[cold]
 fn lxa(cpu: &mut Cpu) {
     cpu.accumulator = (cpu.accumulator | cpu.ane_constant) & cpu.data_bus;
     cpu.x_register = cpu.accumulator;
     cpu.update_negative_and_zero_flags(cpu.accumulator);
 }
 
-#[inline]
+#[cold]
 fn rla(cpu: &mut Cpu) {
     let target_value = cpu.data_bus;
     let res = cpu.rotate_left(target_value);
@@ -2391,7 +2383,7 @@ fn rla(cpu: &mut Cpu) {
     cpu.update_negative_and_zero_flags(cpu.accumulator);
 }
 
-#[inline]
+#[cold]
 fn rra(cpu: &mut Cpu) {
     let target_value = cpu.data_bus;
     let res = cpu.rotate_right(target_value);
@@ -2399,13 +2391,13 @@ fn rra(cpu: &mut Cpu) {
     adc(cpu);
 }
 
-#[inline]
+#[cold]
 fn sax(cpu: &mut Cpu) {
     let res = cpu.accumulator & cpu.x_register;
     cpu.data_bus = res;
 }
 
-#[inline]
+#[cold]
 fn sbx(cpu: &mut Cpu) {
     let t = cpu.accumulator & cpu.x_register;
     let r = t.wrapping_sub(cpu.data_bus);
@@ -2430,10 +2422,10 @@ fn sbx(cpu: &mut Cpu) {
     }
 }
 
-#[inline]
+#[cold]
 fn sha(cpu: &mut Cpu) { cpu.data_bus = cpu.accumulator & cpu.x_register & cpu.hi.wrapping_add(1); }
 
-#[inline]
+#[cold]
 fn shx(cpu: &mut Cpu) {
     if cpu.lo.overflowing_sub(cpu.y_register).1 {
         let res = cpu.x_register & cpu.hi;
@@ -2444,7 +2436,7 @@ fn shx(cpu: &mut Cpu) {
     }
 }
 
-#[inline]
+#[cold]
 fn shy(cpu: &mut Cpu) {
     if cpu.lo.overflowing_sub(cpu.x_register).1 {
         let res = cpu.y_register & cpu.hi;
@@ -2455,7 +2447,7 @@ fn shy(cpu: &mut Cpu) {
     }
 }
 
-#[inline]
+#[cold]
 fn slo(cpu: &mut Cpu) {
     let target_value = cpu.data_bus;
     let res = cpu.shift_left(target_value);
@@ -2465,7 +2457,7 @@ fn slo(cpu: &mut Cpu) {
     cpu.update_negative_and_zero_flags(cpu.accumulator);
 }
 
-#[inline]
+#[cold]
 fn sre(cpu: &mut Cpu) {
     let target_value = cpu.data_bus;
     let res = cpu.shift_right(target_value);
@@ -2475,13 +2467,13 @@ fn sre(cpu: &mut Cpu) {
     cpu.update_negative_and_zero_flags(cpu.accumulator);
 }
 
-#[inline]
+#[cold]
 fn tas(cpu: &mut Cpu) {
     cpu.stack_pointer = cpu.accumulator & cpu.x_register;
     cpu.data_bus = cpu.accumulator & cpu.x_register & cpu.hi.wrapping_add(1);
 }
 
-#[inline]
+#[cold]
 fn jam(cpu: &mut Cpu) { cpu.is_halted = true }
 
 #[inline]
