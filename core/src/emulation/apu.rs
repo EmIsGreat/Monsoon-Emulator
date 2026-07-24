@@ -12,7 +12,7 @@ pub struct Apu {
 }
 
 impl Apu {
-    #[inline]
+    #[inline(always)]
     pub fn clock_frame_counter(&mut self, is_proper: bool) {
         if let Some(res) = self.frame_counter.clock(is_proper) {
             match res {
@@ -22,13 +22,13 @@ impl Apu {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn clock_half_frame(&mut self) { self.clock_quarter_frame(); }
 
-    #[inline]
+    #[inline(always)]
     pub fn clock_quarter_frame(&mut self) {}
 
-    #[inline]
+    #[inline(always)]
     #[must_use]
     pub fn poll_irq(&self) -> bool { self.frame_counter.frame_interrupt }
 }
@@ -85,7 +85,7 @@ impl FrameCounter {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn get_frame_interrupt_for_register(&mut self) -> bool {
         let res = self.frame_interrupt;
         self.frame_interrupt = false;

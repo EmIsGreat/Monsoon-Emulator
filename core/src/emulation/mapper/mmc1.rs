@@ -106,10 +106,10 @@ impl<V: MMC1Variant, S: MMC1Submapper> MapperLike for MMC1Common<V, S> {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn init(&mut self, addr: u16, data: u8) -> CpuWriteResult { self.write(addr, data, 0) }
 
-    #[inline]
+    #[inline(always)]
     fn read(&mut self, addr: u16, open_bus: &OpenBus) -> CpuReadResult {
         self.read_debug(addr, open_bus)
     }
@@ -140,7 +140,7 @@ impl<V: MMC1Variant, S: MMC1Submapper> MapperLike for MMC1Common<V, S> {
         CpuReadResult::Registered
     }
 
-    #[inline]
+    #[inline(always)]
     fn ppu_read(&mut self, addr: u16, open_bus: &OpenBus) -> PpuReadResult {
         self.ppu_read_debug(addr, open_bus)
     }
@@ -178,7 +178,7 @@ impl<V: MMC1Variant, S: MMC1Submapper> MapperLike for MMC1Common<V, S> {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn ppu_init(&mut self, addr: u16, data: u8) -> PpuWriteResult { self.ppu_write(addr, data) }
 
     #[allow(clippy::too_many_lines)]
@@ -298,7 +298,7 @@ impl<V: MMC1Variant, S: MMC1Submapper> MapperLike for MMC1Common<V, S> {
         tables
     }
 
-    #[inline]
+    #[inline(always)]
     fn poll_irq(&self) -> bool { false }
 }
 
@@ -370,6 +370,7 @@ impl<V: MMC1Variant, S: MMC1Submapper> MMC1Common<V, S> {
         }
     }
 
+    #[inline(always)]
     fn set_ctrl(&mut self, val: u8) {
         self.ctrl_reg = val;
         self.process_ctrl_change();

@@ -206,10 +206,10 @@ impl MapperLike for NROM {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn init(&mut self, addr: u16, data: u8) -> CpuWriteResult { self.write(addr, data, 0) }
 
-    #[inline]
+    #[inline(always)]
     fn read(&mut self, addr: u16, open_bus: &OpenBus) -> CpuReadResult {
         self.read_debug(addr, open_bus)
     }
@@ -239,7 +239,7 @@ impl MapperLike for NROM {
         CpuReadResult::Registered
     }
 
-    #[inline]
+    #[inline(always)]
     fn ppu_read(&mut self, addr: u16, open_bus: &OpenBus) -> PpuReadResult {
         self.ppu_read_debug(addr, open_bus)
     }
@@ -279,7 +279,7 @@ impl MapperLike for NROM {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn ppu_init(&mut self, addr: u16, data: u8) -> PpuWriteResult { self.ppu_write(addr, data) }
 
     fn get_registers_debug(&self) -> MapperRegisterTables {
@@ -325,7 +325,7 @@ impl MapperLike for NROM {
         tables
     }
 
-    #[inline]
+    #[inline(always)]
     fn poll_irq(&self) -> bool { false }
 }
 

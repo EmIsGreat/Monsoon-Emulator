@@ -22,12 +22,12 @@ impl Memory {
 }
 
 impl Memory {
-    #[inline]
+    #[inline(always)]
     pub fn read(&self, addr: u32, _: &OpenBus) -> u8 {
         self.memory[addr as usize % self.memory.len()]
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn write(&mut self, addr: u32, data: u8) {
         if !self.is_write {
             return;
@@ -64,7 +64,7 @@ impl OpenBus {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn set_masked(&mut self, value: u8, mask: u8) {
         for bit in 0..8 {
             let bit_mask = 1 << bit;
@@ -76,7 +76,7 @@ impl OpenBus {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn tick(&mut self, times: u8) {
         let times = u32::from(times);
         for (i, bit) in &mut self.bits.iter_mut().enumerate() {
@@ -88,10 +88,10 @@ impl OpenBus {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn read(&self) -> u8 { Self::bools_to_u8(self.bits) }
 
-    #[inline]
+    #[inline(always)]
     fn bools_to_u8(bits: [bool; 8]) -> u8 {
         u8::from(bits[0])
             | u8::from(bits[1]) << 1

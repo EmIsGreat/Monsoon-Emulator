@@ -24,7 +24,7 @@ pub struct ReadResult {
 }
 
 impl From<u8> for ReadResult {
-    #[inline]
+    #[inline(always)]
     fn from(value: u8) -> Self {
         ReadResult {
             value,
@@ -35,19 +35,19 @@ impl From<u8> for ReadResult {
 }
 
 impl ReadResult {
-    #[inline]
+    #[inline(always)]
     pub fn to_false(mut self) -> Self {
         self.update_open_bus = false;
         self
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn with_mask(mut self, mask: u8) -> Self {
         self.mask = mask;
         self
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn with_update(mut self, update: bool) -> Self {
         self.update_open_bus = update;
         self
@@ -177,16 +177,16 @@ impl CpuBus for CpuBusView<'_> {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn get_ppu_open_bus(&mut self) -> &mut OpenBus { self.ppu_io_bus }
 
-    #[inline]
+    #[inline(always)]
     fn poll_nmi(&mut self) -> bool { self.ppu.poll_nmi() }
 
-    #[inline]
+    #[inline(always)]
     fn poll_irq(&mut self) -> bool { self.mapper.poll_irq() || self.apu.poll_irq() }
 
-    #[inline]
+    #[inline(always)]
     fn set_irq(&mut self, val: bool) { *self.irq = val }
 }
 
@@ -302,7 +302,7 @@ impl PpuBus for PpuBusView<'_> {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn get_ppu_open_bus(&self) -> &OpenBus { self.ppu_io_bus }
 }
 

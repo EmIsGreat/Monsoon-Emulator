@@ -10,12 +10,12 @@ use std::fmt::{Display, Formatter};
 
 use crate::emulation::cpu::UPPER_BYTE;
 use crate::emulation::mem::Memory;
-use crate::emulation::savestate::{BINARY_FORMAT_VERSION, JSON_FORMAT_VERSION, MAGIC, SaveState};
+use crate::emulation::savestate::{SaveState, BINARY_FORMAT_VERSION, JSON_FORMAT_VERSION, MAGIC};
 /// Returns `true` if adding a signed `offset` to `base` crosses a 256-byte page
 /// boundary.
 ///
 /// This is used by the 6502 CPU for relative branch offset calculations.
-#[inline]
+#[inline(always)]
 pub(crate) fn crosses_page_boundary_i8(base: u16, offset: i8) -> bool {
     let target = base.wrapping_add_signed(i16::from(offset));
     (base & UPPER_BYTE) != (target & UPPER_BYTE)
@@ -25,7 +25,7 @@ pub(crate) fn crosses_page_boundary_i8(base: u16, offset: i8) -> bool {
 ///
 /// This emulates the 6502 bug where some addressing modes wrap within
 /// a page instead of crossing into the next page.
-#[inline]
+#[inline(always)]
 pub(crate) fn add_to_low_byte(val: u16, add: u8) -> u16 {
     let high = val & 0xFF00; // preserve high byte
     let low = ((val & 0x00FF) as u8).wrapping_add(add); // add with wrapping

@@ -20,7 +20,7 @@ impl Default for PaletteRam {
 }
 
 impl PaletteRam {
-    #[inline]
+    #[inline(always)]
     pub fn read(&self, addr: u16, open_bus: &OpenBus) -> u8 {
         let val = match addr {
             0x0 | 0x4 | 0x8 | 0xC | 0x10 | 0x14 | 0x18 | 0x1C => {
@@ -35,7 +35,7 @@ impl PaletteRam {
     #[inline]
     pub fn snapshot(&self, addr: u16, open_bus: &OpenBus) -> u8 { self.read(addr, open_bus) }
 
-    #[inline]
+    #[inline(always)]
     pub fn write(&mut self, addr: u16, data: u8) {
         let data = data & 0b0011_1111;
         match addr {

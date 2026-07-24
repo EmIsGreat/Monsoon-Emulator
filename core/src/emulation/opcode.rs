@@ -1121,7 +1121,7 @@ pub fn init() -> [OpCode; 256] {
 }
 
 /// Fast opcode lookup - O(1) array access
-#[inline]
+#[inline(always)]
 pub fn get_opcode(opcode: u8) -> OpCode { OPCODES_TABLE.get_or_init(init)[opcode as usize] }
 
 impl OpCode {

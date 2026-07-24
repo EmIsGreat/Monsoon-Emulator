@@ -10,7 +10,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::util::{HashError, Hashable, SerializationError, ToBytes, compute_hash};
+use crate::util::{compute_hash, HashError, Hashable, SerializationError, ToBytes};
 
 /// An RGB color with 8 bits per channel.
 ///
@@ -139,6 +139,7 @@ pub fn parse_palette_from_bytes(bytes: &[u8]) -> RgbPalette {
 }
 
 impl ToBytes for RgbPalette {
+    #[inline]
     fn to_bytes(&self, _: Option<String>) -> Result<Vec<u8>, SerializationError> {
         Ok(self
             .colors

@@ -12,7 +12,7 @@ pub enum NametableArrangement {
 }
 
 impl NametableArrangement {
-    #[inline]
+    #[inline(always)]
     pub fn resolve_address(self, address: u16) -> u16 {
         let address = address % (VRAM_SIZE * 2);
 

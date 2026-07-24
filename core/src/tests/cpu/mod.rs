@@ -81,7 +81,7 @@ impl Cpu {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn with_bus<T>(&mut self, f: impl FnOnce(&mut CoreCpu, &mut TestBus) -> T) -> T {
         f(&mut self.cpu, &mut self.bus)
     }
@@ -101,19 +101,19 @@ impl Cpu {
         self.with_bus(|cpu, bus| cpu.mem_read_u16(addr, bus))
     }
 
-    #[inline]
+    #[inline(always)]
     pub(crate) fn mem_write_u16(&mut self, addr: u16, data: u16) {
         self.with_bus(|cpu, bus| cpu.mem_write_u16(addr, data, bus))
     }
 
-    #[inline]
+    #[inline(always)]
     pub(crate) fn stack_push(&mut self, data: Option<u8>) {
         self.with_bus(|cpu, bus| cpu.stack_push(data, bus))
     }
 
     #[inline]
     #[allow(unused_results)]
-    pub(crate) fn step(&mut self) -> Result<ExecutionResult, String> {
+    pub(crate) fn step(&mut self) -> ExecutionResult {
         self.with_bus(|cpu, bus| cpu.step(bus))
     }
 

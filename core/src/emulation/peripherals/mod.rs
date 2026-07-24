@@ -47,7 +47,7 @@ pub struct StandardController {
 }
 
 impl PeripheralDevice for StandardController {
-    #[inline]
+    #[inline(always)]
     fn read(&mut self) -> u8 {
         if self.strobe {
             self.shift = self.input;
@@ -56,7 +56,7 @@ impl PeripheralDevice for StandardController {
         self.poll()
     }
 
-    #[inline]
+    #[inline(always)]
     fn read_debug(&self) -> u8 {
         let mut shift = self.shift;
 
@@ -77,7 +77,7 @@ impl PeripheralDevice for StandardController {
 }
 
 impl StandardController {
-    #[inline]
+    #[inline(always)]
     fn poll(&mut self) -> u8 {
         let res = self.shift & 1;
         self.shift = (self.shift >> 1) | 0x80;
