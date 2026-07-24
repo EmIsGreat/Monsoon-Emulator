@@ -11,13 +11,13 @@ fn test_ram_after_reset() {
     emu.reset();
 
     for i in 0..u64::MAX {
-        emu.step().expect("TODO: panic message");
+        emu.step();
 
-        let val = emu.get_memory_debug(Some(0x6000..=0x6000))[0][0];
+        let val = emu.get_memory_debug(&Some(0x6000..=0x6000))[0][0];
 
         if val == 0x81 {
             for _ in 0..4_000_000 {
-                emu.step().expect("TODO: panic message");
+                emu.step();
             }
             emu.reset();
         }
@@ -27,7 +27,7 @@ fn test_ram_after_reset() {
         }
     }
 
-    let whole_mem = emu.get_memory_debug(Some(0x6000..=0x6032));
+    let whole_mem = emu.get_memory_debug(&Some(0x6000..=0x6032));
     let cpu_mem = whole_mem[0].as_slice();
 
     let expected = [
@@ -52,13 +52,13 @@ fn test_registers() {
     emu.reset();
 
     for i in 0..u64::MAX {
-        emu.step().expect("TODO: panic message");
+        emu.step();
 
-        let val = emu.get_memory_debug(Some(0x6000..=0x6000))[0][0];
+        let val = emu.get_memory_debug(&Some(0x6000..=0x6000))[0][0];
 
         if val == 0x81 {
             for _ in 0..8_000_000 {
-                emu.step().expect("TODO: panic message");
+                emu.step();
             }
             emu.reset();
         }
@@ -68,7 +68,7 @@ fn test_registers() {
         }
     }
 
-    let whole_mem = emu.get_memory_debug(Some(0x6000..=0x6050));
+    let whole_mem = emu.get_memory_debug(&Some(0x6000..=0x6050));
     let cpu_mem = whole_mem[0].as_slice();
 
     let expected = [

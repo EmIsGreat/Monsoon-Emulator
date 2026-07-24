@@ -10,10 +10,9 @@ fn test_instr_misc() {
     ));
 
     emu.reset();
-    emu.run_until(200_000_000, RunOptions::default())
-        .expect("Error while running test");
+    emu.run_until(200_000_000, RunOptions::default());
 
-    let whole_mem = emu.get_memory_debug(Some(0x6000..=0x6031));
+    let whole_mem = emu.get_memory_debug(&Some(0x6000..=0x6031));
     let cpu_mem = whole_mem[0].as_slice();
 
     let expected = [
@@ -37,10 +36,9 @@ fn test_instr_misc_01_abs_x_wrap() {
     ));
 
     emu.reset();
-    emu.run_until(20_000_000, RunOptions::default())
-        .expect("Error while running test");
+    emu.run_until(20_000_000, RunOptions::default());
 
-    let whole_mem = emu.get_memory_debug(Some(0x6000..=0x6031));
+    let whole_mem = emu.get_memory_debug(&Some(0x6000..=0x6031));
     let cpu_mem = whole_mem[0].as_slice();
 
     let expected = [
@@ -62,10 +60,9 @@ fn test_instr_misc_02_branch_wrap() {
     ));
 
     emu.reset();
-    emu.run_until(20_000_000, RunOptions::default())
-        .expect("Error while running test");
+    emu.run_until(20_000_000, RunOptions::default());
 
-    let whole_mem = emu.get_memory_debug(Some(0x6000..=0x6031));
+    let whole_mem = emu.get_memory_debug(&Some(0x6000..=0x6031));
     let cpu_mem = whole_mem[0].as_slice();
 
     let expected = [
@@ -87,10 +84,9 @@ fn test_instr_misc_03_dummy_reads() {
     ));
 
     emu.reset();
-    emu.run_until(20_500_000, RunOptions::default())
-        .expect("Error while running test");
+    emu.run_until(20_500_000, RunOptions::default());
 
-    let whole_mem = emu.get_memory_debug(Some(0x6000..=0x6050));
+    let whole_mem = emu.get_memory_debug(&Some(0x6000..=0x6050));
     let cpu_mem = whole_mem[0].as_slice();
 
     let expected = [
@@ -112,10 +108,9 @@ fn test_instr_misc_04_dummy_reads_apu() {
     ));
 
     emu.reset();
-    emu.run_until(20_000_000, RunOptions::default())
-        .expect("Error while running test");
+    emu.run_until(20_000_000, RunOptions::default());
 
-    let whole_mem = emu.get_memory_debug(Some(0x6000..=0x6100));
+    let whole_mem = emu.get_memory_debug(&Some(0x6000..=0x6100));
     let cpu_mem = whole_mem[0].as_slice();
 
     let expected = [

@@ -9,10 +9,9 @@ fn test_02_vbl_set_time() {
         None,
     ));
     emu.power();
-    emu.run_until(85341973, RunOptions::default())
-        .expect("Error while running test");
+    emu.run_until(85341973, RunOptions::default());
 
-    let whole_mem = emu.get_memory_debug(Some(0x6000..=0x6063));
+    let whole_mem = emu.get_memory_debug(&Some(0x6000..=0x6063));
     let cpu_mem = whole_mem[0].as_slice();
 
     let expected = [

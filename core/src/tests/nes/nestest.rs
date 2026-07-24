@@ -16,8 +16,7 @@ fn nestest() {
     emu.power();
 
     // Stops after reaching terminating hlt instruction
-    emu.run_until(1_000_000_000, RunOptions::default())
-        .expect("Error running test");
+    emu.run_until(1_000_000_000, RunOptions::default());
 
     let log = emu
         .trace_log
@@ -27,9 +26,7 @@ fn nestest() {
         .map(|s| s.to_string())
         .take(8980)
         .collect::<Vec<String>>();
-
-    log.iter().for_each(|s| println!("{s}"));
-
+    
     let file = File::open("./tests/outputs-compare/nestest_headless_good.log")
         .expect("Error running test");
     let lines = io::BufReader::new(file)

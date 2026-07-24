@@ -33,10 +33,9 @@ fn test_ppu_vbl_nmi() {
     ));
 
     emu.power();
-    emu.run_until(650_000_000, RunOptions::default())
-        .expect("Error while running test");
+    emu.run_until(650_000_000, RunOptions::default());
 
-    let whole_mem = emu.get_memory_debug(Some(0x6000..=0x6079));
+    let whole_mem = emu.get_memory_debug(&Some(0x6000..=0x6079));
     let cpu_mem = whole_mem[0].as_slice();
 
     println!("{:02X?}", cpu_mem);

@@ -9,10 +9,9 @@ fn test_09_even_odd_frames() {
         None,
     ));
     emu.power();
-    emu.run_until(36342973, RunOptions::default())
-        .expect("Error while running test");
+    emu.run_until(36342973, RunOptions::default());
 
-    let whole_mem = emu.get_memory_debug(Some(0x6000..=0x602D));
+    let whole_mem = emu.get_memory_debug(&Some(0x6000..=0x602D));
     let cpu_mem = whole_mem[0].as_slice();
 
     let expected = [

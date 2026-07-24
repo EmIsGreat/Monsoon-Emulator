@@ -33,7 +33,7 @@
 //!
 //! // Power on and run a single frame
 //! nes.power();
-//! nes.step_frame().expect("emulation error");
+//! nes.step_frame();
 //!
 //! // Get the rendered frame as a slice of palette indices (no copy)
 //! let pixels = nes.get_pixel_buffer();

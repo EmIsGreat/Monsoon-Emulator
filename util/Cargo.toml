@@ -1,0 +1,14 @@
+[package]
+name = "util"
+version = "0.2.9"
+edition = "2024"
+license = "Apache-2.0"
+keywords = ["util"]
+categories = ["emulators", "game-development"]
+
+[workspace]
+
+[dependencies]
+monsoon-core = {path = "../core"}
+walkdir = "2.5.0"
+strum = "0.28.0"

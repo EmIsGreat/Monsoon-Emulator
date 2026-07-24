@@ -27,7 +27,7 @@ fn get_roms(use_local: bool) -> Vec<RomFile> {
             .filter_map(|f| {
                 f.header
                     .clone()
-                    .and_then(|h| RomFile::get_for_header(&h, f.name.clone()).ok())
+                    .and_then(|h| RomFile::get_for_header(&h, &f.name).ok())
             })
             .collect()
     } else {

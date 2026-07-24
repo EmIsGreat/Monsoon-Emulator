@@ -9,10 +9,9 @@ fn test_16_special() {
         None,
     ));
     emu.reset();
-    emu.run_until(6661509, RunOptions::default())
-        .expect("Error while running test");
+    emu.run_until(6661509, RunOptions::default());
 
-    let whole_mem = emu.get_memory_debug(Some(0x6000..=0x6018));
+    let whole_mem = emu.get_memory_debug(&Some(0x6000..=0x6018));
     let cpu_mem = whole_mem[0].as_slice();
 
     let expected = [

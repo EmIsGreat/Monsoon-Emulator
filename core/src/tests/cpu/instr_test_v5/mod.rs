@@ -43,10 +43,9 @@ fn test_official_only() {
     ));
 
     emu.reset();
-    emu.run_until(750_000_000, RunOptions::default())
-        .expect("Error while running test");
+    emu.run_until(750_000_000, RunOptions::default());
 
-    let whole_mem = emu.get_memory_debug(Some(0x6000..=0x601C));
+    let whole_mem = emu.get_memory_debug(&Some(0x6000..=0x601C));
     let cpu_mem = whole_mem[0].as_slice();
 
     let expected = [
@@ -68,10 +67,9 @@ fn test_all_instrs() {
     ));
 
     emu.reset();
-    emu.run_until(900_000_000, RunOptions::default())
-        .expect("Error while running test");
+    emu.run_until(900_000_000, RunOptions::default());
 
-    let whole_mem = emu.get_memory_debug(Some(0x6000..=0x60C0));
+    let whole_mem = emu.get_memory_debug(&Some(0x6000..=0x60C0));
     let cpu_mem = whole_mem[0].as_slice();
 
     let expected = [
