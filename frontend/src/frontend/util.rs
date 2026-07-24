@@ -11,7 +11,7 @@ use sha2::{Digest, Sha256};
 use crate::frontend::messages::{
     AsyncFrontendMessage, AutoPauseSignal, LoadedPalette, LoadedRom, SavestateLoadContext,
 };
-use crate::frontend::storage::{self, Storage, StorageCategory, StorageKey, get_storage};
+use crate::frontend::storage::{self, get_storage, Storage, StorageCategory, StorageKey};
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
 /// Enum to represent errors that can occur during savestate loading UI flow
@@ -39,12 +39,14 @@ fn get_file_directory(_handle: &FileHandle) -> Option<String> {
 }
 
 pub trait Contrastable {
+    #[must_use]
     fn get_contrast(&self) -> Self;
 }
 
 impl Contrastable for egui::Color32 {
     /// Calculate foreground color (black or white) based on background
     /// luminance
+    #[allow(clippy::cast_precision_loss)]
     fn get_contrast(&self) -> Self {
         let bg = self.as_u32();
         let r = (bg >> 16) & 0xFF;
@@ -70,6 +72,7 @@ pub trait AsU32 {
 }
 
 impl FromU32 for egui::Color32 {
+    #[allow(clippy::cast_possible_truncation)]
     fn from_u32(d: u32) -> Self {
         egui::Color32::from_rgba_unmultiplied(
             (d >> 16) as u8,
@@ -153,6 +156,7 @@ impl FileType {
 }
 
 pub trait AddFilter {
+    #[must_use]
     fn add_filetype_filter(self, file_type: FileType) -> Self;
 }
 
@@ -177,11 +181,13 @@ pub fn spawn_palette_picker(sender: &Sender<AsyncFrontendMessage>, dir: Option<&
             // Read the file contents from the handle
             let data = handle.read().await;
             let palette = parse_palette_from_bytes(&data);
-            let directory = get_file_directory(&handle)
-                .map_or(StorageKey {
+            let directory = get_file_directory(&handle).map_or(
+                StorageKey {
                     category: StorageCategory::Cache,
                     sub_path: "upload_cache/palettes/".to_string(),
-                }, |f| StorageKey::from(&f));
+                },
+                |f| StorageKey::from(&f),
+            );
             let _ = sender.send(AsyncFrontendMessage::PaletteLoaded(LoadedPalette {
                 palette,
                 directory,
@@ -203,11 +209,13 @@ pub fn spawn_rom_picker(sender: &Sender<AsyncFrontendMessage>, dir: Option<&Stor
         if let Some(handle) = pick_file(FileType::Rom, dir.as_ref()).await {
             let data = handle.read().await;
             let name = handle.file_name();
-            let directory = get_file_directory(&handle)
-                .map_or(StorageKey {
+            let directory = get_file_directory(&handle).map_or(
+                StorageKey {
                     category: StorageCategory::Cache,
                     sub_path: "upload_cache/roms/".to_string(),
-                }, |f| StorageKey::from(&f));
+                },
+                |f| StorageKey::from(&f),
+            );
 
             // Cache ROM in storage for later access (ROM matching, etc.)
             let cache_key = storage::rom_cache_key(&name);
@@ -394,7 +402,7 @@ pub fn spawn_savestate_picker(sender: &Sender<AsyncFrontendMessage>, dir: Option
             let _ = get_storage().set(&cache_key, data.clone()).await;
 
             // Try to parse the savestate from the data
-            let savestate = if let Some(value) = try_parse_savestate(&sender, &data) { value } else {
+            let Some(savestate) = try_parse_savestate(&sender, &data) else {
                 let _ = sender.send(AsyncFrontendMessage::AutoPauseSignal {
                     signal: AutoPauseSignal::SavestateLoadPicker,
                     active: false,
@@ -425,7 +433,7 @@ pub fn try_parse_savestate(
     sender: &Sender<AsyncFrontendMessage>,
     data: &[u8],
 ) -> Option<SaveState> {
-    let savestate = if let Some(s) = savestate::try_load_state_from_bytes(data) { s } else {
+    let Some(savestate) = savestate::try_load_state_from_bytes(data) else {
         // Failed to load savestate - send error notification
         let _ = sender.send(AsyncFrontendMessage::SavestateLoadFailed(
             SavestateLoadError::FailedToLoadSavestate,
@@ -454,11 +462,13 @@ pub fn spawn_rom_picker_for_savestate(
         if let Some(handle) = handle {
             let data = handle.read().await;
             let name = handle.file_name();
-            let directory = get_file_directory(&handle)
-                .map_or(StorageKey {
+            let directory = get_file_directory(&handle).map_or(
+                StorageKey {
                     category: StorageCategory::Cache,
                     sub_path: "upload_cache/roms/".to_string(),
-                }, |f| StorageKey::from(&f));
+                },
+                |f| StorageKey::from(&f),
+            );
 
             // Cache ROM in storage for later access (ROM matching, etc.)
             let cache_key = storage::rom_cache_key(&name);

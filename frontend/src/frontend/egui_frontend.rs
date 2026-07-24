@@ -15,15 +15,16 @@
 use std::cell::RefCell;
 use std::collections::VecDeque;
 use std::fmt::{Debug, Formatter};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::Arc;
+
 
 use crossbeam_channel::{Receiver, Sender};
 use eframe::{AppCreator, CreationContext, Frame};
 use egui::{Context, Id, Style, Ui, ViewportCommand, Visuals};
 use monsoon_core::emulation::nes::Nes;
-use monsoon_core::emulation::ppu_util::{EmulatorFetchable, PaletteData, TILE_COUNT, TileData};
+use monsoon_core::emulation::ppu_util::{EmulatorFetchable, PaletteData, TileData, TILE_COUNT};
 use monsoon_core::emulation::rom::ExpansionDevice;
 use monsoon_core::emulation::savestate::SaveState;
 use monsoon_core::rom_db::RomDb;
@@ -39,7 +40,7 @@ use crate::frontend::egui::message_handlers::async_handler::extract_timestamp;
 use crate::frontend::egui::message_handlers::{AsyncMessageHandler, EmulatorMessageHandler};
 use crate::frontend::egui::textures::EmuTextures;
 use crate::frontend::egui::tiles::{
-    Pane, TreeBehavior, compute_required_fetches_from_tree, create_tree, find_pane,
+    compute_required_fetches_from_tree, create_tree, find_pane, Pane, TreeBehavior,
 };
 use crate::frontend::egui::ui::{
     add_menu_bar, add_status_bar, render_save_browser, render_savestate_dialogs,
@@ -48,7 +49,7 @@ use crate::frontend::egui::wgpu_renderer::NesWgpuRenderer;
 use crate::frontend::messages::{
     AsyncFrontendMessage, FrontendEvent, LoadedRom, SavestateLoadContext,
 };
-use crate::frontend::persistence::{PersistentConfig, get_egui_storage_path, load_config};
+use crate::frontend::persistence::{get_egui_storage_path, load_config, PersistentConfig};
 use crate::frontend::storage::{Storage, StorageKey};
 use crate::frontend::{storage, util};
 use crate::messages::{EmulatorMessage, FrontendMessage, SaveType};
@@ -69,6 +70,7 @@ pub type FrontendEventQueue = Rc<RefCell<VecDeque<FrontendEvent>>>;
 ///
 /// Uses `RendererKind` for runtime-switchable rendering. The renderer can be
 /// changed at runtime by updating `config.view_config.renderer`.
+#[allow(clippy::struct_excessive_bools)]
 pub struct EguiApp {
     pub(crate) channel_emu: ChannelEmulator,
     pub(crate) to_emulator: Sender<FrontendMessage>,
@@ -105,7 +107,7 @@ pub struct EguiApp {
 impl EguiApp {
     pub fn new(
         cc: &CreationContext<'_>,
-        loaded_config: Option<PersistentConfig>,
+        loaded_config: Option<&PersistentConfig>,
         channel_emu: ChannelEmulator,
         to_emulator: Sender<FrontendMessage>,
         from_emulator: Receiver<EmulatorMessage>,
@@ -122,7 +124,7 @@ impl EguiApp {
 
         // Create default config and apply loaded settings
         let mut config = AppConfig::default();
-        if let Some(ref persistent_config) = loaded_config {
+        if let Some(persistent_config) = loaded_config {
             config = persistent_config.into();
         }
 
@@ -153,9 +155,9 @@ impl EguiApp {
             from_async,
             async_sender: to_async,
             event_queue: Rc::new(RefCell::new(VecDeque::new())),
-            emu_textures: Default::default(),
-            fps_counter: Default::default(),
-            accumulator: Default::default(),
+            emu_textures: EmuTextures::default(),
+            fps_counter: FpsCounter::default(),
+            accumulator: Duration::default(),
             config,
             tree,
             pattern_tables_was_visible: false,
@@ -168,6 +170,8 @@ impl EguiApp {
     }
 
     /// Calculate the frame budget based on current speed settings
+    #[allow(clippy::cast_possible_truncation)]
+    #[allow(clippy::cast_sign_loss)]
     fn get_frame_budget(&self) -> Duration {
         let speed = self
             .config
@@ -183,6 +187,8 @@ impl EguiApp {
     }
 
     /// Calculate the debug viewers frame budget based on current speed settings
+    #[allow(clippy::cast_possible_truncation)]
+    #[allow(clippy::cast_sign_loss)]
     fn get_debug_viewers_frame_budget(&self) -> Duration {
         let fps = self
             .config
@@ -240,7 +246,7 @@ impl EguiApp {
             .send(FrontendMessage::LoadRom((data, name.clone(), use_db)));
 
         // Extract stem for window title
-        let stem = name.rsplit_once('.').map(|(s, _)| s).unwrap_or(&name);
+        let stem: &str = name.rsplit_once('.').map_or(&name.as_str(), |(s, _)| s);
         let window_title = if stem.is_empty() {
             "Monsoon".to_string()
         } else {
@@ -285,7 +291,7 @@ impl EguiApp {
         }
     }
 
-    pub(crate) fn create_auto_save(&self, savestate: Box<SaveState>) {
+    pub(crate) fn create_auto_save(&self, savestate: &SaveState) {
         if let Some(rom) = &self.config.console_config.loaded_rom {
             let rom_hash = &rom.0.data_checksum;
             let prev_name = &self.config.user_config.previous_rom_name;
@@ -321,7 +327,11 @@ impl EguiApp {
             if let Ok(entries) = storage.list(&prefix).await {
                 let mut autosaves: Vec<_> = entries
                     .into_iter()
-                    .filter(|e| e.key.sub_path.ends_with(".sav"))
+                    .filter(|e| {
+                        Path::new(&e.key.sub_path)
+                            .extension()
+                            .is_some_and(|ext| ext.eq_ignore_ascii_case("sav"))
+                    })
                     .map(|e| e.key)
                     .collect();
 
@@ -345,7 +355,10 @@ impl EguiApp {
         let mut quicksave_key: Option<(StorageKey, chrono::NaiveDateTime, u8)> = None;
 
         for entry in entries {
-            if !entry.key.sub_path.ends_with(".sav") {
+            if !Path::new(&entry.key.sub_path)
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("sav"))
+            {
                 continue;
             }
 
@@ -425,7 +438,7 @@ impl EguiApp {
     /// Detect which palettes changed between old and new palette data
     pub(crate) fn detect_changed_palettes(
         &self,
-        new_palette_data: &Option<Box<PaletteData>>,
+        new_palette_data: Option<&PaletteData>,
     ) -> Vec<usize> {
         match (&self.emu_textures.palette_data, new_palette_data) {
             (Some(old), Some(new)) => old
@@ -444,7 +457,7 @@ impl EguiApp {
     /// Detect which tiles changed between old and new tile data
     pub(crate) fn detect_changed_tiles(
         &self,
-        new_tile_data: &Option<Box<[TileData; usize::from(TILE_COUNT)]>>,
+        new_tile_data: Option<&[TileData; usize::from(TILE_COUNT)]>,
     ) -> Vec<usize> {
         match (&self.emu_textures.tile_data, new_tile_data) {
             (Some(old), Some(new)) => old
@@ -454,8 +467,7 @@ impl EguiApp {
                 .filter(|(_, (old_tile, new_tile))| old_tile != new_tile)
                 .map(|(idx, _)| idx)
                 .collect(),
-            (None, Some(_)) => vec![], // All tiles are new - return empty to trigger full rebuild
-            _ => vec![],               // No update needed
+            _ => vec![], // No update needed
         }
     }
 
@@ -579,7 +591,7 @@ impl EguiApp {
             let savestate = self.channel_emu.nes.save_state();
 
             if let Some(savestate) = savestate {
-                self.create_auto_save(Box::new(savestate));
+                self.create_auto_save(&savestate);
             }
         }
     }
@@ -600,7 +612,7 @@ impl EguiApp {
             let savestate = self.channel_emu.nes.save_state();
 
             if let Some(savestate) = savestate {
-                self.create_auto_save(Box::new(savestate));
+                self.create_auto_save(&savestate);
             }
         }
 
@@ -737,7 +749,7 @@ impl eframe::App for EguiApp {
         let savestate = self.channel_emu.nes.save_state();
 
         if let Some(state) = savestate {
-            self.create_auto_save(Box::new(state));
+            self.create_auto_save(&state);
         }
 
         let _ = self.to_emulator.send(FrontendMessage::Quit);
@@ -759,7 +771,7 @@ struct SetupResponse {
 }
 
 /// Native: common setup with `PathBuf` for command-line ROM loading
-fn common_setup(rom: Option<PathBuf>) -> SetupResponse {
+fn common_setup(rom: Option<&PathBuf>) -> SetupResponse {
     // Create the emulator instance
     let console = Nes::default();
 
@@ -811,7 +823,7 @@ fn common_setup(rom: Option<PathBuf>) -> SetupResponse {
 ///
 /// Uses `RendererKind` for runtime-switchable rendering.
 #[cfg(not(target_arch = "wasm32"))]
-pub fn run(rom: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
+pub fn run(rom: Option<&PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
     let res = common_setup(rom);
     run_internal(res)
 }
@@ -886,7 +898,7 @@ fn get_app_config(
         cc.egui_ctx.set_theme(egui::Theme::Dark);
         Ok(Box::new(EguiApp::new(
             cc,
-            loaded_config,
+            loaded_config.as_ref(),
             res.emu,
             res.to_emu,
             res.from_emu,

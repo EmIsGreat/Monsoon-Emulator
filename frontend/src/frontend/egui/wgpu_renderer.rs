@@ -33,6 +33,7 @@
 
 use std::sync::Arc;
 
+use eframe::wgpu::PipelineCompilationOptions;
 use eframe::{egui_wgpu, wgpu};
 use monsoon_core::emulation::palette_util::RgbPalette;
 use monsoon_core::emulation::ppu_util::{TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH};
@@ -119,6 +120,7 @@ impl NesWgpuRenderer {
     /// * `queue` — wgpu queue for uploading the initial palette.
     /// * `target_format` — framebuffer format (from `RenderState`).
     /// * `initial_palette` — palette to load into the LUT texture immediately.
+    #[allow(clippy::too_many_lines)]
     pub fn new(
         device: &wgpu::Device,
         queue: &wgpu::Queue,
@@ -178,7 +180,7 @@ impl NesWgpuRenderer {
             vertex: wgpu::VertexState {
                 module: &shader,
                 entry_point: Some("vs_main"),
-                compilation_options: Default::default(),
+                compilation_options: PipelineCompilationOptions::default(),
                 buffers: &[], // geometry generated in vertex shader
             },
             primitive: wgpu::PrimitiveState {
@@ -190,7 +192,7 @@ impl NesWgpuRenderer {
             fragment: Some(wgpu::FragmentState {
                 module: &shader,
                 entry_point: Some("fs_main"),
-                compilation_options: Default::default(),
+                compilation_options: PipelineCompilationOptions::default(),
                 targets: &[Some(wgpu::ColorTargetState {
                     format: target_format,
                     blend: None,
@@ -414,6 +416,7 @@ impl egui_wgpu::CallbackTrait for WgpuFrameCallback {
         render_pass: &mut wgpu::RenderPass<'static>,
         callback_resources: &egui_wgpu::CallbackResources,
     ) {
+        #[allow(clippy::cast_precision_loss)]
         if let Some(renderer) = callback_resources.get::<Arc<NesWgpuRenderer>>() {
             let vp = info.viewport_in_pixels();
             // wgpu 29 / egui 0.34: ViewportInPixels uses width_px/height_px,

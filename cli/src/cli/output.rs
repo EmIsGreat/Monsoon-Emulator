@@ -43,8 +43,9 @@
 //! OutputFormat::Xml => Box::new(XmlFormatter),
 //! ```
 
+use std::fmt::Write;
 use std::fs::{File, OpenOptions};
-use std::io::Write;
+use std::io::Write as IoWrite;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 
@@ -64,6 +65,7 @@ use crate::cli::args::OutputFormat;
 /// - Byte 2: Attributes (palette, priority, flip)
 /// - Byte 3: X position
 #[derive(Debug, Clone, Serialize)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct OamSprite {
     /// Sprite index (0-63)
     pub index: u8,
@@ -122,8 +124,6 @@ impl OamSprite {
 /// Interpreted OAM data containing all 64 sprites.
 #[derive(Debug, Clone, Serialize)]
 pub struct InterpretedOam {
-    /// Total number of sprites (always 64)
-    pub sprite_count: u8,
     /// Number of visible sprites (Y < 0xEF)
     pub visible_count: u8,
     /// All 64 sprites with interpreted fields
@@ -138,6 +138,7 @@ impl InterpretedOam {
         let mut sprites = Vec::with_capacity(64);
         let mut visible_count = 0u8;
 
+        #[allow(clippy::cast_possible_truncation)]
         for i in 0..64 {
             let offset = i * 4;
             if offset + 4 <= data.len() {
@@ -149,8 +150,8 @@ impl InterpretedOam {
             }
         }
 
+        #[allow(clippy::cast_possible_truncation)]
         Self {
-            sprite_count: sprites.len() as u8,
             visible_count,
             sprites,
         }
@@ -265,6 +266,7 @@ impl InterpretedNametables {
     pub fn from_raw(data: &[u8]) -> Self {
         let mut nametables = Vec::with_capacity(4);
 
+        #[allow(clippy::cast_possible_truncation)]
         for i in 0..4 {
             let start = i * 0x400;
             let end = start + 0x400;
@@ -349,6 +351,7 @@ impl MemoryDump {
     /// Create a new memory dump
     #[must_use]
     pub fn new(mem_type: MemoryType, start_addr: u16, data: Vec<u8>) -> Self {
+        #[allow(clippy::cast_possible_truncation)]
         let end_addr = if data.is_empty() {
             start_addr
         } else {
@@ -436,15 +439,13 @@ impl MemoryFormatter for HexFormatter {
         // For OAM, add interpreted header
         if let Some(ref oam) = dump.interpreted_oam {
             output.push_str("=== OAM Interpretation ===\n");
-            output.push_str(&format!(
-                "Total sprites: {}, Visible: {}\n\n",
-                oam.sprite_count, oam.visible_count
-            ));
+            let _ = write!(output, "Visible: {}\n\n", oam.visible_count);
             output.push_str("Idx |  X  |  Y  | Tile | Pal | Pri | FlipH | FlipV | Visible\n");
             output.push_str("----+-----+-----+------+-----+-----+-------+-------+--------\n");
             for sprite in &oam.sprites {
-                output.push_str(&format!(
-                    "{:3} | {:3} | {:3} | 0x{:02X} |  {}  | {} |   {}   |   {}   | {}\n",
+                let _ = writeln!(
+                    output,
+                    "{:3} | {:3} | {:3} | 0x{:02X} |  {}  | {} |   {}   |   {}   | {}",
                     sprite.index,
                     sprite.x,
                     sprite.y,
@@ -454,7 +455,7 @@ impl MemoryFormatter for HexFormatter {
                     if sprite.flip_h { "Y" } else { "N" },
                     if sprite.flip_v { "Y" } else { "N" },
                     if sprite.visible { "Yes" } else { "No" }
-                ));
+                );
             }
             output.push_str("\n=== Raw OAM Data ===\n");
         }
@@ -462,17 +463,18 @@ impl MemoryFormatter for HexFormatter {
         // For nametables, add interpreted header
         if let Some(ref nt) = dump.interpreted_nametables {
             output.push_str("=== Nametables Interpretation ===\n");
-            output.push_str(&format!("Total size: {} bytes\n\n", nt.total_size));
+            let _ = write!(output, "Total size: {} bytes\n\n", nt.total_size);
             for nametable in &nt.nametables {
-                output.push_str(&format!(
+                let _ = writeln!(
+                    output,
                     "Nametable {} (base: {})\n",
                     nametable.index, nametable.base_address
-                ));
+                );
                 output.push_str("  Tiles (32x30 grid, showing first 8 rows):\n");
                 for (row_idx, row) in nametable.tiles.iter().take(8).enumerate() {
-                    output.push_str(&format!("  Row {row_idx:2}: "));
+                    let _ = write!(output, "  Row {row_idx:2}: ");
                     for tile in row.iter().take(32) {
-                        output.push_str(&format!("{tile:02X} "));
+                        let _ = write!(output, "{tile:02X} ");
                     }
                     output.push('\n');
                 }
@@ -794,7 +796,7 @@ impl OutputWriter {
     }
 
     /// Get the output writer (file or stdout).
-    fn get_writer(&self) -> Result<Box<dyn Write>, String> {
+    fn get_writer(&self) -> Result<Box<dyn IoWrite>, String> {
         if let Some(ref path) = self.path {
             let is_first_write = !OUTPUT_FILE_INITIALIZED.swap(true, Ordering::SeqCst);
 
@@ -917,7 +919,6 @@ mod tests {
 
         let interp = InterpretedOam::from_raw(&data);
 
-        assert_eq!(interp.sprite_count, 64);
         assert_eq!(interp.visible_count, 1); // Only sprite 0 is visible
         assert_eq!(interp.sprites.len(), 64);
         assert_eq!(interp.sprites[0].y, 0x10);

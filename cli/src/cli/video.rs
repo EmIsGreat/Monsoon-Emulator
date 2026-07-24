@@ -111,6 +111,8 @@ impl VideoResolution {
 }
 
 /// Fit source dimensions to target bounds while maintaining aspect ratio.
+#[allow(clippy::cast_possible_truncation)]
+#[allow(clippy::cast_sign_loss)]
 fn fit_to_bounds(
     src_width: u32,
     src_height: u32,
@@ -168,6 +170,8 @@ pub struct FpsConfig {
     pub mode: VideoExportMode,
 }
 
+#[allow(clippy::cast_possible_truncation)]
+#[allow(clippy::cast_sign_loss)]
 impl FpsConfig {
     /// Parse an FPS string (e.g., "1x", "2x", "60", "120.0").
     ///
@@ -453,7 +457,8 @@ impl PngSequenceEncoder {
     fn frame_path(&self, frame: u64) -> PathBuf {
         let stem = self
             .base_path
-            .file_stem().map_or_else(|| "frame".to_string(), |s| s.to_string_lossy().to_string());
+            .file_stem()
+            .map_or_else(|| "frame".to_string(), |s| s.to_string_lossy().to_string());
         let dir = self
             .base_path
             .parent()
@@ -463,6 +468,7 @@ impl PngSequenceEncoder {
 }
 
 impl VideoEncoder for PngSequenceEncoder {
+    #[allow(clippy::cast_possible_truncation)]
     fn write_frame(&mut self, pixel_buffer: &[RgbColor]) -> Result<(), VideoError> {
         let expected_size = (self.width * self.height) as usize;
         if pixel_buffer.len() != expected_size {
@@ -522,7 +528,8 @@ impl PpmSequenceEncoder {
     fn frame_path(&self, frame: u64) -> PathBuf {
         let stem = self
             .base_path
-            .file_stem().map_or_else(|| "frame".to_string(), |s| s.to_string_lossy().to_string());
+            .file_stem()
+            .map_or_else(|| "frame".to_string(), |s| s.to_string_lossy().to_string());
         let dir = self
             .base_path
             .parent()
@@ -532,6 +539,7 @@ impl PpmSequenceEncoder {
 }
 
 impl VideoEncoder for PpmSequenceEncoder {
+    #[allow(clippy::cast_possible_truncation)]
     fn write_frame(&mut self, pixel_buffer: &[RgbColor]) -> Result<(), VideoError> {
         let expected_size = (self.width * self.height) as usize;
         if pixel_buffer.len() != expected_size {
@@ -646,9 +654,7 @@ impl FfmpegMp4Encoder {
         if let Some((dst_w, dst_h)) = scale_to
             && (dst_w != width || dst_h != height)
         {
-            eprintln!(
-                "FFmpeg scaling {width}x{height} -> {dst_w}x{dst_h} (nearest neighbor)"
-            );
+            eprintln!("FFmpeg scaling {width}x{height} -> {dst_w}x{dst_h} (nearest neighbor)");
             args.extend([
                 "-vf".to_string(),
                 format!("scale={dst_w}:{dst_h}:flags=neighbor"),
@@ -704,6 +710,7 @@ impl FfmpegMp4Encoder {
 }
 
 impl VideoEncoder for FfmpegMp4Encoder {
+    #[allow(clippy::cast_possible_truncation)]
     fn write_frame(&mut self, pixel_buffer: &[RgbColor]) -> Result<(), VideoError> {
         let expected_size = (self.width * self.height) as usize;
         if pixel_buffer.len() != expected_size {
@@ -826,6 +833,7 @@ impl RawEncoder {
 }
 
 impl VideoEncoder for RawEncoder {
+    #[allow(clippy::cast_possible_truncation)]
     fn write_frame(&mut self, pixel_buffer: &[RgbColor]) -> Result<(), VideoError> {
         let expected_size = (self.width * self.height) as usize;
         if pixel_buffer.len() != expected_size {
@@ -869,6 +877,8 @@ impl VideoEncoder for RawEncoder {
 ///
 /// Known framerates (like NES NTSC 60.0988 FPS) are converted to their
 /// exact rational form. Other values use a high-precision approximation.
+#[allow(clippy::cast_possible_truncation)]
+#[allow(clippy::cast_sign_loss)]
 fn fps_to_rational(fps: f64) -> String {
     // Tolerance values:
     // - NES NTSC: 0.01 because the irrational framerate may have rounding errors
@@ -878,10 +888,10 @@ fn fps_to_rational(fps: f64) -> String {
 
     // Check for NES NTSC framerate and its multiples (within tolerance)
     // NES NTSC framerate: 39375000 / 655171 ≈ 60.098814
-    for multiplier in 1..=10 {
+    for multiplier in 1..=10u8 {
         let target = NES_NTSC_FPS * f64::from(multiplier);
         if (fps - target).abs() < NES_TOLERANCE {
-            let numerator = NES_NTSC_FPS_NUM * multiplier as u64;
+            let numerator = NES_NTSC_FPS_NUM * u64::from(multiplier);
             return format!("{numerator}/{NES_NTSC_FPS_DEN}");
         }
     }
@@ -954,8 +964,8 @@ pub fn is_ffmpeg_available() -> bool {
 /// This encoder is designed for use during emulation - frames are written
 /// immediately as they are generated, without buffering all frames in memory.
 ///
-/// Scaling is Handled natively by `FFmpeg` using nearest-neighbor interpolation,
-/// which is efficient and produces sharp pixel edges.
+/// Scaling is Handled natively by `FFmpeg` using nearest-neighbor
+/// interpolation, which is efficient and produces sharp pixel edges.
 pub struct StreamingVideoEncoder {
     encoder: Box<dyn VideoEncoder>,
     src_width: u32,

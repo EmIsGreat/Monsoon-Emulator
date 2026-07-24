@@ -1,15 +1,16 @@
 use crossbeam_channel::Sender;
-use monsoon_core::emulation::palette_util::{RgbColor, parse_palette_from_bytes};
+use monsoon_core::emulation::palette_util::{parse_palette_from_bytes, RgbColor};
 use monsoon_core::emulation::ppu_util::PALETTE_RAM_START_ADDRESS;
 use monsoon_core::util::Hashable;
 
 use crate::frontend::egui::config::AppConfig;
 use crate::frontend::egui::textures::EmuTextures;
-use crate::frontend::egui::ui::widgets::{PainterGridConfig, color_cell_rgb};
+use crate::frontend::egui::ui::widgets::{color_cell_rgb, PainterGridConfig};
 use crate::frontend::messages::{AsyncFrontendMessage, LoadedPalette};
 use crate::frontend::storage::{StorageCategory, StorageKey};
-use crate::frontend::util::{self, FileType, spawn_palette_picker, spawn_save_dialog};
+use crate::frontend::util::{self, spawn_palette_picker, spawn_save_dialog, FileType};
 
+#[allow(clippy::too_many_lines)]
 pub fn render_palettes(
     ui: &mut egui::Ui,
     config: &mut AppConfig,
@@ -35,6 +36,7 @@ pub fn render_palettes(
             let (parent, _) =
                 ui.allocate_exact_size(grid_config.total_size(), egui::Sense::hover());
 
+            #[allow(clippy::cast_possible_truncation)]
             for (j, color) in palette.iter().enumerate() {
                 let rgb_color = config.view_config.palette_rgb_data.colors[0][*color as usize];
                 let rect = grid_config.cell_rect(parent.min, j);

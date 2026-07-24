@@ -4,7 +4,7 @@
 //! multiple UI components to reduce code duplication.
 
 use crossbeam_channel::Sender;
-use egui::{AsIdSalt, Response, StrokeKind, Ui, Widget, vec2};
+use egui::{vec2, AsIdSalt, Response, StrokeKind, Ui, Widget};
 use monsoon_core::emulation::palette_util::RgbColor;
 
 use crate::frontend::egui::config::AppConfig;
@@ -184,6 +184,7 @@ impl PainterGridConfig {
     /// Get the height (defaults to width if not set)
     pub fn get_height(&self) -> f32 { self.height.unwrap_or(self.width) }
 
+    #[allow(clippy::cast_precision_loss)]
     /// Get the size of each cell
     pub fn cell_size(&self) -> egui::Vec2 {
         vec2(
@@ -193,6 +194,7 @@ impl PainterGridConfig {
     }
 
     /// Get the rect for a cell at the given index
+    #[allow(clippy::cast_precision_loss)]
     pub fn cell_rect(&self, parent_min: egui::Pos2, index: usize) -> egui::Rect {
         let row = index / self.cols;
         let col = index % self.cols;

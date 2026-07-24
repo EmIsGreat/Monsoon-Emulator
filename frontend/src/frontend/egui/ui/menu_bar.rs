@@ -6,6 +6,7 @@ use crate::frontend::egui::keybindings::OnKeyAction;
 use crate::frontend::egui::ui::widgets::HotKeyButton;
 use crate::frontend::messages::AsyncFrontendMessage;
 
+#[allow(clippy::too_many_lines)]
 pub fn add_menu_bar(
     ui: &mut Ui,
     config: &mut AppConfig,

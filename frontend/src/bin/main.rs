@@ -58,5 +58,5 @@ fn main() -> ExitCode {
 fn run_gui(args: &CliArgs) -> Result<(), String> {
     // Renderer type is selected at runtime via RendererKind
     // The frontend uses RendererKind which can be switched dynamically
-    egui_frontend::run(args.rom.clone()).map_err(|e| e.to_string())
+    egui_frontend::run(args.rom.as_ref()).map_err(|e| e.to_string())
 }

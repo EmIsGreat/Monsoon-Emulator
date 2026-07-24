@@ -277,6 +277,7 @@ fn parse_toml_array(value: &toml::Value) -> Result<Vec<u8>, String> {
             })
             .collect(),
         #[allow(clippy::cast_possible_truncation)]
+        #[allow(clippy::cast_sign_loss)]
         toml::Value::Integer(n) => {
             if *n >= 0 && *n <= 255 {
                 Ok(vec![*n as u8])

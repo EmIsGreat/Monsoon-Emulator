@@ -39,8 +39,8 @@
 //! - **`IndexedDB`**: Larger storage (~50MB+), async, supports binary data
 //!   (recommended)
 //!
-//! This module uses `IndexedDB` for WASM to support save states and other binary
-//! data.
+//! This module uses `IndexedDB` for WASM to support save states and other
+//! binary data.
 
 use std::fmt::Display;
 use std::path::PathBuf;
@@ -241,7 +241,7 @@ mod native {
         #[must_use]
         pub fn new() -> Self { NativeStorage }
 
-        fn get_base_dir(&self, category: &StorageCategory) -> Option<PathBuf> {
+        fn get_base_dir(category: StorageCategory) -> Option<PathBuf> {
             let dirs = get_project_dirs()?;
             let base = match category {
                 StorageCategory::Config => dirs.config_dir(),
@@ -328,7 +328,8 @@ mod native {
         }
 
         fn get_display_path(&self, key: &StorageKey) -> String {
-            self.key_to_path(key).map_or_else(|| key.sub_path.clone(), |p| p.display().to_string())
+            self.key_to_path(key)
+                .map_or_else(|| key.sub_path.clone(), |p| p.display().to_string())
         }
 
         fn key_to_path_opt(&self, key: Option<&StorageKey>) -> Option<PathBuf> {
@@ -340,7 +341,7 @@ mod native {
         }
 
         fn key_to_path(&self, key: &StorageKey) -> Option<PathBuf> {
-            let base = self.get_base_dir(&key.category)?;
+            let base = NativeStorage::get_base_dir(key.category)?;
             Some(base.join(key.sub_path.clone()))
         }
     }

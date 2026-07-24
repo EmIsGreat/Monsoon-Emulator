@@ -158,6 +158,7 @@ fn handle_pixel_edit(
     let new_byte_0 = (old_byte_0 & !(1 << ppu_bit)) | (new_lo << ppu_bit);
     let new_byte_1 = (old_byte_1 & !(1 << ppu_bit)) | (new_hi << ppu_bit);
 
+    #[allow(clippy::cast_possible_truncation)]
     if old_byte_0 != new_byte_0 || old_byte_1 != new_byte_1 {
         let addr_0 = tile_data.address + ppu_row as u16;
         let addr_1 = tile_data.address + ppu_row as u16 + 8;

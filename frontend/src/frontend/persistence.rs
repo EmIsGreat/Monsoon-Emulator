@@ -14,16 +14,16 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::{fs, thread};
 
-use crossbeam_channel::{Receiver, bounded};
+use crossbeam_channel::{bounded, Receiver};
 use directories::ProjectDirs;
 use monsoon_core::emulation::palette_util::RgbPalette;
 use monsoon_core::emulation::ppu_util::EmulatorFetchable;
-use monsoon_core::emulation::screen_renderer::{NoneRenderer, ScreenRenderer, create_renderer};
+use monsoon_core::emulation::screen_renderer::{create_renderer, NoneRenderer, ScreenRenderer};
 use serde::{Deserialize, Serialize};
 
 use crate::frontend::egui::config::{
-    AppConfig, AppSpeed, ConsoleConfig, DebugOverlayConfig, DebugSpeed, KeybindingsConfig,
-    SpeedConfig, UserConfig, ViewConfig,
+    AppConfig, AppSpeed, AutoPauseState, ConsoleConfig, DebugOverlayConfig, DebugSpeed,
+    KeybindingsConfig, PendingDialogs, SpeedConfig, UserConfig, ViewConfig,
 };
 use crate::frontend::storage;
 use crate::frontend::storage::{Storage, StorageKey};
@@ -325,10 +325,10 @@ impl From<&PersistentConfig> for AppConfig {
         Self {
             view_config: (&value.view_config).into(),
             speed_config: (&value.speed_config).into(),
-            auto_pause_state: Default::default(),
+            auto_pause_state: AutoPauseState::default(),
             user_config: (&value.user_config).into(),
             console_config: (&value.console_config).into(),
-            pending_dialogs: Default::default(),
+            pending_dialogs: PendingDialogs::default(),
             keybindings: value.keybindings.clone(),
         }
     }
@@ -373,7 +373,7 @@ impl From<&ViewConfig> for PersistentViewConfig {
             required_debug_fetches: config
                 .required_debug_fetches
                 .iter()
-                .map(std::convert::Into::into)
+                .map(Into::into)
                 .collect(),
             renderer: config.renderer.get_id().to_string(),
         }
@@ -391,7 +391,7 @@ impl From<&PersistentViewConfig> for ViewConfig {
             show_palette: config.show_palette,
             show_pattern_table: config.show_pattern_table,
             debug_overlays: config.debug_overlays,
-            required_debug_fetches: Default::default(),
+            required_debug_fetches: HashSet::default(),
             renderer,
         }
     }

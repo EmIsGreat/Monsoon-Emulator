@@ -97,7 +97,7 @@ impl EguiApp {
         // Only rebuild textures if palette data actually changed and a tile viewer is
         // visible
         if self.emu_textures.palette_data != new_palette_data {
-            let changed_palettes = self.detect_changed_palettes(&new_palette_data);
+            let changed_palettes = self.detect_changed_palettes(new_palette_data.as_deref());
             self.emu_textures.palette_data = new_palette_data;
 
             if self.is_tile_viewer_visible() {
@@ -118,7 +118,7 @@ impl EguiApp {
         ctx: &Context,
         new_tile_data: Option<Box<[TileData; usize::from(TILE_COUNT)]>>,
     ) {
-        let changed_tiles = self.detect_changed_tiles(&new_tile_data);
+        let changed_tiles = self.detect_changed_tiles(new_tile_data.as_deref());
         self.emu_textures.tile_data = new_tile_data;
 
         if self.is_tile_viewer_visible() {
@@ -156,7 +156,7 @@ impl EguiApp {
                 self.handle_quicksave(&savestate);
             }
             SaveType::Autosave => {
-                self.create_auto_save(savestate);
+                self.create_auto_save(&savestate);
             }
         }
     }
