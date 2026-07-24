@@ -30,7 +30,7 @@ impl ScreenRenderer for WgpuScreenRenderer {
 
     fn set_palette(&mut self, _: RgbPalette) {}
 
-    fn get_width(&self) -> usize { TOTAL_OUTPUT_WIDTH * 8 / 7 }
+    fn get_width(&self) -> usize { TOTAL_OUTPUT_WIDTH }
 
     fn get_height(&self) -> usize { TOTAL_OUTPUT_HEIGHT }
 
