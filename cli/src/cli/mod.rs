@@ -303,7 +303,10 @@ fn validate_output_format(args: &CliArgs) -> Result<(), CliError> {
 
     if format_flags.len() > 1 {
         return Err(CliError::InvalidArgumentCombination {
-            args: format_flags.iter().map(std::string::ToString::to_string).collect(),
+            args: format_flags
+                .iter()
+                .map(std::string::ToString::to_string)
+                .collect(),
             reason: "can only specify one output format flag".to_string(),
         });
     }
@@ -396,7 +399,8 @@ pub fn parse_memory_range(range: &str) -> Result<(u16, u16), String> {
         let end = parse_hex_u16(end_str)?;
         if end < start {
             return Err(format!(
-                "Invalid memory range '{range}': end address (0x{end:04X}) is less than start (0x{start:04X})"
+                "Invalid memory range '{range}': end address (0x{end:04X}) is less than start \
+                 (0x{start:04X})"
             ));
         }
         Ok((start, end))

@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use monsoon_core::rom_db::{DbParseError, RomDb};
 
-use crate::manifest::is_newer;
 #[cfg(feature = "online")]
 use crate::manifest::Manifest;
+use crate::manifest::is_newer;
 
 #[derive(Clone, Debug)]
 enum Source {

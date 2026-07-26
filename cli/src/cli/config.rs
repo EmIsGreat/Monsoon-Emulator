@@ -9,7 +9,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use monsoon_core::util::{parse_hex_u16_opt, parse_hex_u8_opt};
+use monsoon_core::util::{parse_hex_u8_opt, parse_hex_u16_opt};
 use serde::Deserialize;
 
 use crate::cli::args::BuiltinPalette;
@@ -362,7 +362,9 @@ impl ConfigFile {
             cli.execution.until_opcode = parse_hex_u8_opt(op);
         }
         if cli.execution.until_mem.is_none() {
-            cli.execution.until_mem.clone_from(&self.execution.until_mem);
+            cli.execution
+                .until_mem
+                .clone_from(&self.execution.until_mem);
         }
         if !cli.execution.until_hlt {
             cli.execution.until_hlt = self.execution.until_hlt.unwrap_or(false);
@@ -374,7 +376,9 @@ impl ConfigFile {
             cli.execution.trace_log = self.execution.trace_log.unwrap_or(false);
         }
         if cli.execution.trace_log_path.is_none() {
-            cli.execution.trace_log_path.clone_from(&self.execution.trace_log_path);
+            cli.execution
+                .trace_log_path
+                .clone_from(&self.execution.trace_log_path);
         }
         if cli.execution.breakpoint.is_empty() {
             for bp in &self.execution.breakpoints {
@@ -384,7 +388,9 @@ impl ConfigFile {
             }
         }
         if cli.execution.watch_mem.is_empty() {
-            cli.execution.watch_mem.clone_from(&self.execution.watch_mem);
+            cli.execution
+                .watch_mem
+                .clone_from(&self.execution.watch_mem);
         }
 
         // Parse stop_conditions into appropriate fields

@@ -11,7 +11,7 @@ use sha2::{Digest, Sha256};
 use crate::frontend::messages::{
     AsyncFrontendMessage, AutoPauseSignal, LoadedPalette, LoadedRom, SavestateLoadContext,
 };
-use crate::frontend::storage::{self, get_storage, Storage, StorageCategory, StorageKey};
+use crate::frontend::storage::{self, Storage, StorageCategory, StorageKey, get_storage};
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
 /// Enum to represent errors that can occur during savestate loading UI flow

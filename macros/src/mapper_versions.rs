@@ -2,12 +2,12 @@ use std::fmt::{Display, Formatter};
 use std::marker::PhantomData;
 
 use proc_macro2::{Ident, TokenStream};
-use quote::{quote, IdentFragment, ToTokens};
+use quote::{IdentFragment, ToTokens, quote};
 use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
 use syn::{
-    braced, parse2, Expr, GenericParam, Generics, ItemStruct, LitInt, Token,
-    TypeParamBound, WherePredicate,
+    Expr, GenericParam, Generics, ItemStruct, LitInt, Token, TypeParamBound, WherePredicate,
+    braced, parse2,
 };
 
 pub fn mapper_versions(attribute_args: &TokenStream, item: &TokenStream) -> TokenStream {

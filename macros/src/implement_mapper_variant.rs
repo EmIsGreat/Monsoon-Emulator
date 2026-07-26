@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
+use proc_macro_crate::{FoundCrate, crate_name};
 use proc_macro2::{Ident, TokenStream};
-use proc_macro_crate::{crate_name, FoundCrate};
-use quote::{format_ident, quote, ToTokens};
+use quote::{ToTokens, format_ident, quote};
 use syn::parse::{Parse, ParseStream};
 use syn::spanned::Spanned;
-use syn::{parse, parse_quote, ItemTrait, LitStr, Token, TraitItem, TraitItemConst};
+use syn::{ItemTrait, LitStr, Token, TraitItem, TraitItemConst, parse, parse_quote};
 
 use crate::mapper_versions::{
     ImplicitTraitAssignment, MapperDefinition, MapperVersionsArgs, TraitAssignment, Variant,

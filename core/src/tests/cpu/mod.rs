@@ -113,9 +113,7 @@ impl Cpu {
 
     #[inline]
     #[allow(unused_results)]
-    pub(crate) fn step(&mut self) -> ExecutionResult {
-        self.with_bus(|cpu, bus| cpu.step(bus))
-    }
+    pub(crate) fn step(&mut self) -> ExecutionResult { self.with_bus(|cpu, bus| cpu.step(bus)) }
 
     #[cfg(test)]
     pub(crate) fn attach_test_rom(&mut self, prg_rom: Memory) {

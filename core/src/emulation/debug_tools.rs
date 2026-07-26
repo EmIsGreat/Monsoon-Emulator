@@ -1,5 +1,5 @@
-use crate::emulation::nes::{Nes, MASTER_CYCLES_PER_FRAME};
-use crate::util::{parse_hex_u16, parse_hex_u8};
+use crate::emulation::nes::{MASTER_CYCLES_PER_FRAME, Nes};
+use crate::util::{parse_hex_u8, parse_hex_u16};
 
 /// A stop condition that can be checked during execution
 #[derive(Debug, Clone)]

@@ -2,11 +2,11 @@ use std::sync::OnceLock;
 
 use crate::emulation::cpu::OpType::{
     AbsoluteIndexRMW, AbsoluteIndexRead, AbsoluteIndexWrite, AbsoluteRMW, AbsoluteRead,
-    AbsoluteWrite, AccumulatorOrImplied, ImmediateAddressing, IndexedIndirectRMW, IndexedIndirectRead,
-    IndexedIndirectWrite, IndirectIndexedRMW, IndirectIndexedRead, IndirectIndexedWrite,
-    JmpAbsolute, JmpIndirect, Relative, ZeroPageIndexRMW, ZeroPageIndexRead, ZeroPageIndexWrite, ZeroPageRMW, ZeroPageRead, ZeroPageWrite,
-    BRK, JSR, PH, PL, RTI,
-    RTS,
+    AbsoluteWrite, AccumulatorOrImplied, BRK, ImmediateAddressing, IndexedIndirectRMW,
+    IndexedIndirectRead, IndexedIndirectWrite, IndirectIndexedRMW, IndirectIndexedRead,
+    IndirectIndexedWrite, JSR, JmpAbsolute, JmpIndirect, PH, PL, RTI, RTS, Relative,
+    ZeroPageIndexRMW, ZeroPageIndexRead, ZeroPageIndexWrite, ZeroPageRMW, ZeroPageRead,
+    ZeroPageWrite,
 };
 use crate::emulation::cpu::{Condition, MicroOpCallback, OpType, Source, Target};
 

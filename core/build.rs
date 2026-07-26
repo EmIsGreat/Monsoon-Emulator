@@ -4,8 +4,8 @@ use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::PathBuf;
 
-use quick_xml::events::attributes::Attribute;
 use quick_xml::events::Event;
+use quick_xml::events::attributes::Attribute;
 use quick_xml::{Reader, XmlVersion};
 use serde::{Deserialize, Serialize};
 

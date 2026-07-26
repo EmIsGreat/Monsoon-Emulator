@@ -448,10 +448,7 @@ impl fmt::Display for CliError {
                 reason,
                 hint,
             } => {
-                write!(
-                    f,
-                    "Invalid value '{value}' for argument '{arg}': {reason}"
-                )?;
+                write!(f, "Invalid value '{value}' for argument '{arg}': {reason}")?;
                 if let Some(h) = hint {
                     write!(f, "\nHint: {h}")?;
                 }
@@ -468,10 +465,7 @@ impl fmt::Display for CliError {
                 arg2,
                 reason,
             } => {
-                write!(
-                    f,
-                    "Cannot use '{arg1}' and '{arg2}' together: {reason}"
-                )
+                write!(f, "Cannot use '{arg1}' and '{arg2}' together: {reason}")
             }
             Self::InvalidArgumentCombination {
                 args,
@@ -554,10 +548,7 @@ impl fmt::Display for CliError {
                 destination,
                 message,
             } => {
-                write!(
-                    f,
-                    "Failed to save savestate to {destination}: {message}"
-                )
+                write!(f, "Failed to save savestate to {destination}: {message}")
             }
             Self::SavestateInvalid {
                 source,
@@ -589,10 +580,7 @@ impl fmt::Display for CliError {
                 address,
                 message,
             } => {
-                write!(
-                    f,
-                    "Memory {operation} at 0x{address:04X} failed: {message}"
-                )
+                write!(f, "Memory {operation} at 0x{address:04X} failed: {message}")
             }
 
             // Execution errors
