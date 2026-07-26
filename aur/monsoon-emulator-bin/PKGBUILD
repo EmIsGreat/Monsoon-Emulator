@@ -17,8 +17,10 @@ depends=(
     'gcc-libs'
 )
 
+_cli_pkg_ver="0.2.6"
+
 source=(
-    "${pkgname%-emulator-bin}-cli-0.2.6.tar.gz::$url/releases/download/v0.2.6/monsoon-cli-$CARCH-unknown-linux-gnu.tar.gz"
+    "${pkgname%-emulator-bin}-cli-${_cli_pkg_ver}.tar.gz::$url/releases/download/v${_cli_pkg_ver}/monsoon-cli-$CARCH-unknown-linux-gnu.tar.gz"
     "${pkgname%-emulator-bin}-frontend-$pkgver.tar.gz::$url/releases/download/v$pkgver/monsoon-frontend-$CARCH-unknown-linux-gnu.tar.gz"
     "https://raw.githubusercontent.com/EmIsGreat/Monsoon-Emulator/v$pkgver/LICENSE"
     "monsoon.desktop"
