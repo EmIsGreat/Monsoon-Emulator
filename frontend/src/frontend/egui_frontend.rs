@@ -829,7 +829,7 @@ pub fn run(rom: Option<&PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
 
 /// Run the egui frontend for WASM.
 #[cfg(target_arch = "wasm32")]
-pub fn run(_: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
+pub fn run(_: Option<&PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
     let res = common_setup(None);
     run_internal_wasm(res)
 }
