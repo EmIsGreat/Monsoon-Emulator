@@ -20,13 +20,13 @@ pub mod nametable_mapping;
 pub enum Mapper {
     NoMapper(NoMapper),
     MMC1(MMC1),
-    Nrom(NROM),
+    NROM(NROM),
 }
 
 impl From<&RomFile> for Mapper {
     fn from(value: &RomFile) -> Self {
         match value.mapper {
-            RomMapper::NRom => Mapper::Nrom(NROM::from(value)),
+            RomMapper::NRom => Mapper::NROM(NROM::from(value)),
             RomMapper::MMC1 | RomMapper::MMC1A => Mapper::MMC1(MMC1::from(value)),
             _ => Mapper::NoMapper(NoMapper {}),
         }
@@ -214,6 +214,7 @@ impl MapperLike for NROM {
         self.read_debug(addr, open_bus)
     }
 
+    #[inline]
     fn read_debug(&self, addr: u16, open_bus: &OpenBus) -> CpuReadResult {
         if (0x4000..=0x4014).contains(&addr) || addr >= 0x4018 {
             let (val, update) = match addr {
@@ -239,23 +240,23 @@ impl MapperLike for NROM {
         CpuReadResult::Registered
     }
 
-    #[inline]
+    #[inline(always)]
     fn ppu_read(&mut self, addr: u16, open_bus: &OpenBus) -> PpuReadResult {
         self.ppu_read_debug(addr, open_bus)
     }
 
-    #[inline]
+    #[inline(always)]
     fn ppu_read_debug(&self, addr: u16, open_bus: &OpenBus) -> PpuReadResult {
         match addr {
             0..=0x1FFF =>
-            {
-                #[allow(clippy::cast_possible_truncation)]
-                if let Some(rom) = &self.chr_rom {
-                    PpuReadResult::Handled(rom.read(u32::from(addr), open_bus), false)
-                } else {
-                    PpuReadResult::Handled(addr as u8, false)
+                {
+                    #[allow(clippy::cast_possible_truncation)]
+                    if let Some(rom) = &self.chr_rom {
+                        PpuReadResult::Handled(rom.read(u32::from(addr), open_bus), false)
+                    } else {
+                        PpuReadResult::Handled(addr as u8, false)
+                    }
                 }
-            }
             0x2000..=0x3EFF => {
                 PpuReadResult::Nametable(self.nametable_arrangement.resolve_address(addr))
             }

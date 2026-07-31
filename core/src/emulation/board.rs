@@ -212,7 +212,7 @@ impl PpuBus for PpuBusView<'_> {
 
                     ReadResult::from(val & mask)
                 }
-                .to_false(),
+                    .to_false(),
                 #[allow(clippy::cast_possible_truncation)]
                 _ => ReadResult::from(addr as u8).to_false(),
             },

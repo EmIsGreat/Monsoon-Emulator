@@ -50,7 +50,7 @@ impl Memory {
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct OpenBus {
-    bits: [bool; 8],
+    value: u8,
     timers: [u32; 8],
     decay_time: u32,
 }
@@ -58,7 +58,7 @@ pub struct OpenBus {
 impl OpenBus {
     pub fn new(decay_time: u32) -> Self {
         Self {
-            bits: [false; 8],
+            value: 0,
             timers: [decay_time; 8],
             decay_time,
         }
@@ -66,12 +66,13 @@ impl OpenBus {
 
     #[inline(always)]
     pub fn set_masked(&mut self, value: u8, mask: u8) {
-        for bit in 0..8 {
-            let bit_mask = 1 << bit;
-            if mask & bit_mask != 0 {
-                let val = (value & bit_mask) != 0;
-                self.bits[bit] = val;
-                self.timers[bit] = 0;
+        self.value = (self.value & !mask) | (value & mask);
+
+        if mask != 0 {
+            for bit in 0..8 {
+                if mask & (1 << bit) != 0 {
+                    self.timers[bit] = 0;
+                }
             }
         }
     }
@@ -79,29 +80,23 @@ impl OpenBus {
     #[inline(always)]
     pub fn tick(&mut self, times: u8) {
         let times = u32::from(times);
-        for (i, bit) in &mut self.bits.iter_mut().enumerate() {
-            self.timers[i] += times;
-            if self.timers[i] > self.decay_time {
-                *bit = false;
-                self.timers[i] = 0;
+        let mut expired = 0u8;
+
+        for i in 0..8 {
+            let timer = &mut self.timers[i];
+            *timer += times;
+
+            if *timer > self.decay_time {
+                expired |= 1 << i;
+                *timer = 0;
             }
         }
+
+        self.value &= !expired;
     }
 
     #[inline(always)]
-    pub fn read(&self) -> u8 { Self::bools_to_u8(self.bits) }
-
-    #[inline(always)]
-    fn bools_to_u8(bits: [bool; 8]) -> u8 {
-        u8::from(bits[0])
-            | u8::from(bits[1]) << 1
-            | u8::from(bits[2]) << 2
-            | u8::from(bits[3]) << 3
-            | u8::from(bits[4]) << 4
-            | u8::from(bits[5]) << 5
-            | u8::from(bits[6]) << 6
-            | u8::from(bits[7]) << 7
-    }
+    pub fn read(&self) -> u8 { self.value }
 }
 
 impl From<(&Vec<u8>, bool)> for Memory {
