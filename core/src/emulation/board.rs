@@ -201,21 +201,17 @@ impl PpuBus for PpuBusView<'_> {
                 ReadResult::from(self.nametable_ram.read(u32::from(addr), self.ppu_io_bus))
                     .to_false()
             }
-            PpuReadResult::Registered => match addr {
-                0x3F00..=0x3FFF => {
-                    let val = self
-                        .palette_ram
-                        .read((addr - 0x3F00) % PALETTE_RAM_SIZE, self.ppu_io_bus);
+            PpuReadResult::Registered if (0x3F00..=0x3FFF).contains(&addr) => {
+                let val = self
+                    .palette_ram
+                    .read((addr - 0x3F00) % PALETTE_RAM_SIZE, self.ppu_io_bus);
 
-                    // Zeroes the four low bits in case grayscale is enabled
-                    let mask = !(u8::from(self.grayscale_enabled).wrapping_neg() & 0x0F);
+                // Zeroes the four low bits in case grayscale is enabled
+                let mask = !(u8::from(self.grayscale_enabled).wrapping_neg() & 0x0F);
 
-                    ReadResult::from(val & mask)
-                }
-                    .to_false(),
-                #[allow(clippy::cast_possible_truncation)]
-                _ => ReadResult::from(addr as u8).to_false(),
-            },
+                ReadResult::from(val & mask).to_false()
+            }
+            PpuReadResult::Registered => ReadResult::from(addr as u8).to_false(),
         };
 
         let changed = res.mask != 0xFF;
@@ -543,7 +539,7 @@ impl<'a> PpuBusView<'a> {
 
 impl Board {
     pub fn new(cpu: Cpu, ppu: Ppu, apu: Apu, mapper: Mapper) -> Board {
-        Board {
+        let mut board = Board {
             cpu,
             ppu,
             apu,
@@ -557,7 +553,10 @@ impl Board {
             joystick_strobe_data: 0,
             mapper,
             irq: false,
-        }
+        };
+
+        board.mapper.build_ppu_map();
+        board
     }
 
     pub fn attach_controllers(
@@ -593,7 +592,10 @@ impl Board {
         self.ppu.reset();
     }
 
-    pub fn load_rom(&mut self, rom_file: &RomFile) { self.mapper = rom_file.into() }
+    pub fn load_rom(&mut self, rom_file: &RomFile) {
+        self.mapper = rom_file.into();
+        self.mapper.build_ppu_map();
+    }
 }
 
 impl Default for Board {

@@ -1452,6 +1452,16 @@ impl RomFile {
         Some(rom)
     }
 
+    #[doc(hidden)]
+    #[must_use]
+    pub fn get_chr_ram(&self) -> Option<Memory> {
+        if self.chr_memory.chr_ram_size > 0 {
+            Some(Memory::new(self.chr_memory.chr_ram_size as usize, true))
+        } else {
+            None
+        }
+    }
+
     /// Extracts the PRG RAM region as a writable [`Memory`] device.
     ///
     /// This is mapped at CPU addresses `$6000`-`$7FFF` and may be
@@ -1460,21 +1470,7 @@ impl RomFile {
     #[must_use]
     pub fn get_prg_ram(&self) -> Option<Memory> {
         if self.prg_memory.prg_ram_size > 0 {
-            let mut ram = Memory::new(self.prg_memory.prg_ram_size as usize, true);
-
-            let mut start = 16usize;
-
-            if self.trainer_present {
-                start += 512;
-            }
-
-            ram.load(
-                self.data[start..start + self.prg_memory.prg_rom_size as usize]
-                    .to_vec()
-                    .into_boxed_slice(),
-            );
-
-            Some(ram)
+            Some(Memory::new(self.prg_memory.prg_ram_size as usize, true))
         } else {
             None
         }

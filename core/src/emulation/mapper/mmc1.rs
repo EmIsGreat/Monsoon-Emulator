@@ -73,7 +73,7 @@ impl<V: MMC1Variant, S: MMC1Submapper> MapperLike for MMC1Common<V, S> {
         match addr {
             0x4020..=0xFFFF => {
                 #[allow(clippy::collapsible_if)]
-                if (6000..=0x7FFF).contains(&addr) {
+                if (0x6000..=0x7FFF).contains(&addr) {
                     if let Some(prg_ram) = &mut self.prg_ram {
                         let addr = ((addr - 0x6000) + self.prg_ram_bank_offset) % self.prg_ram_size;
                         prg_ram.write(u32::from(addr), data);
@@ -300,6 +300,8 @@ impl<V: MMC1Variant, S: MMC1Submapper> MapperLike for MMC1Common<V, S> {
 
     #[inline(always)]
     fn poll_irq(&self) -> bool { false }
+
+    fn build_ppu_map(&mut self) {}
 }
 
 const KB_16: u32 = 0x4000;

@@ -25,6 +25,8 @@ impl RomParser for Ines {
             u32::from(rom[8]) * 8 * 1024
         };
 
+        let chr_ram_size = if rom[5] == 0 { 8 * 1024 } else { 0 };
+
         let tv_system = rom[9] & 0x1;
 
         let console_type = if playchoice_10_data {
@@ -37,6 +39,7 @@ impl RomParser for Ines {
             .prg_rom_size(prg_rom_size)
             .prg_ram_size(prg_ram_size)
             .chr_rom_size(chr_rom_size)
+            .chr_ram_size(chr_ram_size)
             .mapper_number(mapper_number)
             .alternative_nametables(alternative_nametables)
             .trainer_present(trainer_present)

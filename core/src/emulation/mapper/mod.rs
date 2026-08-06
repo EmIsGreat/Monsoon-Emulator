@@ -67,6 +67,7 @@ pub trait MapperLike {
     fn ppu_init(&mut self, addr: u16, data: u8) -> PpuWriteResult;
     fn get_registers_debug(&self) -> MapperRegisterTables;
     fn poll_irq(&self) -> bool;
+    fn build_ppu_map(&mut self);
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -96,7 +97,7 @@ pub enum PpuWriteResult {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct NoMapper {}
+pub struct NoMapper;
 
 impl MapperLike for NoMapper {
     fn write(&mut self, addr: u16, _: u8, _: u64) -> CpuWriteResult {
@@ -170,21 +171,34 @@ impl MapperLike for NoMapper {
     }
 
     fn poll_irq(&self) -> bool { false }
+
+    fn build_ppu_map(&mut self) {}
 }
 
 impl<'a> From<&'a RomFile> for NoMapper {
     fn from(_: &'a RomFile) -> Self { NoMapper {} }
 }
 
+type PpuReadFunction = fn(&NROM, u16, &OpenBus) -> PpuReadResult;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub struct NROM {
     pub prg_ram_size: u16,
     pub prg_ram_battery_backed: bool,
     pub prg_rom_size: u16,
-    pub prg_ram: Option<Memory>,
     pub prg_rom: Memory,
+    pub prg_ram: Option<Memory>,
     pub chr_rom: Option<Memory>,
+    pub chr_ram: Option<Memory>,
     pub nametable_arrangement: NametableArrangement,
+    #[serde(skip, default = "NROM::default_lookup_table")]
+    ppu_bus_lookup: [PpuReadFunction; u16::MAX as usize],
+}
+
+impl NROM {
+    fn default_lookup_table() -> [PpuReadFunction; u16::MAX as usize] {
+        [NROM::ppu_read_unmapped; u16::MAX as usize]
+    }
 }
 
 impl MapperLike for NROM {
@@ -193,7 +207,7 @@ impl MapperLike for NROM {
         match addr {
             0x4020..=0xFFFF => {
                 #[allow(clippy::collapsible_if)]
-                if (6000..=0x7FFF).contains(&addr) {
+                if (0x6000..=0x7FFF).contains(&addr) {
                     if let Some(prg_ram) = &mut self.prg_ram {
                         let addr = (addr - 0x6000) % self.prg_ram_size;
                         prg_ram.write(u32::from(addr), data);
@@ -247,29 +261,16 @@ impl MapperLike for NROM {
 
     #[inline(always)]
     fn ppu_read_debug(&self, addr: u16, open_bus: &OpenBus) -> PpuReadResult {
-        match addr {
-            0..=0x1FFF =>
-                {
-                    #[allow(clippy::cast_possible_truncation)]
-                    if let Some(rom) = &self.chr_rom {
-                        PpuReadResult::Handled(rom.read(u32::from(addr), open_bus), false)
-                    } else {
-                        PpuReadResult::Handled(addr as u8, false)
-                    }
-                }
-            0x2000..=0x3EFF => {
-                PpuReadResult::Nametable(self.nametable_arrangement.resolve_address(addr))
-            }
-            _ => PpuReadResult::Registered,
-        }
+        let func = self.ppu_bus_lookup[addr as usize];
+        func(&self, addr, open_bus)
     }
 
     #[inline]
     fn ppu_write(&mut self, addr: u16, data: u8) -> PpuWriteResult {
         match addr {
             0..=0x1FFF => {
-                if let Some(rom) = &mut self.chr_rom {
-                    rom.write(u32::from(addr), data);
+                if let Some(ram) = &mut self.chr_ram {
+                    ram.write(u32::from(addr), data);
                 }
                 PpuWriteResult::Handled
             }
@@ -328,6 +329,60 @@ impl MapperLike for NROM {
 
     #[inline]
     fn poll_irq(&self) -> bool { false }
+
+    fn build_ppu_map(&mut self) {
+        for addr in 0..u16::MAX {
+            match addr {
+                0..=0x1FFF =>
+                {
+                    #[allow(clippy::cast_possible_truncation)]
+                    if self.chr_rom.is_some() {
+                        self.ppu_bus_lookup[addr as usize] = NROM::ppu_read_handled_w_rom;
+                    } else if self.chr_ram.is_some() {
+                        self.ppu_bus_lookup[addr as usize] = NROM::ppu_read_handled_w_ram;
+                    } else {
+                        self.ppu_bus_lookup[addr as usize] = NROM::ppu_read_handled;
+                    }
+                }
+                0x2000..=0x3EFF => {
+                    self.ppu_bus_lookup[addr as usize] = NROM::ppu_read_nametable;
+                }
+                _ => self.ppu_bus_lookup[addr as usize] = NROM::ppu_read_unmapped,
+            }
+        }
+    }
+}
+
+impl NROM {
+    fn ppu_read_handled_w_rom(&self, addr: u16, open_bus: &OpenBus) -> PpuReadResult {
+        PpuReadResult::Handled(
+            self.chr_rom
+                .as_ref()
+                .expect("Called ppu_read_handled_w_rom without rom")
+                .read(u32::from(addr), open_bus),
+            false,
+        )
+    }
+
+    fn ppu_read_handled_w_ram(&self, addr: u16, open_bus: &OpenBus) -> PpuReadResult {
+        PpuReadResult::Handled(
+            self.chr_ram
+                .as_ref()
+                .expect("Called ppu_read_handled_w_ram without ram")
+                .read(u32::from(addr), open_bus),
+            false,
+        )
+    }
+
+    fn ppu_read_handled(&self, addr: u16, _: &OpenBus) -> PpuReadResult {
+        PpuReadResult::Handled(addr as u8, false)
+    }
+
+    fn ppu_read_nametable(&self, addr: u16, _: &OpenBus) -> PpuReadResult {
+        PpuReadResult::Nametable(self.nametable_arrangement.resolve_address(addr))
+    }
+
+    fn ppu_read_unmapped(&self, _: u16, _: &OpenBus) -> PpuReadResult { PpuReadResult::Registered }
 }
 
 impl From<&RomFile> for NROM {
@@ -342,12 +397,10 @@ impl From<&RomFile> for NROM {
             prg_rom_size: rom.prg_memory.prg_rom_size as u16,
             prg_rom: rom.get_prg_rom(),
             chr_rom: rom.get_chr_rom(),
+            prg_ram: rom.get_prg_ram(),
+            chr_ram: rom.get_chr_ram(),
             nametable_arrangement: rom.get_nametable_arrangement(),
-            prg_ram: if prg_ram_size > 0 {
-                Some(Memory::new(prg_ram_size as usize, true))
-            } else {
-                None
-            },
+            ppu_bus_lookup: [NROM::ppu_read_unmapped; u16::MAX as usize],
         }
     }
 }
