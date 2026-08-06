@@ -46,6 +46,8 @@ impl Memory {
     pub fn snapshot(&self, addr: u32, open_bus: &OpenBus) -> u8 { self.read(addr, open_bus) }
 
     pub fn snapshot_all(&self) -> Vec<u8> { self.memory.to_vec() }
+
+    pub fn size(&self) -> u32 { self.memory.len() as u32 }
 }
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]

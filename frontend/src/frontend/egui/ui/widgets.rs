@@ -296,3 +296,20 @@ impl Widget for HotKeyButton<'_> {
         response
     }
 }
+
+pub fn wrapping_label(ui: &mut Ui, text: &str, max_rows: usize) -> Response {
+    let mut job = egui::text::LayoutJob::default();
+
+    job.append(
+        text,
+        0.0,
+        egui::TextFormat {
+            ..Default::default()
+        },
+    );
+
+    job.wrap.max_rows = max_rows;
+    job.wrap.max_width = ui.available_width();
+
+    ui.add(egui::Label::new(job).wrap())
+}

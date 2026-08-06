@@ -1,6 +1,8 @@
+use egui::RichText;
 use monsoon_core::util::format_bytes_human_readable;
 
 use crate::frontend::egui::config::AppConfig;
+use crate::frontend::egui::ui::widgets::wrapping_label;
 
 pub fn render_rom_header(ui: &mut egui::Ui, config: &AppConfig) {
     if let Some((rom, loaded_rom)) = &config.console_config.loaded_rom {
@@ -9,11 +11,11 @@ pub fn render_rom_header(ui: &mut egui::Ui, config: &AppConfig) {
             .striped(true)
             .show(ui, |ui| {
                 ui.label("Filename");
-                ui.label(&loaded_rom.name);
+                wrapping_label(ui, &loaded_rom.name, 3);
                 ui.end_row();
 
                 ui.label("Mapper");
-                ui.label(rom.mapper.to_string());
+                wrapping_label(ui, &rom.mapper.to_string(), 3);
                 ui.end_row();
 
                 ui.label("Submapper");
@@ -73,7 +75,7 @@ pub fn render_rom_header(ui: &mut egui::Ui, config: &AppConfig) {
                 ui.end_row();
 
                 ui.label("Default Expansion Device");
-                ui.label(rom.default_expansion_device.to_string());
+                wrapping_label(ui, &rom.default_expansion_device.to_string(), 3);
                 ui.end_row();
 
                 ui.label("Misc ROM Count");
@@ -81,17 +83,15 @@ pub fn render_rom_header(ui: &mut egui::Ui, config: &AppConfig) {
                 ui.end_row();
 
                 ui.label("Extended Console Type");
-                ui.label(
-                    rom.extended_console_type
-                        .map_or_else(|| "(none)".to_string(), |v| v.to_string()),
-                );
+                wrapping_label(ui, &rom.extended_console_type
+                    .map_or_else(|| "(none)".to_string(), |v| v.to_string()), 3);
                 ui.end_row();
 
                 ui.label("VS System Hardware Type");
-                ui.label(
-                    rom.vs_system_hardware_type
-                        .map_or_else(|| "(none)".to_string(), |v| v.to_string()),
-                );
+                wrapping_label(ui,
+                               &rom.vs_system_hardware_type
+                                   .map_or_else(|| "(none)".to_string(), |v| v.to_string()),
+                               3);
                 ui.end_row();
 
                 ui.label("VS System PPU Type");
@@ -103,6 +103,23 @@ pub fn render_rom_header(ui: &mut egui::Ui, config: &AppConfig) {
                 ui.label("File Type");
                 ui.label(&rom.format_name);
                 ui.end_row();
+
+                ui.label("Raw Header Data");
+                let row1 = rom.raw_header_bytes
+                    .iter()
+                    .take(8)
+                    .map(|b| format!("{b:02X}"))
+                    .collect::<Vec<_>>()
+                    .join(" ");
+
+                let row2 = rom.raw_header_bytes
+                    .iter()
+                    .skip(8)
+                    .map(|b| format!("{b:02X}"))
+                    .collect::<Vec<_>>()
+                    .join(" ");
+
+                ui.label(RichText::new(format!("{row1}\n{row2}")).monospace());
             });
     } else {
         ui.label("No ROM loaded.");

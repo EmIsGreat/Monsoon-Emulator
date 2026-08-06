@@ -188,8 +188,7 @@ pub struct NROM {
     pub prg_rom_size: u16,
     pub prg_rom: Memory,
     pub prg_ram: Option<Memory>,
-    pub chr_rom: Option<Memory>,
-    pub chr_ram: Option<Memory>,
+    pub chr_mem: Option<Memory>,
     pub nametable_arrangement: NametableArrangement,
     #[serde(skip, default = "NROM::default_lookup_table")]
     ppu_bus_lookup: [PpuReadFunction; u16::MAX as usize],
@@ -269,8 +268,8 @@ impl MapperLike for NROM {
     fn ppu_write(&mut self, addr: u16, data: u8) -> PpuWriteResult {
         match addr {
             0..=0x1FFF => {
-                if let Some(ram) = &mut self.chr_ram {
-                    ram.write(u32::from(addr), data);
+                if let Some(mem) = &mut self.chr_mem {
+                    mem.write(u32::from(addr), data);
                 }
                 PpuWriteResult::Handled
             }
@@ -336,10 +335,8 @@ impl MapperLike for NROM {
                 0..=0x1FFF =>
                 {
                     #[allow(clippy::cast_possible_truncation)]
-                    if self.chr_rom.is_some() {
-                        self.ppu_bus_lookup[addr as usize] = NROM::ppu_read_handled_w_rom;
-                    } else if self.chr_ram.is_some() {
-                        self.ppu_bus_lookup[addr as usize] = NROM::ppu_read_handled_w_ram;
+                    if self.chr_mem.is_some() {
+                        self.ppu_bus_lookup[addr as usize] = NROM::ppu_read_handled_w_mem;
                     } else {
                         self.ppu_bus_lookup[addr as usize] = NROM::ppu_read_handled;
                     }
@@ -354,21 +351,11 @@ impl MapperLike for NROM {
 }
 
 impl NROM {
-    fn ppu_read_handled_w_rom(&self, addr: u16, open_bus: &OpenBus) -> PpuReadResult {
+    fn ppu_read_handled_w_mem(&self, addr: u16, open_bus: &OpenBus) -> PpuReadResult {
         PpuReadResult::Handled(
-            self.chr_rom
+            self.chr_mem
                 .as_ref()
                 .expect("Called ppu_read_handled_w_rom without rom")
-                .read(u32::from(addr), open_bus),
-            false,
-        )
-    }
-
-    fn ppu_read_handled_w_ram(&self, addr: u16, open_bus: &OpenBus) -> PpuReadResult {
-        PpuReadResult::Handled(
-            self.chr_ram
-                .as_ref()
-                .expect("Called ppu_read_handled_w_ram without ram")
                 .read(u32::from(addr), open_bus),
             false,
         )
@@ -396,9 +383,8 @@ impl From<&RomFile> for NROM {
             prg_ram_size: prg_ram_size as u16,
             prg_rom_size: rom.prg_memory.prg_rom_size as u16,
             prg_rom: rom.get_prg_rom(),
-            chr_rom: rom.get_chr_rom(),
+            chr_mem: rom.get_chr_mem(),
             prg_ram: rom.get_prg_ram(),
-            chr_ram: rom.get_chr_ram(),
             nametable_arrangement: rom.get_nametable_arrangement(),
             ppu_bus_lookup: [NROM::ppu_read_unmapped; u16::MAX as usize],
         }

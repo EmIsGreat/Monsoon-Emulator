@@ -150,6 +150,7 @@ pub struct RomFile {
     pub data: Vec<u8>,
     pub original_name: Option<String>,
     pub format_name: String,
+    pub raw_header_bytes: [u8; 16],
 }
 
 #[derive(
@@ -1380,6 +1381,13 @@ impl RomFile {
         let rom_type = RomFile::get_rom_type(data, false)?;
         let mut rom_file = rom_type.parse(data, name)?;
         rom_file.format_name = rom_type.get_name().to_string();
+        rom_file.raw_header_bytes = data[0..16].try_into().unwrap_or_else(|e| {
+            unreachable!(
+                "Error casting to array even though we already know we have enough data to do so. \
+                 {}",
+                e
+            )
+        });
         rom_file.data = data.to_vec();
 
         rom_file.data_checksum = full_hash;
@@ -1461,6 +1469,16 @@ impl RomFile {
             None
         }
     }
+
+    #[doc(hidden)]
+    #[must_use]
+    pub fn get_chr_mem(&self) -> Option<Memory> {
+        self.get_chr_rom().or_else(|| self.get_chr_ram())
+    }
+
+    #[doc(hidden)]
+    #[must_use]
+    pub fn get_chr_mem_size(&self) -> u32 { self.get_chr_mem().map_or(0, |m| m.size()) }
 
     /// Extracts the PRG RAM region as a writable [`Memory`] device.
     ///
@@ -1570,6 +1588,7 @@ pub struct RomBuilder {
     trainer_present: bool,
     alternative_nametables: bool,
     submapper_number: u8,
+    raw_header_bytes: [u8; 16],
 }
 
 impl Default for RomBuilder {
@@ -1595,6 +1614,7 @@ impl Default for RomBuilder {
             trainer_present: false,
             alternative_nametables: false,
             submapper_number: 0,
+            raw_header_bytes: [0; 16],
         }
     }
 }
@@ -1746,6 +1766,11 @@ impl RomBuilder {
         self
     }
 
+    pub fn raw(mut self, value: &[u8; 16]) -> Self {
+        self.raw_header_bytes = *value;
+        self
+    }
+
     /// Consumes the builder and produces a [`RomFile`].
     ///
     /// The resulting ROM will have an empty `data` field and a zeroed checksum.
@@ -1772,6 +1797,7 @@ impl RomBuilder {
             data: Vec::new(),
             original_name: None,
             format_name: String::new(),
+            raw_header_bytes: self.raw_header_bytes,
         }
     }
 }

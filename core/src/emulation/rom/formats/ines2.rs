@@ -43,7 +43,7 @@ impl RomParser for Ines2 {
             64 << prg_nvram_shifts
         };
 
-        let chr_ram_shifts = (rom[11] & 0xF) >> 4;
+        let chr_ram_shifts = rom[11] & 0xF;
         let chr_ram_size = if chr_ram_shifts == 0 {
             0u32
         } else {

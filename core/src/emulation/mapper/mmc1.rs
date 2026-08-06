@@ -50,8 +50,10 @@ pub struct MMC1Common<V: MMC1Variant, S: MMC1Submapper> {
     pub prg_rom_size: u32,
     pub prg_ram: Option<Memory>,
     pub prg_rom: Memory,
+    pub chr_mem_size: u32,
     pub chr_rom_size: u32,
-    pub chr_rom: Option<Memory>,
+    pub chr_ram_size: u32,
+    pub chr_mem: Option<Memory>,
     pub nametable_arrangement: NametableArrangement,
     pub prg_ram_bank_offset: u16,
     pub last_shift_write: u64,
@@ -148,12 +150,10 @@ impl<V: MMC1Variant, S: MMC1Submapper> MapperLike for MMC1Common<V, S> {
     #[inline]
     fn ppu_read_debug(&self, addr: u16, open_bus: &OpenBus) -> PpuReadResult {
         match addr {
-            0..=0x1FFF =>
-            {
-                #[allow(clippy::cast_possible_truncation)]
-                if let Some(rom) = &self.chr_rom {
+            0..=0x1FFF => {
+                if let Some(mem) = &self.chr_mem {
                     PpuReadResult::Handled(
-                        rom.read(self.get_chr_rom_address(addr), open_bus),
+                        mem.read(self.get_chr_mem_address(addr), open_bus),
                         false,
                     )
                 } else {
@@ -168,9 +168,17 @@ impl<V: MMC1Variant, S: MMC1Submapper> MapperLike for MMC1Common<V, S> {
     }
 
     #[inline]
-    fn ppu_write(&mut self, addr: u16, _: u8) -> PpuWriteResult {
+    fn ppu_write(&mut self, addr: u16, data: u8) -> PpuWriteResult {
         match addr {
-            0..=0x1FFF => PpuWriteResult::Handled,
+            0..=0x1FFF => {
+                let addr = self.get_chr_mem_address(addr);
+
+                if let Some(mem) = &mut self.chr_mem {
+                    mem.write(addr, data);
+                }
+
+                PpuWriteResult::Handled
+            }
             0x2000..=0x3EFF => {
                 PpuWriteResult::Nametable(self.nametable_arrangement.resolve_address(addr))
             }
@@ -227,6 +235,13 @@ impl<V: MMC1Variant, S: MMC1Submapper> MapperLike for MMC1Common<V, S> {
             "chr_rom_size".to_string(),
             RegisterEntry::new(
                 RegisterValue::U32(self.chr_rom_size),
+                RegisterFormat::Decimal,
+            ),
+        );
+        general.insert(
+            "chr_ram_size".to_string(),
+            RegisterEntry::new(
+                RegisterValue::U32(self.chr_ram_size),
                 RegisterFormat::Decimal,
             ),
         );
@@ -343,7 +358,7 @@ impl<V: MMC1Variant, S: MMC1Submapper> MMC1Common<V, S> {
     }
 
     #[inline]
-    fn get_chr_rom_address(&self, addr: u16) -> u32 {
+    fn get_chr_mem_address(&self, addr: u16) -> u32 {
         let addr = u32::from(addr);
 
         if self.chr_rom_bank_mode == 0 {
@@ -405,14 +420,16 @@ impl<V: MMC1Variant, S: MMC1Submapper> From<&RomFile> for MMC1Common<V, S> {
             prg_ram_battery_backed: battery_backed,
             prg_rom_size: value.prg_memory.prg_rom_size,
             prg_rom: value.get_prg_rom(),
-            chr_rom: value.get_chr_rom(),
+            chr_mem: value.get_chr_mem(),
             nametable_arrangement: value.get_nametable_arrangement(),
             prg_ram: if prg_ram_size > 0 {
                 Some(Memory::new(prg_ram_size as usize, true))
             } else {
                 None
             },
+            chr_mem_size: value.get_chr_mem_size(),
             chr_rom_size: value.chr_memory.chr_rom_size,
+            chr_ram_size: value.chr_memory.chr_ram_size,
             prg_ram_bank_offset: 0,
             last_shift_write: u64::MAX,
             shift: 0,
