@@ -26,7 +26,7 @@ fn test_pla_implied_simple() {
     // Validate that acc has been loaded correctly
     assert_eq!(cpu.accumulator, 0x66);
     // Validate that stack pointer is correct
-    assert_eq!(cpu.stack_pointer, 0xFD)
+    assert_eq!(cpu.stack_pointer, 0xFD);
 }
 
 #[test]

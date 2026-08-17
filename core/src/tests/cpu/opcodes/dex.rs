@@ -50,7 +50,7 @@ fn test_dex_zero_page() {
     cpu.step();
     cpu.step();
 
-    assert_eq!(cpu.x_register, 0xFF)
+    assert_eq!(cpu.x_register, 0xFF);
 }
 
 #[test]

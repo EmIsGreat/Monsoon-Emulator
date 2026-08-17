@@ -41,7 +41,7 @@ fn test_iny_zero_page() {
     cpu.step();
     cpu.step();
 
-    assert_eq!(cpu.y_register, 0x1)
+    assert_eq!(cpu.y_register, 0x1);
 }
 
 #[test]

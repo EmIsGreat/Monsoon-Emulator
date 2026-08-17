@@ -110,7 +110,7 @@ fn test_dec_zero_page() {
     cpu.step();
     cpu.step();
 
-    assert_eq!(cpu.mem_read(0x00E6), 0xFF)
+    assert_eq!(cpu.mem_read(0x00E6), 0xFF);
 }
 
 #[test]
@@ -129,7 +129,7 @@ fn test_dec_zero_page_x() {
     cpu.step();
     cpu.step();
 
-    assert_eq!(cpu.mem_read(0x00F6), 0x2)
+    assert_eq!(cpu.mem_read(0x00F6), 0x2);
 }
 
 #[test]
@@ -147,7 +147,7 @@ fn test_dec_absolute() {
     cpu.step();
     cpu.step();
 
-    assert_eq!(cpu.mem_read(0xEEEE), 0xA8)
+    assert_eq!(cpu.mem_read(0xEEEE), 0xA8);
 }
 
 #[test]
@@ -167,7 +167,7 @@ fn test_dec_absolute_x() {
     cpu.step();
     cpu.step();
 
-    assert_eq!(cpu.mem_read(0xFEFE), 0x1)
+    assert_eq!(cpu.mem_read(0xFEFE), 0x1);
 }
 
 #[test]

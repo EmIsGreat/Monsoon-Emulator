@@ -94,7 +94,7 @@ impl Cpu {
 
     #[inline]
     pub(crate) fn mem_write(&mut self, addr: u16, data: u8) {
-        self.with_bus(|cpu, bus| cpu.mem_write(addr, data, bus))
+        self.with_bus(|cpu, bus| cpu.mem_write(addr, data, bus));
     }
 
     #[inline]
@@ -104,12 +104,12 @@ impl Cpu {
 
     #[inline(always)]
     pub(crate) fn mem_write_u16(&mut self, addr: u16, data: u16) {
-        self.with_bus(|cpu, bus| cpu.mem_write_u16(addr, data, bus))
+        self.with_bus(|cpu, bus| cpu.mem_write_u16(addr, data, bus));
     }
 
     #[inline(always)]
     pub(crate) fn stack_push(&mut self, data: Option<u8>) {
-        self.with_bus(|cpu, bus| cpu.stack_push(data, bus))
+        self.with_bus(|cpu, bus| cpu.stack_push(data, bus));
     }
 
     #[inline]

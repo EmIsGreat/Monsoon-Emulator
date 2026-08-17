@@ -35,5 +35,5 @@ fn test_brk_vector() {
 
     cpu.step();
     cpu.step();
-    assert_eq!(cpu.accumulator, 0x20)
+    assert_eq!(cpu.accumulator, 0x20);
 }

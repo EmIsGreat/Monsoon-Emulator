@@ -3,7 +3,7 @@ use crate::tests::cpu::Cpu;
 #[test]
 fn bcc_fail() {
     let mut cpu = Cpu::test_instance();
-    cpu.processor_status |= 0b00000001;
+    cpu.processor_status |= 0b0000_0001;
     cpu.mem_write(0x0, 0xEA);
     cpu.mem_write(0x1, 0xEA);
     cpu.mem_write(0x2, 0xEA);

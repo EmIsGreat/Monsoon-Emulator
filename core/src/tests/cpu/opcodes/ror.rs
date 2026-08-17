@@ -14,7 +14,7 @@ fn test_ror_complete() {
     assert!(!cpu.get_carry_flag());
     assert!(!cpu.get_zero_flag());
     assert!(!cpu.get_negative_flag());
-    cpu.processor_status = 0b00000000;
+    cpu.processor_status = 0b0000_0000;
 
     cpu.mem_write(0x1, 0x66);
     cpu.mem_write(0x2, 0x20);
@@ -30,10 +30,10 @@ fn test_ror_complete() {
     assert!(!cpu.get_carry_flag());
     assert!(!cpu.get_zero_flag());
     assert!(!cpu.get_negative_flag());
-    cpu.processor_status = 0b00000000;
+    cpu.processor_status = 0b0000_0000;
 
     cpu.accumulator = 0b0100_0000;
-    cpu.processor_status |= 0b00000001;
+    cpu.processor_status |= 0b0000_0001;
 
     cpu.mem_write(0x3, 0x6A);
 
@@ -44,13 +44,13 @@ fn test_ror_complete() {
     assert!(!cpu.get_carry_flag());
     assert!(!cpu.get_zero_flag());
     assert!(cpu.get_negative_flag());
-    cpu.processor_status = 0b00000000;
+    cpu.processor_status = 0b0000_0000;
 
-    cpu.processor_status |= 0b00000001;
+    cpu.processor_status |= 0b0000_0001;
 
     cpu.mem_write(0x4, 0x66);
     cpu.mem_write(0x5, 0x20);
-    cpu.mem_write(0x20, 0b10000001);
+    cpu.mem_write(0x20, 0b1000_0001);
 
     cpu.step();
     cpu.step();
@@ -58,11 +58,11 @@ fn test_ror_complete() {
     cpu.step();
     cpu.step();
 
-    assert_eq!(cpu.mem_read(0x20), 0b11000000);
+    assert_eq!(cpu.mem_read(0x20), 0b1100_0000);
     assert!(cpu.get_carry_flag());
     assert!(!cpu.get_zero_flag());
     assert!(cpu.get_negative_flag());
-    cpu.processor_status = 0b00000000;
+    cpu.processor_status = 0b0000_0000;
 
     cpu.x_register = 0x01;
 
@@ -81,7 +81,7 @@ fn test_ror_complete() {
     assert!(!cpu.get_carry_flag());
     assert!(!cpu.get_zero_flag());
     assert!(!cpu.get_negative_flag());
-    cpu.processor_status = 0b00000000;
+    cpu.processor_status = 0b0000_0000;
 
     cpu.mem_write(0x8, 0x6E);
     cpu.mem_write_u16(0x9, 0x1234);
@@ -98,7 +98,7 @@ fn test_ror_complete() {
     assert!(!cpu.get_carry_flag());
     assert!(!cpu.get_zero_flag());
     assert!(!cpu.get_negative_flag());
-    cpu.processor_status = 0b00000000;
+    cpu.processor_status = 0b0000_0000;
 
     cpu.x_register = 0x01;
 
@@ -118,9 +118,9 @@ fn test_ror_complete() {
     assert!(cpu.get_carry_flag());
     assert!(cpu.get_zero_flag());
     assert!(!cpu.get_negative_flag());
-    cpu.processor_status = 0b00000000;
+    cpu.processor_status = 0b0000_0000;
 
-    cpu.accumulator = 0b00011110;
+    cpu.accumulator = 0b0001_1110;
 
     cpu.mem_write(0xE, 0x6A);
 
@@ -130,9 +130,9 @@ fn test_ror_complete() {
     assert!(!cpu.get_carry_flag());
     assert!(!cpu.get_zero_flag());
     assert!(!cpu.get_negative_flag());
-    cpu.processor_status = 0b00000000;
+    cpu.processor_status = 0b0000_0000;
 
-    cpu.accumulator = 0b00000000;
+    cpu.accumulator = 0b0000_0000;
 
     cpu.mem_write(0xF, 0x6A);
 
@@ -142,9 +142,9 @@ fn test_ror_complete() {
     assert!(!cpu.get_carry_flag());
     assert!(cpu.get_zero_flag());
     assert!(!cpu.get_negative_flag());
-    cpu.processor_status = 0b00000000;
+    cpu.processor_status = 0b0000_0000;
 
-    cpu.accumulator = 0b00001111;
+    cpu.accumulator = 0b0000_1111;
 
     cpu.mem_write(0x10, 0x6A);
 
@@ -154,9 +154,9 @@ fn test_ror_complete() {
     assert!(cpu.get_carry_flag());
     assert!(!cpu.get_negative_flag());
     assert!(!cpu.get_zero_flag());
-    cpu.processor_status = 0b00000000;
+    cpu.processor_status = 0b0000_0000;
 
-    cpu.accumulator = 0b00000001;
+    cpu.accumulator = 0b0000_0001;
 
     cpu.mem_write(0x11, 0x6A);
 
@@ -207,7 +207,7 @@ fn test_ror_zero_page() {
 fn test_ror_accumulator_with_carry() {
     let mut cpu = Cpu::test_instance();
     cpu.accumulator = 0b0100_0000;
-    cpu.processor_status |= 0b00000001;
+    cpu.processor_status |= 0b0000_0001;
 
     cpu.mem_write(0x0, 0x6A);
 
@@ -223,11 +223,11 @@ fn test_ror_accumulator_with_carry() {
 #[test]
 fn test_ror_zero_page_with_carry() {
     let mut cpu = Cpu::test_instance();
-    cpu.processor_status |= 0b00000001;
+    cpu.processor_status |= 0b0000_0001;
 
     cpu.mem_write(0x0, 0x66);
     cpu.mem_write(0x1, 0x20);
-    cpu.mem_write(0x20, 0b10000001);
+    cpu.mem_write(0x20, 0b1000_0001);
 
     cpu.step();
     cpu.step();
@@ -235,7 +235,7 @@ fn test_ror_zero_page_with_carry() {
     cpu.step();
     cpu.step();
 
-    assert_eq!(cpu.mem_read(0x20), 0b11000000);
+    assert_eq!(cpu.mem_read(0x20), 0b1100_0000);
     assert!(cpu.get_carry_flag());
     assert!(!cpu.get_zero_flag());
     assert!(cpu.get_negative_flag());
@@ -309,7 +309,7 @@ fn test_ror_absolute_x() {
 #[test]
 fn test_ror_flags_none_when_none() {
     let mut cpu = Cpu::test_instance();
-    cpu.accumulator = 0b00011110;
+    cpu.accumulator = 0b0001_1110;
 
     cpu.mem_write(0x0, 0x6A);
 
@@ -324,7 +324,7 @@ fn test_ror_flags_none_when_none() {
 #[test]
 fn test_ror_flags_only_zero_when_only_zero() {
     let mut cpu = Cpu::test_instance();
-    cpu.accumulator = 0b00000000;
+    cpu.accumulator = 0b0000_0000;
 
     cpu.mem_write(0x0, 0x6A);
 
@@ -339,7 +339,7 @@ fn test_ror_flags_only_zero_when_only_zero() {
 #[test]
 fn test_ror_flags_only_carry_when_only_carry() {
     let mut cpu = Cpu::test_instance();
-    cpu.accumulator = 0b00001111;
+    cpu.accumulator = 0b0000_1111;
 
     cpu.mem_write(0x0, 0x6A);
 
@@ -354,7 +354,7 @@ fn test_ror_flags_only_carry_when_only_carry() {
 #[test]
 fn test_ror_flags_carry_and_zero_when_carry_and_zero() {
     let mut cpu = Cpu::test_instance();
-    cpu.accumulator = 0b00000001;
+    cpu.accumulator = 0b0000_0001;
 
     cpu.mem_write(0x0, 0x6A);
 

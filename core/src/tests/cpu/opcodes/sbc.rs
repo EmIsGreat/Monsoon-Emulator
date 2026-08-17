@@ -138,7 +138,7 @@ fn test_sbc_indirect_y() {
 fn test_sbc_with_carry() {
     let mut cpu = Cpu::test_instance();
     cpu.accumulator = 0x55;
-    cpu.processor_status |= 0b00000001;
+    cpu.processor_status |= 0b0000_0001;
 
     cpu.mem_write(0x0, 0xE9);
     cpu.mem_write(0x1, 0x11);
@@ -153,7 +153,7 @@ fn test_sbc_with_carry() {
 fn test_sbc_flags_none_when_none() {
     let mut cpu = Cpu::test_instance();
     cpu.accumulator = 0x55;
-    cpu.processor_status |= 0b00000001;
+    cpu.processor_status |= 0b0000_0001;
 
     cpu.mem_write(0x0, 0xE9);
     cpu.mem_write(0x1, 0x11);
@@ -172,7 +172,7 @@ fn test_sbc_flags_none_when_none() {
 fn test_sbc_flags_negative_when_negative() {
     let mut cpu = Cpu::test_instance();
     cpu.accumulator = 0x90;
-    cpu.processor_status |= 0b00000001;
+    cpu.processor_status |= 0b0000_0001;
 
     cpu.mem_write(0x0, 0xE9);
     cpu.mem_write(0x1, 0x10);
@@ -191,7 +191,7 @@ fn test_sbc_flags_negative_when_negative() {
 fn test_sbc_flags_carry_and_negative_when_carry_and_negative() {
     let mut cpu = Cpu::test_instance();
     cpu.accumulator = 0x0;
-    cpu.processor_status |= 0b00000001;
+    cpu.processor_status |= 0b0000_0001;
 
     cpu.mem_write(0x0, 0xE9);
     cpu.mem_write(0x1, 0x3);
@@ -210,7 +210,7 @@ fn test_sbc_flags_carry_and_negative_when_carry_and_negative() {
 fn test_sbc_flags_zero_when_zero() {
     let mut cpu = Cpu::test_instance();
     cpu.accumulator = 0x1;
-    cpu.processor_status |= 0b00000001;
+    cpu.processor_status |= 0b0000_0001;
 
     cpu.mem_write(0x0, 0xE9);
     cpu.mem_write(0x1, 0x1);
@@ -229,7 +229,7 @@ fn test_sbc_flags_zero_when_zero() {
 fn test_sbc_flags_overflow_when_overflow() {
     let mut cpu = Cpu::test_instance();
     cpu.accumulator = 0x80;
-    cpu.processor_status |= 0b00000001;
+    cpu.processor_status |= 0b0000_0001;
 
     cpu.mem_write(0x0, 0xE9);
     cpu.mem_write(0x1, 0x10);

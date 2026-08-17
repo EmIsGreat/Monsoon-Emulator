@@ -9,7 +9,7 @@ fn test_08_nmi_off_timing() {
         None,
     ));
     emu.power();
-    emu.run_until(85341973, RunOptions::default());
+    emu.run_until(85_341_973, RunOptions::default());
 
     let whole_mem = emu.get_memory_debug(&Some(0x6000..=0x6052));
     let cpu_mem = whole_mem[0].as_slice();

@@ -15,7 +15,7 @@ fn test_pha_implied_simple() {
     // Validate that acc was saved to stack
     assert_eq!(cpu.mem_read(0x01FD), 0x66);
     // Validate that stack pointer was incremented
-    assert_eq!(cpu.stack_pointer, 0xFC)
+    assert_eq!(cpu.stack_pointer, 0xFC);
 }
 
 #[test]
@@ -55,5 +55,5 @@ fn test_pha_implied_complicated() {
     // Validate that acc was saved to correct address
     assert_eq!(cpu.mem_read(0x01FB), 0x99);
     // Validate that stack pointer was incremented
-    assert_eq!(cpu.stack_pointer, 0xFA)
+    assert_eq!(cpu.stack_pointer, 0xFA);
 }

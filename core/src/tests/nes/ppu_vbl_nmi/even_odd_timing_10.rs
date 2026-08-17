@@ -9,7 +9,7 @@ fn test_10_even_odd_timing() {
         None,
     ));
     emu.power();
-    emu.run_until(75341973, RunOptions::default());
+    emu.run_until(75_341_973, RunOptions::default());
 
     let whole_mem = emu.get_memory_debug(&Some(0x6000..=0x602D));
     let cpu_mem = whole_mem[0].as_slice();

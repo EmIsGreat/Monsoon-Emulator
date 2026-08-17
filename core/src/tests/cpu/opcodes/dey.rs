@@ -50,7 +50,7 @@ fn test_dey_accumulator() {
     cpu.step();
     cpu.step();
 
-    assert_eq!(cpu.y_register, 0xFF)
+    assert_eq!(cpu.y_register, 0xFF);
 }
 
 #[test]

@@ -5,7 +5,7 @@ use crate::tests::cpu::Cpu;
 fn test_cpu_ram_writeable_and_readable() {
     let mut cpu = Cpu::new();
     cpu.mem_write(0x10, 0x20);
-    assert_eq!(cpu.mem_read(0x10), 0x20)
+    assert_eq!(cpu.mem_read(0x10), 0x20);
 }
 
 #[test]

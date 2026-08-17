@@ -43,7 +43,7 @@ fn test_txa_implied() {
 
     cpu.step();
     cpu.step();
-    assert_eq!(cpu.accumulator, 0x66)
+    assert_eq!(cpu.accumulator, 0x66);
 }
 
 #[test]

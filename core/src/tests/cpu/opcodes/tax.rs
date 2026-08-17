@@ -43,7 +43,7 @@ fn test_tax_implied() {
 
     cpu.step();
     cpu.step();
-    assert_eq!(cpu.x_register, 0x66)
+    assert_eq!(cpu.x_register, 0x66);
 }
 
 #[test]
