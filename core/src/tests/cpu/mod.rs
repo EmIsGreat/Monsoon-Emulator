@@ -14,6 +14,7 @@ struct TestBus {
 }
 
 impl Default for TestBus {
+    #[allow(clippy::large_stack_arrays)]
     fn default() -> Self {
         Self {
             memory: [0; 0x10000],
@@ -113,10 +114,10 @@ impl Cpu {
 
     #[inline]
     #[allow(unused_results)]
-    pub(crate) fn step(&mut self) -> ExecutionResult { self.with_bus(|cpu, bus| cpu.step(bus)) }
+    pub(crate) fn step(&mut self) -> ExecutionResult { self.with_bus(super::super::emulation::cpu::Cpu::step) }
 
     #[cfg(test)]
-    pub(crate) fn attach_test_rom(&mut self, prg_rom: Memory) {
+    pub(crate) fn attach_test_rom(&mut self, prg_rom: &Memory) {
         let prg_data = prg_rom.snapshot_all();
         if prg_data.is_empty() {
             return;

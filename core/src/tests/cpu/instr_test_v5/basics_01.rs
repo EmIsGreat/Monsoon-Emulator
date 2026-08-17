@@ -8,7 +8,7 @@ fn test_01_basics() {
         None,
     ));
     emu.power();
-    emu.run_until(8448321, RunOptions::default());
+    emu.run_until(8_448_321, RunOptions::default());
 
     let whole_mem = emu.get_memory_debug(&Some(0x6000..=0x6017));
     let cpu_mem = whole_mem[0].as_slice();

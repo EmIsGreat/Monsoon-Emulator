@@ -862,7 +862,7 @@ pub enum RomMapper {
     Namco175or340 = 210,
     JingtaiASICDuplicate = 211,
     PirateMulticart300in1 = 212,
-    DuplicateOfNr58 = 213,
+    DuplicateOf58 = 213,
     SuperGun = 214,
     SugarSoftecMapper = 215,
     RussianBonza = 216,
@@ -1073,7 +1073,7 @@ impl Display for RomMapper {
             RomMapper::TEC9719orING003CorING022RepurposedLines => "TEC9719, ING003C or ING-022",
             RomMapper::DoubleDragonIIPirate => "Double Dragon II Pirate Mapper",
             RomMapper::T262 => "T-262 Multicart Mapper",
-            RomMapper::DuplicateNROMMulticart => {
+            RomMapper::DuplicateNROMMulticart | RomMapper::DuplicateOf58 => {
                 "Duplicate of Mapper 58 (NROM-/CNROM based Multicart Mapper)"
             }
             RomMapper::Alternative331 => {
@@ -1147,7 +1147,7 @@ impl Display for RomMapper {
             RomMapper::Duplicate114 => {
                 "Duplicate of Mapper 114 (MMC3 Clone with scrambled registers)"
             }
-            RomMapper::VRC4Clone => "CNROM (with 8KiB CHR-ROM)",
+            RomMapper::VRC4Clone => "Clone of VRC4",
             RomMapper::Sunsoft1onSunsoftK => "Sunsoft-1 on Sunsoft-K Board",
             RomMapper::FukutakeStudyBox => "Fukutake Study Box BIOS",
             RomMapper::KashengA98402 => "Kǎshèng A98402",
@@ -1176,9 +1176,6 @@ impl Display for RomMapper {
             RomMapper::Namco175or340 => "Namco 175 (Sub. 1) or Namco 340 (Sub. 2)",
             RomMapper::JingtaiASICDuplicate => "Duplicate of Mapper 209 (晶太 (Jīngtài) ASIC)",
             RomMapper::PirateMulticart300in1 => "300-in-1 Pirate Multicart Mapper",
-            RomMapper::DuplicateOfNr58 => {
-                "Duplicate of Mapper 58 (NROM-/CNROM based Multicart Mapper)"
-            }
             RomMapper::SuperGun => "Super Gun 20-in-1 Multicart Mapper",
             RomMapper::SugarSoftecMapper => "Sugar Softec Mapper",
             RomMapper::RussianBonza => "Russian Mapper",
@@ -1478,7 +1475,8 @@ impl RomFile {
 
     #[doc(hidden)]
     #[must_use]
-    pub fn get_chr_mem_size(&self) -> u32 { self.get_chr_mem().map_or(0, |m| m.size()) }
+    #[allow(clippy::cast_possible_truncation)]
+    pub fn get_chr_mem_size(&self) -> u32 { self.get_chr_mem().map_or(0, |m| m.size() as u32) }
 
     /// Extracts the PRG RAM region as a writable [`Memory`] device.
     ///
@@ -1766,6 +1764,7 @@ impl RomBuilder {
         self
     }
 
+    #[must_use]
     pub fn raw(mut self, value: &[u8; 16]) -> Self {
         self.raw_header_bytes = *value;
         self

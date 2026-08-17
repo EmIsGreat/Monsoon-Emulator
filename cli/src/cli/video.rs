@@ -1191,7 +1191,7 @@ mod tests {
     #[test]
     fn test_fps_to_rational() {
         // NES NTSC framerate (39375000 / 655171)
-        let nes_ntsc = 39375000.0 / 655171.0;
+        let nes_ntsc = 39_375_000.0 / 655_171.0;
         assert_eq!(fps_to_rational(nes_ntsc), "39375000/655171");
 
         // Standard framerates

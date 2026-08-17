@@ -23,7 +23,7 @@ fn nestest() {
         .unwrap()
         .log
         .lines()
-        .map(|s| s.to_string())
+        .map(std::string::ToString::to_string)
         .take(8980)
         .collect::<Vec<String>>();
 

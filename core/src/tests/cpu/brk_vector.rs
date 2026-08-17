@@ -23,7 +23,7 @@ fn test_brk_vector() {
     cpu.mem_write(0x0, 0x0);
 
     // Attach ROM mapper
-    cpu.attach_test_rom(rom);
+    cpu.attach_test_rom(&rom);
 
     cpu.step();
     cpu.step();

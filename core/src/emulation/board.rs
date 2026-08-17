@@ -211,6 +211,7 @@ impl PpuBus for PpuBusView<'_> {
 
                 ReadResult::from(val & mask).to_false()
             }
+            #[allow(clippy::cast_possible_truncation)]
             PpuReadResult::Registered => ReadResult::from(addr as u8).to_false(),
         };
 
@@ -601,7 +602,7 @@ impl Board {
 impl Default for Board {
     fn default() -> Self {
         Board::new(
-            Cpu::new(),
+            Cpu::default(),
             Ppu::default(),
             Apu::default(),
             Mapper::NoMapper(NoMapper {}),

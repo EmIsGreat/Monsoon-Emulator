@@ -28,7 +28,7 @@ fn test_rom_readable() {
     // Create and initialize new Rom
     let mut rom = Memory::new(0x4000, false);
     rom.init(0x30, 0x20);
-    cpu.attach_test_rom(rom);
+    cpu.attach_test_rom(&rom);
 
     assert_eq!(cpu.mem_read(0x8030), 0x20);
 }
@@ -37,7 +37,7 @@ fn test_rom_readable() {
 fn test_rom_non_writeable() {
     let mut cpu = Cpu::new();
 
-    cpu.attach_test_rom(Memory::new(0x4000, false));
+    cpu.attach_test_rom(&Memory::new(0x4000, false));
 
     cpu.mem_write(0x8030, 0x20);
 

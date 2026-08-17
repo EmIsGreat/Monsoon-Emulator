@@ -178,6 +178,7 @@ impl StorageCategory {
 /// Note: On WASM, futures don't need to be Send since JavaScript is
 /// single-threaded.
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
+#[allow(clippy::double_must_use)]
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 pub trait Storage: Send + Sync {
     /// Get data by key

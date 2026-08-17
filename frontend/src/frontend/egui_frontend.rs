@@ -245,7 +245,7 @@ impl EguiApp {
             .send(FrontendMessage::LoadRom((data, name.clone(), use_db)));
 
         // Extract stem for window title
-        let stem: &str = name.rsplit_once('.').map_or(&name.as_str(), |(s, _)| s);
+        let stem: &str = name.rsplit_once('.').map_or(name.as_str(), |(s, _)| s);
         let window_title = if stem.is_empty() {
             "Monsoon".to_string()
         } else {
@@ -486,10 +486,10 @@ impl EguiApp {
             let frame_budget = self.get_frame_budget();
             let is_uncapped = self.config.speed_config.app_speed == AppSpeed::Uncapped
                 || ctx.memory(|mem| {
-                    mem.data
-                        .get_temp(Id::new(AsyncFrontendMessage::Speedup))
-                        .unwrap_or(false)
-                });
+                mem.data
+                    .get_temp(Id::new(AsyncFrontendMessage::Speedup))
+                    .unwrap_or(false)
+            });
 
             if !is_uncapped {
                 self.accumulator += delta;
@@ -547,10 +547,10 @@ impl EguiApp {
                 // After that, they're re-requested when the emulator notifies of changes.
                 let should_skip_passive = to_fetch.is_passive()
                     && match to_fetch {
-                        EmulatorFetchable::Tiles(_) => self.emu_textures.tile_textures.is_some(),
-                        EmulatorFetchable::Palettes(_) => self.emu_textures.palette_data.is_some(),
-                        _ => false,
-                    };
+                    EmulatorFetchable::Tiles(_) => self.emu_textures.tile_textures.is_some(),
+                    EmulatorFetchable::Palettes(_) => self.emu_textures.palette_data.is_some(),
+                    _ => false,
+                };
 
                 if !should_skip_passive {
                     let _ = self

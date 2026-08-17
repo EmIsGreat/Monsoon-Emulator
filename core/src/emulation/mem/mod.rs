@@ -47,7 +47,7 @@ impl Memory {
 
     pub fn snapshot_all(&self) -> Vec<u8> { self.memory.to_vec() }
 
-    pub fn size(&self) -> u32 { self.memory.len() as u32 }
+    pub fn size(&self) -> usize { self.memory.len() }
 }
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -85,12 +85,12 @@ impl OpenBus {
         let mut expired = 0u8;
 
         for i in 0..8 {
-            let timer = &mut self.timers[i];
-            *timer += times;
+            let bit_timer = &mut self.timers[i];
+            *bit_timer += times;
 
-            if *timer > self.decay_time {
+            if *bit_timer > self.decay_time {
                 expired |= 1 << i;
-                *timer = 0;
+                *bit_timer = 0;
             }
         }
 

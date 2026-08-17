@@ -148,7 +148,12 @@ impl Default for DmaState {
 
 impl Default for Cpu {
     fn default() -> Self {
-        // Initialize both HashMap and fast lookup table
+        Self::new()
+    }
+}
+
+impl Cpu {
+    pub fn new() -> Self { // Initialize both HashMap and fast lookup table
         OPCODES_TABLE.get_or_init(opcode::init);
 
         Self {
@@ -174,10 +179,6 @@ impl Default for Cpu {
             cycle: 0,
         }
     }
-}
-
-impl Cpu {
-    pub fn new() -> Self { Self::default() }
 
     #[inline(always)]
     pub fn mem_read(&mut self, addr: u16, bus: &mut impl CpuBus) -> u8 {
@@ -367,7 +368,7 @@ impl Cpu {
     }
 
     #[inline]
-    fn get_addr_latch(&self) -> u16 { ((self.hi as u16) << 8) | (self.lo as u16) }
+    fn get_addr_latch(&self) -> u16 { (u16::from(self.hi) << 8) | u16::from(self.lo) }
 
     #[allow(clippy::too_many_lines)]
     fn get_instructions_for_op_type(&mut self) {
@@ -376,25 +377,25 @@ impl Cpu {
         match op.op_type {
             OpType::AccumulatorOrImplied(callback) => self.get_acc_instructions(callback),
             OpType::ImmediateAddressing(target, callback) => {
-                self.get_immediate_instructions(target, callback)
+                self.get_immediate_instructions(target, callback);
             }
             OpType::AbsoluteRead(target, callback) => {
-                self.get_abs_read_instructions(target, callback)
+                self.get_abs_read_instructions(target, callback);
             }
             OpType::AbsoluteIndexRead(index, target, callback) => {
-                self.get_absolute_index_read_instructions(index, target, callback)
+                self.get_absolute_index_read_instructions(index, target, callback);
             }
             OpType::ZeroPageRead(target, callback) => {
-                self.get_zero_page_read_instructions(target, callback)
+                self.get_zero_page_read_instructions(target, callback);
             }
             OpType::ZeroPageIndexRead(index, target, callback) => {
-                self.get_zero_page_index_read_instructions(index, target, callback)
+                self.get_zero_page_index_read_instructions(index, target, callback);
             }
             OpType::IndexedIndirectRead(target, callback) => {
-                self.get_indexed_indirect_read_instructions(target, callback)
+                self.get_indexed_indirect_read_instructions(target, callback);
             }
             OpType::IndirectIndexedRead(target, callback) => {
-                self.get_indirect_indexed_read_instructions(target, callback)
+                self.get_indirect_indexed_read_instructions(target, callback);
             }
             OpType::BRK(callback) => self.get_brk_instructions(callback),
             OpType::RTI(callback) => self.get_rti_instructions(callback),
@@ -404,42 +405,42 @@ impl Cpu {
             OpType::JSR(callback) => self.get_jsr_instructions(callback),
             OpType::JmpAbsolute(callback) => self.get_jmp_absolute_instructions(callback),
             OpType::AbsoluteRMW(target, callback) => {
-                self.get_absolute_rmw_instructions(target, callback)
+                self.get_absolute_rmw_instructions(target, callback);
             }
             OpType::AbsoluteWrite(source, callback) => {
-                self.get_absolute_write_instructions(source, callback)
+                self.get_absolute_write_instructions(source, callback);
             }
             OpType::ZeroPageRMW(target, callback) => {
-                self.get_zero_page_rmw_instructions(target, callback)
+                self.get_zero_page_rmw_instructions(target, callback);
             }
             OpType::ZeroPageWrite(source, callback) => {
-                self.get_zero_page_write_instructions(source, callback)
+                self.get_zero_page_write_instructions(source, callback);
             }
             OpType::ZeroPageIndexRMW(index, callback) => {
-                self.get_zero_page_index_rmw_instructions(index, callback)
+                self.get_zero_page_index_rmw_instructions(index, callback);
             }
             OpType::ZeroPageIndexWrite(source, index, callback) => {
-                self.get_zero_page_index_write_instructions(source, index, callback)
+                self.get_zero_page_index_write_instructions(source, index, callback);
             }
             OpType::AbsoluteIndexRMW(offset, callback) => {
-                self.get_absolute_index_rmw_instructions(offset, callback)
+                self.get_absolute_index_rmw_instructions(offset, callback);
             }
             OpType::AbsoluteIndexWrite(source, offset, callback) => {
-                self.get_absolute_index_write_instructions(source, offset, callback)
+                self.get_absolute_index_write_instructions(source, offset, callback);
             }
             OpType::IndexedIndirectWrite(source, callback) => {
-                self.get_indexed_indirect_write_instructions(source, callback)
+                self.get_indexed_indirect_write_instructions(source, callback);
             }
             OpType::JmpIndirect(callback) => self.get_jmp_indirect_instructions(callback),
             OpType::IndirectIndexedWrite(source, callback) => {
-                self.get_indirect_indexed_write_instructions(source, callback)
+                self.get_indirect_indexed_write_instructions(source, callback);
             }
             OpType::Relative(callback) => self.get_relative_instructions(callback),
             OpType::IndexedIndirectRMW(callback) => {
-                self.get_indexed_indirect_rmw_instructions(callback)
+                self.get_indexed_indirect_rmw_instructions(callback);
             }
             OpType::IndirectIndexedRMW(callback) => {
-                self.get_indirect_indexed_rmw_instructions(callback)
+                self.get_indirect_indexed_rmw_instructions(callback);
             }
         }
     }
@@ -1367,14 +1368,14 @@ impl Cpu {
             MicroOp::FetchOperandLo(callback) => self.micro_fetch_operand_lo(bus, callback),
             MicroOp::FetchOperandHi(callback) => self.micro_fetch_operand_hi(bus, callback),
             MicroOp::Read(source, target, callback) => {
-                self.micro_read(bus, source, target, callback)
+                self.micro_read(bus, source, target, callback);
             }
             // pre_callback denotes whether to call the callback before or after the write. In the
             // case of a dummy write we write with false so that the value from before the callback
             // gets written, and in the case of a single write we need to execute the callback
             // beforehand so that we write the updated value
             MicroOp::Write(target, src, pre_callback, callback) => {
-                self.micro_write(bus, target, src, pre_callback, callback)
+                self.micro_write(bus, target, src, pre_callback, callback);
             }
             MicroOp::StackPush(source, callback) => self.micro_stack_push(bus, source, callback),
             MicroOp::StackPop(target, callback) => {
@@ -1477,6 +1478,7 @@ impl Cpu {
     }
 
     #[inline]
+    #[allow(clippy::too_many_arguments)]
     fn micro_read_with_offset_from_u16_and_add_something(
         &mut self,
         bus: &mut impl CpuBus,
@@ -1517,6 +1519,7 @@ impl Cpu {
     }
 
     #[inline]
+    #[allow(clippy::too_many_arguments)]
     fn micro_read_with_offset_from_zp_and_add_something_u8(
         &mut self,
         bus: &mut impl CpuBus,

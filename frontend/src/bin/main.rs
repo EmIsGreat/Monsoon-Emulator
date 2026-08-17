@@ -32,6 +32,9 @@ pub struct CliArgs {
 }
 
 fn main() -> ExitCode {
+    #[cfg(target_arch = "wasm32")]
+    console_error_panic_hook::set_once();
+
     #[cfg(feature = "dhat-heap")]
     let _profiler = dhat::Profiler::new_heap();
 

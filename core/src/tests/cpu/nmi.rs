@@ -13,7 +13,7 @@ fn test_nmi_vector() {
     rom.init(0x0000, 0xA9);
     rom.init(0x0001, 0x20);
 
-    cpu.attach_test_rom(rom);
+    cpu.attach_test_rom(&rom);
     cpu.reset();
 
     cpu.step();

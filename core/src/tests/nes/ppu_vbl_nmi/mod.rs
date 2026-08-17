@@ -38,7 +38,7 @@ fn test_ppu_vbl_nmi() {
     let whole_mem = emu.get_memory_debug(&Some(0x6000..=0x6079));
     let cpu_mem = whole_mem[0].as_slice();
 
-    println!("{:02X?}", cpu_mem);
+    println!("{cpu_mem:02X?}");
 
     let expected = [
         0x00, 0xDE, 0xB0, 0x61, 0x54, 0x2B, 0x20, 0x31, 0x20, 0x32, 0x0A, 0x30, 0x30, 0x20, 0x2D,
@@ -52,7 +52,7 @@ fn test_ppu_vbl_nmi() {
         0x0A, 0x00,
     ];
 
-    println!("{:02X?}", expected);
+    println!("{expected:02X?}");
 
     assert_eq!(cpu_mem[0], 0);
     assert_eq!(&cpu_mem[..expected.len()], &expected);

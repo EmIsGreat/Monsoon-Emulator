@@ -191,12 +191,16 @@ pub struct NROM {
     pub chr_mem: Option<Memory>,
     pub nametable_arrangement: NametableArrangement,
     #[serde(skip, default = "NROM::default_lookup_table")]
-    ppu_bus_lookup: [PpuReadFunction; u16::MAX as usize],
+    ppu_bus_lookup: Box<[PpuReadFunction; u16::MAX as usize + 1]>,
 }
 
 impl NROM {
-    fn default_lookup_table() -> [PpuReadFunction; u16::MAX as usize] {
-        [NROM::ppu_read_unmapped; u16::MAX as usize]
+    #[allow(clippy::unwrap_used)]
+    fn default_lookup_table() -> Box<[PpuReadFunction; u16::MAX as usize + 1]> {
+        vec![NROM::ppu_read_unmapped as PpuReadFunction; u16::MAX as usize + 1]
+            .into_boxed_slice()
+            .try_into()
+            .unwrap()
     }
 }
 
@@ -261,7 +265,7 @@ impl MapperLike for NROM {
     #[inline(always)]
     fn ppu_read_debug(&self, addr: u16, open_bus: &OpenBus) -> PpuReadResult {
         let func = self.ppu_bus_lookup[addr as usize];
-        func(&self, addr, open_bus)
+        func(self, addr, open_bus)
     }
 
     #[inline]
@@ -352,6 +356,7 @@ impl MapperLike for NROM {
 
 impl NROM {
     fn ppu_read_handled_w_mem(&self, addr: u16, open_bus: &OpenBus) -> PpuReadResult {
+        #[allow(clippy::expect_used)]
         PpuReadResult::Handled(
             self.chr_mem
                 .as_ref()
@@ -361,6 +366,8 @@ impl NROM {
         )
     }
 
+    #[allow(clippy::unused_self)]
+    #[allow(clippy::cast_possible_truncation)]
     fn ppu_read_handled(&self, addr: u16, _: &OpenBus) -> PpuReadResult {
         PpuReadResult::Handled(addr as u8, false)
     }
@@ -369,6 +376,7 @@ impl NROM {
         PpuReadResult::Nametable(self.nametable_arrangement.resolve_address(addr))
     }
 
+    #[allow(clippy::unused_self)]
     fn ppu_read_unmapped(&self, _: u16, _: &OpenBus) -> PpuReadResult { PpuReadResult::Registered }
 }
 
@@ -378,6 +386,7 @@ impl From<&RomFile> for NROM {
         let battery_backed = rom.is_battery_backed || rom.prg_memory.prg_nvram_size > 0;
 
         #[allow(clippy::cast_possible_truncation)]
+        #[allow(clippy::unwrap_used)]
         NROM {
             prg_ram_battery_backed: battery_backed,
             prg_ram_size: prg_ram_size as u16,
@@ -386,7 +395,10 @@ impl From<&RomFile> for NROM {
             chr_mem: rom.get_chr_mem(),
             prg_ram: rom.get_prg_ram(),
             nametable_arrangement: rom.get_nametable_arrangement(),
-            ppu_bus_lookup: [NROM::ppu_read_unmapped; u16::MAX as usize],
+            ppu_bus_lookup: vec![NROM::ppu_read_unmapped as PpuReadFunction; u16::MAX as usize + 1]
+                .into_boxed_slice()
+                .try_into()
+                .unwrap(),
         }
     }
 }

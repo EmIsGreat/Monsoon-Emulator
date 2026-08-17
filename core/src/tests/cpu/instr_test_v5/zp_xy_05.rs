@@ -9,7 +9,7 @@ fn test_05_zp_xy() {
         None,
     ));
     emu.reset();
-    emu.run_until(102889553, RunOptions::default());
+    emu.run_until(102_889_553, RunOptions::default());
 
     let whole_mem = emu.get_memory_debug(&Some(0x6000..=0x6016));
     let cpu_mem = whole_mem[0].as_slice();

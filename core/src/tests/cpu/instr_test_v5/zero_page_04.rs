@@ -9,7 +9,7 @@ fn test_04_zero_page() {
         None,
     ));
     emu.reset();
-    emu.run_until(51428549, RunOptions::default());
+    emu.run_until(51_428_549, RunOptions::default());
 
     let whole_mem = emu.get_memory_debug(&Some(0x6000..=0x601A));
     let cpu_mem = whole_mem[0].as_slice();

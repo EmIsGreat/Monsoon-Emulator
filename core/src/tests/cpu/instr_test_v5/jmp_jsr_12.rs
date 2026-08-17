@@ -9,7 +9,7 @@ fn test_12_jmp_jsr() {
         None,
     ));
     emu.reset();
-    emu.run_until(8049153, RunOptions::default());
+    emu.run_until(8_049_153, RunOptions::default());
 
     let whole_mem = emu.get_memory_debug(&Some(0x6000..=0x6018));
     let cpu_mem = whole_mem[0].as_slice();

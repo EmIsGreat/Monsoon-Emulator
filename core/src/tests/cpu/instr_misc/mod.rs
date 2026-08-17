@@ -118,7 +118,7 @@ fn test_instr_misc_04_dummy_reads_apu() {
         50, 61, 73, 73, 65, 64, 0xA, 0,
     ];
 
-    println!("{:02X?}", &cpu_mem);
+    println!("{cpu_mem:02X?}");
 
     assert_eq!(cpu_mem[0], 0);
     assert_eq!(&cpu_mem[..expected.len()], &expected);

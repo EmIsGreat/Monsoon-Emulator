@@ -139,7 +139,7 @@ fn test_adc_indirect_y() {
 fn test_adc_with_carry() {
     let mut cpu = Cpu::test_instance();
     cpu.accumulator = 0x10;
-    cpu.processor_status |= 0b00000001;
+    cpu.processor_status |= 0b0000_0001;
 
     cpu.mem_write(0x0, 0x69);
     cpu.mem_write(0x1, 0x55);
@@ -154,7 +154,7 @@ fn test_adc_with_carry() {
 fn test_adc_flags_none_when_none() {
     let mut cpu = Cpu::test_instance();
     cpu.accumulator = 0x10;
-    cpu.processor_status |= 0b00000001;
+    cpu.processor_status |= 0b0000_0001;
 
     cpu.mem_write(0x0, 0x69);
     cpu.mem_write(0x1, 0x55);
