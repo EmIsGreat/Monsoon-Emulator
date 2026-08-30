@@ -150,8 +150,7 @@ impl<V: MMC1Variant, S: MMC1Submapper> MapperLike for MMC1Common<V, S> {
     #[inline]
     fn ppu_read_debug(&self, addr: u16, open_bus: &OpenBus) -> PpuReadResult {
         match addr {
-            0..=0x1FFF =>
-            {
+            0..=0x1FFF => {
                 #[allow(clippy::cast_possible_truncation)]
                 if let Some(mem) = &self.chr_mem {
                     PpuReadResult::Handled(

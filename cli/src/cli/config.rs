@@ -415,9 +415,8 @@ impl ConfigFile {
         if cli.output.output.is_none() {
             cli.output.output.clone_from(&self.output.path);
         }
-        // Handle shorthand flags from config (precedence: json > toml > binary
-        // > format) This matches the CLI behavior in
-        // OutputArgs::effective_format()
+        // Handle shorthand flags from config (precedence: json > toml > binary >
+        // format) This matches the CLI behavior in OutputArgs::effective_format()
         if !cli.output.json && self.output.json.unwrap_or(false) {
             cli.output.json = true;
         }

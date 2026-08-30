@@ -114,9 +114,7 @@ impl Cpu {
 
     #[inline]
     #[allow(unused_results)]
-    pub(crate) fn step(&mut self) -> ExecutionResult {
-        self.with_bus(super::super::emulation::cpu::Cpu::step)
-    }
+    pub(crate) fn step(&mut self) -> ExecutionResult { self.with_bus(super::super::emulation::cpu::Cpu::step) }
 
     #[cfg(test)]
     pub(crate) fn attach_test_rom(&mut self, prg_rom: &Memory) {
