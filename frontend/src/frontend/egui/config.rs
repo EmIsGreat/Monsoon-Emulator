@@ -268,18 +268,18 @@ impl Default for KeybindingsConfig {
     fn default() -> Self {
         let bindings = vec![
             // Controller Bindings
-            Binding::key(Key::W, OnKeyAction::ControllerUp),
-            Binding::key(Key::S, OnKeyAction::ControllerDown),
-            Binding::key(Key::A, OnKeyAction::ControllerLeft),
-            Binding::key(Key::D, OnKeyAction::ControllerRight),
-            Binding::key(Key::Space, OnKeyAction::ControllerAButton),
+            Binding::key(Key::W, OnKeyAction::StdControllerUp),
+            Binding::key(Key::S, OnKeyAction::StdControllerDown),
+            Binding::key(Key::A, OnKeyAction::StdControllerLeft),
+            Binding::key(Key::D, OnKeyAction::StdControllerRight),
+            Binding::key(Key::Space, OnKeyAction::StdControllerAButton),
             Binding::new(
                 BindVariant::ModifierKey(ModifierKey::Shift),
                 Modifiers::NONE,
-                OnKeyAction::ControllerBButton,
+                OnKeyAction::StdControllerBButton,
             ),
-            Binding::key(Key::Enter, OnKeyAction::ControllerStartButton),
-            Binding::key(Key::Tab, OnKeyAction::ControllerSelectButton),
+            Binding::key(Key::Enter, OnKeyAction::StdControllerStartButton),
+            Binding::key(Key::Tab, OnKeyAction::StdControllerSelectButton),
             // Debug Bindings
             Binding::key(Key::Comma, OnKeyAction::PauseEmulator),
             Binding::key(Key::Period, OnKeyAction::StepFrame),

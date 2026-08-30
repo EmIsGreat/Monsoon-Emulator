@@ -66,7 +66,7 @@ pub enum StorageError {
     NotAvailable,
     /// Serialization/deserialization error
     SerializationError(String),
-    /// IndexedDB specific error (WASM only)
+    /// `IndexedDB` specific error (WASM only)
     #[cfg(target_arch = "wasm32")]
     IndexedDbError(String),
 }
@@ -81,7 +81,7 @@ impl Display for StorageError {
             StorageError::NotAvailable => write!(f, "Storage not available"),
             StorageError::SerializationError(e) => write!(f, "Serialization error: {e}"),
             #[cfg(target_arch = "wasm32")]
-            StorageError::IndexedDbError(e) => write!(f, "IndexedDB error: {}", e),
+            StorageError::IndexedDbError(e) => write!(f, "IndexedDB error: {e}"),
         }
     }
 }
@@ -394,31 +394,35 @@ mod wasm {
     use rexie::{KeyRange, Rexie, TransactionMode};
     use wasm_bindgen::JsValue;
 
-    use super::*;
+    use super::{
+        PathBuf, Storage, StorageCategory, StorageError, StorageKey, StorageMetadata,
+        StorageResult, async_trait,
+    };
 
     const DB_NAME: &str = "monsoon_emulator";
     const DB_VERSION: u32 = 1;
     const STORE_NAME: &str = "storage";
 
-    /// WASM storage implementation using IndexedDB via rexie.
+    /// WASM storage implementation using `IndexedDB` via rexie.
     ///
-    /// Provides persistent storage in the browser using IndexedDB,
+    /// Provides persistent storage in the browser using `IndexedDB`,
     /// which supports larger storage limits and binary data.
     ///
     /// # Database Structure
     ///
-    /// - Database name: "monsoon_emulator"
-    /// - Object store: "storage" (key-value pairs where key is the StorageKey
+    /// - Database name: `monsoon_emulator`
+    /// - Object store: "storage" (key-value pairs where key is the `StorageKey`
     ///   path string)
-    /// - Values are stored as Uint8Array (raw bytes)
-    /// - Prefix queries use KeyRange::bound() on the primary key for efficient
-    ///   listing
+    /// - Values are stored as `Uint8Array` (raw bytes)
+    /// - Prefix queries use `KeyRange::bound()` on the primary key for
+    ///   efficient listing
     pub struct WasmStorage;
 
     impl WasmStorage {
+        #[must_use]
         pub fn new() -> Self { WasmStorage }
 
-        /// Convert StorageKey to the string key used in IndexedDB
+        /// Convert `StorageKey` to the string key used in `IndexedDB`
         fn key_string(key: &StorageKey) -> String {
             match key.category {
                 // Root keys carry no category prefix — use sub_path verbatim
@@ -433,7 +437,7 @@ mod wasm {
         fn default() -> Self { Self::new() }
     }
 
-    /// Open the IndexedDB database, creating the object store if needed.
+    /// Open the `IndexedDB` database, creating the object store if needed.
     async fn open_db() -> Result<Rexie, StorageError> {
         Rexie::builder(DB_NAME)
             .version(DB_VERSION)
@@ -536,9 +540,9 @@ mod wasm {
 
             let prefix_str = Self::key_string(prefix);
             let lower = JsValue::from_str(&prefix_str);
-            let upper = JsValue::from_str(&format!("{}\u{ffff}", prefix_str));
+            let upper = JsValue::from_str(&format!("{prefix_str}\u{ffff}"));
             let range = KeyRange::bound(&lower, &upper, Some(false), Some(false))
-                .map_err(|e| StorageError::ReadError(format!("{:?}", e)))?;
+                .map_err(|e| StorageError::ReadError(format!("{e:?}")))?;
 
             let keys = store
                 .get_all_keys(Some(range), None)
@@ -587,6 +591,7 @@ pub fn get_storage() -> impl Storage { NativeStorage::new() }
 
 /// Get the platform-appropriate storage implementation
 #[cfg(target_arch = "wasm32")]
+#[must_use]
 pub fn get_storage() -> impl Storage { WasmStorage::new() }
 
 // ============================================================================

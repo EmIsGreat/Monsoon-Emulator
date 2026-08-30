@@ -14,7 +14,6 @@ use crate::emulation::ppu::{
     Ppu, VRAM_SIZE,
 };
 use crate::emulation::rom::RomFile;
-use crate::emulation::savestate::BoardState;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ReadResult {
@@ -54,7 +53,6 @@ impl ReadResult {
     }
 }
 
-#[derive(Clone, Debug)]
 pub struct Board {
     pub cpu: Cpu,
     pub ppu: Ppu,
@@ -65,8 +63,8 @@ pub struct Board {
     pub mapper: Mapper,
     pub cpu_open_bus: OpenBus,
     pub ppu_open_bus: OpenBus,
-    pub controller1: Option<Peripheral>,
-    pub controller2: Option<Peripheral>,
+    pub port1: Option<Peripheral>,
+    pub port2: Option<Peripheral>,
     pub joystick_strobe_data: u8,
     pub irq: bool,
 }
@@ -315,7 +313,7 @@ pub struct CpuBusView<'a> {
     irq: &'a mut bool,
     controller1: &'a mut Option<Peripheral>,
     controller2: &'a mut Option<Peripheral>,
-    joystick_strobe_data: &'a mut u8,
+    strobe_data: &'a mut u8,
 }
 
 impl<'a> CpuBusView<'a> {
@@ -346,7 +344,7 @@ impl<'a> CpuBusView<'a> {
             irq,
             controller1,
             controller2,
-            joystick_strobe_data: joystick_probe_data,
+            strobe_data: joystick_probe_data,
         }
     }
 
@@ -495,11 +493,11 @@ impl<'a> CpuBusView<'a> {
         #[allow(clippy::single_match)]
         match addr {
             0x4016 => {
-                *self.joystick_strobe_data = data & 0b111;
+                *self.strobe_data = data & 1;
                 Board::update_controllers(
                     self.controller1,
                     self.controller2,
-                    *self.joystick_strobe_data,
+                    *self.strobe_data,
                 );
             }
             0x4017 => {
@@ -549,8 +547,8 @@ impl Board {
             cpu_ram: Memory::new(INTERNAL_RAM_SIZE as usize, true),
             nametable_ram: Memory::new(VRAM_SIZE as usize, true),
             palette_ram: PaletteRam::default(),
-            controller1: None,
-            controller2: None,
+            port1: None,
+            port2: None,
             joystick_strobe_data: 0,
             mapper,
             irq: false,
@@ -562,15 +560,15 @@ impl Board {
 
     pub fn attach_controllers(
         &mut self,
-        controller1: Option<Peripheral>,
-        controller2: Option<Peripheral>,
+        port1: Option<Peripheral>,
+        port2: Option<Peripheral>,
     ) {
-        self.controller1 = controller1;
-        self.controller2 = controller2;
+        self.port1 = port1;
+        self.port2 = port2;
 
         Board::update_controllers(
-            &mut self.controller1,
-            &mut self.controller2,
+            &mut self.port1,
+            &mut self.port2,
             self.joystick_strobe_data,
         );
     }
@@ -607,25 +605,5 @@ impl Default for Board {
             Apu::default(),
             Mapper::NoMapper(NoMapper {}),
         )
-    }
-}
-
-impl From<&BoardState> for Board {
-    fn from(state: &BoardState) -> Self {
-        Board {
-            cpu: Cpu::from(&state.cpu),
-            ppu: Ppu::from(&state.ppu),
-            apu: Apu::from(&state.apu),
-            cpu_ram: Memory::from((&state.cpu_ram, true)),
-            nametable_ram: Memory::from((&state.nametable_ram, true)),
-            palette_ram: PaletteRam::from(&state.palette_ram),
-            mapper: state.mapper.clone(),
-            cpu_open_bus: state.cpu_open_bus,
-            ppu_open_bus: state.ppu_open_bus,
-            controller1: state.controller1.clone(),
-            controller2: state.controller2.clone(),
-            joystick_strobe_data: state.joystick_strobe_data,
-            irq: false,
-        }
     }
 }

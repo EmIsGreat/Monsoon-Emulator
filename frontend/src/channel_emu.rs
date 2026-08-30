@@ -51,8 +51,6 @@ pub struct ChannelEmulator {
     pub nes: Nes,
     to_frontend: Sender<EmulatorMessage>,
     from_frontend: Receiver<FrontendMessage>,
-    input_1: u8,
-    input_2: u8,
     /// Triple-buffer *back* buffer: holds the most recently completed frame.
     ///
     /// On each frame boundary the emulator swaps this with the PPU's internal
@@ -104,8 +102,6 @@ impl ChannelEmulator {
             nes,
             to_frontend: tx_from_emu,
             from_frontend: rx_from_frontend,
-            input_1: 0,
-            input_2: 0,
             back_buffer: vec![
                 0u16;
                 usize::from(TOTAL_OUTPUT_HEIGHT) * usize::from(TOTAL_OUTPUT_WIDTH)
@@ -123,8 +119,6 @@ impl ChannelEmulator {
         // currently held. Reset the bitfield once per update so held inputs
         // persist across all frames executed this update, but release cleanly
         // when not re-sent on the next update.
-        self.input_1 = 0;
-        self.input_2 = 0;
 
         // Check for messages from frontend
         while let Ok(msg) = self.from_frontend.try_recv() {
@@ -219,7 +213,7 @@ impl ChannelEmulator {
                 FrontendMessage::StepMasterCycle => self.execute_master_cycle()?,
                 FrontendMessage::StepScanline => self.execute_scanline()?,
                 FrontendMessage::AttachPeripherals((peripheral1, peripheral2)) => {
-                    self.nes.attach_peripherals((peripheral1, peripheral2));
+                    self.nes.attach_ext_device((peripheral1, peripheral2));
                 }
                 FrontendMessage::UpdateRomDb(db) => self.nes.rom_db = db,
             }
@@ -229,8 +223,6 @@ impl ChannelEmulator {
     }
 
     pub fn execute_master_cycle(&mut self) -> Result<(), String> {
-        self.nes.set_controller_input(self.input_1, self.input_2);
-
         self.nes.step();
 
         // Copy (not swap) so the PPU's accumulated mid-frame render is
@@ -248,8 +240,6 @@ impl ChannelEmulator {
     }
 
     pub fn execute_ppu_cycle(&mut self) -> Result<(), String> {
-        self.nes.set_controller_input(self.input_1, self.input_2);
-
         self.nes.step_ppu_cycle();
         // Copy (not swap) so the PPU's accumulated mid-frame render is
         // preserved in the work buffer for subsequent debug steps.
@@ -266,8 +256,6 @@ impl ChannelEmulator {
     }
 
     pub fn execute_cpu_cycle(&mut self) -> Result<(), String> {
-        self.nes.set_controller_input(self.input_1, self.input_2);
-
         self.nes.step_cpu_cycle();
         // Copy (not swap) so the PPU's accumulated mid-frame render is
         // preserved in the work buffer for subsequent debug steps.
@@ -284,8 +272,6 @@ impl ChannelEmulator {
     }
 
     pub fn execute_scanline(&mut self) -> Result<(), String> {
-        self.nes.set_controller_input(self.input_1, self.input_2);
-
         self.nes.step_scanline();
         // Copy (not swap) so the PPU's accumulated mid-frame render is
         // preserved in the work buffer for subsequent debug steps.
@@ -302,8 +288,6 @@ impl ChannelEmulator {
     }
 
     pub fn execute_frame(&mut self) -> Result<(), String> {
-        self.nes.set_controller_input(self.input_1, self.input_2);
-
         self.nes.step_frame();
         // Swap the PPU work buffer with the back buffer (zero-copy).
         self.nes.swap_pixel_buffer(&mut self.back_buffer);
@@ -365,22 +349,24 @@ impl ChannelEmulator {
     }
 
     fn handle_controller_event(&mut self, event: ControllerEvent, is_slot_one: bool) {
-        let input_field = if is_slot_one {
-            &mut self.input_1
-        } else {
-            &mut self.input_2
-        };
-
-        match event {
-            ControllerEvent::A => *input_field |= 0x1,
-            ControllerEvent::B => *input_field |= 0x2,
-            ControllerEvent::Select => *input_field |= 0x4,
-            ControllerEvent::Start => *input_field |= 0x8,
-            ControllerEvent::Up => *input_field |= 0x10,
-            ControllerEvent::Down => *input_field |= 0x20,
-            ControllerEvent::Left => *input_field |= 0x40,
-            ControllerEvent::Right => *input_field |= 0x80,
-        }
+        // self.nes.set_controller_input()
+        //
+        // let input_field = if is_slot_one {
+        //     &mut self.input_1
+        // } else {
+        //     &mut self.input_2
+        // };
+        //
+        // match event {
+        //     ControllerEvent::StdA => *input_field |= 0x1,
+        //     ControllerEvent::StdB => *input_field |= 0x2,
+        //     ControllerEvent::StdSelect => *input_field |= 0x4,
+        //     ControllerEvent::StdStart => *input_field |= 0x8,
+        //     ControllerEvent::StdUp => *input_field |= 0x10,
+        //     ControllerEvent::StdDown => *input_field |= 0x20,
+        //     ControllerEvent::StdLeft => *input_field |= 0x40,
+        //     ControllerEvent::StdRight => *input_field |= 0x80,
+        // }
     }
 
     #[must_use]

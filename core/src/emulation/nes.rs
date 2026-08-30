@@ -58,9 +58,8 @@ type ClockingFunction = fn(&mut Nes, last_cycle: u64) -> ExecutionResult;
 /// // Read the pixel buffer (palette indices, not RGB)
 /// let pixels = nes.get_pixel_buffer();
 /// ```
-#[derive(Clone, Debug)]
 pub struct Nes {
-    pub(crate) board: Board,
+    pub board: Board,
     /// Total master clock cycles elapsed since power-on.
     pub total_cycles: u64,
     /// The currently loaded ROM, or `None` if no ROM has been loaded.
@@ -141,8 +140,8 @@ impl Nes {
     /// [`power()`](Nes::power) again before resuming emulation.
     pub fn power_off(&mut self) {
         // Keep physically attached peripherals across power cycles.
-        let controller1 = self.board.controller1.clone();
-        let controller2 = self.board.controller2.clone();
+        let controller1 = self.board.port1.take();
+        let controller2 = self.board.port2.take();
 
         self.board = Board::default();
         self.board.attach_controllers(controller1, controller2);
@@ -560,8 +559,8 @@ impl Nes {
                 &mut self.board.ppu,
                 &mut self.board.apu,
                 &mut self.board.irq,
-                &mut self.board.controller1,
-                &mut self.board.controller2,
+                &mut self.board.port1,
+                &mut self.board.port2,
                 &mut self.board.joystick_strobe_data,
             );
             trace.trace(cpu, &bus, self.total_cycles);
@@ -574,28 +573,14 @@ impl Nes {
         }
     }
 
-    pub fn attach_peripherals(
+    pub fn attach_ext_device(
         &mut self,
         expansion_devices: (Option<ExpansionDevice>, Option<ExpansionDevice>),
     ) {
-        let controller_1 = expansion_devices.0.map(Peripheral::from);
-        let controller_2 = expansion_devices.1.map(Peripheral::from);
+        let port1 = expansion_devices.0.map(Peripheral::from);
+        let port2 = expansion_devices.1.map(Peripheral::from);
 
-        self.board.attach_controllers(controller_1, controller_2);
-    }
-
-    pub fn set_controller_input(&mut self, input_1: u8, input_2: u8) {
-        if let Some(controller1) = &mut self.board.controller1 {
-            match controller1 {
-                Peripheral::StandardController(c) => c.input = input_1,
-            }
-        }
-
-        if let Some(controller2) = &mut self.board.controller2 {
-            match controller2 {
-                Peripheral::StandardController(c) => c.input = input_2,
-            }
-        }
+        self.board.attach_controllers(port1, port2);
     }
 
     #[must_use]

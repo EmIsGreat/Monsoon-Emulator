@@ -5,3 +5,4 @@ pub mod persistence;
 pub mod savestates;
 pub mod storage;
 pub mod util;
+mod peripherals;

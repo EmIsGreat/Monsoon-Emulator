@@ -162,3 +162,13 @@ fn binding_specificity(binding: Binding) -> usize {
             _ => 1,
         }
 }
+
+pub struct ControllerInputState {
+    input_state: egui::InputState,
+}
+
+pub fn get_controller_input_state(ctx: &Context) -> ControllerInputState {
+    ControllerInputState {
+        input_state: ctx.input(|i| i.clone()),
+    }
+}

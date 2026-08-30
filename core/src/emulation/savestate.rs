@@ -18,10 +18,11 @@ use crate::emulation::apu::{Apu, FrameCounter};
 use crate::emulation::board::Board;
 use crate::emulation::cpu::{Cpu, DmaState, IRQState, MicroOp, NMIState, OpQueue};
 use crate::emulation::mapper::Mapper;
-use crate::emulation::mem::OpenBus;
+use crate::emulation::mem::palette_ram::PaletteRam;
+use crate::emulation::mem::{Memory, OpenBus};
 use crate::emulation::opcode;
 use crate::emulation::opcode::{OPCODES_TABLE, get_opcode};
-use crate::emulation::peripherals::Peripheral;
+use crate::emulation::peripherals::{Peripheral, StandardController};
 use crate::emulation::ppu::{Ppu, SpriteFifo, TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH};
 use crate::emulation::rom::RomFile;
 
@@ -341,7 +342,31 @@ impl From<&ApuState> for Apu {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Hash)]
-pub enum PeripheralState {}
+pub enum PeripheralState {
+    StandardController { shift: u8, strobe: bool },
+}
+
+impl From<&Peripheral> for PeripheralState {
+    fn from(value: &Peripheral) -> Self {
+        match value {
+            Peripheral::StandardController(s) => PeripheralState::StandardController {
+                shift: s.shift,
+                strobe: s.strobe,
+            },
+        }
+    }
+}
+
+impl From<&PeripheralState> for Peripheral {
+    fn from(value: &PeripheralState) -> Self {
+        match value {
+            PeripheralState::StandardController {
+                shift,
+                strobe,
+            } => Peripheral::StandardController(StandardController::new(*shift, *strobe)),
+        }
+    }
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct BoardState {
@@ -356,8 +381,8 @@ pub struct BoardState {
     pub mapper: Mapper,
     pub cpu_open_bus: OpenBus,
     pub ppu_open_bus: OpenBus,
-    pub controller1: Option<Peripheral>,
-    pub controller2: Option<Peripheral>,
+    pub controller1: Option<PeripheralState>,
+    pub controller2: Option<PeripheralState>,
     pub joystick_strobe_data: u8,
 }
 
@@ -373,9 +398,29 @@ impl From<&Board> for BoardState {
             mapper: board.mapper.clone(),
             cpu_open_bus: board.cpu_open_bus,
             ppu_open_bus: board.ppu_open_bus,
-            controller1: board.controller1.clone(),
-            controller2: board.controller2.clone(),
+            controller1: board.port1.as_ref().map(|p| p.into()),
+            controller2: board.port2.as_ref().map(|p| p.into()),
             joystick_strobe_data: board.joystick_strobe_data,
+        }
+    }
+}
+
+impl From<&BoardState> for Board {
+    fn from(state: &BoardState) -> Self {
+        Board {
+            cpu: Cpu::from(&state.cpu),
+            ppu: Ppu::from(&state.ppu),
+            apu: Apu::from(&state.apu),
+            cpu_ram: Memory::from((&state.cpu_ram, true)),
+            nametable_ram: Memory::from((&state.nametable_ram, true)),
+            palette_ram: PaletteRam::from(&state.palette_ram),
+            mapper: state.mapper.clone(),
+            cpu_open_bus: state.cpu_open_bus,
+            ppu_open_bus: state.ppu_open_bus,
+            port1: state.controller1.clone().map(|s| (&s).into()),
+            port2: state.controller2.clone().map(|s| (&s).into()),
+            joystick_strobe_data: state.joystick_strobe_data,
+            irq: false,
         }
     }
 }

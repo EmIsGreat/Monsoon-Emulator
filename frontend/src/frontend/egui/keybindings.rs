@@ -217,14 +217,14 @@ impl Display for BindVariant {
     Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Hash, Ord, PartialOrd, EnumIter,
 )]
 pub enum OnKeyAction {
-    ControllerUp,
-    ControllerDown,
-    ControllerLeft,
-    ControllerRight,
-    ControllerAButton,
-    ControllerBButton,
-    ControllerStartButton,
-    ControllerSelectButton,
+    StdControllerUp,
+    StdControllerDown,
+    StdControllerLeft,
+    StdControllerRight,
+    StdControllerAButton,
+    StdControllerBButton,
+    StdControllerStartButton,
+    StdControllerSelectButton,
     PauseEmulator,
     StepFrame,
     StepScanline,
@@ -286,14 +286,14 @@ impl OnKeyAction {
     pub fn get_display_name(self) -> &'static str {
         match self {
             OnKeyAction::ChangeDebugPalette => "Change Debug Palette",
-            OnKeyAction::ControllerUp => "DPad Up",
-            OnKeyAction::ControllerDown => "DPad Down",
-            OnKeyAction::ControllerLeft => "DPad Left",
-            OnKeyAction::ControllerRight => "DPad Right",
-            OnKeyAction::ControllerAButton => "A Button",
-            OnKeyAction::ControllerBButton => "B Button",
-            OnKeyAction::ControllerStartButton => "Start Button",
-            OnKeyAction::ControllerSelectButton => "Select Button",
+            OnKeyAction::StdControllerUp => "DPad Up",
+            OnKeyAction::StdControllerDown => "DPad Down",
+            OnKeyAction::StdControllerLeft => "DPad Left",
+            OnKeyAction::StdControllerRight => "DPad Right",
+            OnKeyAction::StdControllerAButton => "A Button",
+            OnKeyAction::StdControllerBButton => "B Button",
+            OnKeyAction::StdControllerStartButton => "Start Button",
+            OnKeyAction::StdControllerSelectButton => "Select Button",
             OnKeyAction::PauseEmulator => "Pause/Resume Emulator",
             OnKeyAction::StepFrame => "Step Frame",
             OnKeyAction::StepScanline => "Step Scanline",
@@ -326,14 +326,14 @@ impl OnKeyAction {
 
     pub fn get_trigger_type(self) -> TriggerType {
         match self {
-            OnKeyAction::ControllerUp
-            | OnKeyAction::ControllerDown
-            | OnKeyAction::ControllerLeft
-            | OnKeyAction::ControllerRight
-            | OnKeyAction::ControllerAButton
-            | OnKeyAction::ControllerBButton
-            | OnKeyAction::ControllerStartButton
-            | OnKeyAction::ControllerSelectButton
+            OnKeyAction::StdControllerUp
+            | OnKeyAction::StdControllerDown
+            | OnKeyAction::StdControllerLeft
+            | OnKeyAction::StdControllerRight
+            | OnKeyAction::StdControllerAButton
+            | OnKeyAction::StdControllerBButton
+            | OnKeyAction::StdControllerStartButton
+            | OnKeyAction::StdControllerSelectButton
             | OnKeyAction::Reset
             | OnKeyAction::Speedup => TriggerType::Continuous,
             _ => TriggerType::Single,
@@ -342,14 +342,14 @@ impl OnKeyAction {
 
     pub fn get_category(self) -> KeybindCategory {
         match self {
-            OnKeyAction::ControllerUp
-            | OnKeyAction::ControllerDown
-            | OnKeyAction::ControllerLeft
-            | OnKeyAction::ControllerRight
-            | OnKeyAction::ControllerAButton
-            | OnKeyAction::ControllerBButton
-            | OnKeyAction::ControllerStartButton
-            | OnKeyAction::ControllerSelectButton => KeybindCategory::Controller,
+            OnKeyAction::StdControllerUp
+            | OnKeyAction::StdControllerDown
+            | OnKeyAction::StdControllerLeft
+            | OnKeyAction::StdControllerRight
+            | OnKeyAction::StdControllerAButton
+            | OnKeyAction::StdControllerBButton
+            | OnKeyAction::StdControllerStartButton
+            | OnKeyAction::StdControllerSelectButton => KeybindCategory::Controller,
             OnKeyAction::PauseEmulator
             | OnKeyAction::StepFrame
             | OnKeyAction::StepScanline
@@ -400,27 +400,27 @@ impl OnKeyAction {
 
     pub fn get_associated_message(self) -> AsyncFrontendMessage {
         match self {
-            OnKeyAction::ControllerUp => AsyncFrontendMessage::ControllerInput(ControllerEvent::Up),
-            OnKeyAction::ControllerDown => {
-                AsyncFrontendMessage::ControllerInput(ControllerEvent::Down)
+            OnKeyAction::StdControllerUp => AsyncFrontendMessage::ControllerInput(ControllerEvent::StdUp),
+            OnKeyAction::StdControllerDown => {
+                AsyncFrontendMessage::ControllerInput(ControllerEvent::StdDown)
             }
-            OnKeyAction::ControllerLeft => {
-                AsyncFrontendMessage::ControllerInput(ControllerEvent::Left)
+            OnKeyAction::StdControllerLeft => {
+                AsyncFrontendMessage::ControllerInput(ControllerEvent::StdLeft)
             }
-            OnKeyAction::ControllerRight => {
-                AsyncFrontendMessage::ControllerInput(ControllerEvent::Right)
+            OnKeyAction::StdControllerRight => {
+                AsyncFrontendMessage::ControllerInput(ControllerEvent::StdRight)
             }
-            OnKeyAction::ControllerAButton => {
-                AsyncFrontendMessage::ControllerInput(ControllerEvent::A)
+            OnKeyAction::StdControllerAButton => {
+                AsyncFrontendMessage::ControllerInput(ControllerEvent::StdA)
             }
-            OnKeyAction::ControllerBButton => {
-                AsyncFrontendMessage::ControllerInput(ControllerEvent::B)
+            OnKeyAction::StdControllerBButton => {
+                AsyncFrontendMessage::ControllerInput(ControllerEvent::StdB)
             }
-            OnKeyAction::ControllerStartButton => {
-                AsyncFrontendMessage::ControllerInput(ControllerEvent::Start)
+            OnKeyAction::StdControllerStartButton => {
+                AsyncFrontendMessage::ControllerInput(ControllerEvent::StdStart)
             }
-            OnKeyAction::ControllerSelectButton => {
-                AsyncFrontendMessage::ControllerInput(ControllerEvent::Select)
+            OnKeyAction::StdControllerSelectButton => {
+                AsyncFrontendMessage::ControllerInput(ControllerEvent::StdSelect)
             }
             OnKeyAction::PauseEmulator => AsyncFrontendMessage::PauseEmulator,
             OnKeyAction::StepFrame => AsyncFrontendMessage::StepFrame,
@@ -1015,7 +1015,7 @@ mod tests {
 
     #[test]
     fn modifier_only_capture_allowed_for_continuous_trigger_actions() {
-        assert!(modifier_only_capture_allowed(OnKeyAction::ControllerUp));
+        assert!(modifier_only_capture_allowed(OnKeyAction::StdControllerUp));
         assert!(modifier_only_capture_allowed(OnKeyAction::Speedup));
     }
 }

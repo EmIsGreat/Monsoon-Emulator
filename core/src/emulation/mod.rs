@@ -31,7 +31,7 @@ pub(crate) mod mem;
 pub mod nes;
 pub(crate) mod opcode;
 pub mod palette_util;
-pub(crate) mod peripherals;
+pub mod peripherals;
 pub(crate) mod ppu;
 pub mod ppu_util;
 pub mod rom;

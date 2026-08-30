@@ -54,14 +54,14 @@ pub enum SaveType {
 /// Controller input events
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ControllerEvent {
-    Left,
-    Right,
-    Up,
-    Down,
-    Start,
-    Select,
-    A,
-    B,
+    StdLeft,
+    StdRight,
+    StdUp,
+    StdDown,
+    StdStart,
+    StdSelect,
+    StdA,
+    StdB,
 }
 
 /// Messages sent from the emulator to the frontend

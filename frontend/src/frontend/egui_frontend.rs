@@ -486,10 +486,10 @@ impl EguiApp {
             let frame_budget = self.get_frame_budget();
             let is_uncapped = self.config.speed_config.app_speed == AppSpeed::Uncapped
                 || ctx.memory(|mem| {
-                mem.data
-                    .get_temp(Id::new(AsyncFrontendMessage::Speedup))
-                    .unwrap_or(false)
-            });
+                    mem.data
+                        .get_temp(Id::new(AsyncFrontendMessage::Speedup))
+                        .unwrap_or(false)
+                });
 
             if !is_uncapped {
                 self.accumulator += delta;
@@ -547,10 +547,10 @@ impl EguiApp {
                 // After that, they're re-requested when the emulator notifies of changes.
                 let should_skip_passive = to_fetch.is_passive()
                     && match to_fetch {
-                    EmulatorFetchable::Tiles(_) => self.emu_textures.tile_textures.is_some(),
-                    EmulatorFetchable::Palettes(_) => self.emu_textures.palette_data.is_some(),
-                    _ => false,
-                };
+                        EmulatorFetchable::Tiles(_) => self.emu_textures.tile_textures.is_some(),
+                        EmulatorFetchable::Palettes(_) => self.emu_textures.palette_data.is_some(),
+                        _ => false,
+                    };
 
                 if !should_skip_passive {
                     let _ = self
@@ -634,7 +634,7 @@ impl EguiApp {
         let persistent_config: PersistentConfig = (&self.config).into();
         util::spawn_async(async move {
             if let Err(e) = crate::frontend::persistence::save_config(&persistent_config).await {
-                eprintln!("Failed to save configuration: {}", e);
+                eprintln!("Failed to save configuration: {e}");
             }
         });
     }
@@ -909,6 +909,7 @@ fn get_app_config(
 
 #[cfg(target_arch = "wasm32")]
 #[allow(clippy::unwrap_used)]
+#[allow(clippy::unnecessary_wraps)]
 fn run_internal_wasm(res: SetupResponse) -> Result<(), Box<dyn std::error::Error>> {
     use eframe::web_sys;
     use wasm_bindgen::JsCast;
@@ -967,7 +968,7 @@ fn run_internal_wasm(res: SetupResponse) -> Result<(), Box<dyn std::error::Error
         eframe::WebRunner::new()
             .start(canvas, options, get_app_config(res, loaded_config))
             .await
-            .unwrap()
+            .unwrap();
     });
 
     Ok(())
