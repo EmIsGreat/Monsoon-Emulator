@@ -347,9 +347,9 @@ impl Ppu {
 
         self.update_nmi();
 
-        // Skip cycle on odd frames when rendering (skips from dot 339 directly to next
-        // frame) This occurs at dot 339 of scanline 261 on odd frames when rendering
-        // is enabled
+        // Skip cycle on odd frames when rendering (skips from dot 339 directly
+        // to next frame) This occurs at dot 339 of scanline 261 on odd
+        // frames when rendering is enabled
         let skip_cycle = self.dot == DOTS_PER_SCANLINE - 1
             && self.scanline == PRE_RENDER_SCANLINE
             && !self.even_frame
@@ -363,8 +363,9 @@ impl Ppu {
 
         self.dot_counter += 1;
 
-        // Increment dot/scanline directly instead of recalculating from dot_counter
-        // Handle skip_cycle by incrementing by 2 (skipping dot 340)
+        // Increment dot/scanline directly instead of recalculating from
+        // dot_counter Handle skip_cycle by incrementing by 2 (skipping
+        // dot 340)
         let increment = if skip_cycle { 2 } else { 1 };
         self.dot += increment;
 
@@ -428,7 +429,8 @@ impl Ppu {
                 let tile_id = if sprite_height == 8 {
                     u16::from(self.current_sprite_tile_id)
                 } else {
-                    // Strip bit 0 (used for table select), then select top or bottom tile
+                    // Strip bit 0 (used for table select), then select top or
+                    // bottom tile
                     let base_tile = u16::from(self.current_sprite_tile_id & 0xFE);
                     if row_offset < 8 {
                         base_tile

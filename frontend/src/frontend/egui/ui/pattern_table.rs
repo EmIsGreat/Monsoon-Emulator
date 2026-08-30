@@ -72,7 +72,8 @@ pub fn draw_pattern_table(
                     );
                 });
 
-                // Tile pixel editor grid (8x8 pixels, each 4x4 in size = 32x32 total)
+                // Tile pixel editor grid (8x8 pixels, each 4x4 in size = 32x32
+                // total)
                 let pixel_size = 4.0 * 8.0;
                 let pixel_grid = PainterGridConfig::square(pixel_size * 8.0, 8);
                 let (pixel_parent, _) =
@@ -98,8 +99,8 @@ pub fn draw_pattern_table(
                     );
 
                     // Support both click and drag for editing pixels
-                    // Check if clicked OR if pointer is within this pixel's rect while primary
-                    // button is down
+                    // Check if clicked OR if pointer is within this pixel's
+                    // rect while primary button is down
                     let pointer_in_rect = ui.ctx().input(|i| {
                         i.pointer
                             .interact_pos()

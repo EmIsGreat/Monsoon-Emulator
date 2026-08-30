@@ -19,7 +19,6 @@ use serde::{Deserialize, Serialize};
 use strum::EnumIter;
 
 use crate::frontend::messages::AsyncFrontendMessage;
-use crate::messages::ControllerEvent;
 
 /// Well-known egui data ID used to signal that a [`Hotkey`] widget is
 /// currently waiting for the user to press a key.
@@ -398,63 +397,53 @@ impl OnKeyAction {
         self.get_category() == KeybindCategory::Controller
     }
 
-    pub fn get_associated_message(self) -> AsyncFrontendMessage {
+    pub fn get_associated_message(self) -> Option<AsyncFrontendMessage> {
         match self {
-            OnKeyAction::StdControllerUp => AsyncFrontendMessage::ControllerInput(ControllerEvent::StdUp),
-            OnKeyAction::StdControllerDown => {
-                AsyncFrontendMessage::ControllerInput(ControllerEvent::StdDown)
+            OnKeyAction::StdControllerUp
+            | OnKeyAction::StdControllerDown
+            | OnKeyAction::StdControllerLeft
+            | OnKeyAction::StdControllerRight
+            | OnKeyAction::StdControllerAButton
+            | OnKeyAction::StdControllerBButton
+            | OnKeyAction::StdControllerStartButton
+            | OnKeyAction::StdControllerSelectButton => None,
+            OnKeyAction::PauseEmulator => Some(AsyncFrontendMessage::PauseEmulator),
+            OnKeyAction::StepFrame => Some(AsyncFrontendMessage::StepFrame),
+            OnKeyAction::StepScanline => Some(AsyncFrontendMessage::StepScanline),
+            OnKeyAction::StepMasterCycle => Some(AsyncFrontendMessage::StepMasterCycle),
+            OnKeyAction::StepPpuCycle => Some(AsyncFrontendMessage::StepPpuCycle),
+            OnKeyAction::StepCpuCycle => Some(AsyncFrontendMessage::StepCpuCycle),
+            OnKeyAction::Reset => Some(AsyncFrontendMessage::Reset),
+            OnKeyAction::Quicksave => Some(AsyncFrontendMessage::Quicksave),
+            OnKeyAction::Quickload => Some(AsyncFrontendMessage::Quickload),
+            OnKeyAction::ChangeDebugPalette => Some(AsyncFrontendMessage::ChangeDebugPalette),
+            OnKeyAction::LoadRom => Some(AsyncFrontendMessage::StartLoadRom),
+            OnKeyAction::Quit => Some(AsyncFrontendMessage::Quit),
+            OnKeyAction::LoadSavestate => Some(AsyncFrontendMessage::StartLoadSavestate),
+            OnKeyAction::CreateSavestate => Some(AsyncFrontendMessage::CreateSavestate),
+            OnKeyAction::BrowseSavestates => Some(AsyncFrontendMessage::OpenSaveBrowser),
+            OnKeyAction::PowerCycle => Some(AsyncFrontendMessage::PowerCycle),
+            OnKeyAction::PowerToggle => Some(AsyncFrontendMessage::PowerToggle),
+            OnKeyAction::OpenOptionsMenu => Some(AsyncFrontendMessage::OpenOptionsMenu),
+            OnKeyAction::OpenKeybindingsMenu => Some(AsyncFrontendMessage::OpenKeybindsMenu),
+            OnKeyAction::OpenPaletteViewer => Some(AsyncFrontendMessage::OpenPaletteViewer),
+            OnKeyAction::OpenPatternTableViewer => {
+                Some(AsyncFrontendMessage::OpenPatternTableViewer)
             }
-            OnKeyAction::StdControllerLeft => {
-                AsyncFrontendMessage::ControllerInput(ControllerEvent::StdLeft)
-            }
-            OnKeyAction::StdControllerRight => {
-                AsyncFrontendMessage::ControllerInput(ControllerEvent::StdRight)
-            }
-            OnKeyAction::StdControllerAButton => {
-                AsyncFrontendMessage::ControllerInput(ControllerEvent::StdA)
-            }
-            OnKeyAction::StdControllerBButton => {
-                AsyncFrontendMessage::ControllerInput(ControllerEvent::StdB)
-            }
-            OnKeyAction::StdControllerStartButton => {
-                AsyncFrontendMessage::ControllerInput(ControllerEvent::StdStart)
-            }
-            OnKeyAction::StdControllerSelectButton => {
-                AsyncFrontendMessage::ControllerInput(ControllerEvent::StdSelect)
-            }
-            OnKeyAction::PauseEmulator => AsyncFrontendMessage::PauseEmulator,
-            OnKeyAction::StepFrame => AsyncFrontendMessage::StepFrame,
-            OnKeyAction::StepScanline => AsyncFrontendMessage::StepScanline,
-            OnKeyAction::StepMasterCycle => AsyncFrontendMessage::StepMasterCycle,
-            OnKeyAction::StepPpuCycle => AsyncFrontendMessage::StepPpuCycle,
-            OnKeyAction::StepCpuCycle => AsyncFrontendMessage::StepCpuCycle,
-            OnKeyAction::Reset => AsyncFrontendMessage::Reset,
-            OnKeyAction::Quicksave => AsyncFrontendMessage::Quicksave,
-            OnKeyAction::Quickload => AsyncFrontendMessage::Quickload,
-            OnKeyAction::ChangeDebugPalette => AsyncFrontendMessage::ChangeDebugPalette,
-            OnKeyAction::LoadRom => AsyncFrontendMessage::StartLoadRom,
-            OnKeyAction::Quit => AsyncFrontendMessage::Quit,
-            OnKeyAction::LoadSavestate => AsyncFrontendMessage::StartLoadSavestate,
-            OnKeyAction::CreateSavestate => AsyncFrontendMessage::CreateSavestate,
-            OnKeyAction::BrowseSavestates => AsyncFrontendMessage::OpenSaveBrowser,
-            OnKeyAction::PowerCycle => AsyncFrontendMessage::PowerCycle,
-            OnKeyAction::PowerToggle => AsyncFrontendMessage::PowerToggle,
-            OnKeyAction::OpenOptionsMenu => AsyncFrontendMessage::OpenOptionsMenu,
-            OnKeyAction::OpenKeybindingsMenu => AsyncFrontendMessage::OpenKeybindsMenu,
-            OnKeyAction::OpenPaletteViewer => AsyncFrontendMessage::OpenPaletteViewer,
-            OnKeyAction::OpenPatternTableViewer => AsyncFrontendMessage::OpenPatternTableViewer,
-            OnKeyAction::OpenNametableViewer => AsyncFrontendMessage::OpenNametableViewer,
-            OnKeyAction::OpenSpriteViewer => AsyncFrontendMessage::OpenSpriteViewer,
-            OnKeyAction::OpenSoamViewer => AsyncFrontendMessage::OpenSoamViewer,
-            OnKeyAction::OpenRomHeaderViewer => AsyncFrontendMessage::OpenRomHeaderViewer,
-            OnKeyAction::OpenRegistersViewer => AsyncFrontendMessage::OpenRegistersViewer,
-            OnKeyAction::OpenTraceLogViewer => AsyncFrontendMessage::OpenTraceLogViewer,
-            OnKeyAction::Speedup => AsyncFrontendMessage::Speedup,
+            OnKeyAction::OpenNametableViewer => Some(AsyncFrontendMessage::OpenNametableViewer),
+            OnKeyAction::OpenSpriteViewer => Some(AsyncFrontendMessage::OpenSpriteViewer),
+            OnKeyAction::OpenSoamViewer => Some(AsyncFrontendMessage::OpenSoamViewer),
+            OnKeyAction::OpenRomHeaderViewer => Some(AsyncFrontendMessage::OpenRomHeaderViewer),
+            OnKeyAction::OpenRegistersViewer => Some(AsyncFrontendMessage::OpenRegistersViewer),
+            OnKeyAction::OpenTraceLogViewer => Some(AsyncFrontendMessage::OpenTraceLogViewer),
+            OnKeyAction::Speedup => Some(AsyncFrontendMessage::Speedup),
         }
     }
 
     pub fn send(self, sender: &Sender<AsyncFrontendMessage>) {
-        let _ = sender.send(self.get_associated_message());
+        if let Some(message) = self.get_associated_message() {
+            let _ = sender.send(message);
+        }
     }
 }
 

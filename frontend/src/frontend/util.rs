@@ -278,8 +278,9 @@ pub fn spawn_save_dialog(
             let bytes = data.to_bytes(format);
 
             if let Ok(bytes) = bytes {
-                // On native, if the filename had no extension, write to a path with the
-                // default extension appended so the file on disk gets the correct name.
+                // On native, if the filename had no extension, write to a path
+                // with the default extension appended so the
+                // file on disk gets the correct name.
                 #[cfg(not(target_arch = "wasm32"))]
                 let result = {
                     if get_extension(&filename).is_none() {

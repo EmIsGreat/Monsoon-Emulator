@@ -94,8 +94,8 @@ impl EguiApp {
     }
 
     fn handle_palette_data(&mut self, ctx: &Context, new_palette_data: Option<Box<PaletteData>>) {
-        // Only rebuild textures if palette data actually changed and a tile viewer is
-        // visible
+        // Only rebuild textures if palette data actually changed and a tile
+        // viewer is visible
         if self.emu_textures.palette_data != new_palette_data {
             let changed_palettes = self.detect_changed_palettes(new_palette_data.as_deref());
             self.emu_textures.palette_data = new_palette_data;

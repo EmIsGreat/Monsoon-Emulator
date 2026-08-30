@@ -34,7 +34,7 @@ use web_time::{Duration, Instant};
 use crate::channel_emu::ChannelEmulator;
 use crate::frontend::egui::config::{AppConfig, AppSpeed};
 use crate::frontend::egui::fps_counter::FpsCounter;
-use crate::frontend::egui::input::handle_keyboard_input;
+use crate::frontend::egui::input::{get_controller_input_state, handle_keyboard_input};
 use crate::frontend::egui::message_handlers::async_handler::extract_timestamp;
 use crate::frontend::egui::message_handlers::{AsyncMessageHandler, EmulatorMessageHandler};
 use crate::frontend::egui::textures::EmuTextures;
@@ -113,7 +113,8 @@ impl EguiApp {
         to_async: Sender<AsyncFrontendMessage>,
         from_async: Receiver<AsyncFrontendMessage>,
     ) -> Self {
-        // Try to restore the tile tree from egui's storage, fall back to default
+        // Try to restore the tile tree from egui's storage, fall back to
+        // default
         let tree = cc
             .storage
             .and_then(|storage| {
@@ -309,7 +310,8 @@ impl EguiApp {
                     });
                 }
 
-                // Clean up old autosaves asynchronously to avoid blocking the UI
+                // Clean up old autosaves asynchronously to avoid blocking the
+                // UI
                 Self::cleanup_old_autosaves_async(display_name);
             }
         }
@@ -512,12 +514,14 @@ impl EguiApp {
                         self.accumulator -= frame_budget;
                     }
 
-                    // For uncapped mode, keep running frames until we hit our time budget
-                    // For normal modes, check if we've spent too much time and need to drop frames
+                    // For uncapped mode, keep running frames until we hit our
+                    // time budget For normal modes, check
+                    // if we've spent too much time and need to drop frames
                     let elapsed = emulation_start.elapsed();
                     if elapsed > max_emulation_time {
                         if !is_uncapped {
-                            // Drop backlog only in non-uncapped mode when falling behind
+                            // Drop backlog only in non-uncapped mode when
+                            // falling behind
                             self.accumulator = Duration::ZERO;
                         }
                         break;
@@ -543,8 +547,9 @@ impl EguiApp {
             && now.duration_since(self.emu_textures.last_debug_request) >= debug_frame_budget
         {
             for to_fetch in &self.config.view_config.required_debug_fetches {
-                // Passive fetches (tiles, palettes) are only requested once initially.
-                // After that, they're re-requested when the emulator notifies of changes.
+                // Passive fetches (tiles, palettes) are only requested once
+                // initially. After that, they're re-requested
+                // when the emulator notifies of changes.
                 let should_skip_passive = to_fetch.is_passive()
                     && match to_fetch {
                         EmulatorFetchable::Tiles(_) => self.emu_textures.tile_textures.is_some(),
@@ -599,8 +604,9 @@ impl EguiApp {
     fn check_focus_autosave(&mut self, ctx: &Context) {
         let is_focused = ctx.input(|i| i.focused);
 
-        // Only autosave when focus is lost (transition from focused to unfocused)
-        // This also resets the periodic timer since we just saved
+        // Only autosave when focus is lost (transition from focused to
+        // unfocused) This also resets the periodic timer since we just
+        // saved
         if self.was_focused
             && !is_focused
             && self.config.console_config.loaded_rom.is_some()
@@ -654,6 +660,11 @@ impl eframe::App for EguiApp {
 
         // Handle keyboard input
         handle_keyboard_input(ctx, &self.async_sender, &mut self.config);
+        let controller_input = get_controller_input_state(ctx);
+        self.channel_emu.set_standard_controller_state(
+            controller_input.standard_controller_state(&self.config),
+            true,
+        );
         self.config.sync_dialog_pause_reason();
 
         // Process pending frontend, async, and emulator messages
@@ -727,8 +738,9 @@ impl eframe::App for EguiApp {
         // Save configuration before exiting
         #[cfg(not(target_arch = "wasm32"))]
         let persistent_config: PersistentConfig = (&self.config).into();
-        // On native, block on the async save to ensure it completes before exit.
-        // On WASM, call the async helper since we can't block the browser thread.
+        // On native, block on the async save to ensure it completes before
+        // exit. On WASM, call the async helper since we can't block the
+        // browser thread.
         #[cfg(not(target_arch = "wasm32"))]
         {
             let rt = tokio::runtime::Handle::current();
@@ -855,7 +867,8 @@ async fn run_internal(res: SetupResponse) -> Result<(), Box<dyn std::error::Erro
             builder = builder.with_update_url("https://updates.gemderbent.dev/manifest.json");
 
             if let Ok((provider, bytes_to_cache)) = builder.build().await {
-                // Persist freshly-fetched remote bytes so they're available next run.
+                // Persist freshly-fetched remote bytes so they're available
+                // next run.
                 if let Some(bytes) = bytes_to_cache {
                     let _ = storage::write_sync(&cache_key, &bytes);
                 }
@@ -865,7 +878,8 @@ async fn run_internal(res: SetupResponse) -> Result<(), Box<dyn std::error::Erro
     }
 
     // Configure eframe options
-    // Disable vsync to allow uncapped frame rates - emulator handles its own timing
+    // Disable vsync to allow uncapped frame rates - emulator handles its own
+    // timing
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([1024.0, 768.0])
@@ -960,7 +974,8 @@ fn run_internal_wasm(res: SetupResponse) -> Result<(), Box<dyn std::error::Error
         }
 
         // Configure eframe options
-        // Disable vsync to allow uncapped frame rates - emulator handles its own timing
+        // Disable vsync to allow uncapped frame rates - emulator handles its
+        // own timing
         let options = eframe::WebOptions {
             ..Default::default()
         };

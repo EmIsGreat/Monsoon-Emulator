@@ -6,15 +6,7 @@ use crate::frontend::egui::keybindings::{
     BindVariant, Binding, HotkeyBinding, ModifierKey, OnKeyAction,
 };
 
-pub trait FromEguiInput {
-    fn from_egui(input: &egui::InputState) -> Self;
-}
-
-impl FromEguiInput for StandardControllerState {
-    fn from_egui(input: &InputState) -> Self {}
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct StandardControllerBindings {
     pub up: Binding,
     pub down: Binding,
@@ -43,6 +35,22 @@ impl Default for StandardControllerBindings {
 
             start: Binding::key(Key::Enter, OnKeyAction::StdControllerStartButton),
             select: Binding::key(Key::Tab, OnKeyAction::StdControllerSelectButton),
+        }
+    }
+}
+
+impl StandardControllerBindings {
+    #[must_use]
+    pub fn to_state(&self, input: &InputState) -> StandardControllerState {
+        StandardControllerState {
+            a: self.a.active(input),
+            b: self.b.active(input),
+            select: self.select.active(input),
+            start: self.start.active(input),
+            up: self.up.active(input),
+            down: self.down.active(input),
+            left: self.left.active(input),
+            right: self.right.active(input),
         }
     }
 }

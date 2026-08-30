@@ -1,8 +1,9 @@
 use std::collections::{HashMap, HashSet};
-use std::sync::OnceLock;
+use std::sync::{Arc, Mutex, OnceLock};
 
 use crossbeam_channel::{Receiver, Sender};
 use monsoon_core::emulation::nes::Nes;
+use monsoon_core::emulation::peripherals::{PeripheralDevice, StandardControllerState};
 use monsoon_core::emulation::ppu_util::{
     EmulatorFetchable, PaletteData, TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH,
 };
@@ -61,6 +62,8 @@ pub struct ChannelEmulator {
     last_palette_data: Option<PaletteData>,
     /// Cached hash of pattern table data for efficient change detection
     last_pattern_table_hash: Option<u64>,
+    controller_input_1: Arc<Mutex<StandardControllerState>>,
+    controller_input_2: Arc<Mutex<StandardControllerState>>,
 }
 
 pub static FETCH_DEPS: OnceLock<HashMap<EmulatorFetchable, Vec<EmulatorFetchable>>> =
@@ -108,6 +111,8 @@ impl ChannelEmulator {
             ],
             last_palette_data: None,
             last_pattern_table_hash: None,
+            controller_input_1: Arc::new(Mutex::new(StandardControllerState::default())),
+            controller_input_2: Arc::new(Mutex::new(StandardControllerState::default())),
         };
 
         (emu, tx_to_emu, rx_to_frontend)
@@ -214,6 +219,7 @@ impl ChannelEmulator {
                 FrontendMessage::StepScanline => self.execute_scanline()?,
                 FrontendMessage::AttachPeripherals((peripheral1, peripheral2)) => {
                     self.nes.attach_ext_device((peripheral1, peripheral2));
+                    self.configure_controller_refresh();
                 }
                 FrontendMessage::UpdateRomDb(db) => self.nes.rom_db = db,
             }
@@ -348,7 +354,7 @@ impl ChannelEmulator {
         }
     }
 
-    fn handle_controller_event(&mut self, event: ControllerEvent, is_slot_one: bool) {
+    fn handle_controller_event(&mut self, _event: ControllerEvent, _is_slot_one: bool) {
         // self.nes.set_controller_input()
         //
         // let input_field = if is_slot_one {
@@ -369,6 +375,38 @@ impl ChannelEmulator {
         // }
     }
 
+    fn configure_controller_refresh(&mut self) {
+        if let Some(port1) = self.nes.board.port1.as_mut() {
+            let state = Arc::clone(&self.controller_input_1);
+            port1.set_refresh_func(Box::new(move || {
+                state
+                    .lock()
+                    .map_or(StandardControllerState::default(), |s| *s)
+            }));
+        }
+
+        if let Some(port2) = self.nes.board.port2.as_mut() {
+            let state = Arc::clone(&self.controller_input_2);
+            port2.set_refresh_func(Box::new(move || {
+                state
+                    .lock()
+                    .map_or(StandardControllerState::default(), |s| *s)
+            }));
+        }
+    }
+
+    pub fn set_standard_controller_state(&self, state: StandardControllerState, is_slot_one: bool) {
+        let slot = if is_slot_one {
+            &self.controller_input_1
+        } else {
+            &self.controller_input_2
+        };
+
+        if let Ok(mut guard) = slot.lock() {
+            *guard = state;
+        }
+    }
+
     #[must_use]
     pub fn compute_required_fetches(
         enabled: &HashSet<EmulatorFetchable>,
@@ -384,7 +422,8 @@ impl ChannelEmulator {
         while let Some(to_fetch) = stack.pop() {
             // Only process if we haven't seen this fetchable before
             if fetch.insert(EmulatorFetchable::get_empty(&to_fetch)) {
-                // If this fetchable has dependencies, add them to the stack for processing
+                // If this fetchable has dependencies, add them to the stack for
+                // processing
                 if let Some(reqs) = deps.get(&to_fetch) {
                     for x in reqs {
                         let empty = EmulatorFetchable::get_empty(x);
