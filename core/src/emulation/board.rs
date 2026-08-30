@@ -494,7 +494,11 @@ impl<'a> CpuBusView<'a> {
         match addr {
             0x4016 => {
                 *self.strobe_data = data & 1;
-                Board::update_controllers(self.controller1, self.controller2, *self.strobe_data);
+                Board::update_controllers(
+                    self.controller1,
+                    self.controller2,
+                    *self.strobe_data,
+                );
             }
             0x4017 => {
                 self.apu.frame_counter.five_step = data & 0x80 != 0;
@@ -554,11 +558,19 @@ impl Board {
         board
     }
 
-    pub fn attach_controllers(&mut self, port1: Option<Peripheral>, port2: Option<Peripheral>) {
+    pub fn attach_controllers(
+        &mut self,
+        port1: Option<Peripheral>,
+        port2: Option<Peripheral>,
+    ) {
         self.port1 = port1;
         self.port2 = port2;
 
-        Board::update_controllers(&mut self.port1, &mut self.port2, self.joystick_strobe_data);
+        Board::update_controllers(
+            &mut self.port1,
+            &mut self.port2,
+            self.joystick_strobe_data,
+        );
     }
 
     pub fn update_controllers(

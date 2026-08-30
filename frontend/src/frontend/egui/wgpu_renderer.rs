@@ -352,8 +352,8 @@ impl NesWgpuRenderer {
         h: f32,
     ) {
         // Apply NTSC pixel aspect ratio correction (8:7).
-        // Compute the desired width when the texture is stretched to correct
-        // pixel aspect: desired_width = height * aspect.
+        // Compute the desired width when the texture is stretched to correct pixel
+        // aspect: desired_width = height * aspect.
         let aspect = (256.0 * 8.0 / 7.0) / 240.0;
         let desired_width = h * aspect;
 

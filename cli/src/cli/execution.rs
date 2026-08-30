@@ -464,8 +464,7 @@ impl ExecutionEngine {
 
         let max_cycles = self.config.max_cycles();
 
-        // Get the number of captures per PPU frame from the encoder's FPS
-        // config
+        // Get the number of captures per PPU frame from the encoder's FPS config
         let captures_per_frame = encoder.captures_per_frame();
 
         // Run frame by frame for stop condition checking
@@ -474,14 +473,11 @@ impl ExecutionEngine {
             // This avoids accumulated rounding errors from integer division
             let frame_start_cycles = self.emu.total_cycles;
 
-            // Run partial frames based on FPS multiplier and capture at each
-            // interval
+            // Run partial frames based on FPS multiplier and capture at each interval
             for capture_idx in 0..captures_per_frame {
-                // Calculate target cycle for this capture relative to frame
-                // start Using (capture_idx + 1) *
-                // MASTER_CYCLES_PER_FRAME / captures_per_frame
-                // ensures the final capture always aligns with the frame
-                // boundary
+                // Calculate target cycle for this capture relative to frame start
+                // Using (capture_idx + 1) * MASTER_CYCLES_PER_FRAME / captures_per_frame
+                // ensures the final capture always aligns with the frame boundary
                 let odd_frame_offset: i32 = if self.emu.is_even_frame() && self.emu.is_rendering() {
                     2
                 } else {
@@ -503,9 +499,8 @@ impl ExecutionEngine {
                 // Run until the target cycle
                 self.emu.run_until(target_cycles, RunOptions::default());
 
-                // Write frame directly to encoder (with upscaling if
-                // configured) This captures the current pixel
-                // buffer state, which may be mid-render
+                // Write frame directly to encoder (with upscaling if configured)
+                // This captures the current pixel buffer state, which may be mid-render
                 let frame = self.emu.get_pixel_buffer();
                 let rgb_frame = renderer.buffer_to_image(frame);
                 encoder

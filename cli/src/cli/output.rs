@@ -903,8 +903,8 @@ mod tests {
 
     #[test]
     fn test_interpreted_oam_from_raw() {
-        // Create full 256-byte OAM data (64 sprites × 4 bytes) with all sprites
-        // hidden by default
+        // Create full 256-byte OAM data (64 sprites × 4 bytes) with all sprites hidden
+        // by default
         let mut data = vec![0xFFu8; 256]; // Y=0xFF means hidden
         // Sprite 0: visible
         data[0] = 0x10; // Y

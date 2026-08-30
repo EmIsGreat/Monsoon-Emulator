@@ -380,9 +380,9 @@ impl Nes {
     /// ROM metadata is used only when no ROM is loaded). After loading,
     /// execution can resume from the exact point where the state was saved.
     pub fn load_state(&mut self, state: SaveState) {
-        // Use the already loaded ROM file if available (it has the actual ROM
-        // data), otherwise fall back to the savestate's ROM (which may
-        // have empty data due to Skip)
+        // Use the already loaded ROM file if available (it has the actual ROM data),
+        // otherwise fall back to the savestate's ROM (which may have empty data due to
+        // Skip)
 
         self.board = Board::from(&state.board);
 

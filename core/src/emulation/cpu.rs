@@ -147,12 +147,13 @@ impl Default for DmaState {
 }
 
 impl Default for Cpu {
-    fn default() -> Self { Self::new() }
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Cpu {
-    pub fn new() -> Self {
-        // Initialize both HashMap and fast lookup table
+    pub fn new() -> Self { // Initialize both HashMap and fast lookup table
         OPCODES_TABLE.get_or_init(opcode::init);
 
         Self {
@@ -2144,8 +2145,8 @@ impl Cpu {
     pub fn test_instance() -> Self {
         let mut inst = Cpu::new();
 
-        // Test instance doesn't get reset, therefore we need to manually fix
-        // the stack pointer
+        // Test instance doesn't get reset, therefore we need to manually fix the stack
+        // pointer
         inst.stack_pointer = 0xFD;
         inst
     }
