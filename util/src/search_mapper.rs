@@ -1,36 +1,25 @@
-use monsoon_core::emulation::rom::{RomFile, RomMapper};
-use monsoon_core::rom_db::RomDb;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::fs;
 use std::hash::Hash;
 use std::path::PathBuf;
 use std::str::FromStr;
+
+use monsoon_core::emulation::rom::{RomFile, RomMapper};
+use monsoon_core::rom_db::RomDb;
 use strum::IntoEnumIterator;
 use walkdir::WalkDir;
 
 pub fn search_for_mapper(mapper: u16, use_local: bool) {
     print_with_predicate(
         |f| <RomMapper as Into<u16>>::into(f.mapper) == mapper,
-        vec![],
+        &vec![].into_boxed_slice(),
         use_local,
-    )
+    );
 }
 
 fn get_roms(use_local: bool) -> Vec<RomFile> {
-    let mut roms: Vec<RomFile> = if !use_local {
-        let db = RomDb::default();
-        db.get_all_entries()
-            .iter()
-            .copied()
-            .cloned()
-            .filter_map(|f| {
-                f.header
-                    .clone()
-                    .and_then(|h| RomFile::get_for_header(&h, &f.name).ok())
-            })
-            .collect()
-    } else {
+    let mut roms: Vec<RomFile> = if use_local {
         let path = PathBuf::from_str("/home/emily/roms/nes/").unwrap();
 
         let roms: Vec<_> = WalkDir::new(path)
@@ -51,6 +40,18 @@ fn get_roms(use_local: bool) -> Vec<RomFile> {
                 .unwrap()
             })
             .collect()
+    } else {
+        let db = RomDb::default();
+        db.get_all_entries()
+            .iter()
+            .copied()
+            .cloned()
+            .filter_map(|f| {
+                f.header
+                    .clone()
+                    .and_then(|h| RomFile::get_for_header(&h, &f.name).ok())
+            })
+            .collect()
     };
     roms.sort_by_key(|f| f.name.clone().unwrap());
     roms
@@ -59,29 +60,30 @@ fn get_roms(use_local: bool) -> Vec<RomFile> {
 pub fn search_for_submapper_mapper(mapper: u16, sub: u8, use_local: bool) {
     print_with_predicate(
         |f| <RomMapper as Into<u16>>::into(f.mapper) == mapper && f.submapper_number == sub,
-        vec![],
+        &vec![].into_boxed_slice(),
         use_local,
     );
 }
 
-pub fn print_with_predicate<F>(
-    pred: F,
-    print: Vec<Box<dyn Fn(&RomFile) -> String>>,
-    use_local: bool,
-) where
+type RomTransformer = dyn Fn(&RomFile) -> String;
+
+/// # Panics
+/// When Rom is missing name
+pub fn print_with_predicate<F>(pred: F, print: &[Box<RomTransformer>], use_local: bool)
+where
     F: Fn(&RomFile) -> bool,
 {
     let filtered = get_with_predicate(pred, use_local);
 
     for rom in &filtered {
         println!("{}", rom.name.clone().unwrap());
-        for p in &print {
-            println!("  {}", p(rom))
+        for p in print {
+            println!("  {}", p(rom));
         }
     }
 
     println!();
-    println!("{} items", filtered.len())
+    println!("{} items", filtered.len());
 }
 
 pub fn get_with_predicate<F>(pred: F, use_local: bool) -> Vec<RomFile>
@@ -111,6 +113,6 @@ where
     vec.sort_by(|(v1, c1), (v2, c2)| c2.cmp(c1).then_with(|| v1.cmp(v2)));
 
     for (x, c) in vec {
-        println!("{}: {c}", x.to_string())
+        println!("{x}: {c}");
     }
 }

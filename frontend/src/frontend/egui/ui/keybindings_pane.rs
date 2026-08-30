@@ -123,7 +123,7 @@ pub fn render_keybindings(ui: &mut egui::Ui, config: &mut AppConfig) -> bool {
     egui::ScrollArea::vertical().show(ui, |ui| {
         changed |= render_standard_controller_bindings(
             ui,
-            &mut config.keybindings.standard_controller_bindings,
+            &mut config.keybindings.standard_controller,
             shared_label_column_width,
         );
         ui.separator();
@@ -132,7 +132,7 @@ pub fn render_keybindings(ui: &mut egui::Ui, config: &mut AppConfig) -> bool {
             ui,
             "Debug Keybinds",
             "debug_keybinds",
-            &mut config.keybindings.debug_bindings,
+            &mut config.keybindings.debug,
             &DEBUG_ACTIONS,
             shared_label_column_width,
         );
@@ -142,7 +142,7 @@ pub fn render_keybindings(ui: &mut egui::Ui, config: &mut AppConfig) -> bool {
             ui,
             "Ui Shortcuts",
             "ui_keybinds",
-            &mut config.keybindings.ui_bindings,
+            &mut config.keybindings.ui,
             &UI_ACTIONS,
             shared_label_column_width,
         );
@@ -152,7 +152,7 @@ pub fn render_keybindings(ui: &mut egui::Ui, config: &mut AppConfig) -> bool {
             ui,
             "Console Keybinds",
             "console_keybinds",
-            &mut config.keybindings.console_bindings,
+            &mut config.keybindings.console,
             &CONSOLE_ACTIONS,
             shared_label_column_width,
         );

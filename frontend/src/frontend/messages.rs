@@ -8,7 +8,6 @@ use serde::{Deserialize, Serialize};
 use crate::frontend::savestates::SaveEntry;
 use crate::frontend::storage::StorageKey;
 use crate::frontend::util::{FileType, SavestateLoadError};
-use crate::messages::ControllerEvent;
 
 #[derive(Clone, Copy, Hash, Debug)]
 pub enum AutoPauseSignal {
@@ -135,8 +134,6 @@ pub enum AsyncFrontendMessage {
         addr_1: u16,
         value_1: u8,
     },
-    /// Send controller input to the emulator
-    ControllerInput(ControllerEvent),
     StepPpuCycle,
     StepCpuCycle,
     StepMasterCycle,

@@ -398,8 +398,8 @@ impl From<&Board> for BoardState {
             mapper: board.mapper.clone(),
             cpu_open_bus: board.cpu_open_bus,
             ppu_open_bus: board.ppu_open_bus,
-            controller1: board.port1.as_ref().map(|p| p.into()),
-            controller2: board.port2.as_ref().map(|p| p.into()),
+            controller1: board.port1.as_ref().map(Into::into),
+            controller2: board.port2.as_ref().map(Into::into),
             joystick_strobe_data: board.joystick_strobe_data,
         }
     }

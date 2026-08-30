@@ -23,8 +23,6 @@ use crate::frontend::messages::LoadedRom;
 pub enum FrontendMessage {
     /// Request to quit the emulator
     Quit,
-    /// Controller input events
-    ControllerInput(ControllerEvent, bool),
     /// Request to reset the console
     Reset,
     Power(bool),
@@ -49,19 +47,6 @@ pub enum SaveType {
     Manual,
     Quicksave,
     Autosave,
-}
-
-/// Controller input events
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum ControllerEvent {
-    StdLeft,
-    StdRight,
-    StdUp,
-    StdDown,
-    StdStart,
-    StdSelect,
-    StdA,
-    StdB,
 }
 
 /// Messages sent from the emulator to the frontend

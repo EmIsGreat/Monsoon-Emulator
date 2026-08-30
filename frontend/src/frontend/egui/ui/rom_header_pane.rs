@@ -4,6 +4,7 @@ use monsoon_core::util::format_bytes_human_readable;
 use crate::frontend::egui::config::AppConfig;
 use crate::frontend::egui::ui::widgets::wrapping_label;
 
+#[allow(clippy::too_many_lines)]
 pub fn render_rom_header(ui: &mut egui::Ui, config: &AppConfig) {
     if let Some((rom, loaded_rom)) = &config.console_config.loaded_rom {
         egui::Grid::new("rom_header_info")
@@ -83,15 +84,21 @@ pub fn render_rom_header(ui: &mut egui::Ui, config: &AppConfig) {
                 ui.end_row();
 
                 ui.label("Extended Console Type");
-                wrapping_label(ui, &rom.extended_console_type
-                    .map_or_else(|| "(none)".to_string(), |v| v.to_string()), 3);
+                wrapping_label(
+                    ui,
+                    &rom.extended_console_type
+                        .map_or_else(|| "(none)".to_string(), |v| v.to_string()),
+                    3,
+                );
                 ui.end_row();
 
                 ui.label("VS System Hardware Type");
-                wrapping_label(ui,
-                               &rom.vs_system_hardware_type
-                                   .map_or_else(|| "(none)".to_string(), |v| v.to_string()),
-                               3);
+                wrapping_label(
+                    ui,
+                    &rom.vs_system_hardware_type
+                        .map_or_else(|| "(none)".to_string(), |v| v.to_string()),
+                    3,
+                );
                 ui.end_row();
 
                 ui.label("VS System PPU Type");
@@ -105,14 +112,16 @@ pub fn render_rom_header(ui: &mut egui::Ui, config: &AppConfig) {
                 ui.end_row();
 
                 ui.label("Raw Header Data");
-                let row1 = rom.raw_header_bytes
+                let row1 = rom
+                    .raw_header_bytes
                     .iter()
                     .take(8)
                     .map(|b| format!("{b:02X}"))
                     .collect::<Vec<_>>()
                     .join(" ");
 
-                let row2 = rom.raw_header_bytes
+                let row2 = rom
+                    .raw_header_bytes
                     .iter()
                     .skip(8)
                     .map(|b| format!("{b:02X}"))

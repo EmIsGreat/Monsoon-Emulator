@@ -10,7 +10,7 @@ use monsoon_core::emulation::ppu_util::{
 use monsoon_core::emulation::rom::{ParseError, RomFile};
 use monsoon_core::util::Hashable;
 
-use crate::messages::{ControllerEvent, EmulatorMessage, FrontendMessage, SaveType};
+use crate::messages::{EmulatorMessage, FrontendMessage, SaveType};
 
 /// Channel-based emulator wrapper for clean frontend/emulator separation.
 ///
@@ -145,9 +145,6 @@ impl ChannelEmulator {
                 FrontendMessage::StepFrame => {
                     // Execute one frame regardless of pause state
                     self.execute_frame()?;
-                }
-                FrontendMessage::ControllerInput(event, is_slot_one) => {
-                    self.handle_controller_event(event, is_slot_one);
                 }
                 FrontendMessage::RequestDebugData(fetchable) => match fetchable {
                     EmulatorFetchable::Palettes(_) => {
@@ -352,27 +349,6 @@ impl ChannelEmulator {
                 .to_frontend
                 .send(EmulatorMessage::DebugData(self.nes.get_tiles_debug()));
         }
-    }
-
-    fn handle_controller_event(&mut self, _event: ControllerEvent, _is_slot_one: bool) {
-        // self.nes.set_controller_input()
-        //
-        // let input_field = if is_slot_one {
-        //     &mut self.input_1
-        // } else {
-        //     &mut self.input_2
-        // };
-        //
-        // match event {
-        //     ControllerEvent::StdA => *input_field |= 0x1,
-        //     ControllerEvent::StdB => *input_field |= 0x2,
-        //     ControllerEvent::StdSelect => *input_field |= 0x4,
-        //     ControllerEvent::StdStart => *input_field |= 0x8,
-        //     ControllerEvent::StdUp => *input_field |= 0x10,
-        //     ControllerEvent::StdDown => *input_field |= 0x20,
-        //     ControllerEvent::StdLeft => *input_field |= 0x40,
-        //     ControllerEvent::StdRight => *input_field |= 0x80,
-        // }
     }
 
     fn configure_controller_refresh(&mut self) {
