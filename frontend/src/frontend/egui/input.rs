@@ -1,5 +1,6 @@
 use crossbeam_channel::Sender;
 use egui::{Context, FocusDirection};
+use monsoon_core::emulation::peripherals::StandardControllerState;
 
 use crate::frontend::egui::config::{AppConfig, KeybindingsConfig};
 use crate::frontend::egui::keybindings::{
@@ -60,9 +61,8 @@ pub fn handle_keyboard_input(
 
 /// Resolve active key actions for this frame.
 ///
-/// Controller actions pass through and can co-trigger.
-/// Non-controller actions are filtered to only those with the highest
-/// specificity among currently active non-controller bindings.
+/// Action-triggering bindings are filtered to only those with the highest
+/// specificity among currently active bindings.
 fn resolve_active_key_actions(
     keybindings: &KeybindingsConfig,
     input: &egui::InputState,
@@ -81,7 +81,7 @@ fn resolve_active_key_actions(
         usize,
     )> = Vec::new();
 
-    for (action, binding) in &keybindings.keybindings {
+    for (action, binding) in keybindings.iter_action_bindings() {
         if let Some(suppressed) = suppressed_binding
             && *action == suppressed.action
             && *binding == suppressed.binding
@@ -170,5 +170,15 @@ pub struct ControllerInputState {
 pub fn get_controller_input_state(ctx: &Context) -> ControllerInputState {
     ControllerInputState {
         input_state: ctx.input(|i| i.clone()),
+    }
+}
+
+impl ControllerInputState {
+    #[must_use]
+    pub fn standard_controller_state(&self, config: &AppConfig) -> StandardControllerState {
+        config
+            .keybindings
+            .standard_controller_bindings
+            .to_state(&self.input_state)
     }
 }

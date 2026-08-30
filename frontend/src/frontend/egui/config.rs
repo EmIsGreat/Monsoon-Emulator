@@ -8,10 +8,9 @@ use monsoon_core::emulation::rom::RomFile;
 use monsoon_core::emulation::screen_renderer::{ScreenRenderer, create_renderer};
 use serde::{Deserialize, Serialize};
 
-use crate::frontend::egui::keybindings::{
-    BindVariant, Binding, HotkeyBinding, ModifierKey, OnKeyAction,
-};
+use crate::frontend::egui::keybindings::{Binding, OnKeyAction};
 use crate::frontend::messages::LoadedRom;
+use crate::frontend::peripherals::StandardControllerBindings;
 use crate::frontend::savestates::{
     ChecksumMismatchDialogState, ErrorDialogState, MatchingRomDialogState, RomSelectionDialogState,
     SaveBrowserState,
@@ -256,111 +255,201 @@ impl Default for SpeedConfig {
 /// All keybindings for the emulator
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct KeybindingsConfig {
-    pub keybindings: BTreeMap<OnKeyAction, Binding>,
+    #[serde(default)]
+    pub standard_controller_bindings: StandardControllerBindings,
+    #[serde(default)]
+    pub debug_bindings: BTreeMap<OnKeyAction, Binding>,
+    #[serde(default)]
+    pub ui_bindings: BTreeMap<OnKeyAction, Binding>,
+    #[serde(default)]
+    pub console_bindings: BTreeMap<OnKeyAction, Binding>,
 }
 
 impl KeybindingsConfig {
     /// Reset all keybindings to defaults.
     pub fn reset_to_defaults(&mut self) { *self = Self::default(); }
+
+    pub fn iter_action_bindings(&self) -> impl Iterator<Item = (&OnKeyAction, &Binding)> {
+        self.debug_bindings
+            .iter()
+            .chain(self.ui_bindings.iter())
+            .chain(self.console_bindings.iter())
+    }
+
+    pub fn get_action_binding(&self, action: &OnKeyAction) -> Option<&Binding> {
+        self.debug_bindings
+            .get(action)
+            .or_else(|| self.ui_bindings.get(action))
+            .or_else(|| self.console_bindings.get(action))
+    }
 }
 
 impl Default for KeybindingsConfig {
     fn default() -> Self {
-        let bindings = vec![
-            // Controller Bindings
-            Binding::key(Key::W, OnKeyAction::StdControllerUp),
-            Binding::key(Key::S, OnKeyAction::StdControllerDown),
-            Binding::key(Key::A, OnKeyAction::StdControllerLeft),
-            Binding::key(Key::D, OnKeyAction::StdControllerRight),
-            Binding::key(Key::Space, OnKeyAction::StdControllerAButton),
-            Binding::new(
-                BindVariant::ModifierKey(ModifierKey::Shift),
-                Modifiers::NONE,
-                OnKeyAction::StdControllerBButton,
+        let debug_bindings = BTreeMap::from([
+            (
+                OnKeyAction::PauseEmulator,
+                Binding::key(Key::Comma, OnKeyAction::PauseEmulator),
             ),
-            Binding::key(Key::Enter, OnKeyAction::StdControllerStartButton),
-            Binding::key(Key::Tab, OnKeyAction::StdControllerSelectButton),
-            // Debug Bindings
-            Binding::key(Key::Comma, OnKeyAction::PauseEmulator),
-            Binding::key(Key::Period, OnKeyAction::StepFrame),
-            Binding::with_modifiers(Key::Period, Modifiers::CTRL, OnKeyAction::StepScanline),
-            Binding::key(Key::Slash, OnKeyAction::StepMasterCycle),
-            Binding::with_modifiers(Key::Slash, Modifiers::ALT, OnKeyAction::StepCpuCycle),
-            Binding::with_modifiers(Key::Slash, Modifiers::SHIFT, OnKeyAction::StepPpuCycle),
-            Binding::key(Key::F5, OnKeyAction::Quicksave),
-            Binding::key(Key::F8, OnKeyAction::Quickload),
-            Binding::key(Key::N, OnKeyAction::ChangeDebugPalette),
-            Binding::with_modifiers(
-                Key::P,
-                Modifiers::CTRL.plus(Modifiers::SHIFT),
+            (
+                OnKeyAction::StepFrame,
+                Binding::key(Key::Period, OnKeyAction::StepFrame),
+            ),
+            (
+                OnKeyAction::StepScanline,
+                Binding::with_modifiers(Key::Period, Modifiers::CTRL, OnKeyAction::StepScanline),
+            ),
+            (
+                OnKeyAction::StepMasterCycle,
+                Binding::key(Key::Slash, OnKeyAction::StepMasterCycle),
+            ),
+            (
+                OnKeyAction::StepCpuCycle,
+                Binding::with_modifiers(Key::Slash, Modifiers::ALT, OnKeyAction::StepCpuCycle),
+            ),
+            (
+                OnKeyAction::StepPpuCycle,
+                Binding::with_modifiers(Key::Slash, Modifiers::SHIFT, OnKeyAction::StepPpuCycle),
+            ),
+            (
+                OnKeyAction::Quicksave,
+                Binding::key(Key::F5, OnKeyAction::Quicksave),
+            ),
+            (
+                OnKeyAction::Quickload,
+                Binding::key(Key::F8, OnKeyAction::Quickload),
+            ),
+            (
+                OnKeyAction::ChangeDebugPalette,
+                Binding::key(Key::N, OnKeyAction::ChangeDebugPalette),
+            ),
+            (
                 OnKeyAction::OpenPaletteViewer,
+                Binding::with_modifiers(
+                    Key::P,
+                    Modifiers::CTRL.plus(Modifiers::SHIFT),
+                    OnKeyAction::OpenPaletteViewer,
+                ),
             ),
-            Binding::with_modifiers(
-                Key::T,
-                Modifiers::CTRL.plus(Modifiers::SHIFT),
+            (
                 OnKeyAction::OpenPatternTableViewer,
+                Binding::with_modifiers(
+                    Key::T,
+                    Modifiers::CTRL.plus(Modifiers::SHIFT),
+                    OnKeyAction::OpenPatternTableViewer,
+                ),
             ),
-            Binding::with_modifiers(
-                Key::N,
-                Modifiers::CTRL.plus(Modifiers::SHIFT),
+            (
                 OnKeyAction::OpenNametableViewer,
+                Binding::with_modifiers(
+                    Key::N,
+                    Modifiers::CTRL.plus(Modifiers::SHIFT),
+                    OnKeyAction::OpenNametableViewer,
+                ),
             ),
-            Binding::with_modifiers(
-                Key::S,
-                Modifiers::CTRL.plus(Modifiers::SHIFT),
+            (
                 OnKeyAction::OpenSpriteViewer,
+                Binding::with_modifiers(
+                    Key::S,
+                    Modifiers::CTRL.plus(Modifiers::SHIFT),
+                    OnKeyAction::OpenSpriteViewer,
+                ),
             ),
-            Binding::with_modifiers(
-                Key::Y,
-                Modifiers::CTRL.plus(Modifiers::SHIFT),
+            (
                 OnKeyAction::OpenSoamViewer,
+                Binding::with_modifiers(
+                    Key::Y,
+                    Modifiers::CTRL.plus(Modifiers::SHIFT),
+                    OnKeyAction::OpenSoamViewer,
+                ),
             ),
-            Binding::with_modifiers(
-                Key::H,
-                Modifiers::CTRL.plus(Modifiers::SHIFT),
+            (
                 OnKeyAction::OpenRomHeaderViewer,
+                Binding::with_modifiers(
+                    Key::H,
+                    Modifiers::CTRL.plus(Modifiers::SHIFT),
+                    OnKeyAction::OpenRomHeaderViewer,
+                ),
             ),
-            Binding::with_modifiers(
-                Key::G,
-                Modifiers::CTRL.plus(Modifiers::SHIFT),
+            (
                 OnKeyAction::OpenRegistersViewer,
+                Binding::with_modifiers(
+                    Key::G,
+                    Modifiers::CTRL.plus(Modifiers::SHIFT),
+                    OnKeyAction::OpenRegistersViewer,
+                ),
             ),
-            Binding::with_modifiers(
-                Key::L,
-                Modifiers::CTRL.plus(Modifiers::SHIFT),
+            (
                 OnKeyAction::OpenTraceLogViewer,
+                Binding::with_modifiers(
+                    Key::L,
+                    Modifiers::CTRL.plus(Modifiers::SHIFT),
+                    OnKeyAction::OpenTraceLogViewer,
+                ),
             ),
-            Binding::with_modifiers(Key::Tab, Modifiers::CTRL, OnKeyAction::Speedup),
-            // Ui Bindings
-            Binding::with_modifiers(Key::O, Modifiers::CTRL, OnKeyAction::LoadRom),
-            Binding::with_modifiers(Key::Q, Modifiers::CTRL, OnKeyAction::Quit),
-            Binding::with_modifiers(Key::L, Modifiers::CTRL, OnKeyAction::LoadSavestate),
-            Binding::with_modifiers(Key::S, Modifiers::CTRL, OnKeyAction::CreateSavestate),
-            Binding::with_modifiers(Key::B, Modifiers::CTRL, OnKeyAction::BrowseSavestates),
-            Binding::with_modifiers(
-                Key::O,
-                Modifiers::CTRL.plus(Modifiers::SHIFT),
+            (
+                OnKeyAction::Speedup,
+                Binding::with_modifiers(Key::Tab, Modifiers::CTRL, OnKeyAction::Speedup),
+            ),
+        ]);
+        let ui_bindings = BTreeMap::from([
+            (
+                OnKeyAction::LoadRom,
+                Binding::with_modifiers(Key::O, Modifiers::CTRL, OnKeyAction::LoadRom),
+            ),
+            (
+                OnKeyAction::Quit,
+                Binding::with_modifiers(Key::Q, Modifiers::CTRL, OnKeyAction::Quit),
+            ),
+            (
+                OnKeyAction::LoadSavestate,
+                Binding::with_modifiers(Key::L, Modifiers::CTRL, OnKeyAction::LoadSavestate),
+            ),
+            (
+                OnKeyAction::CreateSavestate,
+                Binding::with_modifiers(Key::S, Modifiers::CTRL, OnKeyAction::CreateSavestate),
+            ),
+            (
+                OnKeyAction::BrowseSavestates,
+                Binding::with_modifiers(Key::B, Modifiers::CTRL, OnKeyAction::BrowseSavestates),
+            ),
+            (
                 OnKeyAction::OpenOptionsMenu,
+                Binding::with_modifiers(
+                    Key::O,
+                    Modifiers::CTRL.plus(Modifiers::SHIFT),
+                    OnKeyAction::OpenOptionsMenu,
+                ),
             ),
-            Binding::with_modifiers(
-                Key::K,
-                Modifiers::CTRL.plus(Modifiers::SHIFT),
+            (
                 OnKeyAction::OpenKeybindingsMenu,
+                Binding::with_modifiers(
+                    Key::K,
+                    Modifiers::CTRL.plus(Modifiers::SHIFT),
+                    OnKeyAction::OpenKeybindingsMenu,
+                ),
             ),
-            // Console Bindings
-            Binding::with_modifiers(Key::R, Modifiers::CTRL, OnKeyAction::Reset),
-            Binding::with_modifiers(Key::T, Modifiers::CTRL, OnKeyAction::PowerCycle),
-            Binding::with_modifiers(Key::P, Modifiers::CTRL, OnKeyAction::PowerToggle),
-        ];
-
-        let mut map = BTreeMap::new();
-
-        for bind in bindings {
-            map.insert(bind.action, bind);
-        }
+        ]);
+        let console_bindings = BTreeMap::from([
+            (
+                OnKeyAction::Reset,
+                Binding::with_modifiers(Key::R, Modifiers::CTRL, OnKeyAction::Reset),
+            ),
+            (
+                OnKeyAction::PowerCycle,
+                Binding::with_modifiers(Key::T, Modifiers::CTRL, OnKeyAction::PowerCycle),
+            ),
+            (
+                OnKeyAction::PowerToggle,
+                Binding::with_modifiers(Key::P, Modifiers::CTRL, OnKeyAction::PowerToggle),
+            ),
+        ]);
 
         KeybindingsConfig {
-            keybindings: map,
+            standard_controller_bindings: StandardControllerBindings::default(),
+            debug_bindings,
+            ui_bindings,
+            console_bindings,
         }
     }
 }
