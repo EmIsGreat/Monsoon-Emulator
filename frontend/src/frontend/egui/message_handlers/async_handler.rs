@@ -216,11 +216,6 @@ impl EguiApp {
                     EmulatorFetchable::Tiles(None),
                 ));
             }
-            AsyncFrontendMessage::ControllerInput(event) => {
-                let _ = self
-                    .to_emulator
-                    .send(FrontendMessage::ControllerInput(event, true));
-            }
             AsyncFrontendMessage::StepPpuCycle => {
                 let _ = self.to_emulator.send(FrontendMessage::StepPpuCycle);
                 let _ = self.to_emulator.send(FrontendMessage::RequestDebugData(

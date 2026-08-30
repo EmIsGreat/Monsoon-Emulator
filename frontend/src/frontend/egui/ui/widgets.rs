@@ -243,7 +243,7 @@ impl Widget for HotKeyButton<'_> {
 
         let left_text = self.action.get_display_name();
         let right_text =
-            if let Some(binding) = self.config.keybindings.get_action_binding(&self.action) {
+            if let Some(binding) = self.config.keybindings.get_action_binding(self.action) {
                 binding.as_string()
             } else {
                 "None".to_string()

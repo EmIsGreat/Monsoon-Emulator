@@ -147,13 +147,12 @@ impl Default for DmaState {
 }
 
 impl Default for Cpu {
-    fn default() -> Self {
-        Self::new()
-    }
+    fn default() -> Self { Self::new() }
 }
 
 impl Cpu {
-    pub fn new() -> Self { // Initialize both HashMap and fast lookup table
+    pub fn new() -> Self {
+        // Initialize both HashMap and fast lookup table
         OPCODES_TABLE.get_or_init(opcode::init);
 
         Self {

@@ -256,13 +256,13 @@ impl Default for SpeedConfig {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct KeybindingsConfig {
     #[serde(default)]
-    pub standard_controller_bindings: StandardControllerBindings,
+    pub standard_controller: StandardControllerBindings,
     #[serde(default)]
-    pub debug_bindings: BTreeMap<OnKeyAction, Binding>,
+    pub debug: BTreeMap<OnKeyAction, Binding>,
     #[serde(default)]
-    pub ui_bindings: BTreeMap<OnKeyAction, Binding>,
+    pub ui: BTreeMap<OnKeyAction, Binding>,
     #[serde(default)]
-    pub console_bindings: BTreeMap<OnKeyAction, Binding>,
+    pub console: BTreeMap<OnKeyAction, Binding>,
 }
 
 impl KeybindingsConfig {
@@ -270,21 +270,22 @@ impl KeybindingsConfig {
     pub fn reset_to_defaults(&mut self) { *self = Self::default(); }
 
     pub fn iter_action_bindings(&self) -> impl Iterator<Item = (&OnKeyAction, &Binding)> {
-        self.debug_bindings
+        self.debug
             .iter()
-            .chain(self.ui_bindings.iter())
-            .chain(self.console_bindings.iter())
+            .chain(self.ui.iter())
+            .chain(self.console.iter())
     }
 
-    pub fn get_action_binding(&self, action: &OnKeyAction) -> Option<&Binding> {
-        self.debug_bindings
-            .get(action)
-            .or_else(|| self.ui_bindings.get(action))
-            .or_else(|| self.console_bindings.get(action))
+    pub fn get_action_binding(&self, action: OnKeyAction) -> Option<&Binding> {
+        self.debug
+            .get(&action)
+            .or_else(|| self.ui.get(&action))
+            .or_else(|| self.console.get(&action))
     }
 }
 
 impl Default for KeybindingsConfig {
+    #[allow(clippy::too_many_lines)]
     fn default() -> Self {
         let debug_bindings = BTreeMap::from([
             (
@@ -446,10 +447,10 @@ impl Default for KeybindingsConfig {
         ]);
 
         KeybindingsConfig {
-            standard_controller_bindings: StandardControllerBindings::default(),
-            debug_bindings,
-            ui_bindings,
-            console_bindings,
+            standard_controller: StandardControllerBindings::default(),
+            debug: debug_bindings,
+            ui: ui_bindings,
+            console: console_bindings,
         }
     }
 }

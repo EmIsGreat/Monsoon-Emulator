@@ -169,7 +169,7 @@ pub struct ControllerInputState {
 
 pub fn get_controller_input_state(ctx: &Context) -> ControllerInputState {
     ControllerInputState {
-        input_state: ctx.input(|i| i.clone()),
+        input_state: ctx.input(Clone::clone),
     }
 }
 
@@ -178,7 +178,7 @@ impl ControllerInputState {
     pub fn standard_controller_state(&self, config: &AppConfig) -> StandardControllerState {
         config
             .keybindings
-            .standard_controller_bindings
+            .standard_controller
             .to_state(&self.input_state)
     }
 }
