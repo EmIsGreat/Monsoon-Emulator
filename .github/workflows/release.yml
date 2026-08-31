@@ -278,8 +278,6 @@ jobs:
 
             -   name: Update monsoon-emulator
                 run: |
-                    ssh -F "$HOME/.ssh/config" -T aur.archlinux.org
-                    
                     git clone ssh://aur@aur.archlinux.org/monsoon-emulator.git
                     cd monsoon-emulator
                     
