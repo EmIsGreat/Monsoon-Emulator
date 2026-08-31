@@ -233,28 +233,37 @@ jobs:
         steps:
             -   name: Install tools
                 run: |
-                    pacman -Syu --noconfirm archlinux-keyring
+                    pacman-key --init
+                    pacman-key --populate archlinux
+                    pacman -Syu --noconfirm
                     pacman -S --noconfirm pacman-contrib openssh git
 
             -   name: Checkout
                 uses: actions/checkout@v4
 
-            -   name: Setup SSH
+            -   name: Configure AUR SSH
                 run: |
-                    mkdir -p ~/.ssh
-                    echo "${{ secrets.AUR_SSH_KEY }}" > ~/.ssh/aur
-                    chmod 600 ~/.ssh/aur
+                    mkdir -p "$HOME/.ssh"
+                    chmod 700 "$HOME/.ssh"
                     
-                    ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts
+                    printf '%s\n' "${{ secrets.AUR_SSH_KEY }}" > "$HOME/.ssh/aur"
+                    chmod 600 "$HOME/.ssh/aur"
                     
-                    cat >> ~/.ssh/config <<EOF
-                    Host aur.archlinux.org      
+                    ssh-keyscan -H aur.archlinux.org > "$HOME/.ssh/known_hosts"
+                    chmod 644 "$HOME/.ssh/known_hosts"
+                    
+                    cat > "$HOME/.ssh/config" <<EOF
+                    Host aur.archlinux.org
+                      HostName aur.archlinux.org
                       User aur
-                      IdentityFile ~/.ssh/aur
-                      UserKnownHostsFile ~/.ssh/known_hosts
+                      IdentityFile $HOME/.ssh/aur
+                      UserKnownHostsFile $HOME/.ssh/known_hosts
                       StrictHostKeyChecking yes
                     EOF
-
+                    
+                    chmod 600 "$HOME/.ssh/config"
+                    
+                    ssh -vT aur.archlinux.org || true
             -   name: Setup git
                 run: |
                     git config --global user.name "GitHub Actions"
@@ -268,6 +277,14 @@ jobs:
 
             -   name: Update monsoon-emulator
                 run: |
+                    echo "HOME=$HOME"
+                    ls -la "$HOME/.ssh"
+                    cat "$HOME/.ssh/known_hosts"
+                    
+                    ssh -G aur.archlinux.org | grep -E '^(user|hostname|identityfile|userknownhostsfile|stricthostkeychecking) '
+                    
+                    ssh -T aur.archlinux.org
+                    
                     git clone ssh://aur@aur.archlinux.org/monsoon-emulator.git
                     cd monsoon-emulator
                     
