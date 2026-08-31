@@ -263,7 +263,8 @@ jobs:
                     
                     chmod 600 "$HOME/.ssh/config"
                     
-                    ssh -vT aur.archlinux.org || true
+                    ssh -F "$HOME/.ssh/config" -vT aur.archlinux.org || true
+                    echo "GIT_SSH_COMMAND=ssh -F $HOME/.ssh/config" >> "$GITHUB_ENV"
             -   name: Setup git
                 run: |
                     git config --global user.name "GitHub Actions"
@@ -277,13 +278,7 @@ jobs:
 
             -   name: Update monsoon-emulator
                 run: |
-                    echo "HOME=$HOME"
-                    ls -la "$HOME/.ssh"
-                    cat "$HOME/.ssh/known_hosts"
-                    
-                    ssh -G aur.archlinux.org | grep -E '^(user|hostname|identityfile|userknownhostsfile|stricthostkeychecking) '
-                    
-                    ssh -T aur.archlinux.org
+                    ssh -F "$HOME/.ssh/config" -T aur.archlinux.org
                     
                     git clone ssh://aur@aur.archlinux.org/monsoon-emulator.git
                     cd monsoon-emulator
@@ -305,6 +300,8 @@ jobs:
 
             -   name: Update monsoon-emulator-bin
                 run: |
+                    ssh -F "$HOME/.ssh/config" -T aur.archlinux.org
+
                     git clone ssh://aur@aur.archlinux.org/monsoon-emulator-bin.git
                     cd monsoon-emulator-bin
                     
