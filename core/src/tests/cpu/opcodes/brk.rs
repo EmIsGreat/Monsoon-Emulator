@@ -3,8 +3,8 @@ use crate::tests::cpu::Cpu;
 #[test]
 fn test_brk_storing() {
     let mut cpu = Cpu::test_instance();
-    // test_instance mocks the reset state for convenience, so I need to un-mock it
-    // here because we do an actual reset.
+    // test_instance mocks the reset state for convenience, so I need to un-mock
+    // it here because we do an actual reset.
     cpu.stack_pointer = 0x0;
     cpu.processor_status |= 0b0000_0001;
     cpu.mem_write_u16(0xFFFE, 0xFF00);
@@ -33,8 +33,8 @@ fn test_brk_storing() {
 #[test]
 fn test_brk_interrupt_vector() {
     let mut cpu = Cpu::test_instance();
-    // test_instance mocks the reset state for convenience, so I need to un-mock it
-    // here because we do an actual reset.
+    // test_instance mocks the reset state for convenience, so I need to un-mock
+    // it here because we do an actual reset.
     cpu.stack_pointer = 0x0;
     cpu.processor_status |= 0b0000_0001;
     cpu.mem_write_u16(0xFFFE, 0xF000);

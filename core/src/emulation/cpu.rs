@@ -2144,8 +2144,8 @@ impl Cpu {
     pub fn test_instance() -> Self {
         let mut inst = Cpu::new();
 
-        // Test instance doesn't get reset, therefore we need to manually fix the stack
-        // pointer
+        // Test instance doesn't get reset, therefore we need to manually fix
+        // the stack pointer
         inst.stack_pointer = 0xFD;
         inst
     }

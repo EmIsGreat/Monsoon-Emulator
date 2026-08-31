@@ -21,11 +21,12 @@ pub fn render_pattern_table(
         let available = ui.available_size();
         // Each pattern table is 128x128 pixels (16x16 tiles * 8 pixels each)
         // We show 2 side by side with spacing
-        // Fixed (non-scaling) UI elements: spacing between tables, label + palette
-        // selector
+        // Fixed (non-scaling) UI elements: spacing between tables, label +
+        // palette selector
         let fixed_width = ui.spacing().item_spacing.x * 3.0;
         let fixed_height = 40.0; // label and palette selector
-        // Scale to fit: subtract fixed elements from available space before dividing
+        // Scale to fit: subtract fixed elements from available space before
+        // dividing
         let scale = ((available.x - fixed_width) / (128.0 * 2.0))
             .min((available.y - fixed_height) / 128.0)
             .max(0.1);

@@ -151,8 +151,8 @@ pub fn run_headless(args: &CliArgs) -> Result<(), String> {
         save_screenshot(&engine.frames, &mut renderer, args)?;
     }
 
-    // Video was already saved in streaming mode, skip in buffered mode if already
-    // done
+    // Video was already saved in streaming mode, skip in buffered mode if
+    // already done
     if !use_streaming {
         save_video(&engine.frames, &mut renderer, args)?;
     }
