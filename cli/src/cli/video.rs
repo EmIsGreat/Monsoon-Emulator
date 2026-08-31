@@ -881,8 +881,7 @@ impl VideoEncoder for RawEncoder {
 #[allow(clippy::cast_sign_loss)]
 fn fps_to_rational(fps: f64) -> String {
     // Tolerance values:
-    // - NES NTSC: 0.01 because the irrational framerate may have rounding
-    //   errors
+    // - NES NTSC: 0.01 because the irrational framerate may have rounding errors
     // - Smooth/standard: 0.001 for clean integer framerates
     const NES_TOLERANCE: f64 = 0.01;
     const STANDARD_TOLERANCE: f64 = 0.001;
