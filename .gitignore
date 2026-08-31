@@ -184,3 +184,5 @@ fabric.properties
 core/assets/rom-info-db.bin
 
 .idea
+
+/aur/**/.git/
