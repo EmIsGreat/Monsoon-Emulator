@@ -60,16 +60,16 @@ fn merge_rom_db() -> Result<(), Box<dyn std::error::Error>> {
     loop {
         match headered_reader.read_event_into(&mut buf)? {
             Event::Start(e) | Event::Empty(e) => match e.name().as_ref() {
-                b"version" => in_version = true,
-                b"game" => {
+                "version" => in_version = true,
+                "game" => {
                     for attr in e.attributes() {
                         let attr = attr?;
-                        if attr.key.as_ref() == b"name" {
+                        if attr.key.as_ref() == "name" {
                             current_game_name = Some(attr_to_string(&attr)?);
                         }
                     }
                 }
-                b"rom" => {
+                "rom" => {
                     let mut sha256: Option<String> = None;
                     let mut header = None;
                     let mut skip_rom = false;
@@ -77,16 +77,16 @@ fn merge_rom_db() -> Result<(), Box<dyn std::error::Error>> {
                     for attr in e.attributes() {
                         let attr = attr?;
 
-                        if attr.key.as_ref() == b"status" && attr_to_string(&attr)? == "nodump" {
+                        if attr.key.as_ref() == "status" && attr_to_string(&attr)? == "nodump" {
                             skip_rom = true;
                             break;
                         }
 
-                        if attr.key.as_ref() == b"sha256" {
+                        if attr.key.as_ref() == "sha256" {
                             sha256 = Some(normalize_hex_string(&attr_to_string(&attr)?));
                         }
 
-                        if attr.key.as_ref() == b"header" {
+                        if attr.key.as_ref() == "header" {
                             let header_string = normalize_hex_string(&attr_to_string(&attr)?);
                             header = Some(hex::decode(header_string)?);
                         }
@@ -119,7 +119,7 @@ fn merge_rom_db() -> Result<(), Box<dyn std::error::Error>> {
                 _ => {}
             },
             Event::Text(e) if in_version => {
-                version = Some(e.decode()?.into_owned());
+                version = Some(e.to_string());
                 in_version = false;
             }
             Event::Eof => break,
@@ -133,27 +133,27 @@ fn merge_rom_db() -> Result<(), Box<dyn std::error::Error>> {
     loop {
         match headerless_reader.read_event_into(&mut buf)? {
             Event::Start(e) | Event::Empty(e) => match e.name().as_ref() {
-                b"game" => {
+                "game" => {
                     for attr in e.attributes() {
                         let attr = attr?;
-                        if attr.key.as_ref() == b"name" {
+                        if attr.key.as_ref() == "name" {
                             current_game_name = attr_to_string(&attr)?;
                         }
                     }
                 }
-                b"rom" => {
+                "rom" => {
                     let mut sha256: Option<String> = None;
                     let mut skip_rom = false;
 
                     for attr in e.attributes() {
                         let attr = attr?;
 
-                        if attr.key.as_ref() == b"status" && attr_to_string(&attr)? == "nodump" {
+                        if attr.key.as_ref() == "status" && attr_to_string(&attr)? == "nodump" {
                             skip_rom = true;
                             break;
                         }
 
-                        if attr.key.as_ref() == b"sha256" {
+                        if attr.key.as_ref() == "sha256" {
                             sha256 = Some(normalize_hex_string(&attr_to_string(&attr)?));
                         }
                     }
@@ -201,27 +201,27 @@ fn merge_rom_db() -> Result<(), Box<dyn std::error::Error>> {
     loop {
         match alt_name_reader.read_event_into(&mut buf)? {
             Event::Start(e) | Event::Empty(e) => match e.name().as_ref() {
-                b"game" => {
+                "game" => {
                     for attr in e.attributes() {
                         let attr = attr?;
-                        if attr.key.as_ref() == b"name" {
+                        if attr.key.as_ref() == "name" {
                             curr_name = Some(attr_to_string(&attr)?);
                         }
                     }
                 }
-                b"rom" => {
+                "rom" => {
                     let mut sha256: Option<String> = None;
                     let mut skip_rom = false;
 
                     for attr in e.attributes() {
                         let attr = attr?;
 
-                        if attr.key.as_ref() == b"status" && attr_to_string(&attr)? == "nodump" {
+                        if attr.key.as_ref() == "status" && attr_to_string(&attr)? == "nodump" {
                             skip_rom = true;
                             break;
                         }
 
-                        if attr.key.as_ref() == b"sha256" {
+                        if attr.key.as_ref() == "sha256" {
                             sha256 = Some(normalize_hex_string(&attr_to_string(&attr)?));
                         }
                     }

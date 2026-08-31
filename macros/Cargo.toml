@@ -15,7 +15,7 @@ name = "monsoon_macro"
 path = "src/lib.rs"
 
 [dependencies]
-syn = { version = "3.0.3", features = ["full", "extra-traits"] }
+syn = { version = "3.0.4", features = ["full", "extra-traits"] }
 quote = "1.0.47"
 proc-macro2 = { version = "1.0.107", features = ["nightly"] }
 rand = { version = "0.10.2" }
