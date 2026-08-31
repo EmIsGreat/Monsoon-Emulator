@@ -71,9 +71,9 @@ impl OpenBus {
         self.value = (self.value & !mask) | (value & mask);
 
         if mask != 0 {
-            for bit in 0..8 {
+            for (bit, timer) in self.timers.iter_mut().enumerate() {
                 if mask & (1 << bit) != 0 {
-                    self.timers[bit] = 0;
+                    *timer = 0;
                 }
             }
         }
