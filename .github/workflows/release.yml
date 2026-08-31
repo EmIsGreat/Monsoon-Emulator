@@ -224,7 +224,7 @@ jobs:
             -   name: Install tools
                 run: |
                     pacman -Syu --noconfirm archlinux-keyring
-                    pacman -S --noconfirm pacman-contrib
+                    pacman -S --noconfirm pacman-contrib openssh
 
             -   name: Setup SSH
                 run: |
