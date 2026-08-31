@@ -1,12 +1,15 @@
 # Monsoon Emulator
 
-Time spent since 09 February 2026:&nbsp;&nbsp;[![wakatime](https://wakatime.com/badge/user/c71acca9-7c34-4e24-94f2-b52a92e4673e/project/eb026d79-1ad1-4546-93a5-241f7054b420.svg)](https://wakatime.com/badge/user/c71acca9-7c34-4e24-94f2-b52a92e4673e/project/eb026d79-1ad1-4546-93a5-241f7054b420) * ~1.3
+Time spent since 09 February 2026:
+&nbsp;&nbsp;[![wakatime](https://wakatime.com/badge/user/c71acca9-7c34-4e24-94f2-b52a92e4673e/project/eb026d79-1ad1-4546-93a5-241f7054b420.svg)](https://wakatime.com/badge/user/c71acca9-7c34-4e24-94f2-b52a92e4673e/project/eb026d79-1ad1-4546-93a5-241f7054b420) * ~
+1.3
 
-A cycle-accurate NES (Nintendo Entertainment System) emulator written in Rust. Monsoon aims for maximum hardware accuracy on hard timing limits while allowing customizability for soft limits and hardware variables that cannot be perfectly emulated.
+A cycle-accurate NES (Nintendo Entertainment System) emulator written in Rust. Monsoon aims for maximum hardware accuracy on hard timing limits while allowing customizability for soft limits and hardware variables that cannot be perfectly
+emulated.
 
 ## Project Structure
 
-Monsoon is organized as a Cargo workspace with four crates:
+Monsoon is organized as a Cargo workspace with multiple crates:
 
 | Crate                    | Package Name                | Description                                                                   |
 |--------------------------|-----------------------------|-------------------------------------------------------------------------------|
@@ -14,39 +17,12 @@ Monsoon is organized as a Cargo workspace with four crates:
 | [`renderer`](./renderer) | `monsoon-default-renderers` | Default screen renderer implementations (lookup table-based palette renderer) |
 | [`cli`](./cli)           | `monsoon-cli`               | Headless command-line interface for scripted/batch emulation                  |
 | [`frontend`](./frontend) | `monsoon-frontend`          | GUI application built with [egui](https://github.com/emilk/egui)              |
+| [`macros`](./macros)     | `monsoon-macros`            | Declares Proc-Macros used for monsoon-core                                    |
+| [`db`](./db)             | `monsoon-db`                | Provides a Rom file lookup to enhanced compatibility                          |
 
 ### `monsoon-core`
 
 The core emulation library. This is the primary crate for anyone wanting to embed NES emulation in their own project.
-
-**Public API modules:**
-
-- **`emulation::nes`** — The top-level [`Nes`] struct that orchestrates all emulation. Provides methods to load ROMs, step individual cycles or full frames, save/load state, read the pixel buffer, and access CPU/PPU debug information.
-- **`emulation::rom`** — ROM file parsing for iNES, NES 2.0, and archaic iNES formats. Includes [`RomFile`] for loading ROMs from bytes and [`RomBuilder`] for programmatic construction.
-- **`emulation::savestate`** — Serializable emulator state snapshots. Save states can be encoded in binary (postcard) or JSON format.
-- **`emulation::screen_renderer`** — The [`ScreenRenderer`] trait for implementing custom pixel renderers, plus [`NoneRenderer`] (a no-op fallback) and the [`declare_renderers!`] macro for registering renderers.
-- **`emulation::palette_util`** — NES color palette types ([`RgbColor`], [`RgbPalette`]) and `.pal` file parsing.
-- **`emulation::ppu_util`** — PPU constants (output dimensions, tile counts) and debug data types (`EmulatorFetchable`, `TileData`, `PaletteData`, `NametableData`).
-- **`util`** — Serialization helpers ([`ToBytes`]) and hashing utilities ([`Hashable`]).
-
-Internal implementation modules (`cpu`, `ppu`, `mem`, `opcode`) are `pub(crate)` and not accessible to downstream consumers.
-
-### `monsoon-default-renderers`
-
-Provides [`LookupPaletteRenderer`], a fast O(1) lookup table-based renderer that converts the NES PPU's 9-bit palette indices into RGB colors. This is the default renderer used by both the frontend and CLI.
-
-### `monsoon-cli`
-
-A headless command-line interface for running NES ROMs without a GUI. Supports:
-
-- Running ROMs for a specified number of frames or cycles
-- Capturing screenshots and frame sequences
-- Loading and saving state files
-- Memory initialization from files
-- Pluggable renderers via `--renderer` flag
-- Video output to image files
-
-See [`docs/CLI_INTERFACE.md`](./docs/CLI_INTERFACE.md) for the full CLI reference.
 
 ### `monsoon-frontend`
 
@@ -84,9 +60,6 @@ cargo run -p monsoon-cli --bin cli -- \
   --rom path/to/game.nes \
   --frames 60 \
   --screenshot output.png
-
-# List available renderers
-cargo run -p monsoon-cli --bin cli -- --list-renderers
 ```
 
 ### Building
@@ -111,37 +84,10 @@ Add `monsoon-core` to your project's dependencies:
 
 ```toml
 [dependencies]
-monsoon-core = { version = "0.1.0" }
+monsoon-core = { version = "0.2.10" }
 
 # Optional: include the default renderer
-monsoon-default-renderers = { version = "0.1.0" }
-```
-
-### Basic Usage
-
-```rust,no_run
-use monsoon_core::emulation::nes::Nes;
-use monsoon_core::emulation::rom::RomFile;
-
-fn main() {
-    // Create the emulator
-    let mut nes = Nes::default();
-
-    // Load a ROM
-    let rom_data = std::fs::read("game.nes").unwrap();
-    let rom = RomFile::load(&rom_data, Some("game.nes".to_string())).unwrap();
-    nes.load_rom(&rom);
-
-    // Power on
-    nes.power();
-
-    // Run one frame
-    nes.step_frame().expect("emulation error");
-
-    // Read the pixel buffer (256x240 palette indices)
-    let pixels = nes.get_pixel_buffer();
-    println!("Frame rendered: {} pixels", pixels.len());
-}
+monsoon-default-renderers = { version = "0.2.10" }
 ```
 
 ### Pixel Buffer Format
@@ -233,50 +179,16 @@ impl ScreenRenderer for MyRenderer {
 }
 ```
 
-## Workspace Dependency Management
-
-Internal crate dependencies are managed through [Cargo workspace dependencies](https://doc.rust-lang.org/cargo/reference/workspaces.html#the-dependencies-table). The root `Cargo.toml` defines shared dependencies with both `version` and `path`:
-
-```toml
-[workspace.dependencies]
-monsoon-core = { version = "0.1.0", path = "core" }
-monsoon-default-renderers = { version = "0.1.0", path = "renderer" }
-```
-
-Member crates reference these with `workspace = true`:
-
-```toml
-[dependencies]
-monsoon-core = { workspace = true }
-```
-
-This means:
-- **Within the workspace**: Cargo always uses the local path (the `path` field).
-- **As an external dependency**: When published to crates.io, dependents resolve by `version` from the registry.
-
-## Testing
-
-```bash
-# Run all tests (core has ~335 tests, takes ~5 minutes)
-cargo test -p monsoon-core
-
-# Run a specific test
-cargo test -p monsoon-core -- tests::nes::nestest
-
-# Run doc tests only
-cargo test -p monsoon-core --doc
-```
-
 ## Build Profiles
 
-| Profile           | Command                                 | Description                              |
-|-------------------|-----------------------------------------|------------------------------------------|
-| `dev`             | `cargo build`                           | Debug build, no optimizations            |
-| `release`         | `cargo build --release`                 | Optimized, stripped, abort on panic      |
-| `full_release`    | `cargo build --profile full_release`    | Release + LTO + single codegen unit      |
-| `max_performance` | `cargo build --profile max_performance` | Full release + native CPU targeting      |
-| `profiling`       | `cargo build --profile profiling`       | Release with debug symbols for profiling |
+| Profile        | Command                              | Description                              |
+|----------------|--------------------------------------|------------------------------------------|
+| `dev`          | `cargo build`                        | Debug build, no optimizations            |
+| `release`      | `cargo build --release`              | Optimized, stripped, abort on panic      |
+| `full_release` | `cargo build --profile full_release` | Release + LTO + single codegen unit      |
+| `native`       | `cargo build --profile native`       | Full release + native CPU targeting      |
+| `profiling`    | `cargo build --profile profiling`    | Release with debug symbols for profiling |
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the [Apache 2.0](LICENSE).
