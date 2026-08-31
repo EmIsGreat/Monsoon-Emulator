@@ -13,6 +13,7 @@ permissions:
 
 jobs:
     build:
+        if: github.event_name != 'workflow_dispatch'
         strategy:
             matrix:
                 include:
@@ -80,6 +81,7 @@ jobs:
                     path: artifacts/
 
     release:
+        if: github.event_name != 'workflow_dispatch'
         needs:
             - build
         runs-on: ubuntu-latest
@@ -109,6 +111,7 @@ jobs:
                     generate_release_notes: true
 
     deploy-web:
+        if: github.event_name != 'workflow_dispatch'
         runs-on: ubuntu-latest
         environment:
             name: github-pages
@@ -150,6 +153,7 @@ jobs:
                 uses: actions/deploy-pages@v5
 
     publish-crates:
+        if: github.event_name != 'workflow_dispatch'
         needs: release
         runs-on: ubuntu-latest
         steps:
@@ -215,6 +219,12 @@ jobs:
                     publish_crate monsoon-frontend
 
     publish-aur:
+        if: |
+            always() &&
+            (
+                github.event_name == 'workflow_dispatch' ||
+                needs.release.result == 'success'
+            )
         needs: release
         runs-on: ubuntu-latest
         container:
