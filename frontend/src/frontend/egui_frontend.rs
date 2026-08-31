@@ -17,7 +17,8 @@ use std::collections::VecDeque;
 use std::fmt::{Debug, Formatter};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
-use std::sync::Arc;
+use std::string::ToString;
+use std::sync::{Arc, LazyLock};
 
 use crossbeam_channel::{Receiver, Sender};
 use eframe::{AppCreator, CreationContext, Frame};
@@ -61,6 +62,12 @@ const AUTOSAVE_INTERVAL: Duration = Duration::from_mins(5);
 
 /// Maximum number of autosaves to keep per game
 const MAX_AUTOSAVES_PER_GAME: usize = 1024;
+
+pub static ALTER_EGO_DEMO: LazyLock<LoadedRom> = LazyLock::new(|| LoadedRom {
+    data: Vec::from(include_bytes!("../../assets/Alter_Ego.nes")),
+    name: "Alter Ego".to_string(),
+    directory: None,
+});
 
 /// Shared deque for frontend events that can be pushed from UI components
 pub type FrontendEventQueue = Rc<RefCell<VecDeque<FrontendEvent>>>;
@@ -804,12 +811,12 @@ fn common_setup(rom: Option<&PathBuf>) -> SetupResponse {
             directory.map(|directory| LoadedRom {
                 data,
                 name,
-                directory,
+                directory: Some(directory),
             })
         });
         let _ = async_sender.send(AsyncFrontendMessage::LoadRom(loaded_rom));
     } else {
-        let _ = async_sender.send(AsyncFrontendMessage::LoadRom(None));
+        let _ = async_sender.send(AsyncFrontendMessage::LoadRom(Some(ALTER_EGO_DEMO.clone())));
     }
 
     let _ = to_emu.send(FrontendMessage::AttachPeripherals((

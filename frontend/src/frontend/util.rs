@@ -224,7 +224,7 @@ pub fn spawn_rom_picker(sender: &Sender<AsyncFrontendMessage>, dir: Option<&Stor
             let _ = sender.send(AsyncFrontendMessage::LoadRom(Some(LoadedRom {
                 data,
                 name,
-                directory,
+                directory: Some(directory),
             })));
         }
     });
@@ -479,7 +479,7 @@ pub fn spawn_rom_picker_for_savestate(
                 LoadedRom {
                     data,
                     name,
-                    directory,
+                    directory: Some(directory),
                 },
             ));
         }

@@ -48,7 +48,7 @@ pub struct LoadedRom {
     /// ROM filename (without path, e.g. "game.nes")
     pub name: String,
     /// Directory path (may be None on WASM)
-    pub directory: StorageKey,
+    pub directory: Option<StorageKey>,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]

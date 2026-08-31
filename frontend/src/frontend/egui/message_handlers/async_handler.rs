@@ -127,7 +127,7 @@ impl EguiApp {
                     let _ = self.to_emulator.send(FrontendMessage::Power(false));
 
                     // Save directory for next file picker
-                    self.config.user_config.previous_rom_load_dir = Some(rom.directory.clone());
+                    self.config.user_config.previous_rom_load_dir.clone_from(&rom.directory);
 
                     self.load_rom(rom, self.config.user_config.use_rom_db);
                     let _ = self.to_emulator.send(FrontendMessage::Power(true));
@@ -394,7 +394,7 @@ impl EguiApp {
         rom: LoadedRom,
     ) {
         // Save directory for next file picker
-        self.config.user_config.previous_rom_load_dir = Some(rom.directory.clone());
+        self.config.user_config.previous_rom_load_dir.clone_from(&rom.directory);
 
         let checksum = util::compute_data_checksum(&rom.data);
         if checksum == context.savestate.rom_file.data_checksum {
@@ -652,7 +652,7 @@ async fn find_matching_rom(
                 return Some(LoadedRom {
                     data,
                     name: rom_name.clone(),
-                    directory: storage::roms_prefix(),
+                    directory: Some(storage::roms_prefix()),
                 });
             }
         }
@@ -675,7 +675,7 @@ async fn find_matching_rom(
                     return Some(LoadedRom {
                         data,
                         name,
-                        directory: storage::roms_prefix(),
+                        directory: Some(storage::roms_prefix()),
                     });
                 }
             }
@@ -718,10 +718,10 @@ fn find_matching_rom_in_directory(dir: &str, context: &SavestateLoadContext) -> 
                 return Some(LoadedRom {
                     data,
                     name: rom_name.clone(),
-                    directory: StorageKey {
+                    directory: Some(StorageKey {
                         category: StorageCategory::Root,
                         sub_path: dir.to_string(),
-                    },
+                    }),
                 });
             }
         }
@@ -742,10 +742,10 @@ fn find_matching_rom_in_directory(dir: &str, context: &SavestateLoadContext) -> 
                 return Some(LoadedRom {
                     data,
                     name,
-                    directory: StorageKey {
+                    directory: Some(StorageKey {
                         category: StorageCategory::Root,
                         sub_path: dir.to_string(),
-                    },
+                    }),
                 });
             }
         }

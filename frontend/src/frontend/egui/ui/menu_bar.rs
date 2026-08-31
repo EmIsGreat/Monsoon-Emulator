@@ -4,6 +4,7 @@ use egui::Ui;
 use crate::frontend::egui::config::AppConfig;
 use crate::frontend::egui::keybindings::OnKeyAction;
 use crate::frontend::egui::ui::widgets::HotKeyButton;
+use crate::frontend::egui_frontend::ALTER_EGO_DEMO;
 use crate::frontend::messages::AsyncFrontendMessage;
 
 #[allow(clippy::too_many_lines)]
@@ -20,6 +21,10 @@ pub fn add_menu_bar(
                     config,
                     async_sender,
                 ));
+
+                if ui.button("Load Demo Rom").clicked() {
+                    let _ = async_sender.send(AsyncFrontendMessage::LoadRom(Some(ALTER_EGO_DEMO.clone())));
+                }
 
                 ui.menu_button("Savestates", |ui| {
                     ui.add(HotKeyButton::for_action(
