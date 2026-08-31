@@ -241,6 +241,11 @@ jobs:
             -   name: Checkout
                 uses: actions/checkout@v4
 
+            -   name: Set up build user
+                run: |
+                    useradd -m builder
+                    chown -R builder:builder "$GITHUB_WORKSPACE"
+
             -   name: Set up AUR SSH
                 run: |
                     mkdir -p /home/builder/.ssh
@@ -267,11 +272,6 @@ jobs:
                 run: |
                     git config --global user.name "GitHub Actions"
                     git config --global user.email "actions@github.com"
-
-            -   name: Set up build user
-                run: |
-                    useradd -m builder
-                    chown -R builder:builder "$GITHUB_WORKSPACE"
 
             -   name: Get version
                 id: version
