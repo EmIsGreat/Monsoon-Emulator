@@ -12,32 +12,7 @@ permissions:
     id-token: write
 
 jobs:
-    format:
-        runs-on: ubuntu-latest
-        steps:
-            -   name: Checkout code
-                uses: actions/checkout@v7
-                with:
-                    ref: ${{ github.head_ref }}
-                    token: ${{ secrets.GITHUB_TOKEN }}
-
-            -   uses: dtolnay/rust-toolchain@nightly
-                with:
-                    components: rustfmt
-
-            -   name: Cache Cargo
-                uses: Swatinem/rust-cache@v2
-
-            -   name: Run cargo fmt --all
-                run: cargo fmt --all
-
-            -   name: Commit formatting fixes
-                uses: stefanzweifel/git-auto-commit-action@v7
-                with:
-                    commit_message: "style: auto-format with cargo fmt --all"
-
     clippy:
-        needs: format
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout code
