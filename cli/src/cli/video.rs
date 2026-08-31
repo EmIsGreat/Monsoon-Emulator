@@ -630,9 +630,9 @@ impl FfmpegMp4Encoder {
         let path = output_path.with_extension("mp4");
 
         // Convert FPS to a precise fractional representation for FFmpeg.
-        // This avoids frame timing drift caused by floating-point approximations.
-        // For the NES NTSC framerate (39375000/655171 ≈ 60.0988), we use the exact
-        // fraction.
+        // This avoids frame timing drift caused by floating-point
+        // approximations. For the NES NTSC framerate (39375000/655171 ≈
+        // 60.0988), we use the exact fraction.
         let fps_str = fps_to_rational(fps);
 
         // Build FFmpeg arguments
@@ -881,7 +881,8 @@ impl VideoEncoder for RawEncoder {
 #[allow(clippy::cast_sign_loss)]
 fn fps_to_rational(fps: f64) -> String {
     // Tolerance values:
-    // - NES NTSC: 0.01 because the irrational framerate may have rounding errors
+    // - NES NTSC: 0.01 because the irrational framerate may have rounding
+    //   errors
     // - Smooth/standard: 0.001 for clean integer framerates
     const NES_TOLERANCE: f64 = 0.01;
     const STANDARD_TOLERANCE: f64 = 0.001;

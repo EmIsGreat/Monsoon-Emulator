@@ -127,7 +127,10 @@ impl EguiApp {
                     let _ = self.to_emulator.send(FrontendMessage::Power(false));
 
                     // Save directory for next file picker
-                    self.config.user_config.previous_rom_load_dir.clone_from(&rom.directory);
+                    self.config
+                        .user_config
+                        .previous_rom_load_dir
+                        .clone_from(&rom.directory);
 
                     self.load_rom(rom, self.config.user_config.use_rom_db);
                     let _ = self.to_emulator.send(FrontendMessage::Power(true));
@@ -345,8 +348,8 @@ impl EguiApp {
 
     fn handle_savestate_loaded(&mut self, context: Box<SavestateLoadContext>) {
         // Try to find a matching ROM by scanning available ROM storage.
-        // Only scan if savestate_dir is set (cleared after first scan attempt to
-        // prevent loops).
+        // Only scan if savestate_dir is set (cleared after first scan attempt
+        // to prevent loops).
         if context.savestate_dir.is_some() {
             let sender = self.async_sender.clone();
             let context_clone = context.clone();
@@ -394,7 +397,10 @@ impl EguiApp {
         rom: LoadedRom,
     ) {
         // Save directory for next file picker
-        self.config.user_config.previous_rom_load_dir.clone_from(&rom.directory);
+        self.config
+            .user_config
+            .previous_rom_load_dir
+            .clone_from(&rom.directory);
 
         let checksum = util::compute_data_checksum(&rom.data);
         if checksum == context.savestate.rom_file.data_checksum {
@@ -605,9 +611,9 @@ impl EguiApp {
         let save_dir = self.config.user_config.previous_savestate_save_dir.clone();
 
         // Read from storage asynchronously, then open save dialog.
-        // On native, spawn_save_dialog internally uses tokio::spawn which requires
-        // the tokio runtime context, so we read via async Storage instead of sync
-        // wrappers.
+        // On native, spawn_save_dialog internally uses tokio::spawn which
+        // requires the tokio runtime context, so we read via async
+        // Storage instead of sync wrappers.
         util::spawn_async(async move {
             let storage_impl = storage::get_storage();
             match storage_impl.get(&key).await {
