@@ -270,32 +270,41 @@ jobs:
                     git config --global user.name "GitHub Actions"
                     git config --global user.email "actions@github.com"
 
+            -   name: Set up build user
+                run: |
+                    useradd -m builder
+                    chown -R builder:builder "$GITHUB_WORKSPACE"
+
             -   name: Get version
                 id: version
                 run: |
                     VERSION=$(grep -m1 '^version = ' Cargo.toml | sed 's/version = "\(.*\)"/\1/')
                     echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-            -   name: Update monsoon-emulator
+            -   name: Publish to AUR
                 run: |
-                    git clone ssh://aur@aur.archlinux.org/monsoon-emulator.git
-                    cd monsoon-emulator
+                    su builder -c '
+                      set -e
                     
-                    sed -i \
-                      "s/^pkgver=.*/pkgver=${{ steps.version.outputs.version }}/" \
-                      PKGBUILD
+                      git clone ssh://aur@aur.archlinux.org/monsoon-emulator.git
+                      cd monsoon-emulator
                     
-                    updpkgsums
-                    makepkg --printsrcinfo > .SRCINFO
+                      sed -i "s/^pkgver=.*/pkgver=${{ steps.version.outputs.version }}/" PKGBUILD
+                      updpkgsums
+                      makepkg --printsrcinfo > .SRCINFO
                     
-                    if git diff --cached --quiet && git diff --quiet; then
-                        echo "No changes"
-                        exit 0
-                    fi
+                      if git diff --cached --quiet && git diff --quiet; then
+                          echo "No changes"
+                          exit 0
+                      fi
                     
-                    git commit -am "Update to ${{ steps.version.outputs.version }}"
-                    git push
-
+                      git config user.name "GitHub Actions"
+                      git config user.email "actions@github.com"
+                    
+                      git add PKGBUILD .SRCINFO
+                      git commit -m "Update to ${{ steps.version.outputs.version }}"
+                      git push
+                    '
             -   name: Update monsoon-emulator-bin
                 run: |
                     ssh -F "$HOME/.ssh/config" -T aur.archlinux.org

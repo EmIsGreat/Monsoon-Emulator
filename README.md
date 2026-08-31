@@ -7,6 +7,17 @@ Time spent since 09 February 2026:
 A cycle-accurate NES (Nintendo Entertainment System) emulator written in Rust. Monsoon aims for maximum hardware accuracy on hard timing limits while allowing customizability for soft limits and hardware variables that cannot be perfectly
 emulated.
 
+## Installation
+
+This project is available for Linux, Windows, and ARM macOS, which are available as prebuilt binaries in a GitHub release.
+
+On Arch Linux, it can be installed using
+``paru/yay -S monsoon-emulator``
+or
+``paru/yay -S monsoon-emulator-bin`` for a prebuilt binary.
+
+It is also available online [here](https://monsoon.gemderbent.dev)
+
 ## Project Structure
 
 Monsoon is organized as a Cargo workspace with multiple crates:
