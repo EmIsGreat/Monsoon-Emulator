@@ -305,22 +305,25 @@ jobs:
                     '
             -   name: Update monsoon-emulator-bin
                 run: |
-                    ssh -F "$HOME/.ssh/config" -T aur.archlinux.org
-
-                    git clone ssh://aur@aur.archlinux.org/monsoon-emulator-bin.git
-                    cd monsoon-emulator-bin
+                    su builder -c '
+                       set -e
                     
-                    sed -i \
-                      "s/^pkgver=.*/pkgver=${{ steps.version.outputs.version }}/" \
-                      PKGBUILD
+                       git clone ssh://aur@aur.archlinux.org/monsoon-emulator-bin.git
+                       cd monsoon-emulator-bin
                     
-                    updpkgsums
-                    makepkg --printsrcinfo > .SRCINFO
+                       sed -i "s/^pkgver=.*/pkgver=${{ steps.version.outputs.version }}/" PKGBUILD
+                       updpkgsums
+                       makepkg --printsrcinfo > .SRCINFO
                     
-                    if git diff --cached --quiet && git diff --quiet; then
-                        echo "No changes"
-                        exit 0
-                    fi
+                       if git diff --cached --quiet && git diff --quiet; then
+                           echo "No changes"
+                           exit 0
+                       fi
                     
-                    git commit -am "Update to ${{ steps.version.outputs.version }}"
-                    git push
+                       git config user.name "GitHub Actions"
+                       git config user.email "actions@github.com"
+                    
+                       git add PKGBUILD .SRCINFO
+                       git commit -m "Update to ${{ steps.version.outputs.version }}"
+                       git push
+                     '
