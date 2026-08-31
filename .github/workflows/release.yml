@@ -241,30 +241,28 @@ jobs:
             -   name: Checkout
                 uses: actions/checkout@v4
 
-            -   name: Configure AUR SSH
+            -   name: Set up AUR SSH
                 run: |
-                    mkdir -p "$HOME/.ssh"
-                    chmod 700 "$HOME/.ssh"
+                    mkdir -p /home/builder/.ssh
+                    chmod 700 /home/builder/.ssh
                     
-                    printf '%s\n' "${{ secrets.AUR_SSH_KEY }}" > "$HOME/.ssh/aur"
-                    chmod 600 "$HOME/.ssh/aur"
+                    printf '%s\n' "${{ secrets.AUR_SSH_KEY }}" > /home/builder/.ssh/aur
+                    chmod 600 /home/builder/.ssh/aur
                     
-                    ssh-keyscan -H aur.archlinux.org > "$HOME/.ssh/known_hosts"
-                    chmod 644 "$HOME/.ssh/known_hosts"
+                    ssh-keyscan -H aur.archlinux.org > /home/builder/.ssh/known_hosts
+                    chmod 644 /home/builder/.ssh/known_hosts
                     
-                    cat > "$HOME/.ssh/config" <<EOF
+                    cat > /home/builder/.ssh/config <<EOF
                     Host aur.archlinux.org
                       HostName aur.archlinux.org
                       User aur
-                      IdentityFile $HOME/.ssh/aur
-                      UserKnownHostsFile $HOME/.ssh/known_hosts
+                      IdentityFile /home/builder/.ssh/aur
+                      UserKnownHostsFile /home/builder/.ssh/known_hosts
                       StrictHostKeyChecking yes
                     EOF
                     
-                    chmod 600 "$HOME/.ssh/config"
-                    
-                    ssh -F "$HOME/.ssh/config" -vT aur.archlinux.org || true
-                    echo "GIT_SSH_COMMAND=ssh -F $HOME/.ssh/config" >> "$GITHUB_ENV"
+                    chmod 600 /home/builder/.ssh/config
+                    chown -R builder:builder /home/builder/.ssh
             -   name: Setup git
                 run: |
                     git config --global user.name "GitHub Actions"
