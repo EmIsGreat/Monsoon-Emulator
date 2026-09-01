@@ -1,6 +1,7 @@
+use std::cell::RefCell;
 use std::fmt::Debug;
 use std::hash::Hash;
-
+use std::rc::Rc;
 use nametable_mapping::NametableArrangement;
 use serde::{Deserialize, Serialize};
 
@@ -19,8 +20,8 @@ pub mod nametable_mapping;
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub enum Mapper {
     NoMapper(NoMapper),
-    MMC1(MMC1),
     NROM(NROM),
+    MMC1(MMC1),
 }
 
 impl From<&RomFile> for Mapper {

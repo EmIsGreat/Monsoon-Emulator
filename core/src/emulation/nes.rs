@@ -66,8 +66,6 @@ pub struct Nes {
     pub rom_file: Option<RomFile>,
     /// Optional CPU instruction trace logger for debugging.
     pub(crate) trace_log: Option<TraceLog>,
-    /// Whether CPU instruction tracing is currently enabled.
-    pub(crate) trace_enabled: bool,
     /// Internal CPU clock divider counter (0-12).
     pub(crate) cpu_cycle_counter: u8,
     pub(crate) apu_counter: u8,
@@ -77,6 +75,7 @@ pub struct Nes {
     pub stop_conditions: Option<Vec<StopCondition>>,
     pub clocking_function: ClockingFunction,
     pub rom_db: Arc<RomDb>,
+    is_tracing: bool,
 }
 
 impl Nes {
@@ -321,7 +320,6 @@ impl Nes {
             board,
             rom_file: None,
             trace_log: None,
-            trace_enabled: false,
             total_cycles: 4,
             cpu_cycle_counter: 12,
             apu_counter: 2,
@@ -330,6 +328,7 @@ impl Nes {
             stop_conditions: None,
             clocking_function: Self::step_internal,
             rom_db: Arc::new(RomDb::default()),
+            is_tracing: false,
         }
     }
 
@@ -511,7 +510,8 @@ impl Nes {
         if self.trace_log.is_none() {
             self.trace_log = Some(TraceLog::default());
         }
-        self.trace_enabled = true;
+        self.clocking_function = Self::step_debug;
+        self.is_tracing = true;
     }
 
     /// Disables CPU instruction tracing while preserving any collected log.
@@ -519,7 +519,10 @@ impl Nes {
     /// Use this to pause trace collection without discarding previously
     /// captured entries. Tracing can later be resumed with
     /// [`enable_trace`](Self::enable_trace).
-    pub fn disable_trace(&mut self) { self.trace_enabled = false; }
+    pub fn disable_trace(&mut self) {
+        self.clocking_function = Self::step_internal;
+        self.is_tracing = false;
+    }
 
     /// Enables or disables CPU instruction tracing.
     pub fn set_trace_enabled(&mut self, enabled: bool) {
@@ -532,7 +535,7 @@ impl Nes {
 
     /// Returns whether CPU instruction tracing is currently enabled.
     #[must_use]
-    pub fn trace_enabled(&self) -> bool { self.trace_enabled }
+    pub fn trace_enabled(&self) -> bool { self.is_tracing }
 
     /// Clears the currently collected CPU trace log without changing enable
     /// state.
