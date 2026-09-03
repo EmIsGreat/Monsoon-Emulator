@@ -19,23 +19,15 @@ monsoon-default-renderers = { version = "0.2.10", path = "renderer" }
 monsoon-db = { version = "0.2.10", path = "db" }
 monsoon-macro = { version = "0.2.10", path = "macros" }
 
-[profile.full_release]
-inherits = "release"
-codegen-units = 1
+[profile.release]
 lto = "fat"
+codegen-units = 1
 
 [profile.native]
-inherits = "full_release"
+inherits = "release"
 rustflags = ["-C", "target-cpu=native"]
 
-[profile.release]
-strip = true
-panic = "abort"
-incremental = true
-
-[profile.profiling]
-panic = "unwind"
-inherits = "release"
-strip = "none"
-debug = "full"
+[profile.dev-performant]
+inherits = "dev"
+opt-level = 3
 split-debuginfo = "unpacked"  # Ensures symbols are separate

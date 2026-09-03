@@ -1,5 +1,0 @@
-# Talk:Arkanoid controller
-
-From [NESdev Wiki](Nesdev_Wiki.xhtml) | View [current version](https://www.nesdev.org/wiki/Talk%3AArkanoid_controller) | View [other pages](Special_AllPages.xhtml#Talk_Arkanoid_controller)
-
-"The Arkanoid game expects the range to be $54-$F4" \- from where does this information originate? I've thoroughly analyzed both Arkanoid and Arkanoid II, and neither their input code nor their game logic observe those limits. Arkanoid's controller code caps the input to $62-$102 (it subtracts $52 and then limits it to $10-$B0) while values $62-$F2 represent the full width of the playfield (any smaller/larger and the paddle doesn't move any further). Arkanoid II's effective ranges are $4E-$E2 for single player and $54-$DB for VS (both players), though the input code always applies a minimum of $4E and chooses its upper limit between $BA/$D2/$E2/$F2 based on game mode (it subtracts $48 and then limits it to $06-$72/$8A/$9A/$AA). --[Quietust](User_Quietust.xhtml "User:Quietust") ([talk](https://www.nesdev.org/w/index.php?title=User_talk:Quietust&action=edit&redlink=1 "User talk:Quietust \(page does not exist\)")) 18:01, 16 September 2016 (MDT) 

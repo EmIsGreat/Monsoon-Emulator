@@ -210,26 +210,13 @@ pub trait Storage: Send + Sync {
 mod native {
     use std::io::{Read, Write};
     use std::path::{Path, PathBuf};
-    use std::sync::OnceLock;
 
     use async_trait::async_trait;
-    use directories::ProjectDirs;
 
+    use crate::frontend::persistence::get_project_dirs;
     use crate::frontend::storage::{
         Storage, StorageCategory, StorageError, StorageKey, StorageMetadata, StorageResult,
     };
-
-    const APP_QUALIFIER: &str = "com";
-    const APP_ORGANIZATION: &str = "Lightsong";
-    const APP_NAME: &str = "MonsoonEmulator";
-
-    static PROJECT_DIRS: OnceLock<Option<ProjectDirs>> = OnceLock::new();
-
-    fn get_project_dirs() -> Option<&'static ProjectDirs> {
-        PROJECT_DIRS
-            .get_or_init(|| ProjectDirs::from(APP_QUALIFIER, APP_ORGANIZATION, APP_NAME))
-            .as_ref()
-    }
 
     /// Native file system storage implementation
     pub struct NativeStorage;

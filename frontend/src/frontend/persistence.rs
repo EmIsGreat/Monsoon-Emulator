@@ -30,9 +30,13 @@ use crate::frontend::storage::{Storage, StorageKey};
 use crate::get_all_renderers;
 
 /// Application identifier used for directory paths
-const APP_QUALIFIER: &str = "com";
-const APP_ORGANIZATION: &str = "Lightsong";
-const APP_NAME: &str = "MonsoonEmulator";
+pub const APP_QUALIFIER: &str = "com";
+pub const APP_ORGANIZATION: &str = "Gemderbent";
+#[cfg(not(debug_assertions))]
+pub const APP_NAME: &str = "MonsoonEmulator";
+
+#[cfg(debug_assertions)]
+pub const APP_NAME: &str = "MonsoonEmulator-Dev";
 
 const fn default_true() -> bool { true }
 
@@ -50,7 +54,7 @@ const fn default_true() -> bool { true }
 static PROJECT_DIRS: OnceLock<Option<ProjectDirs>> = OnceLock::new();
 
 /// Get the project directories (lazily initialized)
-fn get_project_dirs() -> Option<&'static ProjectDirs> {
+pub fn get_project_dirs() -> Option<&'static ProjectDirs> {
     PROJECT_DIRS
         .get_or_init(|| ProjectDirs::from(APP_QUALIFIER, APP_ORGANIZATION, APP_NAME))
         .as_ref()

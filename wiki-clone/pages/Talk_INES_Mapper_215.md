@@ -1,5 +1,0 @@
-# Talk:INES Mapper 215
-
-From [NESdev Wiki](Nesdev_Wiki.xhtml) | View [current version](https://www.nesdev.org/wiki/Talk%3AINES_Mapper_215) | View [other pages](Special_AllPages.xhtml#Talk_INES_Mapper_215)
-
-Here is how this mess came about: FCEUX emulates subtype 2 when encountering Mapper 215 or UNIF **UNL-8237** , which covers Subtype 4 as well because of its compatibility writes, and subtype 3 only when encountering UNIF **UNL-8237A**. Subtype 1 is not supported. Nestopia on the other hand emulates subtype 4 when encountering Mapper 215 with PRG=256K and CHR=512K (an overdump of _Mortal Kombat 3 Extra 60_), subtype 1 when encountering Mapper 215 with other ROM sizes, subtype 2 only when encountering UNIF **UNL-8237** , and subtype 3 not at all; all excluding CRC-based reassignments. Comments appreciated on whether submappers are needed/desired for this. [NewRisingSun](https://www.nesdev.org/w/index.php?title=User:NewRisingSun&action=edit&redlink=1 "User:NewRisingSun \(page does not exist\)") ([talk](User_talk_NewRisingSun.xhtml "User talk:NewRisingSun")) 15:12, 23 May 2018 (MDT) 

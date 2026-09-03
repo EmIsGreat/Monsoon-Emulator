@@ -36,10 +36,10 @@ jobs:
                 uses: Swatinem/rust-cache@v2
 
             -   name: Build CLI
-                run: cargo build --profile full_release -p monsoon-cli
+                run: cargo build --release -p monsoon-cli
 
             -   name: Build Frontend
-                run: cargo build --profile full_release -p monsoon-frontend
+                run: cargo build --release -p monsoon-frontend
 
             -   name: Prepare artifacts
                 shell: bash
@@ -47,8 +47,8 @@ jobs:
                     mkdir -p artifacts
                     
                     if [ "${{ runner.os }}" = "Windows" ]; then
-                      cp target/full_release/cli.exe "artifacts/monsoon-cli-${{ matrix.target }}.exe"
-                      cp target/full_release/frontend.exe "artifacts/monsoon-frontend-${{ matrix.target }}.exe"
+                      cp target/release/cli.exe "artifacts/monsoon-cli-${{ matrix.target }}.exe"
+                      cp target/release/frontend.exe "artifacts/monsoon-frontend-${{ matrix.target }}.exe"
                     
                       cd artifacts
                       powershell -Command "Compress-Archive -Path monsoon-cli-${{ matrix.target }}.exe -DestinationPath monsoon-cli-${{ matrix.target }}.zip"
@@ -56,16 +56,16 @@ jobs:
                       rm *.exe
                     else
                       if [ "${{ runner.os }}" = "Linux" ]; then
-                        cp target/full_release/cli "artifacts/monsoon-cli-${{ matrix.target }}.x86_64"
-                        cp target/full_release/frontend "artifacts/monsoon-frontend-${{ matrix.target }}.x86_64"
+                        cp target/release/cli "artifacts/monsoon-cli-${{ matrix.target }}.x86_64"
+                        cp target/release/frontend "artifacts/monsoon-frontend-${{ matrix.target }}.x86_64"
                     
                         cd artifacts
                         tar -czf "monsoon-cli-${{ matrix.target }}.tar.gz" "monsoon-cli-${{ matrix.target }}.x86_64"
                         tar -czf "monsoon-frontend-${{ matrix.target }}.tar.gz" "monsoon-frontend-${{ matrix.target }}.x86_64"
                         rm "monsoon-cli-${{ matrix.target }}.x86_64" "monsoon-frontend-${{ matrix.target }}.x86_64"
                       else
-                        cp target/full_release/cli "artifacts/monsoon-cli-${{ matrix.target }}"
-                        cp target/full_release/frontend "artifacts/monsoon-frontend-${{ matrix.target }}"
+                        cp target/release/cli "artifacts/monsoon-cli-${{ matrix.target }}"
+                        cp target/release/frontend "artifacts/monsoon-frontend-${{ matrix.target }}"
                     
                         cd artifacts
                         tar -czf "monsoon-cli-${{ matrix.target }}.tar.gz" "monsoon-cli-${{ matrix.target }}"
@@ -141,7 +141,7 @@ jobs:
 
             -   name: Build frontend with trunk
                 working-directory: frontend
-                run: trunk build --cargo-profile full_release
+                run: trunk build --release
 
             -   name: Upload Pages artifact
                 uses: actions/upload-pages-artifact@v5
