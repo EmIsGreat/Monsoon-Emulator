@@ -139,6 +139,7 @@ pub struct ControllerState {
 }
 
 impl ControllerState {
+    #[must_use]
     pub fn with_standard_controller_state(mut self, state: StandardControllerState) -> Self {
         self.standard_controller = Some(state);
         self

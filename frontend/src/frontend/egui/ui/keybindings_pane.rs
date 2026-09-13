@@ -171,14 +171,14 @@ fn render_standard_controller_bindings(
     ui: &mut egui::Ui,
     bindings: &mut StandardControllerBindings,
     label_column_width: f32,
-    ports: usize,
+    port: usize,
 ) -> bool {
     let mut changed = false;
 
     ui.collapsing(
-        format!("Standard Controller Bindings (Port {})", ports),
+        format!("Standard Controller Bindings (Port {port})"),
         |ui| {
-            egui::Grid::new(format!("standard_controller_keybinds_{}", ports))
+            egui::Grid::new(format!("standard_controller_keybinds_{port}"))
                 .num_columns(2)
                 .spacing([40.0, 4.0])
                 .striped(true)

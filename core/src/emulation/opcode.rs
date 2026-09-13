@@ -3,7 +3,14 @@ use std::sync::OnceLock;
 use serde::{Deserialize, Serialize};
 
 use crate::emulation::cpu::{Condition, MicroOpCallback, Source, Target};
-use crate::emulation::opcode::OpType::*;
+use crate::emulation::opcode::OpType::{
+    AbsoluteIndexRMW, AbsoluteIndexRead, AbsoluteIndexWrite, AbsoluteRMW, AbsoluteRead,
+    AbsoluteWrite, AccumulatorOrImplied, BRK, ImmediateAddressing, IndexedIndirectRMW,
+    IndexedIndirectRead, IndexedIndirectWrite, IndirectIndexedRMW, IndirectIndexedRead,
+    IndirectIndexedWrite, JSR, JmpAbsolute, JmpIndirect, PH, PL, RTI, RTS, Relative,
+    ZeroPageIndexRMW, ZeroPageIndexRead, ZeroPageIndexWrite, ZeroPageRMW, ZeroPageRead,
+    ZeroPageWrite,
+};
 /// Direct lookup table for opcodes - O(1) array access vs `HashMap`
 pub static OPCODES_TABLE: OnceLock<[OpCode; 256]> = OnceLock::new();
 
