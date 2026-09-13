@@ -64,7 +64,7 @@ impl Default for ViewConfig {
 /// Note: `Eq` and `PartialEq` are not derived because `PendingDialogs` contains
 /// `SavestateLoadContext` which includes `SaveState`, which is not trivially
 /// comparable.
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct AppConfig {
     pub view_config: ViewConfig,
     pub speed_config: SpeedConfig,
@@ -100,7 +100,7 @@ impl AppConfig {
 }
 
 /// Pending dialog states for multi-step operations
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct PendingDialogs {
     /// Dialog to ask user if they want to use a matching ROM found in the
     /// directory
@@ -135,7 +135,7 @@ pub enum AutoPauseReason {
 /// Tracks currently active automatic pause reasons.
 ///
 /// Emulation is automatically paused while at least one reason is active.
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct AutoPauseState {
     pub reasons: HashSet<AutoPauseReason>,
 }

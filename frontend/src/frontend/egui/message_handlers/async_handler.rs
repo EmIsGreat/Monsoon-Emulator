@@ -119,18 +119,24 @@ impl EguiApp {
                     .to_emulator
                     .send(FrontendMessage::CreateSaveState(SaveType::Quicksave));
             }
-            AsyncFrontendMessage::LoadRom(loaded_rom) => {
-                if let Some(rom) = loaded_rom {
+            AsyncFrontendMessage::LoadRom {
+                rom,
+                overwrite_directory,
+            } => {
+                if let Some(rom) = rom {
                     let _ = self
                         .to_emulator
                         .send(FrontendMessage::CreateSaveState(SaveType::Autosave));
                     let _ = self.to_emulator.send(FrontendMessage::Power(false));
 
-                    // Save directory for next file picker
-                    self.config
-                        .user_config
-                        .previous_rom_load_dir
-                        .clone_from(&rom.directory);
+                    if overwrite_directory {
+                        println!("here");
+                        // Save directory for next file picker
+                        self.config
+                            .user_config
+                            .previous_rom_load_dir
+                            .clone_from(&rom.directory);
+                    }
 
                     self.load_rom(rom, *self.config.user_config.use_rom_db);
                     let _ = self.to_emulator.send(FrontendMessage::Power(true));

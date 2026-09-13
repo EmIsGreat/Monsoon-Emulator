@@ -23,8 +23,10 @@ pub fn add_menu_bar(
                 ));
 
                 if ui.button("Load Demo Rom").clicked() {
-                    let _ = async_sender
-                        .send(AsyncFrontendMessage::LoadRom(Some(ALTER_EGO_DEMO.clone())));
+                    let _ = async_sender.send(AsyncFrontendMessage::LoadRom {
+                        rom: Some(ALTER_EGO_DEMO.clone()),
+                        overwrite_directory: false,
+                    });
                 }
 
                 ui.menu_button("Savestates", |ui| {

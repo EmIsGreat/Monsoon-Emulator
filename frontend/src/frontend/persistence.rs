@@ -646,6 +646,7 @@ pub async fn load_config() -> Option<PersistentConfig> {
     let key = storage::config_key();
     let storage_impl = storage::get_storage();
 
+    println!("{key}");
     // Check if config exists using storage
     match storage_impl.exists(&key).await {
         Ok(false) => return None,

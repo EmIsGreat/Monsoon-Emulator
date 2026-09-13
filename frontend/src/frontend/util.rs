@@ -221,11 +221,14 @@ pub fn spawn_rom_picker(sender: &Sender<AsyncFrontendMessage>, dir: Option<&Stor
             let cache_key = storage::rom_cache_key(&name);
             let _ = get_storage().set(&cache_key, data.clone()).await;
 
-            let _ = sender.send(AsyncFrontendMessage::LoadRom(Some(LoadedRom {
-                data,
-                name,
-                directory: Some(directory),
-            })));
+            let _ = sender.send(AsyncFrontendMessage::LoadRom {
+                rom: Some(LoadedRom {
+                    data,
+                    name,
+                    directory: Some(directory),
+                }),
+                overwrite_directory: true,
+            });
         }
     });
 }

@@ -814,9 +814,15 @@ fn common_setup(rom: Option<&PathBuf>) -> SetupResponse {
                 directory: Some(directory),
             })
         });
-        let _ = async_sender.send(AsyncFrontendMessage::LoadRom(loaded_rom));
+        let _ = async_sender.send(AsyncFrontendMessage::LoadRom {
+            rom: loaded_rom,
+            overwrite_directory: false,
+        });
     } else {
-        let _ = async_sender.send(AsyncFrontendMessage::LoadRom(Some(ALTER_EGO_DEMO.clone())));
+        let _ = async_sender.send(AsyncFrontendMessage::LoadRom {
+            rom: Some(ALTER_EGO_DEMO.clone()),
+            overwrite_directory: false,
+        });
     }
 
     let _ = to_emu.send(FrontendMessage::AttachPeripherals((

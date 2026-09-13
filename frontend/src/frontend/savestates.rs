@@ -31,7 +31,7 @@ impl std::fmt::Display for SaveEntryType {
 }
 
 /// State for the matching ROM dialog
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct MatchingRomDialogState {
     pub context: Box<SavestateLoadContext>,
     /// The matching ROM data that was found
@@ -39,7 +39,7 @@ pub struct MatchingRomDialogState {
 }
 
 /// State for the checksum mismatch warning dialog
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ChecksumMismatchDialogState {
     pub context: Box<SavestateLoadContext>,
     /// The selected ROM data (with mismatched checksum)
@@ -47,20 +47,20 @@ pub struct ChecksumMismatchDialogState {
 }
 
 /// State for the ROM selection dialog
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RomSelectionDialogState {
     pub context: Box<SavestateLoadContext>,
 }
 
 /// State for a generic error dialog
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ErrorDialogState {
     pub title: String,
     pub message: String,
 }
 
 /// State for the save browser dialog
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SaveBrowserState {
     /// All save entries loaded from storage
     pub entries: Vec<SaveEntry>,
