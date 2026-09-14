@@ -72,4 +72,5 @@ pub struct SaveBrowserState {
     pub show_quicksaves: bool,
     /// Filter: show autosaves
     pub show_autosaves: bool,
+    pub show_uploaded_saves: bool,
 }

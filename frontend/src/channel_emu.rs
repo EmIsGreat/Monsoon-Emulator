@@ -176,7 +176,7 @@ impl ChannelEmulator {
                 },
                 FrontendMessage::WritePpu(address, data) => self.nes.ppu_mem_init(address, data),
                 FrontendMessage::WriteCpu(address, data) => self.nes.cpu_mem_init(address, data),
-                FrontendMessage::LoadRom((mut rom, name, use_db)) => {
+                FrontendMessage::LoadRom(mut rom, name, use_db) => {
                     let loadable = (&mut rom.data[..], &name, use_db, Some(&self.nes));
                     let rom_file: Result<RomFile, ParseError> = loadable.try_into();
 

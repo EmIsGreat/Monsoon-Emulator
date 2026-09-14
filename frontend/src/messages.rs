@@ -28,7 +28,7 @@ pub enum FrontendMessage {
     Power(bool),
     StepFrame,
     RequestDebugData(EmulatorFetchable),
-    LoadRom((LoadedRom, String, bool)),
+    LoadRom(LoadedRom, String, bool),
     WritePpu(u16, u8),
     WriteCpu(u16, u8),
     CreateSaveState(SaveType),

@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use monsoon_core::emulation::palette_util::RgbPalette;
@@ -45,16 +46,15 @@ pub struct LoadedFile {
 pub struct LoadedRom {
     /// Raw ROM data bytes
     pub data: Vec<u8>,
-    /// ROM filename (without path, e.g. "game.nes")
+    /// ROM filename
     pub name: String,
-    /// Directory path (may be None on WASM)
-    pub directory: Option<StorageKey>,
+    pub path: Option<StorageKey>,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct LoadedPalette {
     pub palette: RgbPalette,
-    pub directory: StorageKey,
+    pub file: Option<StorageKey>,
 }
 
 #[derive(Clone, Hash, Debug)]
@@ -88,7 +88,7 @@ pub enum AsyncFrontendMessage {
     /// type for persistence)
     FileSaveCompleted {
         error: Option<String>,
-        directory: Option<StorageKey>,
+        directory: Option<PathBuf>,
         file_type: FileType,
     },
     Quickload,
@@ -164,8 +164,6 @@ pub enum AsyncFrontendMessage {
 #[derive(Clone, Hash, Debug)]
 pub struct SavestateLoadContext {
     pub savestate: SaveState,
-    /// Savestate filename (without path)
-    pub savestate_name: String,
-    /// Savestate directory (for file picker initial directory)
-    pub savestate_dir: Option<String>,
+    /// Savestate path
+    pub savestate_path: Option<StorageKey>,
 }

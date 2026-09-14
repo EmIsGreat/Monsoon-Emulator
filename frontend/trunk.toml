@@ -1,0 +1,3 @@
+[build]
+target = "index.html"
+minify = "on_release"

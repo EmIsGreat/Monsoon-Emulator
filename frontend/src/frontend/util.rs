@@ -1,4 +1,5 @@
 use std::future::Future;
+use std::path::{Path, PathBuf};
 
 use crossbeam_channel::Sender;
 use monsoon_core::emulation::palette_util::parse_palette_from_bytes;
@@ -11,7 +12,7 @@ use sha2::{Digest, Sha256};
 use crate::frontend::messages::{
     AsyncFrontendMessage, AutoPauseSignal, LoadedPalette, LoadedRom, SavestateLoadContext,
 };
-use crate::frontend::storage::{self, Storage, StorageCategory, StorageKey, get_storage};
+use crate::frontend::storage::{self, Storage, StorageKey, get_storage};
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
 /// Enum to represent errors that can occur during savestate loading UI flow
@@ -25,15 +26,19 @@ pub enum SavestateLoadError {
 /// Extract the parent directory from a `FileHandle`.
 /// On native, this uses the file's path. On WASM, returns None.
 #[cfg(not(target_arch = "wasm32"))]
-fn get_file_directory(handle: &FileHandle) -> Option<String> {
-    handle
-        .path()
-        .parent()
-        .map(|p| p.to_string_lossy().to_string())
-}
+fn get_file_directory(handle: &FileHandle) -> Option<&Path> { handle.path().parent() }
 
 #[cfg(target_arch = "wasm32")]
-fn get_file_directory(_handle: &FileHandle) -> Option<String> {
+fn get_file_directory(_handle: &FileHandle) -> Option<&Path> {
+    // WASM doesn't have filesystem paths
+    None
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn get_file_path(handle: &FileHandle) -> Option<&Path> { handle.path() }
+
+#[cfg(target_arch = "wasm32")]
+fn get_file_path(_handle: &FileHandle) -> Option<&Path> {
     // WASM doesn't have filesystem paths
     None
 }
@@ -99,7 +104,7 @@ pub async fn pick_file(file_type: FileType, directory: Option<&StorageKey>) -> O
         .add_filetype_filter(file_type)
         .add_filetype_filter(FileType::All);
 
-    if let Some(dir) = get_storage().key_to_path_opt(directory) {
+    if let Some(dir) = get_storage().key_to_path(directory) {
         dialog = dialog.set_directory(dir);
     }
 
@@ -108,13 +113,13 @@ pub async fn pick_file(file_type: FileType, directory: Option<&StorageKey>) -> O
 
 /// Save a file using the async file dialog.
 /// The directory hint is used to set the initial directory if provided.
-pub async fn save_file(file_type: FileType, directory: Option<&StorageKey>) -> Option<FileHandle> {
+pub async fn save_file(file_type: FileType, directory: Option<PathBuf>) -> Option<FileHandle> {
     let mut dialog = AsyncFileDialog::new()
         .add_filetype_filter(file_type)
         .add_filetype_filter(FileType::All)
         .set_can_create_directories(true);
 
-    if let Some(dir) = get_storage().key_to_path_opt(directory) {
+    if let Some(dir) = directory {
         dialog = dialog.set_directory(dir);
     }
 
@@ -180,17 +185,11 @@ pub fn spawn_palette_picker(sender: &Sender<AsyncFrontendMessage>, dir: Option<&
         if let Some(handle) = pick_file(FileType::Palette, dir.as_ref()).await {
             // Read the file contents from the handle
             let data = handle.read().await;
-            let palette = parse_palette_from_bytes(&data);
-            let directory = get_file_directory(&handle).map_or(
-                StorageKey {
-                    category: StorageCategory::Cache,
-                    sub_path: "upload_cache/palettes/".to_string(),
-                },
-                |f| StorageKey::from(&f),
-            );
+            let palette = parse_palette_from_bytes(Some(&data));
+            let file = StorageKey::from(handle.path());
             let _ = sender.send(AsyncFrontendMessage::PaletteLoaded(LoadedPalette {
                 palette,
-                directory,
+                file: Some(file),
             }));
         }
     });
@@ -209,13 +208,7 @@ pub fn spawn_rom_picker(sender: &Sender<AsyncFrontendMessage>, dir: Option<&Stor
         if let Some(handle) = pick_file(FileType::Rom, dir.as_ref()).await {
             let data = handle.read().await;
             let name = handle.file_name();
-            let directory = get_file_directory(&handle).map_or(
-                StorageKey {
-                    category: StorageCategory::Cache,
-                    sub_path: "upload_cache/roms/".to_string(),
-                },
-                |f| StorageKey::from(&f),
-            );
+            let path = StorageKey::from(handle.path());
 
             // Cache ROM in storage for later access (ROM matching, etc.)
             let cache_key = storage::rom_cache_key(&name);
@@ -225,7 +218,7 @@ pub fn spawn_rom_picker(sender: &Sender<AsyncFrontendMessage>, dir: Option<&Stor
                 rom: Some(LoadedRom {
                     data,
                     name,
-                    directory: Some(directory),
+                    path: Some(path),
                 }),
                 overwrite_directory: true,
             });
@@ -243,12 +236,11 @@ pub fn spawn_rom_picker(sender: &Sender<AsyncFrontendMessage>, dir: Option<&Stor
 /// * `data` - Data to write to the file
 pub fn spawn_save_dialog(
     sender: Option<&Sender<AsyncFrontendMessage>>,
-    dir: Option<&StorageKey>,
+    dir: Option<PathBuf>,
     file_type: FileType,
     data: Box<dyn ToBytes + Send>,
 ) {
     let sender = sender.cloned();
-    let dir = dir.cloned();
     spawn_async(async move {
         if let Some(sender) = &sender
             && file_type == FileType::Savestate
@@ -259,7 +251,7 @@ pub fn spawn_save_dialog(
             });
         }
 
-        if let Some(handle) = save_file(file_type, dir.as_ref()).await {
+        if let Some(handle) = save_file(file_type, dir).await {
             // Get filename for format detection
             let filename = handle.file_name();
             let format = get_extension(&filename);
@@ -275,7 +267,7 @@ pub fn spawn_save_dialog(
             });
 
             // Capture directory from the save handle
-            let save_dir = get_file_directory(&handle).map(|f| StorageKey::from(&f));
+            let save_dir = get_file_directory(&handle).map(Path::to_path_buf);
 
             // Write data using the file handle
             let bytes = data.to_bytes(format);
@@ -399,7 +391,7 @@ pub fn spawn_savestate_picker(sender: &Sender<AsyncFrontendMessage>, dir: Option
             // Read savestate data from the file handle
             let data = handle.read().await;
             let savestate_name = handle.file_name();
-            let savestate_dir = get_file_directory(&handle);
+            let savestate_path = get_file_directory(&handle).map(|p| StorageKey::from(p));
 
             // Cache savestate in storage for later access
             let cache_key = storage::uploaded_savestate_key(&savestate_name);
@@ -417,8 +409,7 @@ pub fn spawn_savestate_picker(sender: &Sender<AsyncFrontendMessage>, dir: Option
 
             let context = SavestateLoadContext {
                 savestate,
-                savestate_name,
-                savestate_dir,
+                savestate_path,
             };
 
             // Send context for next step - user will need to select ROM
@@ -465,14 +456,9 @@ pub fn spawn_rom_picker_for_savestate(
 
         if let Some(handle) = handle {
             let data = handle.read().await;
+            get_file_directory()
             let name = handle.file_name();
-            let directory = get_file_directory(&handle).map_or(
-                StorageKey {
-                    category: StorageCategory::Cache,
-                    sub_path: "upload_cache/roms/".to_string(),
-                },
-                |f| StorageKey::from(&f),
-            );
+            let path = StorageKey::from(handle.path());
 
             // Cache ROM in storage for later access (ROM matching, etc.)
             let cache_key = storage::rom_cache_key(&name);
@@ -483,7 +469,7 @@ pub fn spawn_rom_picker_for_savestate(
                 LoadedRom {
                     data,
                     name,
-                    directory: Some(directory),
+                    path: Some(path),
                 },
             ));
         }

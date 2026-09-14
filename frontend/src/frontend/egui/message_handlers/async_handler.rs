@@ -19,7 +19,7 @@ use crate::frontend::savestates::{
     ChecksumMismatchDialogState, ErrorDialogState, MatchingRomDialogState, RomSelectionDialogState,
     SaveBrowserState, SaveEntry, SaveEntryType,
 };
-use crate::frontend::storage::{Storage, StorageKey};
+use crate::frontend::storage::{Storage, StorageKey, get_storage};
 use crate::frontend::util::{
     SavestateLoadError, spawn_rom_picker, spawn_savestate_picker, try_parse_savestate,
 };
@@ -49,7 +49,7 @@ impl EguiApp {
     pub(crate) fn handle_single_async_message(&mut self, msg: AsyncFrontendMessage, ctx: &Context) {
         match msg {
             AsyncFrontendMessage::PaletteLoaded(loaded) => {
-                self.config.user_config.previous_palette_load_dir = Some(loaded.directory);
+                self.config.user_config.previous_palette = loaded.file;
                 self.handle_palette_loaded(ctx, &loaded.palette);
             }
             AsyncFrontendMessage::RomDbReady(db) => {
@@ -63,17 +63,15 @@ impl EguiApp {
                 if let Some(e) = error {
                     eprintln!("File save error: {e}");
                 }
-                if let Some(dir) = directory {
-                    match file_type {
-                        util::FileType::Palette => {
-                            self.config.user_config.previous_palette_save_dir = Some(dir);
-                        }
-                        util::FileType::Savestate => {
-                            self.config.user_config.previous_savestate_save_dir = Some(dir);
-                        }
-                        // Rom and All don't use save dialogs
-                        _ => {}
+                match file_type {
+                    util::FileType::Palette => {
+                        self.config.user_config.previous_palette_save = directory;
                     }
+                    util::FileType::Savestate => {
+                        self.config.user_config.previous_savestate_save = directory;
+                    }
+                    // Rom and All don't use save dialogs
+                    _ => {}
                 }
             }
             AsyncFrontendMessage::SavestateLoaded(context) => {
@@ -92,7 +90,7 @@ impl EguiApp {
                 util::spawn_rom_picker_for_savestate(
                     &self.async_sender,
                     context,
-                    self.config.user_config.previous_rom_load_dir.as_ref(),
+                    self.config.user_config.previous_rom_directory().as_ref(),
                 );
             }
             AsyncFrontendMessage::RomSelectedForSavestate(context, rom) => {
@@ -130,12 +128,8 @@ impl EguiApp {
                     let _ = self.to_emulator.send(FrontendMessage::Power(false));
 
                     if overwrite_directory {
-                        println!("here");
                         // Save directory for next file picker
-                        self.config
-                            .user_config
-                            .previous_rom_load_dir
-                            .clone_from(&rom.directory);
+                        self.config.user_config.previous_rom = rom.path.clone();
                     }
 
                     self.load_rom(rom, *self.config.user_config.use_rom_db);
@@ -169,11 +163,11 @@ impl EguiApp {
                     && let Some((_, rom)) = &self.config.console_config.loaded_rom
                 {
                     let name = rom.name.clone();
-                    let _ = self.to_emulator.send(FrontendMessage::LoadRom((
+                    let _ = self.to_emulator.send(FrontendMessage::LoadRom(
                         rom.clone(),
                         name,
                         *self.config.user_config.use_rom_db,
-                    )));
+                    ));
                 }
 
                 let _ = self.to_emulator.send(FrontendMessage::Power(
@@ -257,7 +251,7 @@ impl EguiApp {
             }
             AsyncFrontendMessage::StartLoadRom => spawn_rom_picker(
                 &self.async_sender,
-                self.config.user_config.previous_rom_load_dir.as_ref(),
+                self.config.user_config.previous_rom_directory().as_ref(),
             ),
             AsyncFrontendMessage::Quit => {
                 ctx.send_viewport_cmd(ViewportCommand::Close);
@@ -284,7 +278,7 @@ impl EguiApp {
             AsyncFrontendMessage::StartLoadSavestate => {
                 spawn_savestate_picker(
                     &self.async_sender,
-                    self.config.user_config.previous_savestate_load_dir.as_ref(),
+                    self.config.user_config.previous_savestate_dir().as_ref(),
                 );
             }
             AsyncFrontendMessage::PowerCycle => {
@@ -356,24 +350,14 @@ impl EguiApp {
         // Try to find a matching ROM by scanning available ROM storage.
         // Only scan if savestate_dir is set (cleared after first scan attempt
         // to prevent loops).
-        if context.savestate_dir.is_some() {
+        if context.savestate_path.is_some() {
             let sender = self.async_sender.clone();
             let context_clone = context.clone();
 
-            // On native, resolve the ROM directory from the storage key
-            #[cfg(not(target_arch = "wasm32"))]
-            let rom_dir = self
-                .config
-                .user_config
-                .previous_rom_load_dir
-                .as_ref()
-                .and_then(storage::get_path_for_key)
-                .map(|d| d.to_string_lossy().to_string());
-            #[cfg(target_arch = "wasm32")]
-            let rom_dir: Option<String> = None;
+            let rom = self.config.user_config.previous_rom_directory();
 
             util::spawn_async(async move {
-                let result = find_matching_rom(&context_clone, rom_dir).await;
+                let result = find_matching_rom(&context_clone, rom.as_ref()).await;
 
                 if let Some(rom) = result {
                     let _ = sender.send(AsyncFrontendMessage::ShowMatchingRomDialog(
@@ -384,7 +368,7 @@ impl EguiApp {
                     // No match found - show ROM selection dialog
                     // Clear savestate_dir to prevent re-scanning
                     let mut context_clone = context_clone;
-                    context_clone.savestate_dir = None;
+                    context_clone.savestate_path = None;
                     let _ = sender.send(AsyncFrontendMessage::SavestateLoaded(context_clone));
                 }
             });
@@ -403,10 +387,7 @@ impl EguiApp {
         rom: LoadedRom,
     ) {
         // Save directory for next file picker
-        self.config
-            .user_config
-            .previous_rom_load_dir
-            .clone_from(&rom.directory);
+        self.config.user_config.previous_rom = rom.path.clone();
 
         let checksum = util::compute_data_checksum(&rom.data);
         if checksum == context.savestate.rom_file.data_checksum {
@@ -464,15 +445,17 @@ impl EguiApp {
             .loaded_rom
             .as_ref()
             .map(|r| r.0.data_checksum);
-        let rom_name = self.config.user_config.previous_rom_name.clone();
+        let rom_name = self.config.user_config.previous_rom.clone();
         let sender = self.async_sender.clone();
         let to_emulator = self.to_emulator.clone();
 
-        if let (Some(checksum), Some(prev_name)) = (rom_info, rom_name) {
-            let display_name = util::rom_display_name(&prev_name, &checksum);
+        if let Some(checksum) = rom_info
+            && let Some(prev_key) = rom_name
+        {
+            let display_name = util::rom_display_name(prev_key.get_leaf_name(), &checksum);
             util::spawn_async(async move {
-                let prefix = storage::quicksaves_prefix(&display_name);
-                let storage_impl = storage::get_storage();
+                let prefix = storage::quicksave_prefix(&display_name);
+                let storage_impl = get_storage();
 
                 // List quicksaves
                 let entries = match storage_impl.list(&prefix).await {
@@ -544,10 +527,10 @@ impl EguiApp {
     /// Open the save browser dialog and start loading save entries.
     fn handle_open_save_browser(&mut self) {
         if let Some(rom) = &self.config.console_config.loaded_rom
-            && let Some(prev_name) = &self.config.user_config.previous_rom_name
+            && let Some(prev_name) = &self.config.user_config.previous_rom
         {
             let rom_hash = &rom.0.data_checksum;
-            let display_name = util::rom_display_name(prev_name, rom_hash);
+            let display_name = util::rom_display_name(prev_name.get_leaf_name(), rom_hash);
 
             // Show the dialog immediately with loading state
             self.config.pending_dialogs.save_browser = Some(SaveBrowserState {
@@ -556,6 +539,7 @@ impl EguiApp {
                 loading: true,
                 show_quicksaves: true,
                 show_autosaves: true,
+                show_uploaded_saves: true,
             });
 
             // List saves asynchronously
@@ -580,7 +564,7 @@ impl EguiApp {
             .map(|r| r.0.data_checksum);
 
         util::spawn_async(async move {
-            let storage_impl = storage::get_storage();
+            let storage_impl = get_storage();
             match storage_impl.get(&key).await {
                 Ok(data) => match savestate::try_load_state_from_bytes(&data) {
                     Some(savestate) => {
@@ -614,20 +598,20 @@ impl EguiApp {
     /// Export a save from internal storage to a file on disk via save dialog.
     fn handle_export_save_from_browser(&self, key: StorageKey) {
         let sender = self.async_sender.clone();
-        let save_dir = self.config.user_config.previous_savestate_save_dir.clone();
+        let save_dir = self.config.user_config.previous_savestate_save.clone();
 
         // Read from storage asynchronously, then open save dialog.
         // On native, spawn_save_dialog internally uses tokio::spawn which
         // requires the tokio runtime context, so we read via async
         // Storage instead of sync wrappers.
         util::spawn_async(async move {
-            let storage_impl = storage::get_storage();
+            let storage_impl = get_storage();
             match storage_impl.get(&key).await {
                 Ok(data) => {
                     let exportable = ExportableData(data);
                     util::spawn_save_dialog(
                         Some(&sender),
-                        save_dir.as_ref(),
+                        save_dir,
                         util::FileType::Savestate,
                         Box::new(exportable),
                     );
@@ -649,14 +633,14 @@ impl EguiApp {
 /// `IndexedDB` cache is searched.
 async fn find_matching_rom(
     context: &SavestateLoadContext,
-    #[allow(unused)] rom_dir: Option<String>,
+    #[allow(unused)] rom_dir: Option<&StorageKey>,
 ) -> Option<LoadedRom> {
     let expected_checksum = &context.savestate.rom_file.data_checksum;
-    let storage_impl = storage::get_storage();
+    let storage_impl = get_storage();
 
     // First, try the storage ROM cache (works on both platforms)
     // Direct lookup by filename if the savestate knows it
-    if let Some(ref rom_name) = context.savestate.rom_file.name {
+    if let Some(rom_name) = &context.savestate.rom_file.name {
         let direct_key = storage::rom_cache_key(rom_name);
         if let Ok(data) = storage_impl.get(&direct_key).await {
             let checksum = util::compute_data_checksum(&data);
@@ -664,30 +648,25 @@ async fn find_matching_rom(
                 return Some(LoadedRom {
                     data,
                     name: rom_name.clone(),
-                    directory: Some(storage::roms_prefix()),
+                    path: Some(storage::rom_prefix()),
                 });
             }
         }
     }
 
     // Scan all cached ROMs in storage
-    let rom_prefix = storage::roms_prefix();
+    let rom_prefix = storage::rom_prefix();
     if let Ok(entries) = storage_impl.list(&rom_prefix).await {
         for entry in entries {
-            if let Ok(data) = storage_impl.get(&entry.key).await {
+            if let Ok(data) = storage_impl.get(&entry).await {
                 let checksum = util::compute_data_checksum(&data);
                 if &checksum == expected_checksum {
-                    let name = entry
-                        .key
-                        .sub_path
-                        .rsplit('/')
-                        .next()
-                        .unwrap_or("unknown.nes")
-                        .to_string();
+                    let name = entry.get_leaf_name();
+
                     return Some(LoadedRom {
                         data,
-                        name,
-                        directory: Some(storage::roms_prefix()),
+                        name: name.clone(),
+                        path: Some(entry),
                     });
                 }
             }
@@ -697,6 +676,7 @@ async fn find_matching_rom(
     // On native, also scan the filesystem directory as a fallback
     #[cfg(not(target_arch = "wasm32"))]
     if let Some(dir) = rom_dir
+        && let Some(dir) = get_storage().key_to_path(Some(dir))
         && let Some(rom) = find_matching_rom_in_directory(&dir, context)
     {
         return Some(rom);
@@ -707,21 +687,19 @@ async fn find_matching_rom(
 
 /// Scan a native filesystem directory for a matching ROM (native only).
 #[cfg(not(target_arch = "wasm32"))]
-fn find_matching_rom_in_directory(dir: &str, context: &SavestateLoadContext) -> Option<LoadedRom> {
-    use std::path::Path;
-
+fn find_matching_rom_in_directory(dir: &Path, context: &SavestateLoadContext) -> Option<LoadedRom> {
     use crate::frontend::storage::{StorageCategory, StorageKey};
 
-    let dir_path = Path::new(dir);
-    if !dir_path.is_dir() {
+    if !dir.is_dir() {
         return None;
     }
 
     let expected_checksum = &context.savestate.rom_file.data_checksum;
 
     // If the savestate knows the ROM filename, try that first
-    if let Some(ref rom_name) = context.savestate.rom_file.name {
-        let rom_path = dir_path.join(rom_name);
+    if let Some(rom_name) = &context.savestate.rom_file.name {
+        let rom_path = dir.join(rom_name);
+
         if rom_path.is_file()
             && let Ok(data) = std::fs::read(&rom_path)
         {
@@ -730,17 +708,14 @@ fn find_matching_rom_in_directory(dir: &str, context: &SavestateLoadContext) -> 
                 return Some(LoadedRom {
                     data,
                     name: rom_name.clone(),
-                    directory: Some(StorageKey {
-                        category: StorageCategory::Root,
-                        sub_path: dir.to_string(),
-                    }),
+                    path: Some(StorageKey::new(StorageCategory::Root, dir.to_str()?)?),
                 });
             }
         }
     }
 
     // Scan directory for all .nes files
-    let entries = std::fs::read_dir(dir_path).ok()?;
+    let entries = std::fs::read_dir(dir).ok()?;
     for entry in entries.flatten() {
         let path = entry.path();
         if path.is_file()
@@ -754,10 +729,7 @@ fn find_matching_rom_in_directory(dir: &str, context: &SavestateLoadContext) -> 
                 return Some(LoadedRom {
                     data,
                     name,
-                    directory: Some(StorageKey {
-                        category: StorageCategory::Root,
-                        sub_path: dir.to_string(),
-                    }),
+                    path: Some(StorageKey::new(StorageCategory::Root, dir.to_str()?)?),
                 });
             }
         }
@@ -780,11 +752,11 @@ async fn list_save_entries(game_name: &str) -> Vec<SaveEntry> {
     let mut entries = Vec::new();
 
     // List quicksaves
-    let qs_prefix = storage::quicksaves_prefix(game_name);
+    let qs_prefix = storage::quicksave_prefix(game_name);
     add_save_entries(&mut entries, &qs_prefix, SaveEntryType::Quicksave).await;
 
     // List autosaves
-    let as_prefix = storage::autosaves_prefix(game_name);
+    let as_prefix = storage::autosave_prefix(game_name);
     add_save_entries(&mut entries, &as_prefix, SaveEntryType::Autosave).await;
 
     // Sort by timestamp descending (newest first)
@@ -797,14 +769,12 @@ async fn add_save_entries(
     prefix: &StorageKey,
     save_type: SaveEntryType,
 ) {
-    let storage_impl = storage::get_storage();
+    let storage = get_storage();
 
-    if let Ok(storage_entries) = storage_impl.list(prefix).await {
+    if let Ok(storage_entries) = storage.list(prefix).await {
         for entry in storage_entries {
-            if Path::new(&entry.key.sub_path)
-                .extension()
-                .is_some_and(|ext| ext.eq_ignore_ascii_case("sav"))
-                && let Some(save_entry) = parse_save_entry(entry.key, save_type)
+            if entry.get_leaf_name().ends_with(".sav")
+                && let Some(save_entry) = parse_save_entry(entry, save_type)
             {
                 entries.push(save_entry);
             }
@@ -817,7 +787,7 @@ async fn add_save_entries(
 fn parse_save_entry(key: StorageKey, save_type: SaveEntryType) -> Option<SaveEntry> {
     // Keys look like: saves/<game>/quicksaves/quicksave_2024-01-15_14-30-00.sav
     // or: saves/<game>/autosaves/autosaves_2024-01-15_14-30-00.sav
-    let filename = key.sub_path.rsplit('/').next()?;
+    let filename = key.get_leaf_name();
     let stem = filename.strip_suffix(".sav")?;
 
     // Split into prefix and timestamp: "quicksave_2024-01-15_14-30-00" or with
@@ -869,7 +839,10 @@ mod tests {
     fn parse_save_entry_preserves_autosave_type() {
         let key = StorageKey {
             category: StorageCategory::Data,
-            sub_path: "saves/test/autosaves/autosaves_2024-01-15_14-30-00.sav".to_string(),
+            path: "saves/test/autosaves/autosaves_2024-01-15_14-30-00.sav"
+                .to_string()
+                .parse()
+                .unwrap(),
         };
 
         let entry = parse_save_entry(key, SaveEntryType::Autosave).expect("entry should parse");

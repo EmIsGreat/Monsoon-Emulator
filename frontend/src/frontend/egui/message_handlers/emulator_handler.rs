@@ -147,7 +147,7 @@ impl EguiApp {
             SaveType::Manual => {
                 util::spawn_save_dialog(
                     Some(&self.async_sender),
-                    self.config.user_config.previous_savestate_save_dir.as_ref(),
+                    self.config.user_config.previous_savestate_save.clone(),
                     FileType::Savestate,
                     savestate,
                 );
@@ -164,9 +164,9 @@ impl EguiApp {
     fn handle_quicksave(&self, savestate: &SaveState) {
         if let Some(rom) = &self.config.console_config.loaded_rom {
             let rom_hash = &rom.0.data_checksum;
-            let prev_name = &self.config.user_config.previous_rom_name;
-            if let Some(prev_name) = prev_name {
-                let display_name = util::rom_display_name(prev_name, rom_hash);
+            let prev_rom = &self.config.user_config.previous_rom;
+            if let Some(prev_rom) = prev_rom {
+                let display_name = util::rom_display_name(prev_rom.get_leaf_name(), rom_hash);
                 let timestamp = chrono::Local::now().format("%Y-%m-%d_%H-%M-%S").to_string();
                 let key = storage::quicksave_key(&display_name, &timestamp);
 

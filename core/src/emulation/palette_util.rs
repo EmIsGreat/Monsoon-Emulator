@@ -83,7 +83,7 @@ pub struct RgbPalette {
 }
 
 impl Default for RgbPalette {
-    fn default() -> Self { parse_palette_from_bytes(DEFAULT_PALETTE) }
+    fn default() -> Self { parse_palette_from_bytes(Some(DEFAULT_PALETTE)) }
 }
 
 static DEFAULT_PALETTE: &[u8] = include_bytes!("../../assets/2C02G_wiki.pal");
@@ -105,31 +105,44 @@ static DEFAULT_PALETTE: &[u8] = include_bytes!("../../assets/2C02G_wiki.pal");
 /// assert_eq!(palette.colors[0].len(), 64);
 /// ```
 #[must_use]
-pub fn parse_palette_from_bytes(bytes: &[u8]) -> RgbPalette {
+pub fn parse_palette_from_bytes(bytes: Option<&[u8]>) -> RgbPalette {
     let mut colors: [[RgbColor; 64]; 8] = [[RgbColor::default(); 64]; 8];
 
-    for (palette_index, palette) in colors.iter_mut().enumerate() {
-        for (color_index, color) in palette.iter_mut().enumerate() {
-            let base_index = ((palette_index * 64) + color_index) * 3;
-            let read_color: RgbColor = if let (Some(r), Some(g), Some(b)) = (
-                bytes.get(base_index),
-                bytes.get(base_index + 1),
-                bytes.get(base_index + 2),
-            ) {
-                RgbColor {
-                    r: *r,
-                    g: *g,
-                    b: *b,
-                }
-            } else {
-                RgbColor {
+    if let Some(bytes) = bytes {
+        for (palette_index, palette) in colors.iter_mut().enumerate() {
+            for (color_index, color) in palette.iter_mut().enumerate() {
+                let base_index = ((palette_index * 64) + color_index) * 3;
+                let read_color: RgbColor = if let (Some(r), Some(g), Some(b)) = (
+                    bytes.get(base_index),
+                    bytes.get(base_index + 1),
+                    bytes.get(base_index + 2),
+                ) {
+                    RgbColor {
+                        r: *r,
+                        g: *g,
+                        b: *b,
+                    }
+                } else {
+                    RgbColor {
+                        r: DEFAULT_PALETTE[base_index],
+                        g: DEFAULT_PALETTE[base_index + 1],
+                        b: DEFAULT_PALETTE[base_index + 2],
+                    }
+                };
+
+                *color = read_color;
+            }
+        }
+    } else {
+        for (palette_index, palette) in colors.iter_mut().enumerate() {
+            for (color_index, color) in palette.iter_mut().enumerate() {
+                let base_index = ((palette_index * 64) + color_index) * 3;
+                *color = RgbColor {
                     r: DEFAULT_PALETTE[base_index],
                     g: DEFAULT_PALETTE[base_index + 1],
                     b: DEFAULT_PALETTE[base_index + 2],
-                }
-            };
-
-            *color = read_color;
+                };
+            }
         }
     }
 

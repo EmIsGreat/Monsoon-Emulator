@@ -13,17 +13,19 @@
 /// - `egui::ui`: UI rendering components
 /// - `egui::wgpu_renderer`: GPU-accelerated palette-index renderer
 use std::cell::RefCell;
+use std::clone::Clone;
 use std::collections::VecDeque;
 use std::fmt::{Debug, Formatter};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::rc::Rc;
 use std::string::ToString;
 use std::sync::{Arc, LazyLock};
 
 use crossbeam_channel::{Receiver, Sender};
-use eframe::{AppCreator, CreationContext, Frame};
+use eframe::{App, AppCreator, CreationContext, Frame};
 use egui::{Context, Id, Style, Ui, ViewportCommand, Visuals};
 use monsoon_core::emulation::nes::Nes;
+use monsoon_core::emulation::palette_util::parse_palette_from_bytes;
 use monsoon_core::emulation::ppu_util::{EmulatorFetchable, PaletteData, TILE_COUNT, TileData};
 use monsoon_core::emulation::rom::ExpansionDevice;
 use monsoon_core::emulation::savestate::SaveState;
@@ -47,7 +49,7 @@ use crate::frontend::egui::ui::{
 };
 use crate::frontend::egui::wgpu_renderer::NesWgpuRenderer;
 use crate::frontend::messages::{
-    AsyncFrontendMessage, FrontendEvent, LoadedRom, SavestateLoadContext,
+    AsyncFrontendMessage, FrontendEvent, LoadedPalette, LoadedRom, SavestateLoadContext,
 };
 use crate::frontend::persistence::{PersistentConfig, get_egui_storage_path, load_config};
 use crate::frontend::storage::{Storage, StorageKey};
@@ -66,7 +68,12 @@ const MAX_AUTOSAVES_PER_GAME: usize = 1024;
 pub static ALTER_EGO_DEMO: LazyLock<LoadedRom> = LazyLock::new(|| LoadedRom {
     data: Vec::from(include_bytes!("../../assets/Alter_Ego.nes")),
     name: "Alter Ego".to_string(),
-    directory: None,
+    path: None,
+});
+
+pub static BUNDLED_PALETTE: LazyLock<LoadedPalette> = LazyLock::new(|| LoadedPalette {
+    palette: parse_palette_from_bytes(None),
+    file: None,
 });
 
 /// Shared deque for frontend events that can be pushed from UI components
@@ -113,7 +120,7 @@ pub struct EguiApp {
 impl EguiApp {
     pub fn new(
         cc: &CreationContext<'_>,
-        loaded_config: Option<&PersistentConfig>,
+        config: AppConfig,
         channel_emu: ChannelEmulator,
         to_emulator: Sender<FrontendMessage>,
         from_emulator: Receiver<EmulatorMessage>,
@@ -128,12 +135,6 @@ impl EguiApp {
                 eframe::get_value::<egui_tiles::Tree<Pane>>(storage, EGUI_TILES_TREE_KEY)
             })
             .unwrap_or_else(create_tree);
-
-        // Create default config and apply loaded settings
-        let mut config = AppConfig::default();
-        if let Some(persistent_config) = loaded_config {
-            config = persistent_config.into();
-        }
 
         // Initialise the GPU renderer when the wgpu backend is available.
         // On non-wgpu backends (e.g. software fallback or test harness) this
@@ -243,6 +244,7 @@ impl EguiApp {
 
     pub(crate) fn load_rom(&mut self, data: LoadedRom, use_db: bool) {
         let name = data.name.clone();
+        let path = data.path.clone();
 
         let _ = self
             .to_emulator
@@ -250,7 +252,7 @@ impl EguiApp {
 
         let _ = self
             .to_emulator
-            .send(FrontendMessage::LoadRom((data, name.clone(), use_db)));
+            .send(FrontendMessage::LoadRom(data, name.clone(), use_db));
 
         // Extract stem for window title
         let stem: &str = name.rsplit_once('.').map_or(name.as_str(), |(s, _)| s);
@@ -260,7 +262,7 @@ impl EguiApp {
             format!("Monsoon - {stem}")
         };
 
-        self.config.user_config.previous_rom_name = Some(name);
+        self.config.user_config.previous_rom = path;
 
         self.event_queue
             .borrow_mut()
@@ -292,18 +294,18 @@ impl EguiApp {
             )));
 
         // Update config names and directories
-        self.config.user_config.previous_savestate_name = Some(context.savestate_name.clone());
-        if let Some(ref dir) = context.savestate_dir {
-            self.config.user_config.previous_savestate_load_dir = Some(StorageKey::from(dir));
-        }
+        self.config
+            .user_config
+            .previous_savestate
+            .clone_from(&context.savestate_path);
     }
 
     pub(crate) fn create_auto_save(&self, savestate: &SaveState) {
         if let Some(rom) = &self.config.console_config.loaded_rom {
             let rom_hash = &rom.0.data_checksum;
-            let prev_name = &self.config.user_config.previous_rom_name;
+            let prev_name = &self.config.user_config.previous_rom;
             if let Some(prev_name) = prev_name {
-                let display_name = util::rom_display_name(prev_name, rom_hash);
+                let display_name = util::rom_display_name(prev_name.get_leaf_name(), rom_hash);
                 let timestamp = chrono::Local::now().format("%Y-%m-%d_%H-%M-%S").to_string();
                 let key = storage::autosave_key(&display_name, &timestamp);
 
@@ -329,22 +331,22 @@ impl EguiApp {
     /// (native) or `spawn_local` (WASM).
     fn cleanup_old_autosaves_async(display_name: String) {
         util::spawn_async(async move {
-            let prefix = storage::autosaves_prefix(&display_name);
+            let prefix = storage::autosave_prefix(&display_name);
             let storage = storage::get_storage();
 
             if let Ok(entries) = storage.list(&prefix).await {
                 let mut autosaves: Vec<_> = entries
                     .into_iter()
                     .filter(|e| {
-                        Path::new(&e.key.sub_path)
-                            .extension()
-                            .is_some_and(|ext| ext.eq_ignore_ascii_case("sav"))
+                        e.is_file()
+                            && std::path::Path::new(e.get_leaf_name())
+                                .extension()
+                                .is_some_and(|ext| ext.eq_ignore_ascii_case("sav"))
                     })
-                    .map(|e| e.key)
                     .collect();
 
                 if autosaves.len() >= MAX_AUTOSAVES_PER_GAME {
-                    autosaves.sort_by_key(|a| a.sub_path.clone());
+                    autosaves.sort_by_key(|a| a.path.clone());
 
                     let to_delete = autosaves.len() - MAX_AUTOSAVES_PER_GAME + 1;
                     for key in autosaves.into_iter().take(to_delete) {
@@ -357,21 +359,20 @@ impl EguiApp {
 
     /// Find the newest quicksave key from a list of storage entries.
     /// Shared logic between native sync and WASM async paths.
-    pub(crate) fn find_newest_quicksave(
-        entries: Vec<storage::StorageMetadata>,
-    ) -> Option<StorageKey> {
+    pub(crate) fn find_newest_quicksave(entries: Vec<StorageKey>) -> Option<StorageKey> {
         let mut quicksave_key: Option<(StorageKey, chrono::NaiveDateTime, u8)> = None;
 
         for entry in entries {
-            if !Path::new(&entry.key.sub_path)
-                .extension()
-                .is_some_and(|ext| ext.eq_ignore_ascii_case("sav"))
+            if entry.is_file()
+                && std::path::Path::new(entry.get_leaf_name())
+                    .extension()
+                    .is_some_and(|ext| ext.eq_ignore_ascii_case("sav"))
             {
                 continue;
             }
 
             // Extract filename from the key
-            let filename = entry.key.sub_path.rsplit('/').next()?;
+            let filename = entry.get_leaf_name();
             let stem = filename.strip_suffix(".sav")?;
 
             let time_version = stem.split_once('_')?.1;
@@ -389,7 +390,7 @@ impl EguiApp {
                 };
 
                 if should_update {
-                    quicksave_key = Some((entry.key, time, version));
+                    quicksave_key = Some((entry, time, version));
                 }
             }
         }
@@ -653,7 +654,7 @@ impl EguiApp {
     }
 }
 
-impl eframe::App for EguiApp {
+impl App for EguiApp {
     /// Run non-visual per-frame application work.
     ///
     /// This keeps simulation, message processing, and timing updates in
@@ -786,10 +787,11 @@ struct SetupResponse {
     async_sender: Sender<AsyncFrontendMessage>,
     #[allow(dead_code)]
     persistence_path: Option<PathBuf>,
+    config: AppConfig,
 }
 
 /// Native: common setup with `PathBuf` for command-line ROM loading
-fn common_setup(rom: Option<&PathBuf>) -> SetupResponse {
+async fn common_setup(rom: Option<&PathBuf>) -> SetupResponse {
     // Create the emulator instance
     let console = Nes::default();
 
@@ -797,25 +799,47 @@ fn common_setup(rom: Option<&PathBuf>) -> SetupResponse {
     let (emu, to_emu, from_emu) = ChannelEmulator::new(console);
     let (async_sender, from_async) = crossbeam_channel::unbounded();
 
+    // Load configuration before starting eframe (we're in an async context)
+    let persisted_config = load_config().await;
+
+    // Create default config and apply loaded settings
+    let mut config = AppConfig::default();
+    if let Some(persistent_config) = persisted_config {
+        config = (&persistent_config).into();
+    }
+
     if rom.is_some() {
         // Setup Emulator State via messages - read ROM file if provided
-        let loaded_rom = rom.as_ref().and_then(|path| {
+        let loaded_rom = rom.and_then(|path| {
             let data = std::fs::read(path).ok()?;
-            let name = path.file_name()?.to_string_lossy().to_string();
+            let path = path.to_string_lossy().to_string();
+            let key = StorageKey::try_from(path);
 
-            let directory = path
-                .parent()
-                .map(|p| p.to_string_lossy().to_string())
-                .map(|f| StorageKey::from(&f));
-
-            directory.map(|directory| LoadedRom {
-                data,
-                name,
-                directory: Some(directory),
-            })
+            match key {
+                Ok(key) => Some(LoadedRom {
+                    data,
+                    name: key.get_leaf_name().clone(),
+                    path: Some(key),
+                }),
+                Err(err) => {
+                    eprintln!("Failed to load rom file: {err}");
+                    None
+                }
+            }
         });
         let _ = async_sender.send(AsyncFrontendMessage::LoadRom {
             rom: loaded_rom,
+            overwrite_directory: false,
+        });
+    } else if let Some(prev_rom) = &config.user_config.previous_rom
+        && let Ok(loaded_rom_data) = storage::get_storage().get(prev_rom).await
+    {
+        let _ = async_sender.send(AsyncFrontendMessage::LoadRom {
+            rom: Some(LoadedRom {
+                data: loaded_rom_data,
+                name: prev_rom.get_leaf_name().clone(),
+                path: Some(prev_rom.clone()),
+            }),
             overwrite_directory: false,
         });
     } else {
@@ -840,6 +864,7 @@ fn common_setup(rom: Option<&PathBuf>) -> SetupResponse {
         from_async,
         async_sender,
         persistence_path,
+        config,
     }
 }
 
@@ -847,10 +872,7 @@ fn common_setup(rom: Option<&PathBuf>) -> SetupResponse {
 ///
 /// Uses `RendererKind` for runtime-switchable rendering.
 #[cfg(not(target_arch = "wasm32"))]
-pub fn run(rom: Option<&PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
-    let res = common_setup(rom);
-    run_internal(res)
-}
+pub fn run(rom: Option<&PathBuf>) -> Result<(), Box<dyn std::error::Error>> { run_internal(rom) }
 
 /// Run the egui frontend for WASM.
 #[cfg(target_arch = "wasm32")]
@@ -861,9 +883,8 @@ pub fn run(_: Option<&PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
 
 #[tokio::main]
 #[cfg(not(target_arch = "wasm32"))]
-async fn run_internal(res: SetupResponse) -> Result<(), Box<dyn std::error::Error>> {
-    // Load configuration before starting eframe (we're in an async context)
-    let loaded_config = load_config().await;
+async fn run_internal(rom: Option<&PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
+    let res = common_setup(rom).await;
 
     {
         let async_sender = res.async_sender.clone();
@@ -906,15 +927,12 @@ async fn run_internal(res: SetupResponse) -> Result<(), Box<dyn std::error::Erro
     };
 
     // Run the application
-    eframe::run_native("Monsoon", options, get_app_config(res, loaded_config))?;
+    eframe::run_native("Monsoon", options, get_app_creator(res))?;
 
     Ok(())
 }
 
-fn get_app_config(
-    res: SetupResponse,
-    loaded_config: Option<PersistentConfig>,
-) -> AppCreator<'static> {
+fn get_app_creator(res: SetupResponse) -> AppCreator<'static> {
     Box::new(move |cc: &CreationContext| {
         let style = Style {
             visuals: Visuals::dark(),
@@ -924,7 +942,7 @@ fn get_app_config(
         cc.egui_ctx.set_theme(egui::Theme::Dark);
         Ok(Box::new(EguiApp::new(
             cc,
-            loaded_config.as_ref(),
+            res.config,
             res.emu,
             res.to_emu,
             res.from_emu,
@@ -992,7 +1010,7 @@ fn run_internal_wasm(res: SetupResponse) -> Result<(), Box<dyn std::error::Error
         let options = eframe::WebOptions::default();
 
         eframe::WebRunner::new()
-            .start(canvas, options, get_app_config(res, loaded_config))
+            .start(canvas, options, get_app_creator(res, loaded_config))
             .await
             .unwrap();
     });

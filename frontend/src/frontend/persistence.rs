@@ -440,24 +440,11 @@ impl From<PersistentEmulatorFetchable> for EmulatorFetchable {
 /// WASM compatibility
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct PersistentUserConfig {
-    /// Last loaded palette filename (display only)
-    pub previous_palette_name: Option<String>,
-    /// Last loaded palette directory (for file picker initial directory)
-    pub previous_palette_dir: Option<StorageKey>,
-    /// Last loaded ROM filename (display only)
-    pub previous_rom_name: Option<String>,
-    /// Last loaded ROM directory (for file picker initial directory)
-    pub previous_rom_dir: Option<StorageKey>,
-    /// Last loaded savestate filename (display only)
-    pub previous_savestate_name: Option<String>,
-    /// Last loaded savestate directory (for file picker initial directory)
-    pub previous_savestate_dir: Option<StorageKey>,
-    /// Last saved palette directory (for file picker initial directory)
-    #[serde(default)]
-    pub previous_palette_save_dir: Option<StorageKey>,
-    /// Last saved savestate directory (for file picker initial directory)
-    #[serde(default)]
-    pub previous_savestate_save_dir: Option<StorageKey>,
+    pub previous_rom: Option<StorageKey>,
+    pub previous_palette: Option<StorageKey>,
+    pub previous_savestate: Option<StorageKey>,
+    pub previous_palette_save: Option<PathBuf>,
+    pub previous_savestate_save: Option<PathBuf>,
     pub pattern_edit_color: u8,
     #[serde(default)]
     pub debug_active_palette: usize,
@@ -468,14 +455,11 @@ pub struct PersistentUserConfig {
 impl From<&UserConfig> for PersistentUserConfig {
     fn from(config: &UserConfig) -> Self {
         Self {
-            previous_palette_name: config.previous_palette_name.clone(),
-            previous_palette_dir: config.previous_palette_load_dir.clone(),
-            previous_rom_name: config.previous_rom_name.clone(),
-            previous_rom_dir: config.previous_rom_load_dir.clone(),
-            previous_savestate_name: config.previous_savestate_name.clone(),
-            previous_savestate_dir: config.previous_savestate_load_dir.clone(),
-            previous_palette_save_dir: config.previous_palette_save_dir.clone(),
-            previous_savestate_save_dir: config.previous_savestate_save_dir.clone(),
+            previous_rom: config.previous_rom.clone(),
+            previous_palette: config.previous_palette.clone(),
+            previous_savestate: config.previous_savestate.clone(),
+            previous_palette_save: config.previous_palette_save.clone(),
+            previous_savestate_save: config.previous_savestate_save.clone(),
             pattern_edit_color: config.pattern_edit_color,
             debug_active_palette: config.debug_active_palette,
             use_rom_db: *config.use_rom_db,
@@ -486,14 +470,11 @@ impl From<&UserConfig> for PersistentUserConfig {
 impl From<&PersistentUserConfig> for UserConfig {
     fn from(config: &PersistentUserConfig) -> Self {
         Self {
-            previous_palette_name: config.previous_palette_name.clone(),
-            previous_palette_load_dir: config.previous_palette_dir.clone(),
-            previous_rom_name: config.previous_rom_name.clone(),
-            previous_rom_load_dir: config.previous_rom_dir.clone(),
-            previous_savestate_name: config.previous_savestate_name.clone(),
-            previous_savestate_load_dir: config.previous_savestate_dir.clone(),
-            previous_palette_save_dir: config.previous_palette_save_dir.clone(),
-            previous_savestate_save_dir: config.previous_savestate_save_dir.clone(),
+            previous_palette: config.previous_palette.clone(),
+            previous_rom: config.previous_rom.clone(),
+            previous_savestate: config.previous_savestate.clone(),
+            previous_savestate_save: config.previous_savestate_save.clone(),
+            previous_palette_save: config.previous_palette_save.clone(),
             pattern_edit_color: config.pattern_edit_color,
             debug_active_palette: config.debug_active_palette,
             use_rom_db: config.use_rom_db.into(),
@@ -646,7 +627,6 @@ pub async fn load_config() -> Option<PersistentConfig> {
     let key = storage::config_key();
     let storage_impl = storage::get_storage();
 
-    println!("{key}");
     // Check if config exists using storage
     match storage_impl.exists(&key).await {
         Ok(false) => return None,

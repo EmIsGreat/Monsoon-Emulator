@@ -1,13 +1,14 @@
 use crossbeam_channel::Sender;
-use monsoon_core::emulation::palette_util::{RgbColor, parse_palette_from_bytes};
+use monsoon_core::emulation::palette_util::RgbColor;
 use monsoon_core::emulation::ppu_util::PALETTE_RAM_START_ADDRESS;
 use monsoon_core::util::Hashable;
 
 use crate::frontend::egui::config::AppConfig;
 use crate::frontend::egui::textures::EmuTextures;
 use crate::frontend::egui::ui::widgets::{PainterGridConfig, color_cell_rgb};
-use crate::frontend::messages::{AsyncFrontendMessage, LoadedPalette};
-use crate::frontend::storage::{StorageCategory, StorageKey};
+use crate::frontend::egui_frontend::BUNDLED_PALETTE;
+use crate::frontend::messages::AsyncFrontendMessage;
+use crate::frontend::storage::{Storage, get_storage};
 use crate::frontend::util::{self, FileType, spawn_palette_picker, spawn_save_dialog};
 
 #[allow(clippy::too_many_lines)]
@@ -76,16 +77,18 @@ pub fn render_palettes(
     egui::MenuBar::new().ui(ui, |ui| {
         ui.menu_button("File", |ui| {
             if ui.button("Load Palette").clicked() {
-                spawn_palette_picker(
-                    async_sender,
-                    config.user_config.previous_palette_load_dir.as_ref(),
-                );
+                spawn_palette_picker(async_sender, config.user_config.previous_palette.as_ref());
             }
 
             if ui.button("Save Palette").clicked() {
                 spawn_save_dialog(
                     Some(async_sender),
-                    config.user_config.previous_palette_save_dir.as_ref(),
+                    config
+                        .user_config
+                        .previous_palette
+                        .as_ref()
+                        .map(|k| get_storage().key_to_path(Some(&k)))
+                        .flatten(),
                     FileType::Palette,
                     Box::new(config.view_config.palette_rgb_data),
                 );
@@ -96,14 +99,8 @@ pub fn render_palettes(
 
                 util::spawn_async(async move {
                     // Reset to default palette
-                    let palette = parse_palette_from_bytes(&[]);
-                    let _ = sender.send(AsyncFrontendMessage::PaletteLoaded(LoadedPalette {
-                        palette,
-                        directory: StorageKey {
-                            category: StorageCategory::Cache,
-                            sub_path: "default_palettes/".to_string(),
-                        },
-                    }));
+                    let _ =
+                        sender.send(AsyncFrontendMessage::PaletteLoaded(BUNDLED_PALETTE.clone()));
                 });
             }
         })

@@ -81,7 +81,7 @@ fn render_rom_selection_dialog(
             util::spawn_rom_picker_for_savestate(
                 &sender,
                 context,
-                user_config.previous_rom_load_dir.as_ref(),
+                user_config.previous_rom.as_ref(),
             );
         }
         dialogs.rom_selection_dialog = None;

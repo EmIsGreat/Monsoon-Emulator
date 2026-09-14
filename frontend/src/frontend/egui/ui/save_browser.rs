@@ -38,6 +38,7 @@ pub fn render_save_browser(
             ui.horizontal(|ui| {
                 ui.checkbox(&mut state.show_quicksaves, "Quicksaves");
                 ui.checkbox(&mut state.show_autosaves, "Autosaves");
+                ui.checkbox(&mut state.show_uploaded_saves, "Uploaded Saves");
             });
             ui.add_space(4.0);
 

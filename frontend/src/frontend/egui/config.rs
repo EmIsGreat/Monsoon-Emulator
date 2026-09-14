@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, HashSet};
 use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
+use std::path::PathBuf;
 
 use egui::{Key, Modifiers};
 use monsoon_core::emulation::palette_util::RgbPalette;
@@ -144,25 +145,32 @@ pub struct AutoPauseState {
 /// compatibility
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
 pub struct UserConfig {
-    /// Last loaded palette filename (display only, for persistence)
-    pub previous_palette_name: Option<String>,
-    /// Last loaded ROM filename (display only, for persistence)
-    pub previous_rom_name: Option<String>,
-    /// Last loaded savestate filename (display only, for persistence)
-    pub previous_savestate_name: Option<String>,
-    /// Last loaded ROM directory (for file picker initial directory)
-    pub previous_rom_load_dir: Option<StorageKey>,
-    /// Last saved savestate directory (for file picker initial directory)
-    pub previous_savestate_save_dir: Option<StorageKey>,
-    /// Last loaded savestate directory (for file picker initial directory)
-    pub previous_savestate_load_dir: Option<StorageKey>,
-    /// Last saved palette directory (for file picker initial directory)
-    pub previous_palette_save_dir: Option<StorageKey>,
-    /// Last loaded palette directory (for file picker initial directory)
-    pub previous_palette_load_dir: Option<StorageKey>,
+    pub previous_palette: Option<StorageKey>,
+    pub previous_rom: Option<StorageKey>,
+    pub previous_savestate: Option<StorageKey>,
+    pub previous_savestate_save: Option<PathBuf>,
+    pub previous_palette_save: Option<PathBuf>,
     pub debug_active_palette: usize,
     pub pattern_edit_color: u8,
     pub use_rom_db: DefaultTrueBool,
+}
+
+impl UserConfig {
+    pub fn previous_rom_directory(&self) -> Option<StorageKey> {
+        if let Some(prev_rom) = &self.previous_rom {
+            prev_rom.parent()
+        } else {
+            None
+        }
+    }
+
+    pub fn previous_savestate_dir(&self) -> Option<StorageKey> {
+        if let Some(prev_save) = &self.previous_savestate {
+            prev_save.parent()
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

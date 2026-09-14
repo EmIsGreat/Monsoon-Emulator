@@ -10,7 +10,7 @@ mod formats;
 
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
-
+use std::path::Path;
 use num_enum::{FromPrimitive, IntoPrimitive};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -1535,17 +1535,17 @@ impl TryFrom<(&mut [u8], &String, bool, Option<&Nes>)> for RomFile {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-impl TryFrom<(&String, bool, Option<&Nes>)> for RomFile {
+impl TryFrom<(&Path, bool, Option<&Nes>)> for RomFile {
     type Error = ParseError;
 
-    fn try_from((path, use_db, nes): (&String, bool, Option<&Nes>)) -> Result<Self, Self::Error> {
+    fn try_from((path, use_db, nes): (&Path, bool, Option<&Nes>)) -> Result<Self, Self::Error> {
         use std::fs::File;
         use std::io::Read;
 
         let mut data = Vec::new();
         File::open(path)?.read_to_end(&mut data)?;
 
-        RomFile::load(&mut data, Some(path), use_db, nes)
+        RomFile::load(&mut data, Some(&path.to_string_lossy().to_string()), use_db, nes)
     }
 }
 

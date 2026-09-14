@@ -45,7 +45,7 @@ pub fn render_log_viewer(
             let exportable = ExportableData(trace.log.clone().into_bytes());
             util::spawn_save_dialog(
                 None,
-                config.user_config.previous_savestate_save_dir.as_ref(),
+                config.user_config.previous_savestate_save.clone(),
                 FileType::All,
                 Box::new(exportable),
             );

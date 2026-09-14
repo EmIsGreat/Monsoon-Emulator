@@ -2876,6 +2876,7 @@ dependencies = [
  "serde",
  "sha2",
  "strum",
+ "thiserror 2.0.20",
  "tokio",
  "toml",
  "wasm-bindgen",
