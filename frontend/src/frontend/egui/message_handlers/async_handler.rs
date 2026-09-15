@@ -129,7 +129,7 @@ impl EguiApp {
 
                     if overwrite_directory {
                         // Save directory for next file picker
-                        self.config.user_config.previous_rom = rom.path.clone();
+                        self.config.user_config.previous_rom.clone_from(&rom.path);
                     }
 
                     self.load_rom(rom, *self.config.user_config.use_rom_db);
@@ -321,6 +321,11 @@ impl EguiApp {
                         .insert_temp::<bool>(Id::new(AsyncFrontendMessage::Speedup), true)
                 });
             }
+            AsyncFrontendMessage::ShowSelectRomDialog(context) => {
+                self.config.pending_dialogs.rom_selection_dialog = Some(RomSelectionDialogState {
+                    context,
+                });
+            }
         }
         self.config.sync_dialog_pause_reason();
     }
@@ -348,37 +353,39 @@ impl EguiApp {
 
     fn handle_savestate_loaded(&mut self, context: Box<SavestateLoadContext>) {
         // Try to find a matching ROM by scanning available ROM storage.
-        // Only scan if savestate_dir is set (cleared after first scan attempt
-        // to prevent loops).
-        if context.savestate_path.is_some() {
+        if let Some(rom_dir) = self.config.user_config.previous_rom_directory() {
             let sender = self.async_sender.clone();
             let context_clone = context.clone();
-
-            let rom = self.config.user_config.previous_rom_directory();
+            let current_rom = self.channel_emu.nes.rom_file.clone();
 
             util::spawn_async(async move {
-                let result = find_matching_rom(&context_clone, rom.as_ref()).await;
+                let result = find_matching_rom(&context_clone, &rom_dir).await;
 
                 if let Some(rom) = result {
-                    let _ = sender.send(AsyncFrontendMessage::ShowMatchingRomDialog(
-                        context_clone,
-                        rom,
-                    ));
+                    if let Some(current_rom) = current_rom
+                        && current_rom.data == rom.data
+                    {
+                        let _ = sender.send(AsyncFrontendMessage::UseMatchingRom(
+                            context_clone,
+                            rom,
+                        ));
+                    } else {
+                        let _ = sender.send(AsyncFrontendMessage::ShowMatchingRomDialog(
+                            context_clone,
+                            rom,
+                        ));
+                    }
                 } else {
                     // No match found - show ROM selection dialog
-                    // Clear savestate_dir to prevent re-scanning
-                    let mut context_clone = context_clone;
-                    context_clone.savestate_path = None;
-                    let _ = sender.send(AsyncFrontendMessage::SavestateLoaded(context_clone));
+                    let _ = sender.send(AsyncFrontendMessage::ShowSelectRomDialog(context_clone));
                 }
             });
             return;
         }
 
-        // Fallback: show ROM selection dialog directly
-        self.config.pending_dialogs.rom_selection_dialog = Some(RomSelectionDialogState {
-            context,
-        });
+        let _ = self
+            .async_sender
+            .send(AsyncFrontendMessage::ShowSelectRomDialog(context));
     }
 
     fn handle_rom_selected_for_savestate(
@@ -387,7 +394,7 @@ impl EguiApp {
         rom: LoadedRom,
     ) {
         // Save directory for next file picker
-        self.config.user_config.previous_rom = rom.path.clone();
+        self.config.user_config.previous_rom.clone_from(&rom.path);
 
         let checksum = util::compute_data_checksum(&rom.data);
         if checksum == context.savestate.rom_file.data_checksum {
@@ -633,7 +640,7 @@ impl EguiApp {
 /// `IndexedDB` cache is searched.
 async fn find_matching_rom(
     context: &SavestateLoadContext,
-    #[allow(unused)] rom_dir: Option<&StorageKey>,
+    #[allow(unused)] rom_dir: &StorageKey,
 ) -> Option<LoadedRom> {
     let expected_checksum = &context.savestate.rom_file.data_checksum;
     let storage_impl = get_storage();
@@ -675,8 +682,7 @@ async fn find_matching_rom(
 
     // On native, also scan the filesystem directory as a fallback
     #[cfg(not(target_arch = "wasm32"))]
-    if let Some(dir) = rom_dir
-        && let Some(dir) = get_storage().key_to_path(Some(dir))
+    if let Some(dir) = get_storage().key_to_path(Some(rom_dir))
         && let Some(rom) = find_matching_rom_in_directory(&dir, context)
     {
         return Some(rom);
@@ -773,7 +779,9 @@ async fn add_save_entries(
 
     if let Ok(storage_entries) = storage.list(prefix).await {
         for entry in storage_entries {
-            if entry.get_leaf_name().ends_with(".sav")
+            if Path::new(entry.get_leaf_name())
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("sav"))
                 && let Some(save_entry) = parse_save_entry(entry, save_type)
             {
                 entries.push(save_entry);
@@ -842,7 +850,7 @@ mod tests {
             path: "saves/test/autosaves/autosaves_2024-01-15_14-30-00.sav"
                 .to_string()
                 .parse()
-                .unwrap(),
+                .expect("test path invalid."),
         };
 
         let entry = parse_save_entry(key, SaveEntryType::Autosave).expect("entry should parse");

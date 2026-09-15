@@ -35,7 +35,8 @@ fn get_file_directory(_handle: &FileHandle) -> Option<&Path> {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn get_file_path(handle: &FileHandle) -> Option<&Path> { handle.path() }
+#[allow(clippy::unnecessary_wraps)]
+fn get_file_path(handle: &FileHandle) -> Option<&Path> { Some(handle.path()) }
 
 #[cfg(target_arch = "wasm32")]
 fn get_file_path(_handle: &FileHandle) -> Option<&Path> {
@@ -391,7 +392,7 @@ pub fn spawn_savestate_picker(sender: &Sender<AsyncFrontendMessage>, dir: Option
             // Read savestate data from the file handle
             let data = handle.read().await;
             let savestate_name = handle.file_name();
-            let savestate_path = get_file_directory(&handle).map(|p| StorageKey::from(p));
+            let savestate_path = get_file_path(&handle).map(StorageKey::from);
 
             // Cache savestate in storage for later access
             let cache_key = storage::uploaded_savestate_key(&savestate_name);
@@ -456,7 +457,6 @@ pub fn spawn_rom_picker_for_savestate(
 
         if let Some(handle) = handle {
             let data = handle.read().await;
-            get_file_directory()
             let name = handle.file_name();
             let path = StorageKey::from(handle.path());
 

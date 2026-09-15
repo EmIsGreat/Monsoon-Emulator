@@ -73,6 +73,7 @@ pub enum AsyncFrontendMessage {
     /// Show dialog asking if user wants to load the found matching ROM (native
     /// only - we found a ROM in same dir)
     ShowMatchingRomDialog(Box<SavestateLoadContext>, LoadedRom),
+    ShowSelectRomDialog(Box<SavestateLoadContext>),
     /// User chose to use the matching ROM that was found
     UseMatchingRom(Box<SavestateLoadContext>, LoadedRom),
     /// User chose to manually select a ROM for the savestate
