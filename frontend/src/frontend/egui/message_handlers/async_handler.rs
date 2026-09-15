@@ -10,6 +10,7 @@ use monsoon_core::emulation::palette_util::RgbPalette;
 use monsoon_core::emulation::ppu_util::EmulatorFetchable;
 use monsoon_core::emulation::savestate;
 use monsoon_core::util::{SerializationError, ToBytes};
+use sha2::{Digest, Sha256};
 
 use crate::frontend::egui::config::AutoPauseReason;
 use crate::frontend::egui::tiles::{Pane, add_pane_if_missing};
@@ -362,13 +363,15 @@ impl EguiApp {
                 let result = find_matching_rom(&context_clone, &rom_dir).await;
 
                 if let Some(rom) = result {
+                    let mut hasher = Sha256::new();
+                    hasher.update(&rom.data);
+                    let rom_hash: [u8; 32] = hasher.finalize().into();
+
                     if let Some(current_rom) = current_rom
-                        && current_rom.data == rom.data
+                        && current_rom.data_checksum == rom_hash
                     {
-                        let _ = sender.send(AsyncFrontendMessage::UseMatchingRom(
-                            context_clone,
-                            rom,
-                        ));
+                        let _ =
+                            sender.send(AsyncFrontendMessage::UseMatchingRom(context_clone, rom));
                     } else {
                         let _ = sender.send(AsyncFrontendMessage::ShowMatchingRomDialog(
                             context_clone,
