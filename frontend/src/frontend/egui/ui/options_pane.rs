@@ -65,8 +65,7 @@ fn render_renderer_settings(ui: &mut egui::Ui, config: &mut AppConfig) {
                 .user_config
                 .previous_palette
                 .as_ref()
-                .map(|k| k.get_leaf_name().clone())
-                .unwrap_or("Bundled 2C02-G Palette".to_string())
+                .map_or("Bundled 2C02-G Palette".to_string(), |k| k.get_leaf_name().clone())
         ));
         ui.small("Use the Palette viewer to load custom palette files.");
     });

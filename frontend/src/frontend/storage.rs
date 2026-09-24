@@ -42,7 +42,7 @@
 //! This module uses `IndexedDB` for WASM to support save states and other
 //! binary data.
 
-use std::cmp::Ordering;
+use std::clone::Clone;
 use std::fmt::{Display, Formatter};
 use std::ops::{Add, AddAssign};
 use std::path::{Path, PathBuf};
@@ -50,6 +50,7 @@ use std::str::FromStr;
 use std::string::ToString;
 
 use async_trait::async_trait;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use strum::{EnumIter, IntoEnumIterator};
 use thiserror::Error;
@@ -94,44 +95,6 @@ pub enum StorageCategory {
     Root,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
-pub struct StoragePath {
-    pub root: String,
-    pub parts: Vec<String>,
-    pub is_file: bool,
-}
-
-impl PartialOrd for StoragePath {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp(other)) }
-}
-
-impl Ord for StoragePath {
-    fn cmp(&self, other: &Self) -> Ordering { self.to_string().cmp(&other.to_string()) }
-}
-
-impl Display for StoragePath {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let mut res = write!(f, "{}/", self.root);
-        if res.is_ok() {
-            for (i, sub) in self.parts.iter().enumerate() {
-                if i == self.parts.len() - 1 {
-                    res = write!(f, "{sub}");
-                } else {
-                    res = write!(f, "{sub}/");
-                }
-
-                res?;
-            }
-        }
-
-        if !self.is_file {
-            res = write!(f, "/");
-        }
-
-        res
-    }
-}
-
 #[derive(Debug, Clone, Error)]
 pub enum StoragePathParseError {
     #[error("Storage Path was empty")]
@@ -140,129 +103,16 @@ pub enum StoragePathParseError {
     EmptySegment,
 }
 
-impl TryFrom<String> for StoragePath {
-    type Error = StoragePathParseError;
-
-    fn try_from(s: String) -> Result<Self, Self::Error> {
-        if s.is_empty() {
-            return Err(StoragePathParseError::NoRoot);
-        }
-
-        if let Some((root, sub)) = s.split_once('/') {
-            if sub.contains("/") {
-                let mut sub: Vec<&str> = sub.split("/").collect();
-                let is_file = if let Some(last) = sub.last()
-                    && !last.is_empty()
-                {
-                    true
-                } else {
-                    sub.remove(sub.len() - 1);
-                    false
-                };
-
-                if sub.iter().any(|s| s.is_empty()) {
-                    Err(StoragePathParseError::EmptySegment)
-                } else {
-                    Ok(StoragePath {
-                        root: root.to_string(),
-                        parts: sub.iter().map(|s| s.to_string()).collect(),
-                        is_file,
-                    })
-                }
-            } else {
-                if !sub.is_empty() {
-                    Ok(StoragePath {
-                        root: root.to_string(),
-                        parts: vec![sub.to_string()],
-                        is_file: false,
-                    })
-                } else {
-                    Ok(StoragePath {
-                        root: root.to_string(),
-                        parts: vec![],
-                        is_file: false,
-                    })
-                }
-            }
-        } else {
-            Ok(StoragePath {
-                root: s.to_string(),
-                parts: vec![],
-                is_file: true,
-            })
-        }
-    }
-}
-
-impl FromStr for StoragePath {
-    type Err = StoragePathParseError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> { StoragePath::try_from(s.to_string()) }
-}
-
-impl Add<(String, bool)> for StoragePath {
-    type Output = StoragePath;
-
-    fn add(mut self, (path, is_file): (String, bool)) -> Self::Output {
-        self.parts.push(path);
-        self.is_file = is_file;
-        self
-    }
-}
-
-impl AddAssign<(String, bool)> for StoragePath {
-    fn add_assign(&mut self, (path, is_file): (String, bool)) {
-        self.parts.push(path);
-        self.is_file = is_file
-    }
-}
-
-impl StoragePath {
-    fn get_path(&self) -> PathBuf {
-        let mut root = PathBuf::from(&self.root);
-        for part in &self.parts {
-            root = root.join(part);
-        }
-
-        root.clone()
-    }
-
-    fn get_leaf_name(&self) -> &String {
-        let len = self.parts.len();
-
-        if len > 0
-            && let Some(name) = self.parts.get(len - 1)
-        {
-            name
-        } else {
-            &self.root
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct StorageKey {
     pub category: StorageCategory,
-    pub(crate) path: StoragePath,
+    pub(crate) path: PathBuf,
 }
 
 impl Display for StorageKey {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}{}", self.category.prefix(), self.path)
+        write!(f, "{}{}", self.category.prefix(), self.path.display())
     }
-}
-
-impl Add<(String, bool)> for StorageKey {
-    type Output = StorageKey;
-
-    fn add(mut self, rhs: (String, bool)) -> Self::Output {
-        self.path += rhs;
-        self
-    }
-}
-
-impl AddAssign<(String, bool)> for StorageKey {
-    fn add_assign(&mut self, rhs: (String, bool)) { self.path += rhs; }
 }
 
 #[derive(Debug, Error)]
@@ -279,21 +129,31 @@ impl TryFrom<String> for StorageKey {
     type Error = StorageKeyParseError;
 
     fn try_from(s: String) -> Result<Self, Self::Error> {
-        if let Some(category) = StorageCategory::iter().find(|c| s.starts_with(c.prefix())) {
-            let s = s
-                .strip_prefix(category.prefix())
-                .expect("String prefix does not match previous.");
+        if let Some(category) = StorageCategory::iter().find(|c| c.match_prefix().is_match(&s)) {
+            let stripped = if category == StorageCategory::Root {
+                Some(s.as_str())
+            } else {
+                s.strip_prefix(category.prefix())
+            };
+
+            #[allow(clippy::panic)]
+            let Some(s) = stripped else {
+                panic!(
+                    "String {s} matched prefix {}, but stripping {} failed.",
+                    category.match_prefix(),
+                    category.prefix()
+                );
+            };
+
             if s.is_empty() {
                 Err(StorageKeyParseError::NoPath)
             } else {
-                let path = StoragePath::from_str(s);
-                match path {
-                    Ok(s) => Ok(StorageKey {
-                        category,
-                        path: s,
-                    }),
-                    Err(e) => Err(StorageKeyParseError::InvalidPath(e)),
-                }
+                let path = PathBuf::from(s);
+
+                Ok(StorageKey {
+                    category,
+                    path,
+                })
             }
         } else {
             Err(StorageKeyParseError::InvalidCategory)
@@ -316,31 +176,52 @@ impl From<&Path> for StorageKey {
 }
 
 impl StorageKey {
-    pub fn is_file(&self) -> bool { self.path.is_file }
+    #[must_use]
+    pub fn is_file(&self) -> bool { self.path.is_file() }
 
+    #[must_use]
     pub fn parent(&self) -> Option<StorageKey> {
         let mut parent = self.clone();
-        parent.path.is_file = false;
+        let parent_path = parent.path.parent();
 
-        let subparts = parent.path.parts.len();
-        if subparts > 0 {
-            parent.path.parts.remove(subparts - 1);
+        if let Some(parent_path) = parent_path {
+            parent.path = parent_path.to_path_buf();
             Some(parent)
         } else {
             None
         }
     }
 
-    pub fn get_leaf_name(&self) -> &String { self.path.get_leaf_name() }
+    #[must_use]
+    #[allow(clippy::expect_used, clippy::missing_panics_doc)]
+    pub fn get_leaf_name(&self) -> String {
+        self.path
+            .file_name()
+            .expect("Only fails if path ends in \"..\", which should be impossible.")
+            .to_string_lossy()
+            .to_string()
+    }
 
-    pub fn new(storage_category: StorageCategory, path: &str) -> Option<StorageKey> {
-        let path = StoragePath::from_str(path).ok()?;
-
+    #[must_use]
+    pub fn new(storage_category: StorageCategory, path: PathBuf) -> Option<StorageKey> {
         Some(Self {
             category: storage_category,
             path,
         })
     }
+}
+
+impl<P: AsRef<Path>> Add<P> for StorageKey {
+    type Output = StorageKey;
+
+    fn add(mut self, rhs: P) -> Self::Output {
+        self.path.push(rhs);
+        self
+    }
+}
+
+impl<P: AsRef<Path>> AddAssign<P> for StorageKey {
+    fn add_assign(&mut self, rhs: P) { self.path.push(rhs) }
 }
 
 impl StorageCategory {
@@ -352,6 +233,17 @@ impl StorageCategory {
             StorageCategory::Data => "data/",
             StorageCategory::Cache => "cache/",
             StorageCategory::Root => "/",
+        }
+    }
+
+    #[must_use]
+    #[allow(clippy::unwrap_used, clippy::missing_panics_doc)]
+    pub fn match_prefix(&self) -> Regex {
+        match self {
+            StorageCategory::Config => Regex::new(r"^config/").unwrap(),
+            StorageCategory::Data => Regex::new(r"^data/").unwrap(),
+            StorageCategory::Cache => Regex::new(r"^cache/").unwrap(),
+            StorageCategory::Root => Regex::new(r"^([A-Z]:|/)").unwrap(),
         }
     }
 }
@@ -394,7 +286,7 @@ pub trait Storage: Send + Sync {
 #[cfg(not(target_arch = "wasm32"))]
 mod native {
     use std::io::{Read, Write};
-    use std::path::{Path, PathBuf};
+    use std::path::PathBuf;
 
     use async_trait::async_trait;
 
@@ -414,15 +306,15 @@ mod native {
         #[must_use]
         pub fn new() -> Self { NativeStorage }
 
-        fn get_base_dir(category: StorageCategory) -> PathBuf {
+        #[allow(clippy::expect_used)]
+        fn get_base_dir(category: StorageCategory) -> Option<PathBuf> {
             let dirs = get_project_dirs().expect("Unable to retrieve project dirs.");
-            let base = match category {
-                StorageCategory::Config => dirs.config_dir(),
-                StorageCategory::Data => dirs.data_dir(),
-                StorageCategory::Cache => dirs.cache_dir(),
-                StorageCategory::Root => Path::new("/"),
-            };
-            base.to_path_buf()
+            match category {
+                StorageCategory::Config => Some(dirs.config_dir().to_path_buf()),
+                StorageCategory::Data => Some(dirs.data_dir().to_path_buf()),
+                StorageCategory::Cache => Some(dirs.cache_dir().to_path_buf()),
+                StorageCategory::Root => None,
+            }
         }
     }
 
@@ -491,24 +383,30 @@ mod native {
         async fn list(&self, prefix: &StorageKey) -> StorageResult<Vec<StorageKey>> {
             let mut results = Vec::new();
 
-            if !prefix.path.is_file {
-                self.collect_files(prefix, &mut results)?;
-            } else {
+            if prefix.path.is_file() {
                 results.push(prefix.clone());
+            } else {
+                self.collect_files(prefix, &mut results)?;
             }
 
             Ok(results)
         }
 
         fn get_display_path(&self, key: &StorageKey) -> String {
-            self.key_to_path(Some(key))
-                .map_or_else(|| key.path.to_string(), |p| p.display().to_string())
+            self.key_to_path(Some(key)).map_or_else(
+                || key.path.to_string_lossy().to_string(),
+                |p| p.display().to_string(),
+            )
         }
 
         fn key_to_path(&self, key: Option<&StorageKey>) -> Option<PathBuf> {
             if let Some(key) = key {
                 let base = NativeStorage::get_base_dir(key.category);
-                Some(base.join(key.path.get_path()))
+                if let Some(base) = base {
+                    Some(base.join(key.path.clone()))
+                } else {
+                    Some(key.path.clone())
+                }
             } else {
                 None
             }
@@ -533,15 +431,14 @@ mod native {
                 std::fs::read_dir(dir).map_err(|e| StorageError::ReadError(e.to_string()))?;
 
             for entry in entries.flatten() {
-                let path = entry.path();
                 let name = entry.file_name().to_string_lossy().to_string();
 
-                let found = prefix.clone() + (name, path.is_file());
+                let found = prefix.clone() + name;
 
                 if found.is_file() {
-                    results.push(found)
+                    results.push(found);
                 } else {
-                    self.collect_files(&found, results)?
+                    self.collect_files(&found, results)?;
                 }
             }
 
@@ -556,6 +453,8 @@ mod native {
 
 #[cfg(target_arch = "wasm32")]
 mod wasm {
+    use std::path::PathBuf;
+
     use js_sys::Uint8Array;
     use rexie::{KeyRange, Rexie, TransactionMode};
     use wasm_bindgen::JsValue;
@@ -709,7 +608,7 @@ mod wasm {
 
             Ok(keys
                 .into_iter()
-                .filter_map(|k| k.as_string().map(|s| StorageKey::try_from(s)))
+                .filter_map(|k| k.as_string().map(StorageKey::try_from))
                 .flatten()
                 .collect())
         }
@@ -717,6 +616,8 @@ mod wasm {
         fn get_display_path(&self, key: &StorageKey) -> String {
             format!("indexeddb://monsoon_emulator/{}", Self::key_string(key))
         }
+
+        fn key_to_path(&self, _: Option<&StorageKey>) -> Option<PathBuf> { None }
     }
 }
 
@@ -746,23 +647,27 @@ pub fn get_storage() -> impl Storage { WasmStorage::new() }
 /// Generate a storage key for a quicksave
 #[must_use]
 pub fn quicksave_key(game_name: &str, timestamp: &str) -> StorageKey {
-    quicksave_prefix(game_name) + (format!("quicksave_{timestamp}.sav"), true)
+    quicksave_prefix(game_name) + format!("quicksave_{timestamp}.sav")
 }
 
 /// Generate a storage key for an autosave
 #[must_use]
 pub fn autosave_key(game_name: &str, timestamp: &str) -> StorageKey {
-    autosave_prefix(game_name) + (format!("autosave_{timestamp}.sav"), true)
+    autosave_prefix(game_name) + format!("autosave_{timestamp}.sav")
 }
 
 /// Generate a storage key for a cached uploaded savestate
 #[must_use]
 pub fn uploaded_savestate_key(filename: &str) -> StorageKey {
-    uploaded_savestate_prefix() + (filename.to_string(), true)
+    uploaded_savestate_prefix() + filename.to_string()
 }
+
+#[must_use]
+pub fn palette_cache_key(file_name: String) -> StorageKey { palette_cache_dir() + file_name }
 
 /// Generate the prefix for listing autosaves for a game
 #[must_use]
+#[allow(clippy::expect_used, clippy::missing_panics_doc)]
 pub fn autosave_prefix(game_name: &str) -> StorageKey {
     #[allow(clippy::expect_used)]
     StorageKey::try_from(format!("data/saves/{game_name}/autosaves/"))
@@ -771,6 +676,7 @@ pub fn autosave_prefix(game_name: &str) -> StorageKey {
 
 /// Generate the prefix for listing quicksaves for a game
 #[must_use]
+#[allow(clippy::expect_used, clippy::missing_panics_doc)]
 pub fn quicksave_prefix(game_name: &str) -> StorageKey {
     #[allow(clippy::expect_used)]
     StorageKey::try_from(format!("data/saves/{game_name}/quicksaves/"))
@@ -779,6 +685,7 @@ pub fn quicksave_prefix(game_name: &str) -> StorageKey {
 
 /// Generate the prefix for uploaded savestates
 #[must_use]
+#[allow(clippy::expect_used, clippy::missing_panics_doc)]
 pub fn uploaded_savestate_prefix() -> StorageKey {
     #[allow(clippy::expect_used)]
     StorageKey::from_str("cache/saves/")
@@ -787,6 +694,7 @@ pub fn uploaded_savestate_prefix() -> StorageKey {
 
 /// Generate a storage key for the application config
 #[must_use]
+#[allow(clippy::expect_used, clippy::missing_panics_doc)]
 pub fn config_key() -> StorageKey {
     #[allow(clippy::expect_used)]
     StorageKey::from_str("config/config.toml")
@@ -795,6 +703,7 @@ pub fn config_key() -> StorageKey {
 
 /// Generate a storage key for egui state
 #[must_use]
+#[allow(clippy::expect_used, clippy::missing_panics_doc)]
 pub fn egui_state_key() -> StorageKey {
     #[allow(clippy::expect_used)]
     StorageKey::from_str("config/egui_state/")
@@ -803,11 +712,12 @@ pub fn egui_state_key() -> StorageKey {
 
 /// Generate a storage key for a cached ROM file
 #[must_use]
-pub fn rom_cache_key(filename: &str) -> StorageKey { rom_prefix() + (filename.to_string(), true) }
+pub fn rom_cache_key(filename: &str) -> StorageKey { rom_cache_dir() + filename.to_string() }
 
 /// Generate the prefix for listing all cached ROMs
 #[must_use]
-pub fn rom_prefix() -> StorageKey {
+#[allow(clippy::expect_used, clippy::missing_panics_doc)]
+pub fn rom_cache_dir() -> StorageKey {
     #[allow(clippy::expect_used)]
     StorageKey::from_str("cache/roms/")
         .expect("Default rom cache directory is not a valid StorageKey")
@@ -815,6 +725,7 @@ pub fn rom_prefix() -> StorageKey {
 
 /// Generate a storage key for the cached ROM-info database binary
 #[must_use]
+#[allow(clippy::expect_used, clippy::missing_panics_doc)]
 pub fn db_cache_key() -> StorageKey {
     #[allow(clippy::expect_used)]
     StorageKey::from_str("cache/rom-info-db.bin")
@@ -822,7 +733,8 @@ pub fn db_cache_key() -> StorageKey {
 }
 
 #[must_use]
-pub fn palette_cache_key() -> StorageKey {
+#[allow(clippy::expect_used, clippy::missing_panics_doc)]
+pub fn palette_cache_dir() -> StorageKey {
     #[allow(clippy::expect_used)]
     StorageKey::try_from("cache/palettes/".to_string())
         .expect("Default palette cache directory is not a valid StorageKey")
@@ -910,10 +822,10 @@ mod sync_wrappers {
         let storage = get_storage_instance();
         let mut results = Vec::new();
 
-        if !prefix.path.is_file {
-            storage.collect_files(prefix, &mut results)?;
-        } else {
+        if prefix.path.is_file() {
             results.push(prefix.clone());
+        } else {
+            storage.collect_files(prefix, &mut results)?;
         }
 
         Ok(results)

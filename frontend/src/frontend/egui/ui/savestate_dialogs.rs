@@ -188,7 +188,7 @@ fn render_checksum_mismatch_dialog(
             }
         });
     });
-
+    
     if close {
         if load_anyway {
             let _ = sender.send(AsyncFrontendMessage::UseMatchingRom(context, rom));

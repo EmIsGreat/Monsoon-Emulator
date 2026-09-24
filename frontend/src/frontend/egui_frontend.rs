@@ -255,14 +255,16 @@ impl EguiApp {
             .send(FrontendMessage::LoadRom(data, name.clone(), use_db));
 
         // Extract stem for window title
-        let stem: &str = name.rsplit_once('.').map_or(name.as_str(), |(s, _)| s);
+        let stem: &str = name.rsplit_once('.').map_or(&name, |(s, _)| s);
         let window_title = if stem.is_empty() {
             "Monsoon".to_string()
         } else {
             format!("Monsoon - {stem}")
         };
 
-        self.config.user_config.previous_rom = path;
+        if path.is_some() {
+            self.config.user_config.previous_rom = path;
+        }
 
         self.event_queue
             .borrow_mut()
@@ -305,7 +307,7 @@ impl EguiApp {
             let rom_hash = &rom.0.data_checksum;
             let prev_name = &self.config.user_config.previous_rom;
             if let Some(prev_name) = prev_name {
-                let display_name = util::rom_display_name(prev_name.get_leaf_name(), rom_hash);
+                let display_name = util::rom_display_name(&prev_name.get_leaf_name(), rom_hash);
                 let timestamp = chrono::Local::now().format("%Y-%m-%d_%H-%M-%S").to_string();
                 let key = storage::autosave_key(&display_name, &timestamp);
 
@@ -339,7 +341,7 @@ impl EguiApp {
                     .into_iter()
                     .filter(|e| {
                         e.is_file()
-                            && std::path::Path::new(e.get_leaf_name())
+                            && std::path::Path::new(&e.get_leaf_name())
                                 .extension()
                                 .is_some_and(|ext| ext.eq_ignore_ascii_case("sav"))
                     })
@@ -364,7 +366,7 @@ impl EguiApp {
 
         for entry in entries {
             if entry.is_file()
-                && std::path::Path::new(entry.get_leaf_name())
+                && std::path::Path::new(&entry.get_leaf_name())
                     .extension()
                     .is_some_and(|ext| ext.eq_ignore_ascii_case("sav"))
             {
@@ -829,7 +831,6 @@ async fn common_setup(rom: Option<&PathBuf>) -> SetupResponse {
         });
         let _ = async_sender.send(AsyncFrontendMessage::LoadRom {
             rom: loaded_rom,
-            overwrite_directory: false,
         });
     } else if let Some(prev_rom) = &config.user_config.previous_rom
         && let Ok(loaded_rom_data) = storage::get_storage().get(prev_rom).await
@@ -840,12 +841,10 @@ async fn common_setup(rom: Option<&PathBuf>) -> SetupResponse {
                 name: prev_rom.get_leaf_name().clone(),
                 path: Some(prev_rom.clone()),
             }),
-            overwrite_directory: false,
         });
     } else {
         let _ = async_sender.send(AsyncFrontendMessage::LoadRom {
             rom: Some(ALTER_EGO_DEMO.clone()),
-            overwrite_directory: false,
         });
     }
 
@@ -876,10 +875,7 @@ pub fn run(rom: Option<&PathBuf>) -> Result<(), Box<dyn std::error::Error>> { ru
 
 /// Run the egui frontend for WASM.
 #[cfg(target_arch = "wasm32")]
-pub fn run(_: Option<&PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
-    let res = common_setup(None);
-    run_internal_wasm(res)
-}
+pub fn run(_: Option<&PathBuf>) -> Result<(), Box<dyn std::error::Error>> { run_internal_wasm() }
 
 #[tokio::main]
 #[cfg(not(target_arch = "wasm32"))]
@@ -955,12 +951,14 @@ fn get_app_creator(res: SetupResponse) -> AppCreator<'static> {
 #[cfg(target_arch = "wasm32")]
 #[allow(clippy::unwrap_used)]
 #[allow(clippy::unnecessary_wraps)]
-fn run_internal_wasm(res: SetupResponse) -> Result<(), Box<dyn std::error::Error>> {
+fn run_internal_wasm() -> Result<(), Box<dyn std::error::Error>> {
     use eframe::web_sys;
     use wasm_bindgen::JsCast;
     use web_sys::HtmlCanvasElement;
 
     wasm_bindgen_futures::spawn_local(async {
+        let res = common_setup(None).await;
+
         let window = web_sys::window().unwrap();
         let document = window.document().unwrap();
 
@@ -971,9 +969,6 @@ fn run_internal_wasm(res: SetupResponse) -> Result<(), Box<dyn std::error::Error
             .unwrap();
 
         document.body().unwrap().append_child(&canvas).unwrap();
-
-        // Load configuration before starting eframe (we're in an async context)
-        let loaded_config = load_config().await;
 
         // Kick off DB initialisation using IndexedDB-backed storage.
         {
@@ -1010,7 +1005,7 @@ fn run_internal_wasm(res: SetupResponse) -> Result<(), Box<dyn std::error::Error
         let options = eframe::WebOptions::default();
 
         eframe::WebRunner::new()
-            .start(canvas, options, get_app_creator(res, loaded_config))
+            .start(canvas, options, get_app_creator(res))
             .await
             .unwrap();
     });

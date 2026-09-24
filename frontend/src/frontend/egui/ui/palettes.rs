@@ -8,7 +8,6 @@ use crate::frontend::egui::textures::EmuTextures;
 use crate::frontend::egui::ui::widgets::{PainterGridConfig, color_cell_rgb};
 use crate::frontend::egui_frontend::BUNDLED_PALETTE;
 use crate::frontend::messages::AsyncFrontendMessage;
-use crate::frontend::storage::{Storage, get_storage};
 use crate::frontend::util::{self, FileType, spawn_palette_picker, spawn_save_dialog};
 
 #[allow(clippy::too_many_lines)]
@@ -83,12 +82,7 @@ pub fn render_palettes(
             if ui.button("Save Palette").clicked() {
                 spawn_save_dialog(
                     Some(async_sender),
-                    config
-                        .user_config
-                        .previous_palette
-                        .as_ref()
-                        .map(|k| get_storage().key_to_path(Some(&k)))
-                        .flatten(),
+                    config.user_config.previous_palette_save.clone(),
                     FileType::Palette,
                     Box::new(config.view_config.palette_rgb_data),
                 );

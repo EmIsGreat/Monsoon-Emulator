@@ -166,7 +166,7 @@ impl EguiApp {
             let rom_hash = &rom.0.data_checksum;
             let prev_rom = &self.config.user_config.previous_rom;
             if let Some(prev_rom) = prev_rom {
-                let display_name = util::rom_display_name(prev_rom.get_leaf_name(), rom_hash);
+                let display_name = util::rom_display_name(&prev_rom.get_leaf_name(), rom_hash);
                 let timestamp = chrono::Local::now().format("%Y-%m-%d_%H-%M-%S").to_string();
                 let key = storage::quicksave_key(&display_name, &timestamp);
 

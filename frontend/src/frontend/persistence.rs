@@ -210,7 +210,7 @@ fn write_file_sync(path: &Path, data: &[u8], overwrite: bool) -> AsyncFileResult
 
         let offset = if copy == 0 { 0 } else { 2 };
 
-        let path = append_to_filename(path, format!("_{}", copy + 1).as_str(), offset);
+        let path = append_to_filename(path, &format!("_{}", copy + 1), offset);
         write_file_sync(&path, data, overwrite)
     } else {
         match fs::File::create(path) {
@@ -387,7 +387,7 @@ impl From<&ViewConfig> for PersistentViewConfig {
 impl From<&PersistentViewConfig> for ViewConfig {
     fn from(config: &PersistentViewConfig) -> Self {
         // If renderer was persisted, use it; otherwise create a default
-        let renderer = create_renderer(Some(config.renderer.as_str()), &get_all_renderers());
+        let renderer = create_renderer(Some(&config.renderer), &get_all_renderers());
 
         Self {
             palette_rgb_data: RgbPalette::default(),

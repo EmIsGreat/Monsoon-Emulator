@@ -97,7 +97,6 @@ pub enum AsyncFrontendMessage {
     /// Load a ROM - contains ROM data if provided, None triggers file picker
     LoadRom {
         rom: Option<LoadedRom>,
-        overwrite_directory: bool,
     },
     StartLoadRom,
     /// Open the save browser dialog (triggers async listing of saves)

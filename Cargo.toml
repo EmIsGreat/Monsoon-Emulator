@@ -31,6 +31,10 @@ rustflags = ["-C", "target-cpu=native"]
 opt-level = 3
 split-debuginfo = "unpacked"  # Ensures symbols are separate
 
+[profile.debug]
+inherits = "dev"
+opt-level = 0
+
 [profile.profiling]
 inherits = "release"
 split-debuginfo = "unpacked"  # Ensures symbols are separate

@@ -39,7 +39,7 @@ pub fn render_register_viewer(ui: &mut egui::Ui, emu_textures: &EmuTextures) {
             mapper_tables.sort_by_key(|(left, _)| *left);
 
             for (table_name, table_registers) in mapper_tables {
-                egui::CollapsingHeader::new(table_name.as_str())
+                egui::CollapsingHeader::new(table_name)
                     .default_open(true)
                     .show(ui, |ui| {
                         render_register_table(

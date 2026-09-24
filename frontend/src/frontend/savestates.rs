@@ -60,6 +60,7 @@ pub struct ErrorDialogState {
 }
 
 /// State for the save browser dialog
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Clone, Debug)]
 pub struct SaveBrowserState {
     /// All save entries loaded from storage

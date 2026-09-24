@@ -287,8 +287,7 @@ impl ExecutionEngine {
 
     /// Load ROM from path
     pub fn load_rom(&mut self, path: &Path) -> Result<(), String> {
-        let path_str = path.to_string_lossy().to_string();
-        let loadable: Result<RomFile, ParseError> = (&path_str, true, Some(&self.emu)).try_into();
+        let loadable: Result<RomFile, ParseError> = (path, true, Some(&self.emu)).try_into();
 
         match loadable {
             Ok(rom) => {

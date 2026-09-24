@@ -13,6 +13,7 @@ use monsoon_core::util::{SerializationError, ToBytes};
 use sha2::{Digest, Sha256};
 
 use crate::frontend::egui::config::AutoPauseReason;
+use crate::frontend::egui::message_handlers::EmulatorMessageHandler;
 use crate::frontend::egui::tiles::{Pane, add_pane_if_missing};
 use crate::frontend::egui_frontend::EguiApp;
 use crate::frontend::messages::{AsyncFrontendMessage, LoadedRom, SavestateLoadContext};
@@ -120,7 +121,6 @@ impl EguiApp {
             }
             AsyncFrontendMessage::LoadRom {
                 rom,
-                overwrite_directory,
             } => {
                 if let Some(rom) = rom {
                     let _ = self
@@ -128,10 +128,8 @@ impl EguiApp {
                         .send(FrontendMessage::CreateSaveState(SaveType::Autosave));
                     let _ = self.to_emulator.send(FrontendMessage::Power(false));
 
-                    if overwrite_directory {
-                        // Save directory for next file picker
-                        self.config.user_config.previous_rom.clone_from(&rom.path);
-                    }
+                    let _ = self.channel_emu.process_messages();
+                    self.handle_emulator_messages(ctx);
 
                     self.load_rom(rom, *self.config.user_config.use_rom_db);
                     let _ = self.to_emulator.send(FrontendMessage::Power(true));
@@ -396,9 +394,6 @@ impl EguiApp {
         context: &SavestateLoadContext,
         rom: LoadedRom,
     ) {
-        // Save directory for next file picker
-        self.config.user_config.previous_rom.clone_from(&rom.path);
-
         let checksum = util::compute_data_checksum(&rom.data);
         if checksum == context.savestate.rom_file.data_checksum {
             self.load_savestate_with_rom(context, rom);
@@ -462,7 +457,7 @@ impl EguiApp {
         if let Some(checksum) = rom_info
             && let Some(prev_key) = rom_name
         {
-            let display_name = util::rom_display_name(prev_key.get_leaf_name(), &checksum);
+            let display_name = util::rom_display_name(&prev_key.get_leaf_name(), &checksum);
             util::spawn_async(async move {
                 let prefix = storage::quicksave_prefix(&display_name);
                 let storage_impl = get_storage();
@@ -540,7 +535,7 @@ impl EguiApp {
             && let Some(prev_name) = &self.config.user_config.previous_rom
         {
             let rom_hash = &rom.0.data_checksum;
-            let display_name = util::rom_display_name(prev_name.get_leaf_name(), rom_hash);
+            let display_name = util::rom_display_name(&prev_name.get_leaf_name(), rom_hash);
 
             // Show the dialog immediately with loading state
             self.config.pending_dialogs.save_browser = Some(SaveBrowserState {
@@ -658,14 +653,14 @@ async fn find_matching_rom(
                 return Some(LoadedRom {
                     data,
                     name: rom_name.clone(),
-                    path: Some(storage::rom_prefix()),
+                    path: Some(storage::rom_cache_dir() + rom_name),
                 });
             }
         }
     }
 
     // Scan all cached ROMs in storage
-    let rom_prefix = storage::rom_prefix();
+    let rom_prefix = storage::rom_cache_dir();
     if let Ok(entries) = storage_impl.list(&rom_prefix).await {
         for entry in entries {
             if let Ok(data) = storage_impl.get(&entry).await {
@@ -717,7 +712,7 @@ fn find_matching_rom_in_directory(dir: &Path, context: &SavestateLoadContext) ->
                 return Some(LoadedRom {
                     data,
                     name: rom_name.clone(),
-                    path: Some(StorageKey::new(StorageCategory::Root, dir.to_str()?)?),
+                    path: Some(StorageKey::new(StorageCategory::Root, rom_path)?),
                 });
             }
         }
@@ -735,10 +730,11 @@ fn find_matching_rom_in_directory(dir: &Path, context: &SavestateLoadContext) ->
             let checksum = util::compute_data_checksum(&data);
             if &checksum == expected_checksum {
                 let name = entry.file_name().to_string_lossy().to_string();
+
                 return Some(LoadedRom {
                     data,
                     name,
-                    path: Some(StorageKey::new(StorageCategory::Root, dir.to_str()?)?),
+                    path: Some(StorageKey::new(StorageCategory::Root, path)?),
                 });
             }
         }
@@ -782,7 +778,8 @@ async fn add_save_entries(
 
     if let Ok(storage_entries) = storage.list(prefix).await {
         for entry in storage_entries {
-            if Path::new(entry.get_leaf_name())
+            if entry
+                .path
                 .extension()
                 .is_some_and(|ext| ext.eq_ignore_ascii_case("sav"))
                 && let Some(save_entry) = parse_save_entry(entry, save_type)
