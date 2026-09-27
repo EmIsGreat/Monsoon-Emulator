@@ -486,7 +486,7 @@ mod wasm {
 
         /// Convert `StorageKey` to the string key used in `IndexedDB`
         fn key_string(key: &StorageKey) -> String {
-            format!("{}{}", key.category.prefix(), key.path)
+            format!("{}{}", key.category.prefix(), key.path.display())
         }
     }
 

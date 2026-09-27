@@ -6,7 +6,7 @@
 use std::path::PathBuf;
 
 use clap::{Args, Parser, ValueEnum, value_parser};
-use monsoon_core::util::{parse_hex_u8, parse_hex_u16};
+use monsoon_core::util::{SerializationFormat, parse_hex_u8, parse_hex_u16};
 use serde::Deserialize;
 
 /// NES Emulator CLI - A cycle-accurate NES emulator with comprehensive CLI
@@ -110,6 +110,17 @@ pub enum SavestateFormat {
     Binary,
     /// JSON format (human-readable, editable)
     Json,
+    Toml,
+}
+
+impl From<SavestateFormat> for SerializationFormat {
+    fn from(value: SavestateFormat) -> Self {
+        match value {
+            SavestateFormat::Binary => SerializationFormat::Binary,
+            SavestateFormat::Json => SerializationFormat::Json,
+            SavestateFormat::Toml => SerializationFormat::Toml,
+        }
+    }
 }
 
 /// Memory operation arguments

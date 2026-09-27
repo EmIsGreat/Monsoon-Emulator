@@ -5,14 +5,9 @@
 
 use egui::{Context, ViewportCommand};
 use monsoon_core::emulation::ppu_util::{EmulatorFetchable, PaletteData, TILE_COUNT, TileData};
-use monsoon_core::emulation::savestate::SaveState;
-use monsoon_core::util::ToBytes;
 
 use crate::frontend::egui_frontend::EguiApp;
-use crate::frontend::storage::Storage;
-use crate::frontend::util::FileType;
-use crate::frontend::{storage, util};
-use crate::messages::{EmulatorMessage, SaveType};
+use crate::messages::EmulatorMessage;
 
 /// Trait for handling emulator messages.
 ///
@@ -60,9 +55,6 @@ impl EguiApp {
             }
             EmulatorMessage::Stopped => {
                 ctx.send_viewport_cmd(ViewportCommand::Close);
-            }
-            EmulatorMessage::SaveState(s, t) => {
-                self.handle_savestate(s, t);
             }
             EmulatorMessage::RomLoaded(rom) => {
                 self.config.console_config.loaded_rom = *rom;
@@ -137,47 +129,6 @@ impl EguiApp {
                         None,
                         Some(tile_idx),
                     );
-                }
-            }
-        }
-    }
-
-    fn handle_savestate(&mut self, savestate: Box<SaveState>, save_type: SaveType) {
-        match save_type {
-            SaveType::Manual => {
-                util::spawn_save_dialog(
-                    Some(&self.async_sender),
-                    self.config.user_config.previous_savestate_save.clone(),
-                    FileType::Savestate,
-                    savestate,
-                );
-            }
-            SaveType::Quicksave => {
-                self.handle_quicksave(&savestate);
-            }
-            SaveType::Autosave => {
-                self.create_auto_save(&savestate);
-            }
-        }
-    }
-
-    fn handle_quicksave(&self, savestate: &SaveState) {
-        if let Some(rom) = &self.config.console_config.loaded_rom {
-            let rom_hash = &rom.0.data_checksum;
-            let prev_rom = &self.config.user_config.previous_rom;
-            if let Some(prev_rom) = prev_rom {
-                let display_name = util::rom_display_name(&prev_rom.get_leaf_name(), rom_hash);
-                let timestamp = chrono::Local::now().format("%Y-%m-%d_%H-%M-%S").to_string();
-                let key = storage::quicksave_key(&display_name, &timestamp);
-
-                // Write savestate using storage
-                let data = savestate.to_bytes(None);
-
-                if let Ok(data) = data {
-                    util::spawn_async(async move {
-                        let storage = storage::get_storage();
-                        let _ = storage.set(&key, data).await;
-                    });
                 }
             }
         }

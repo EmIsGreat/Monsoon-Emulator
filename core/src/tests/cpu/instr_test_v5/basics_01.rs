@@ -1,4 +1,5 @@
 use std::path::Path;
+
 use crate::emulation::nes::{Nes, RunOptions};
 #[test]
 fn test_01_basics() {

@@ -31,7 +31,6 @@ pub enum FrontendMessage {
     LoadRom(LoadedRom, String, bool),
     WritePpu(u16, u8),
     WriteCpu(u16, u8),
-    CreateSaveState(SaveType),
     LoadSaveState(Box<SaveState>),
     StepPpuCycle,
     StepCpuCycle,
@@ -58,6 +57,5 @@ pub enum EmulatorMessage {
     /// Emulator has stopped/quit
     Stopped,
     DebugData(EmulatorFetchable),
-    SaveState(Box<SaveState>, SaveType),
     RomLoaded(Box<Option<(RomFile, LoadedRom)>>),
 }

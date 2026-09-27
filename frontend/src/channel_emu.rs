@@ -10,7 +10,7 @@ use monsoon_core::emulation::ppu_util::{
 use monsoon_core::emulation::rom::{ParseError, RomFile};
 use monsoon_core::util::Hashable;
 
-use crate::messages::{EmulatorMessage, FrontendMessage, SaveType};
+use crate::messages::{EmulatorMessage, FrontendMessage};
 
 /// Channel-based emulator wrapper for clean frontend/emulator separation.
 ///
@@ -125,13 +125,6 @@ impl ChannelEmulator {
         while let Ok(msg) = self.from_frontend.try_recv() {
             match msg {
                 FrontendMessage::Quit => {
-                    let state = self.nes.save_state();
-                    if let Some(state) = state {
-                        let _ = self.to_frontend.send(EmulatorMessage::SaveState(
-                            Box::new(state),
-                            SaveType::Autosave,
-                        ));
-                    }
                     let _ = self.to_frontend.send(EmulatorMessage::Stopped);
                     return Err("Quit requested".to_string());
                 }
@@ -193,16 +186,6 @@ impl ChannelEmulator {
                         self.nes.power();
                     } else {
                         self.nes.power_off();
-                    }
-                }
-                FrontendMessage::CreateSaveState(t) => {
-                    if self.nes.rom_file.is_some() {
-                        let state = self.nes.save_state();
-                        if let Some(state) = state {
-                            let _ = self
-                                .to_frontend
-                                .send(EmulatorMessage::SaveState(Box::new(state), t));
-                        }
                     }
                 }
                 FrontendMessage::LoadSaveState(s) => self.nes.load_state(*s),

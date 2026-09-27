@@ -46,7 +46,7 @@ fn get_file_path(handle: &FileHandle, _: StorageKey) -> StorageKey {
 #[cfg(target_arch = "wasm32")]
 fn get_file_path(handle: &FileHandle, root: StorageKey) -> StorageKey {
     let name = handle.file_name();
-    root + (name, true)
+    root + name
 }
 
 pub trait Contrastable {
@@ -266,23 +266,13 @@ pub fn spawn_save_dialog(
         if let Some(handle) = save_file(file_type, dir).await {
             // Get filename for format detection
             let filename = handle.file_name();
-            let format = get_extension(&filename);
-
-            // If no extension was specified, use the default for this file type
-            let format = format.or_else(|| {
-                let ext = file_type.get_default_extension();
-                if ext.is_empty() {
-                    None
-                } else {
-                    Some(ext.to_string())
-                }
-            });
+            let extension = get_extension(&filename);
 
             // Capture directory from the save handle
             let save_dir = get_file_directory(&handle).map(Path::to_path_buf);
 
             // Write data using the file handle
-            let bytes = data.to_bytes(format);
+            let bytes = data.to_bytes(extension.into());
 
             if let Ok(bytes) = bytes {
                 // On native, if the filename had no extension, write to a path
@@ -290,16 +280,12 @@ pub fn spawn_save_dialog(
                 // file on disk gets the correct name.
                 #[cfg(not(target_arch = "wasm32"))]
                 let result = {
-                    if get_extension(&filename).is_none() {
-                        let ext = file_type.get_default_extension();
-                        if ext.is_empty() {
-                            handle.write(&bytes).await
-                        } else {
-                            let path = handle.path().with_extension(ext);
-                            std::fs::write(&path, &bytes)
-                        }
-                    } else {
+                    let ext = file_type.get_default_extension();
+                    if ext.is_empty() {
                         handle.write(&bytes).await
+                    } else {
+                        let path = handle.path().with_extension(ext);
+                        std::fs::write(&path, &bytes)
                     }
                 };
 
@@ -334,8 +320,10 @@ pub fn spawn_save_dialog(
 }
 
 /// Extract the file extension from a filename
-fn get_extension(filename: &str) -> Option<String> {
-    filename.rsplit_once('.').map(|(_, ext)| ext.to_string())
+fn get_extension(filename: &str) -> String {
+    filename
+        .rsplit_once('.')
+        .map_or(String::new(), |(_, ext)| ext.to_string())
 }
 
 pub fn color_radio<Value: PartialEq>(

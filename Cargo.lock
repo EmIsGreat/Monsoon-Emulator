@@ -2841,6 +2841,8 @@ dependencies = [
  "sha2",
  "static_assertions",
  "strum",
+ "thiserror 2.0.20",
+ "toml",
 ]
 
 [[package]]

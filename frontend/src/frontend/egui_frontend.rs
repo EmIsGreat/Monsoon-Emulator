@@ -21,6 +21,7 @@ use std::rc::Rc;
 use std::string::ToString;
 use std::sync::{Arc, LazyLock};
 
+use chrono::Local;
 use crossbeam_channel::{Receiver, Sender};
 use eframe::{App, AppCreator, CreationContext, Frame};
 use egui::{Context, Id, Style, Ui, ViewportCommand, Visuals};
@@ -30,7 +31,7 @@ use monsoon_core::emulation::ppu_util::{EmulatorFetchable, PaletteData, TILE_COU
 use monsoon_core::emulation::rom::ExpansionDevice;
 use monsoon_core::emulation::savestate::SaveState;
 use monsoon_core::rom_db::RomDb;
-use monsoon_core::util::ToBytes;
+use monsoon_core::util::{SerializationFormat, ToBytes};
 use monsoon_db::db_provider::DbProvider;
 use web_time::{Duration, Instant};
 
@@ -53,6 +54,7 @@ use crate::frontend::messages::{
 };
 use crate::frontend::persistence::{PersistentConfig, get_egui_storage_path, load_config};
 use crate::frontend::storage::{Storage, StorageKey};
+use crate::frontend::util::FileType;
 use crate::frontend::{storage, util};
 use crate::messages::{EmulatorMessage, FrontendMessage, SaveType};
 
@@ -105,7 +107,7 @@ pub struct EguiApp {
     /// visible
     nametables_was_visible: bool,
     /// Time of last periodic autosave
-    last_autosave: Instant,
+    pub(crate) last_autosave: Instant,
     /// Track if window was focused last frame to detect focus loss
     was_focused: bool,
     was_effectively_paused: bool,
@@ -246,9 +248,7 @@ impl EguiApp {
         let name = data.name.clone();
         let path = data.path.clone();
 
-        let _ = self
-            .to_emulator
-            .send(FrontendMessage::CreateSaveState(SaveType::Autosave));
+        self.create_savestate(SaveType::Autosave);
 
         let _ = self
             .to_emulator
@@ -277,11 +277,7 @@ impl EguiApp {
         context: &SavestateLoadContext,
         rom: LoadedRom,
     ) {
-        if self.config.console_config.loaded_rom.is_some() {
-            let _ = self
-                .to_emulator
-                .send(FrontendMessage::CreateSaveState(SaveType::Autosave));
-        }
+        self.create_savestate(SaveType::Autosave);
 
         // First power off, load ROM, power on
         let _ = self.to_emulator.send(FrontendMessage::Power(false));
@@ -302,17 +298,17 @@ impl EguiApp {
             .clone_from(&context.savestate_path);
     }
 
-    pub(crate) fn create_auto_save(&self, savestate: &SaveState) {
+    pub(crate) fn save_autosave(&self, savestate: &SaveState) {
         if let Some(rom) = &self.config.console_config.loaded_rom {
             let rom_hash = &rom.0.data_checksum;
             let prev_name = &self.config.user_config.previous_rom;
             if let Some(prev_name) = prev_name {
                 let display_name = util::rom_display_name(&prev_name.get_leaf_name(), rom_hash);
-                let timestamp = chrono::Local::now().format("%Y-%m-%d_%H-%M-%S").to_string();
+                let timestamp = Local::now().format("%Y-%m-%d_%H-%M-%S").to_string();
                 let key = storage::autosave_key(&display_name, &timestamp);
 
                 // Write savestate using storage
-                let data = savestate.to_bytes(None);
+                let data = savestate.to_bytes(SerializationFormat::Binary);
 
                 if let Ok(data) = data {
                     util::spawn_async(async move {
@@ -324,6 +320,50 @@ impl EguiApp {
                 // Clean up old autosaves asynchronously to avoid blocking the
                 // UI
                 Self::cleanup_old_autosaves_async(display_name);
+            }
+        }
+    }
+
+    pub(crate) fn save_quicksave(&self, savestate: &SaveState) {
+        let prev_name = &self.config.user_config.previous_rom;
+        if let Some(prev_name) = prev_name {
+            let display_name = util::rom_display_name(
+                &prev_name.get_leaf_name(),
+                &savestate.rom_file.data_checksum,
+            );
+            let timestamp = Local::now().format("%Y-%m-%d_%H-%M-%S").to_string();
+            let key = storage::quicksave_key(&display_name, &timestamp);
+
+            // Write savestate using storage
+            let data = savestate.to_bytes(SerializationFormat::Binary);
+
+            if let Ok(data) = data {
+                util::spawn_async(async move {
+                    let storage = storage::get_storage();
+                    let _ = storage.set(&key, data).await;
+                });
+            }
+        }
+    }
+
+    pub(crate) fn create_savestate(&mut self, save_type: SaveType) {
+        let state = self.channel_emu.nes.save_state();
+
+        if let Some(savestate) = state {
+            match save_type {
+                SaveType::Manual => {
+                    util::spawn_save_dialog(
+                        Some(&self.async_sender),
+                        self.config.user_config.previous_savestate_save.clone(),
+                        FileType::Savestate,
+                        Box::new(savestate),
+                    );
+                }
+                SaveType::Quicksave => self.save_quicksave(&savestate),
+                SaveType::Autosave => {
+                    self.last_autosave = Instant::now();
+                    self.save_autosave(&savestate);
+                }
             }
         }
     }
@@ -600,13 +640,7 @@ impl EguiApp {
             && self.config.console_config.is_powered
             && self.last_autosave.elapsed() >= AUTOSAVE_INTERVAL
         {
-            // Update timestamp first to prevent overlapping save operations
-            self.last_autosave = Instant::now();
-            let savestate = self.channel_emu.nes.save_state();
-
-            if let Some(savestate) = savestate {
-                self.create_auto_save(&savestate);
-            }
+            self.create_savestate(SaveType::Autosave);
         }
     }
 
@@ -622,13 +656,7 @@ impl EguiApp {
             && self.config.console_config.loaded_rom.is_some()
             && self.config.console_config.is_powered
         {
-            // Update timestamp first to prevent overlapping save operations
-            self.last_autosave = Instant::now();
-            let savestate = self.channel_emu.nes.save_state();
-
-            if let Some(savestate) = savestate {
-                self.create_auto_save(&savestate);
-            }
+            self.create_savestate(SaveType::Autosave);
         }
 
         self.was_focused = is_focused;
@@ -767,11 +795,7 @@ impl App for EguiApp {
             self.persist_config_async();
         }
 
-        let savestate = self.channel_emu.nes.save_state();
-
-        if let Some(state) = savestate {
-            self.create_auto_save(&state);
-        }
+        self.create_savestate(SaveType::Autosave);
 
         let _ = self.to_emulator.send(FrontendMessage::Quit);
     }

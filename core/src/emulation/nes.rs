@@ -75,6 +75,7 @@ pub struct Nes {
     pub stop_conditions: Option<Vec<StopCondition>>,
     pub clocking_function: ClockingFunction,
     pub rom_db: Arc<RomDb>,
+    pub is_powered: bool,
     is_tracing: bool,
 }
 
@@ -131,22 +132,31 @@ impl Nes {
     /// (addresses `$2000`-`$3FFF`) and performs the CPU reset sequence.
     /// Must be called after [`load_rom()`](Nes::load_rom) and before any
     /// execution methods.
-    pub fn power(&mut self) { self.board.cpu.reset(); }
+    pub fn power(&mut self) {
+        if !self.is_powered {
+            self.is_powered = true;
+            self.board.cpu.reset();
+        }
+    }
 
     /// Powers off the emulator, resetting all state to defaults.
     ///
     /// After calling this, you must call [`load_rom()`](Nes::load_rom) and
     /// [`power()`](Nes::power) again before resuming emulation.
     pub fn power_off(&mut self) {
-        // Keep physically attached peripherals across power cycles.
-        let controller1 = self.board.port1.take();
-        let controller2 = self.board.port2.take();
+        if self.is_powered {
+            self.is_powered = false;
 
-        self.board = Board::default();
-        self.board.attach_controllers(controller1, controller2);
-        self.total_cycles = 0;
-        self.cpu_cycle_counter = 12;
-        self.ppu_cycle_counter = 4;
+            // Keep physically attached peripherals across power cycles.
+            let controller1 = self.board.port1.take();
+            let controller2 = self.board.port2.take();
+
+            self.board = Board::default();
+            self.board.attach_controllers(controller1, controller2);
+            self.total_cycles = 0;
+            self.cpu_cycle_counter = 12;
+            self.ppu_cycle_counter = 4;
+        }
     }
 
     /// Runs the emulator indefinitely until a halt instruction (`HLT`) is
@@ -328,6 +338,7 @@ impl Nes {
             stop_conditions: None,
             clocking_function: Self::step_internal,
             rom_db: Arc::new(RomDb::default()),
+            is_powered: false,
             is_tracing: false,
         }
     }

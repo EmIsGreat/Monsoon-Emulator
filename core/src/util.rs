@@ -8,9 +8,14 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 
+use serde::Serialize;
+use thiserror::Error;
+
 use crate::emulation::cpu::UPPER_BYTE;
 use crate::emulation::mem::Memory;
-use crate::emulation::savestate::{BINARY_FORMAT_VERSION, JSON_FORMAT_VERSION, MAGIC, SaveState};
+use crate::emulation::savestate::{
+    BINARY_FORMAT_VERSION, JSON_FORMAT_VERSION, MAGIC, SaveState, TOML_FORMAT_VERSION,
+};
 /// Returns `true` if adding a signed `offset` to `base` crosses a 256-byte page
 /// boundary.
 ///
@@ -65,35 +70,16 @@ pub trait Hashable {
     fn hash(&self) -> Result<u64, HashError>;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum SerializationError {
-    SerdeJsonError(serde_json::Error),
-    PostcardError(postcard::Error),
-}
-
-impl Display for SerializationError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            SerializationError::SerdeJsonError(err) => {
-                f.write_str("Error serializing data to json")?;
-                write!(f, "{err}")
-            }
-            SerializationError::PostcardError(err) => {
-                f.write_str("Error serializing data using postcard")?;
-                write!(f, "{err}")
-            }
-        }
-    }
-}
-
-impl Error for SerializationError {}
-
-impl From<serde_json::Error> for SerializationError {
-    fn from(err: serde_json::Error) -> Self { SerializationError::SerdeJsonError(err) }
-}
-
-impl From<postcard::Error> for SerializationError {
-    fn from(err: postcard::Error) -> Self { SerializationError::PostcardError(err) }
+    #[error("Error serializing data to JSON: `{0}`")]
+    SerdeJsonError(#[from] serde_json::Error),
+    #[error("Error serializing data to JSON: `{0}`")]
+    TomlError(#[from] toml::ser::Error),
+    #[error("Error serializing data using postcard: `{0}`")]
+    PostcardError(#[from] postcard::Error),
+    #[error("Invalid format specified for serialization: `{0}`")]
+    InvalidFormat(String),
 }
 
 /// Trait for types that can be serialized to a byte vector.
@@ -105,43 +91,85 @@ pub trait ToBytes {
     /// Serializes this value to bytes in the specified format.
     /// # Errors
     /// Returns `err` if the passed value could not be hashed
-    fn to_bytes(&self, format: Option<String>) -> Result<Vec<u8>, SerializationError>;
+    fn to_bytes(&self, format: SerializationFormat) -> Result<Vec<u8>, SerializationError>;
+}
+
+#[derive(Eq, PartialEq, Copy, Clone, Default, Debug)]
+pub enum SerializationFormat {
+    #[default]
+    Binary,
+    Json,
+    Toml,
+}
+
+impl From<String> for SerializationFormat {
+    fn from(value: String) -> Self {
+        let value = value.to_lowercase();
+        match value.as_str() {
+            "json" => SerializationFormat::Json,
+            "toml" => SerializationFormat::Toml,
+            _ => SerializationFormat::Binary,
+        }
+    }
 }
 
 impl ToBytes for SaveState {
-    fn to_bytes(&self, format: Option<String>) -> Result<Vec<u8>, SerializationError> {
+    fn to_bytes(
+        &self,
+        serialization_format: SerializationFormat,
+    ) -> Result<Vec<u8>, SerializationError> {
         let mut res = Vec::new();
 
         res.extend(MAGIC);
-        let format = if let Some(format) = format {
-            format
-        } else {
-            "binary".to_string()
-        };
 
-        if format == "json" {
-            res.push(JSON_FORMAT_VERSION);
-
-            res.extend(serde_json::to_vec_pretty(self)?);
-        } else {
-            res.push(BINARY_FORMAT_VERSION);
-            res.extend(postcard::to_stdvec(self)?);
+        match serialization_format {
+            SerializationFormat::Binary => {
+                res.push(BINARY_FORMAT_VERSION);
+                res.extend(postcard::to_stdvec(self)?);
+            }
+            SerializationFormat::Json => {
+                res.push(JSON_FORMAT_VERSION);
+                res.extend(serde_json::to_vec_pretty(self)?);
+            }
+            SerializationFormat::Toml => {
+                res.push(TOML_FORMAT_VERSION);
+                res.extend(toml::to_string(self)?.as_bytes());
+            }
         }
 
         Ok(res)
     }
 }
 
-impl Hashable for Memory {
-    fn hash(&self) -> Result<u64, HashError> {
-        let mut base = self.snapshot_all();
-        base.push(self.is_write.into());
-        Ok(compute_hash(&base[..]))
+impl ToBytes for Memory {
+    fn to_bytes(&self, format: SerializationFormat) -> Result<Vec<u8>, SerializationError> {
+        let mut res = self.snapshot_all();
+        res.push(self.is_write.into());
+
+        serialize(self, format, res)
     }
 }
 
-impl Hashable for Vec<u8> {
-    fn hash(&self) -> Result<u64, HashError> { Ok(compute_hash(self)) }
+impl ToBytes for Vec<u8> {
+    fn to_bytes(&self, format: SerializationFormat) -> Result<Vec<u8>, SerializationError> {
+        serialize(self, format, Vec::new())
+    }
+}
+
+/// # Errors
+/// Returns Err if serialization fails
+pub fn serialize<T: Serialize>(
+    to_serialize: &T,
+    format: SerializationFormat,
+    mut res: Vec<u8>,
+) -> Result<Vec<u8>, SerializationError> {
+    match format {
+        SerializationFormat::Binary => res.extend(postcard::to_stdvec(to_serialize)?),
+        SerializationFormat::Json => res.extend(serde_json::to_vec_pretty(to_serialize)?),
+        SerializationFormat::Toml => res.extend(toml::to_string(to_serialize)?.as_bytes()),
+    }
+
+    Ok(res)
 }
 
 /// Compute a fast hash of the given data for change detection.

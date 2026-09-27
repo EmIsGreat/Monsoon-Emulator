@@ -94,7 +94,7 @@ pub trait RomParser: Debug {
 ///     &mut raw_bytes,
 ///     Some(&"my_game.nes".to_string()),
 ///     false,
-///     None
+///     None,
 /// )
 /// .expect(
 ///     "invalid

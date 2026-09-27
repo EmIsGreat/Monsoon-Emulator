@@ -1,11 +1,12 @@
 use std::path::Path;
+
 use crate::emulation::nes::{Nes, RunOptions};
 
 #[test]
 fn test_oam_stress() {
     let mut emu = Nes::default();
     emu.load_rom((
-                     Path::new("./tests/nes-test-roms/oam_stress/oam_stress.nes"),
+        Path::new("./tests/nes-test-roms/oam_stress/oam_stress.nes"),
         false,
         None,
     ));

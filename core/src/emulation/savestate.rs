@@ -32,6 +32,7 @@ pub const MAGIC: &[u8; 5] = b"ESSV1"; // NES SaveState
 pub const BINARY_FORMAT_VERSION: u8 = 0;
 /// Format version byte for JSON encoding.
 pub const JSON_FORMAT_VERSION: u8 = 1;
+pub const TOML_FORMAT_VERSION: u8 = 2;
 
 pub const VERSION: u16 = 2;
 

@@ -3,20 +3,22 @@
 //! This module handles messages from async operations such as file dialogs,
 //! savestate loading workflows, and other deferred operations.
 
+#[cfg(not(target_arch = "wasm32"))]
 use std::path::Path;
 
 use egui::{Context, Id, ViewportCommand};
 use monsoon_core::emulation::palette_util::RgbPalette;
 use monsoon_core::emulation::ppu_util::EmulatorFetchable;
 use monsoon_core::emulation::savestate;
-use monsoon_core::util::{SerializationError, ToBytes};
+use monsoon_core::util::{SerializationError, SerializationFormat, ToBytes};
 use sha2::{Digest, Sha256};
 
 use crate::frontend::egui::config::AutoPauseReason;
-use crate::frontend::egui::message_handlers::EmulatorMessageHandler;
 use crate::frontend::egui::tiles::{Pane, add_pane_if_missing};
 use crate::frontend::egui_frontend::EguiApp;
-use crate::frontend::messages::{AsyncFrontendMessage, LoadedRom, SavestateLoadContext};
+use crate::frontend::messages::{
+    AsyncFrontendMessage, AutoPauseSignal, LoadedRom, SavestateLoadContext,
+};
 use crate::frontend::savestates::{
     ChecksumMismatchDialogState, ErrorDialogState, MatchingRomDialogState, RomSelectionDialogState,
     SaveBrowserState, SaveEntry, SaveEntryType,
@@ -115,25 +117,16 @@ impl EguiApp {
                 self.handle_quickload();
             }
             AsyncFrontendMessage::Quicksave => {
-                let _ = self
-                    .to_emulator
-                    .send(FrontendMessage::CreateSaveState(SaveType::Quicksave));
+                self.create_savestate(SaveType::Quicksave);
             }
             AsyncFrontendMessage::LoadRom {
                 rom,
             } => {
                 if let Some(rom) = rom {
-                    let _ = self
-                        .to_emulator
-                        .send(FrontendMessage::CreateSaveState(SaveType::Autosave));
-                    let _ = self.to_emulator.send(FrontendMessage::Power(false));
-
-                    let _ = self.channel_emu.process_messages();
-                    self.handle_emulator_messages(ctx);
+                    self.create_savestate(SaveType::Autosave);
 
                     self.load_rom(rom, *self.config.user_config.use_rom_db);
-                    let _ = self.to_emulator.send(FrontendMessage::Power(true));
-                    self.config.console_config.is_powered = true;
+                    self.set_console_power(true);
                 }
             }
             AsyncFrontendMessage::OpenSaveBrowser => {
@@ -152,9 +145,7 @@ impl EguiApp {
                 self.handle_export_save_from_browser(key);
             }
             AsyncFrontendMessage::PowerToggle => {
-                let _ = self
-                    .to_emulator
-                    .send(FrontendMessage::CreateSaveState(SaveType::Autosave));
+                self.create_savestate(SaveType::Autosave);
 
                 self.config.console_config.is_powered = !self.config.console_config.is_powered;
 
@@ -174,9 +165,7 @@ impl EguiApp {
                 ));
             }
             AsyncFrontendMessage::Reset => {
-                let _ = self
-                    .to_emulator
-                    .send(FrontendMessage::CreateSaveState(SaveType::Autosave));
+                self.create_savestate(SaveType::Autosave);
                 let _ = self.to_emulator.send(FrontendMessage::Reset);
             }
             AsyncFrontendMessage::CreateSavestate => {
@@ -184,9 +173,7 @@ impl EguiApp {
                     self.config
                         .set_auto_pause_reason(AutoPauseReason::SavestateCreateSaveDialog, true);
                 }
-                let _ = self
-                    .to_emulator
-                    .send(FrontendMessage::CreateSaveState(SaveType::Manual));
+                self.create_savestate(SaveType::Manual);
             }
             AsyncFrontendMessage::SetPalette(palette) => {
                 self.handle_set_palette(ctx, &palette);
@@ -261,10 +248,8 @@ impl EguiApp {
                 active,
             } => {
                 let reason = match signal {
-                    crate::frontend::messages::AutoPauseSignal::SavestateLoadPicker => {
-                        AutoPauseReason::SavestateLoadPicker
-                    }
-                    crate::frontend::messages::AutoPauseSignal::SavestateCreateSaveDialog => {
+                    AutoPauseSignal::SavestateLoadPicker => AutoPauseReason::SavestateLoadPicker,
+                    AutoPauseSignal::SavestateCreateSaveDialog => {
                         AutoPauseReason::SavestateCreateSaveDialog
                     }
                 };
@@ -627,6 +612,11 @@ impl EguiApp {
             }
         });
     }
+
+    fn set_console_power(&mut self, power_state: bool) {
+        self.config.console_config.is_powered = power_state;
+        let _ = self.to_emulator.send(FrontendMessage::Power(power_state));
+    }
 }
 
 /// Try to find a matching ROM by first checking the storage cache (works on
@@ -744,11 +734,11 @@ fn find_matching_rom_in_directory(dir: &Path, context: &SavestateLoadContext) ->
 }
 
 /// Wrapper for raw bytes that implements `ToBytes` for the save dialog export.
-struct ExportableData(Vec<u8>);
+pub struct ExportableData(pub Vec<u8>);
 
 impl ToBytes for ExportableData {
-    fn to_bytes(&self, _format: Option<String>) -> Result<Vec<u8>, SerializationError> {
-        Ok(self.0.clone())
+    fn to_bytes(&self, format: SerializationFormat) -> Result<Vec<u8>, SerializationError> {
+        self.0.to_bytes(format)
     }
 }
 

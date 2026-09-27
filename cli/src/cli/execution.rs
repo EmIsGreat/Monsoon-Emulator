@@ -19,7 +19,7 @@ use monsoon_core::emulation::nes::{
 };
 use monsoon_core::emulation::rom::{ParseError, RomFile};
 use monsoon_core::emulation::savestate::{SaveState, try_load_state_from_bytes};
-use monsoon_core::util::{SerializationError, ToBytes};
+use monsoon_core::util::{SerializationError, serialize};
 
 // =============================================================================
 // Execution Configuration
@@ -597,10 +597,7 @@ fn encode_savestate(
     state: &SaveState,
     format: SavestateFormat,
 ) -> Result<Vec<u8>, SerializationError> {
-    match format {
-        SavestateFormat::Binary => state.to_bytes(None),
-        SavestateFormat::Json => state.to_bytes(Some("json".to_string())),
-    }
+    serialize(state, format.into(), Vec::new())
 }
 
 // =============================================================================

@@ -1,4 +1,5 @@
 use std::path::Path;
+
 use crate::emulation::nes::{Nes, NesConfig, RunOptions};
 
 #[cfg(test)]
