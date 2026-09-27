@@ -1,10 +1,11 @@
+use std::path::Path;
 use crate::emulation::nes::Nes;
 
 #[test]
 fn test_ram_after_reset() {
     let mut emu = Nes::default();
     emu.load_rom((
-        &String::from("./tests/nes-test-roms/cpu_reset/ram_after_reset.nes"),
+        Path::new("./tests/nes-test-roms/cpu_reset/ram_after_reset.nes"),
         false,
         None,
     ));
@@ -45,7 +46,7 @@ fn test_ram_after_reset() {
 fn test_registers() {
     let mut emu = Nes::default();
     emu.load_rom((
-        &String::from("./tests/nes-test-roms/cpu_reset/registers.nes"),
+        Path::new("./tests/nes-test-roms/cpu_reset/registers.nes"),
         false,
         None,
     ));

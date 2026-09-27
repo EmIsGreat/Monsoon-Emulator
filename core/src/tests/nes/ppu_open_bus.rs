@@ -1,10 +1,11 @@
+use std::path::Path;
 use crate::emulation::nes::{Nes, RunOptions};
 
 #[test]
 fn test_ppu_open_bus() {
     let mut emu = Nes::default();
     emu.load_rom((
-        &String::from("./tests/nes-test-roms/ppu_open_bus/ppu_open_bus.nes"),
+        Path::new("./tests/nes-test-roms/ppu_open_bus/ppu_open_bus.nes"),
         false,
         None,
     ));

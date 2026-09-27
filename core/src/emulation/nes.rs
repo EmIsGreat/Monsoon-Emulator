@@ -53,7 +53,7 @@ type ClockingFunction = fn(&mut Nes, last_cycle: u64) -> ExecutionResult;
 /// nes.power();
 ///
 /// // Run one frame
-/// nes.step_frame().expect("emulation error");
+/// let _ = nes.step_frame();
 ///
 /// // Read the pixel buffer (palette indices, not RGB)
 /// let pixels = nes.get_pixel_buffer();

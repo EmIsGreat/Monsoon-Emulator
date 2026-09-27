@@ -1,7 +1,7 @@
 use std::fs::File;
 use std::io;
 use std::io::BufRead;
-
+use std::path::Path;
 use crate::emulation::nes::{Nes, RunOptions};
 
 #[test]
@@ -9,7 +9,7 @@ fn nestest() {
     let mut emu = Nes::default();
     emu.enable_trace();
     emu.load_rom((
-        &String::from("./tests/nes-test-roms/nestest_headless.nes"),
+        Path::new("./tests/nes-test-roms/nestest_headless.nes"),
         false,
         None,
     ));

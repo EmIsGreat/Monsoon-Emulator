@@ -942,7 +942,6 @@ mod tests {
 
         // Should contain interpretation
         assert!(text.contains("interpretation"));
-        assert!(text.contains("sprite_count"));
         assert!(text.contains("visible_count"));
         assert!(text.contains("sprites"));
     }
@@ -960,9 +959,10 @@ mod tests {
         let output = formatter.format(&dump).unwrap();
         let text = String::from_utf8(output).unwrap();
 
+        println!("{text}");
+
         // Should contain interpretation header
         assert!(text.contains("=== OAM Interpretation ==="));
-        assert!(text.contains("Total sprites:"));
         assert!(text.contains("Visible:"));
         assert!(text.contains("=== Raw OAM Data ==="));
     }

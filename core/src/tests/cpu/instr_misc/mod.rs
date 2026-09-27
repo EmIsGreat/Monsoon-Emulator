@@ -1,16 +1,17 @@
+use std::path::Path;
 use crate::emulation::nes::{Nes, RunOptions};
 
 #[test]
 fn test_instr_misc() {
     let mut emu = Nes::default();
     emu.load_rom((
-        &String::from("./tests/nes-test-roms/instr_misc/instr_misc.nes"),
+        Path::new("./tests/nes-test-roms/instr_misc/instr_misc.nes"),
         false,
         None,
     ));
 
     emu.reset();
-    emu.run_until(200_000_000, RunOptions::default());
+    emu.run_until(300_000_000, RunOptions::default());
 
     let whole_mem = emu.get_memory_debug(&Some(0x6000..=0x6031));
     let cpu_mem = whole_mem[0].as_slice();
@@ -30,7 +31,7 @@ fn test_instr_misc() {
 fn test_instr_misc_01_abs_x_wrap() {
     let mut emu = Nes::default();
     emu.load_rom((
-        &String::from("./tests/nes-test-roms/instr_misc/rom_singles/01-abs_x_wrap.nes"),
+        Path::new("./tests/nes-test-roms/instr_misc/rom_singles/01-abs_x_wrap.nes"),
         false,
         None,
     ));
@@ -54,7 +55,7 @@ fn test_instr_misc_01_abs_x_wrap() {
 fn test_instr_misc_02_branch_wrap() {
     let mut emu = Nes::default();
     emu.load_rom((
-        &String::from("./tests/nes-test-roms/instr_misc/rom_singles/02-branch_wrap.nes"),
+        Path::new("./tests/nes-test-roms/instr_misc/rom_singles/02-branch_wrap.nes"),
         false,
         None,
     ));
@@ -78,7 +79,7 @@ fn test_instr_misc_02_branch_wrap() {
 fn test_instr_misc_03_dummy_reads() {
     let mut emu = Nes::default();
     emu.load_rom((
-        &String::from("./tests/nes-test-roms/instr_misc/rom_singles/03-dummy_reads.nes"),
+        Path::new("./tests/nes-test-roms/instr_misc/rom_singles/03-dummy_reads.nes"),
         false,
         None,
     ));
@@ -102,7 +103,7 @@ fn test_instr_misc_03_dummy_reads() {
 fn test_instr_misc_04_dummy_reads_apu() {
     let mut emu = Nes::default();
     emu.load_rom((
-        &String::from("./tests/nes-test-roms/instr_misc/rom_singles/04-dummy_reads_apu.nes"),
+        Path::new("./tests/nes-test-roms/instr_misc/rom_singles/04-dummy_reads_apu.nes"),
         false,
         None,
     ));

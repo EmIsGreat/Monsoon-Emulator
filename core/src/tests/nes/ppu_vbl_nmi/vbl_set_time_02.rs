@@ -1,10 +1,11 @@
+use std::path::Path;
 use crate::emulation::nes::{Nes, RunOptions};
 
 #[test]
 fn test_02_vbl_set_time() {
     let mut emu = Nes::default();
     emu.load_rom((
-        &String::from("./tests/nes-test-roms/ppu_vbl_nmi/rom_singles/02-vbl_set_time.nes"),
+        Path::new("./tests/nes-test-roms/ppu_vbl_nmi/rom_singles/02-vbl_set_time.nes"),
         false,
         None,
     ));

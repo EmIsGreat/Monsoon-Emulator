@@ -1,3 +1,4 @@
+use std::path::Path;
 use crate::emulation::nes::{Nes, NesConfig, RunOptions};
 
 #[cfg(test)]
@@ -27,7 +28,7 @@ fn test_ppu_vbl_nmi() {
         alignment: 1,
     });
     emu.load_rom((
-        &String::from("./tests/nes-test-roms/ppu_vbl_nmi/ppu_vbl_nmi.nes"),
+        Path::new("./tests/nes-test-roms/ppu_vbl_nmi/ppu_vbl_nmi.nes"),
         false,
         None,
     ));

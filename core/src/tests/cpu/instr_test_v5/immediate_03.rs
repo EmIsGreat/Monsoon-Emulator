@@ -1,3 +1,4 @@
+use std::path::Path;
 use crate::emulation::nes::{Nes, RunOptions};
 
 #[test]
@@ -6,7 +7,7 @@ fn test_03_immediate() {
     emu.board.cpu.ane_constant = 0xFF;
 
     emu.load_rom((
-        &String::from("./tests/nes-test-roms/instr_test-v5/rom_singles/03-immediate.nes"),
+        Path::new("./tests/nes-test-roms/instr_test-v5/rom_singles/03-immediate.nes"),
         false,
         None,
     ));

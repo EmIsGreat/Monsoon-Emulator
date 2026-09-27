@@ -1,10 +1,11 @@
+use std::path::Path;
 use crate::emulation::nes::{Nes, RunOptions};
 
 #[test]
 fn test_15_brk() {
     let mut emu = Nes::default();
     emu.load_rom((
-        &String::from("./tests/nes-test-roms/instr_test-v5/rom_singles/15-brk.nes"),
+        Path::new("./tests/nes-test-roms/instr_test-v5/rom_singles/15-brk.nes"),
         false,
         None,
     ));

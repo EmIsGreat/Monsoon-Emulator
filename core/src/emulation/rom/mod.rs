@@ -89,11 +89,12 @@ pub trait RomParser: Debug {
 /// ```rust,no_run
 /// use monsoon_core::emulation::rom::RomFile;
 ///
-/// # let mut raw_bytes: &[u8] = &[];
+/// # let mut raw_bytes: Vec<u8> = Vec::new();
 /// let rom = RomFile::load(
 ///     &mut raw_bytes,
-///     Some(&"my_game.nes".to_string(), None),
+///     Some(&"my_game.nes".to_string()),
 ///     false,
+///     None
 /// )
 /// .expect(
 ///     "invalid

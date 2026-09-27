@@ -31,13 +31,15 @@ mod zero_page_04;
 #[cfg(test)]
 mod zp_xy_05;
 
+use std::path::Path;
+
 use crate::emulation::nes::{Nes, RunOptions};
 
 #[test]
 fn test_official_only() {
     let mut emu = Nes::default();
     emu.load_rom((
-        &String::from("./tests/nes-test-roms/instr_test-v5/official_only.nes"),
+        Path::new("./tests/nes-test-roms/instr_test-v5/official_only.nes"),
         false,
         None,
     ));
@@ -61,7 +63,7 @@ fn test_official_only() {
 fn test_all_instrs() {
     let mut emu = Nes::default();
     emu.load_rom((
-        &String::from("./tests/nes-test-roms/instr_test-v5/all_instrs.nes"),
+        Path::new("./tests/nes-test-roms/instr_test-v5/all_instrs.nes"),
         false,
         None,
     ));
