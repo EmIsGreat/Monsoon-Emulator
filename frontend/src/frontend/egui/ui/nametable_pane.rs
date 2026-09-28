@@ -20,7 +20,7 @@ pub fn render_nametable(ui: &mut egui::Ui, emu_textures: &EmuTextures) {
         let scale = (available.x / logical_width).min(available.y / logical_height);
         let tex_size = egui::vec2(base_size, base_size) * scale;
 
-        ui.label(format!("Nametables (256x240 x4 at {scale:.1}x scale)"));
+        ui.label(format!("Nametables (256x240x4 at {scale:.1}x scale)"));
 
         // Render 4 nametables in a 2x2 grid
         egui::Grid::new("nametables_container")
