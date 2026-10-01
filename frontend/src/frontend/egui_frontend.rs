@@ -250,9 +250,11 @@ impl EguiApp {
 
         self.create_savestate(SaveType::Autosave);
 
+        let _ = self.to_emulator.send(FrontendMessage::Power(false));
         let _ = self
             .to_emulator
             .send(FrontendMessage::LoadRom(data, name.clone(), use_db));
+        let _ = self.to_emulator.send(FrontendMessage::Power(true));
 
         // Extract stem for window title
         let stem: &str = name.rsplit_once('.').map_or(&name, |(s, _)| s);

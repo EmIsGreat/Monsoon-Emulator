@@ -17,7 +17,7 @@ use static_assertions::assert_impl_all;
 use crate::emulation::apu::{Apu, FrameCounter};
 use crate::emulation::board::Board;
 use crate::emulation::cpu::{Cpu, DmaState, IRQState, MicroOp, NMIState, OpQueue};
-use crate::emulation::mapper::Mapper;
+use crate::emulation::mapper::{Mapper, MapperLike};
 use crate::emulation::mem::palette_ram::PaletteRam;
 use crate::emulation::mem::{Memory, OpenBus};
 use crate::emulation::opcode;
@@ -408,7 +408,7 @@ impl From<&Board> for BoardState {
 
 impl From<&BoardState> for Board {
     fn from(state: &BoardState) -> Self {
-        Board {
+        let mut b = Board {
             cpu: Cpu::from(&state.cpu),
             ppu: Ppu::from(&state.ppu),
             apu: Apu::from(&state.apu),
@@ -422,7 +422,10 @@ impl From<&BoardState> for Board {
             port2: state.controller2.clone().map(|s| (&s).into()),
             joystick_strobe_data: state.joystick_strobe_data,
             irq: false,
-        }
+        };
+
+        b.mapper.build_ppu_map();
+        b
     }
 }
 
@@ -459,6 +462,8 @@ pub struct SaveState {
     pub ppu_cycle_counter: u8,
     /// CPU clock divider counter at the time of capture.
     pub cpu_cycle_counter: u8,
+    pub alignment: u8,
+    pub is_powered: bool,
 }
 
 assert_impl_all!(SaveState: Sync);

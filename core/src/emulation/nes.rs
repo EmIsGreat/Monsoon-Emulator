@@ -381,6 +381,8 @@ impl Nes {
             version: VERSION,
             ppu_cycle_counter: self.ppu_cycle_counter,
             cpu_cycle_counter: self.cpu_cycle_counter,
+            alignment: self.alignment,
+            is_powered: self.is_powered,
         })
     }
 
@@ -395,6 +397,11 @@ impl Nes {
         // have empty data due to Skip)
 
         self.board = Board::from(&state.board);
+        self.total_cycles = state.total_cycles;
+        self.ppu_cycle_counter = state.ppu_cycle_counter;
+        self.cpu_cycle_counter = state.cpu_cycle_counter;
+        self.alignment = state.alignment;
+        self.is_powered = state.is_powered;
 
         // Only update rom_file if we didn't have one loaded
         if self.rom_file.is_none() {

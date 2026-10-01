@@ -68,6 +68,7 @@ pub trait MapperLike {
     fn get_registers_debug(&self) -> MapperRegisterTables;
     fn poll_irq(&self) -> bool;
     fn build_ppu_map(&mut self);
+    fn get_name(&self) -> &'static str;
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -161,7 +162,7 @@ impl MapperLike for NoMapper {
         state.insert(
             "name".to_string(),
             RegisterEntry::new(
-                RegisterValue::Text("NoMapper".to_string()),
+                RegisterValue::Text(self.get_name().to_string()),
                 RegisterFormat::Text,
             ),
         );
@@ -173,6 +174,8 @@ impl MapperLike for NoMapper {
     fn poll_irq(&self) -> bool { false }
 
     fn build_ppu_map(&mut self) {}
+
+    fn get_name(&self) -> &'static str { "NoMapper" }
 }
 
 impl<'a> From<&'a RomFile> for NoMapper {
@@ -292,7 +295,7 @@ impl MapperLike for NROM {
         state.insert(
             "name".to_string(),
             RegisterEntry::new(
-                RegisterValue::Text("NROM".to_string()),
+                RegisterValue::Text(self.get_name().to_string()),
                 RegisterFormat::Text,
             ),
         );
@@ -352,6 +355,8 @@ impl MapperLike for NROM {
             }
         }
     }
+
+    fn get_name(&self) -> &'static str { "NROM" }
 }
 
 impl NROM {
