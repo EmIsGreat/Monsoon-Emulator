@@ -652,7 +652,7 @@ impl Display for RomTimingRegion {
 #[repr(u16)]
 #[serde(into = "u16", from = "u16")]
 pub enum RomMapper {
-    NRom = 0,
+    NROM = 0,
     MMC1 = 1,
     UxROM = 2,
     CNROM = 3,
@@ -780,7 +780,6 @@ pub enum RomMapper {
     LH32 = 125,
     TEC9719orING003CorING022RepurposedLines = 126,
     DoubleDragonIIPirate = 127,
-    T262 = 128,
     DuplicateNROMMulticart = 129,
     Alternative331 = 130,
     Alternative205 = 131,
@@ -906,7 +905,33 @@ pub enum RomMapper {
     WaixingDBZ = 253,
     PikachuY2K = 254,
     Duplicate225 = 255,
+    OneBus = 256,
+    DongdaEducational = 257,
+    Unif158B = 258,
+    UnifF15 = 259,
+    HP10xx = 260,
+    NTDEC2746 = 261,
+    SachenStreetHeroes = 262,
+    RexSoftKOF97 = 263,
+    NC14 = 264,
+    T262 = 265,
+    Cityfight = 266,
+    JY119 = 267,
     AA6023 = 268,
+    GamesXplosion = 269,
+    OneBusUIO = 270,
+    TXC4in1 = 271,
+    BootlegSpecialDracula = 272,
+    BootlegGremlins2 = 273,
+    RCMCartridgeStory = 274,
+    BMCPC2P312701 = 279,
+    JingtaiASIC281 = 281,
+    JingtaiASIC282 = 282,
+    BlockFamily = 283,
+    Drip = 284,
+    A65AS = 285,
+    BenshiengMulticart = 286,
+    BMC411120C = 287,
     NS037in0 = 331,
     #[num_enum(catch_all)]
     Unknown(u16),
@@ -916,7 +941,7 @@ impl Display for RomMapper {
     #[allow(clippy::too_many_lines)]
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let str = match self {
-            RomMapper::NRom => "NROM",
+            RomMapper::NROM => "NROM",
             RomMapper::MMC1 => "MMC1",
             RomMapper::MMC1A => "MMC1A",
             RomMapper::NesEvent => "NES-EVENT",
@@ -1075,7 +1100,6 @@ impl Display for RomMapper {
             RomMapper::LH32 => "LH32 FDS Mapper",
             RomMapper::TEC9719orING003CorING022RepurposedLines => "TEC9719, ING003C or ING-022",
             RomMapper::DoubleDragonIIPirate => "Double Dragon II Pirate Mapper",
-            RomMapper::T262 => "T-262 Multicart Mapper",
             RomMapper::DuplicateNROMMulticart | RomMapper::DuplicateOf58 => {
                 "Duplicate of Mapper 58 (NROM-/CNROM based Multicart Mapper)"
             }
@@ -1224,6 +1248,34 @@ impl Display for RomMapper {
             RomMapper::Duplicate225 => {
                 "Duplicate of Mapper 225 (ET-4310 or K-1010 Multicart Mapper)"
             }
+            RomMapper::OneBus => "OneBus Famiclone",
+            RomMapper::DongdaEducational => "东达 (Dongda) PEC-586",
+            RomMapper::Unif158B => "Unif 158B Board",
+            RomMapper::UnifF15 => "Unif F-15 Board",
+            RomMapper::HP10xx => "HP10xx/HP20xx",
+            RomMapper::NTDEC2746 => "810544-C-A1 and NTDEC 2746",
+            RomMapper::SachenStreetHeroes => "Sachen Street Heroes/侍魂 (Shìhún)",
+            RomMapper::RexSoftKOF97 => "Rex Soft KOF97",
+            RomMapper::NC14 => "NC-14/82-05-26J",
+            RomMapper::T262 => "T-262 Multicart Mapper",
+            RomMapper::Cityfight => "City Fighter IV Mapper",
+            RomMapper::JY119 => "JY-119 Multicart Mapper",
+            RomMapper::GamesXplosion => "Games Xplosion Multicart Mapper",
+            RomMapper::OneBusUIO => "OneBus Famiclone with universal I/O",
+            RomMapper::TXC4in1 => "TXC 4-in-1 Multicart Mapper",
+            RomMapper::BootlegSpecialDracula => {
+                "悪魔城 Special: ぼくDracula君 (Akumajō Special: Boku Dracula-kun) Bootleg Mapper"
+            }
+            RomMapper::BootlegGremlins2 => "Gremlins 2: 新種誕生 Bootleg Mapper",
+            RomMapper::RCMCartridgeStory => "RCM Group Cartridge Story Mapper",
+            RomMapper::BMCPC2P312701 => "BMC-PC2-P3127-01",
+            RomMapper::JingtaiASIC281 => "晶太 (Jīngtài) ASIC (variant)",
+            RomMapper::JingtaiASIC282 => "晶太 (Jīngtài) ASIC (variant)",
+            RomMapper::BlockFamily => "Block Family Multicart Mapper",
+            RomMapper::Drip => "Drip Mapper",
+            RomMapper::A65AS => "A65AS and JY-066 Multicart Mapper",
+            RomMapper::BenshiengMulticart => "BMC-BS-5",
+            RomMapper::BMC411120C => "BMC-411120-C or BMC-K-3088",
         };
 
         let mapper_num: u16 = (*self).into();
@@ -1574,7 +1626,7 @@ impl TryFrom<(&Path, bool, Option<&Nes>)> for RomFile {
 ///     .hardwired_nametable_layout(true) // vertical mirroring
 ///     .build();
 ///
-/// assert_eq!(rom.mapper, RomMapper::NRom);
+/// assert_eq!(rom.mapper, RomMapper::NROM);
 /// ```
 #[allow(clippy::struct_excessive_bools)]
 pub struct RomBuilder {
