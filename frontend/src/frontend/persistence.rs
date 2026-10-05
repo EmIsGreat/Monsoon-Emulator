@@ -16,6 +16,7 @@ use std::{fs, thread};
 
 use crossbeam_channel::{Receiver, bounded};
 use directories::ProjectDirs;
+use monsoon_core::emulation::nes::NesConfig;
 use monsoon_core::emulation::palette_util::RgbPalette;
 use monsoon_core::emulation::ppu_util::EmulatorFetchable;
 use monsoon_core::emulation::screen_renderer::{NoneRenderer, ScreenRenderer, create_renderer};
@@ -587,12 +588,14 @@ impl From<&PersistentSpeedConfig> for SpeedConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PersistentConsoleConfig {
     pub is_powered: bool,
+    pub nes_config: NesConfig,
 }
 
 impl Default for PersistentConsoleConfig {
     fn default() -> Self {
         Self {
             is_powered: true,
+            nes_config: NesConfig::default(),
         }
     }
 }
@@ -601,6 +604,7 @@ impl From<&ConsoleConfig> for PersistentConsoleConfig {
     fn from(config: &ConsoleConfig) -> Self {
         Self {
             is_powered: config.is_powered,
+            nes_config: config.nes_config,
         }
     }
 }
@@ -610,6 +614,7 @@ impl From<&PersistentConsoleConfig> for ConsoleConfig {
         Self {
             is_powered: config.is_powered,
             loaded_rom: None,
+            nes_config: config.nes_config,
         }
     }
 }

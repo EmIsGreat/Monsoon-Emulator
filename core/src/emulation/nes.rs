@@ -4,6 +4,8 @@ use std::hint::unlikely;
 use std::ops::RangeInclusive;
 use std::sync::Arc;
 
+use serde::{Deserialize, Serialize};
+
 use crate::emulation::board::{Board, CpuBus, CpuBusView, PpuBus, PpuBusView};
 use crate::emulation::cpu::Cpu;
 use crate::emulation::debug_tools::{StopCondition, StopReason};
@@ -71,7 +73,7 @@ pub struct Nes {
     pub(crate) apu_counter: u8,
     /// Internal PPU clock divider counter (0-4).
     pub(crate) ppu_cycle_counter: u8,
-    pub alignment: u8,
+    pub config: NesConfig,
     pub stop_conditions: Option<Vec<StopCondition>>,
     pub clocking_function: ClockingFunction,
     pub rom_db: Arc<RomDb>,
@@ -304,7 +306,7 @@ impl Nes {
     }
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct NesConfig {
     // Cpu-ppu cycle offset: 0-3
     pub alignment: u8,
@@ -334,7 +336,7 @@ impl Nes {
             cpu_cycle_counter: 12,
             apu_counter: 2,
             ppu_cycle_counter: 4,
-            alignment: config.alignment,
+            config,
             stop_conditions: None,
             clocking_function: Self::step_internal,
             rom_db: Arc::new(RomDb::default()),
@@ -381,7 +383,7 @@ impl Nes {
             version: VERSION,
             ppu_cycle_counter: self.ppu_cycle_counter,
             cpu_cycle_counter: self.cpu_cycle_counter,
-            alignment: self.alignment,
+            config: self.config,
             is_powered: self.is_powered,
         })
     }
@@ -400,7 +402,7 @@ impl Nes {
         self.total_cycles = state.total_cycles;
         self.ppu_cycle_counter = state.ppu_cycle_counter;
         self.cpu_cycle_counter = state.cpu_cycle_counter;
-        self.alignment = state.alignment;
+        self.config = state.config;
         self.is_powered = state.is_powered;
 
         // Only update rom_file if we didn't have one loaded
@@ -473,7 +475,7 @@ impl Nes {
         self.cpu_cycle_counter -= 1;
         self.ppu_cycle_counter -= 1;
 
-        let cpu_step = self.cpu_cycle_counter == self.alignment;
+        let cpu_step = self.cpu_cycle_counter == self.config.alignment;
 
         if self.ppu_cycle_counter != 0 && !cpu_step {
             return ExecutionResult::default();

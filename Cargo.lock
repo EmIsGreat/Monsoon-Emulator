@@ -2882,6 +2882,7 @@ dependencies = [
  "monsoon-core",
  "monsoon-db",
  "monsoon-default-renderers",
+ "num_enum",
  "regex",
  "rexie",
  "rfd",

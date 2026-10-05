@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use monsoon_core::emulation::nes::NesConfig;
 use monsoon_core::emulation::ppu_util::EmulatorFetchable;
 use monsoon_core::emulation::rom::{ExpansionDevice, RomFile};
 use monsoon_core::emulation::savestate::SaveState;
@@ -38,6 +39,7 @@ pub enum FrontendMessage {
     StepScanline,
     AttachPeripherals((Option<ExpansionDevice>, Option<ExpansionDevice>)),
     UpdateRomDb(Arc<RomDb>),
+    UpdateConfig(NesConfig),
 }
 
 #[derive(Debug, Default, Eq, PartialEq, Copy, Clone, Hash)]

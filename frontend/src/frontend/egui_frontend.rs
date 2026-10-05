@@ -836,6 +836,10 @@ async fn common_setup(rom: Option<&PathBuf>) -> SetupResponse {
         config = (&persistent_config).into();
     }
 
+    let _ = to_emu.send(FrontendMessage::UpdateConfig(
+        config.console_config.nes_config,
+    ));
+
     if rom.is_some() {
         // Setup Emulator State via messages - read ROM file if provided
         let loaded_rom = rom.and_then(|path| {

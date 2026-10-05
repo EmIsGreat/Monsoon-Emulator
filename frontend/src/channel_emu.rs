@@ -197,6 +197,7 @@ impl ChannelEmulator {
                     self.nes.attach_ext_device((peripheral1, peripheral2));
                 }
                 FrontendMessage::UpdateRomDb(db) => self.nes.rom_db = db,
+                FrontendMessage::UpdateConfig(config) => self.nes.config = config,
             }
         }
 

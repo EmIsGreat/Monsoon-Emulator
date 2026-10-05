@@ -4,10 +4,12 @@ use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
 
 use egui::{Key, Modifiers};
+use monsoon_core::emulation::nes::NesConfig;
 use monsoon_core::emulation::palette_util::RgbPalette;
 use monsoon_core::emulation::ppu_util::EmulatorFetchable;
 use monsoon_core::emulation::rom::RomFile;
 use monsoon_core::emulation::screen_renderer::{ScreenRenderer, create_renderer};
+use num_enum::{FromPrimitive, IntoPrimitive};
 use serde::{Deserialize, Serialize};
 
 use crate::frontend::egui::keybindings::{Binding, OnKeyAction};
@@ -204,10 +206,23 @@ impl From<bool> for DefaultTrueBool {
     }
 }
 
+#[derive(
+    FromPrimitive, IntoPrimitive, Deserialize, Serialize, Clone, Debug, Eq, PartialEq, Default, Hash,
+)]
+#[repr(u8)]
+pub enum AlignmentEnum {
+    Offset0 = 0,
+    Offset1 = 1,
+    #[default]
+    Offset2 = 2,
+    Offset3 = 3,
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ConsoleConfig {
     pub is_powered: bool,
     pub loaded_rom: Option<(RomFile, LoadedRom)>,
+    pub nes_config: NesConfig,
 }
 
 impl Default for ConsoleConfig {
@@ -215,6 +230,7 @@ impl Default for ConsoleConfig {
         Self {
             is_powered: true,
             loaded_rom: None,
+            nes_config: NesConfig::default(),
         }
     }
 }

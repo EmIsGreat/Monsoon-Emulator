@@ -20,6 +20,7 @@ use crate::emulation::cpu::{Cpu, DmaState, IRQState, MicroOp, NMIState, OpQueue}
 use crate::emulation::mapper::{Mapper, MapperLike};
 use crate::emulation::mem::palette_ram::PaletteRam;
 use crate::emulation::mem::{Memory, OpenBus};
+use crate::emulation::nes::NesConfig;
 use crate::emulation::opcode;
 use crate::emulation::opcode::{OPCODES_TABLE, get_opcode};
 use crate::emulation::peripherals::{Peripheral, StandardController};
@@ -462,7 +463,7 @@ pub struct SaveState {
     pub ppu_cycle_counter: u8,
     /// CPU clock divider counter at the time of capture.
     pub cpu_cycle_counter: u8,
-    pub alignment: u8,
+    pub config: NesConfig,
     pub is_powered: bool,
 }
 

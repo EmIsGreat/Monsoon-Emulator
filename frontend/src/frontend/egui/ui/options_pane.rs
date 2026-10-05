@@ -1,17 +1,26 @@
 //! Options pane rendering
 
+use std::cmp::PartialEq;
+
+use crossbeam_channel::Sender;
 use monsoon_core::emulation::screen_renderer::ScreenRenderer;
 
-use crate::frontend::egui::config::{AppConfig, AppSpeed, DebugSpeed};
+use crate::frontend::egui::config::{AlignmentEnum, AppConfig, AppSpeed, DebugSpeed};
+use crate::frontend::messages::AsyncFrontendMessage;
 use crate::get_all_renderers;
 
 /// Render the options panel
-pub fn render_options(ui: &mut egui::Ui, config: &mut AppConfig) {
+pub fn render_options(
+    ui: &mut egui::Ui,
+    config: &mut AppConfig,
+    sender: &Sender<AsyncFrontendMessage>,
+) {
     egui::ScrollArea::vertical().show(ui, |ui| {
         render_speed_settings(ui, config);
         render_renderer_settings(ui, config);
         render_debug_overlay_settings(ui, config);
         render_rom_loading_settings(ui, config);
+        render_emulation_config_settings(ui, config, sender);
     });
 }
 
@@ -145,5 +154,31 @@ fn render_debug_overlay_settings(ui: &mut egui::Ui, config: &mut AppConfig) {
             &mut config.view_config.debug_overlays.show_scanline_dot,
             "Scanline/dot indicator (paused)",
         );
+    });
+}
+
+impl PartialEq<AlignmentEnum> for u8 {
+    fn eq(&self, other: &AlignmentEnum) -> bool {
+        *self == <AlignmentEnum as Into<u8>>::into(other.clone())
+    }
+}
+
+fn render_emulation_config_settings(
+    ui: &mut egui::Ui,
+    config: &mut AppConfig,
+    sender: &Sender<AsyncFrontendMessage>,
+) {
+    ui.collapsing("Emulation Settings", |ui| {
+        let prev = config.console_config.nes_config.alignment.clone();
+        let mut enum_val = AlignmentEnum::from(prev);
+
+        ui.radio_value(&mut enum_val, AlignmentEnum::Offset0, "0");
+        ui.radio_value(&mut enum_val, AlignmentEnum::Offset1, "1");
+        ui.radio_value(&mut enum_val, AlignmentEnum::Offset2, "2");
+        ui.radio_value(&mut enum_val, AlignmentEnum::Offset3, "3");
+
+        if prev != enum_val {
+            let _ = sender.send(AsyncFrontendMessage::ChangeAlignment(enum_val.clone()));
+        }
     });
 }
