@@ -7,8 +7,8 @@ use crate::emulation::opcode::OpType::{
     AbsoluteIndexRMW, AbsoluteIndexRead, AbsoluteIndexWrite, AbsoluteRMW, AbsoluteRead,
     AbsoluteWrite, AccumulatorOrImplied, BRK, ImmediateAddressing, IndexedIndirectRMW,
     IndexedIndirectRead, IndexedIndirectWrite, IndirectIndexedRMW, IndirectIndexedRead,
-    IndirectIndexedWrite, JSR, JmpAbsolute, JmpIndirect, PH, PL, RTI, RTS, Relative,
-    ZeroPageIndexRMW, ZeroPageIndexRead, ZeroPageIndexWrite, ZeroPageRMW, ZeroPageRead,
+    IndirectIndexedWrite, IndirectIndexedWriteSHA, JSR, JmpAbsolute, JmpIndirect, PH, PL, RTI, RTS,
+    Relative, ZeroPageIndexRMW, ZeroPageIndexRead, ZeroPageIndexWrite, ZeroPageRMW, ZeroPageRead,
     ZeroPageWrite,
 };
 /// Direct lookup table for opcodes - O(1) array access vs `HashMap`
@@ -975,11 +975,7 @@ pub fn init() -> [OpCode; 256] {
             "*SHA",
             AbsoluteIndexWrite(Source::DataBus, Source::Y, MicroOpCallback::SHA),
         ),
-        OpCode::new(
-            0x93,
-            "*SHA",
-            IndirectIndexedWrite(Source::DataBus, MicroOpCallback::SHA),
-        ),
+        OpCode::new(0x93, "*SHA", IndirectIndexedWriteSHA),
         OpCode::new(
             0x9E,
             "*SHX",
@@ -1151,7 +1147,8 @@ pub fn get_bytes_for_opcode(op: OpCode) -> u8 {
         | IndirectIndexedWrite(..)
         | Relative(_)
         | IndexedIndirectRMW(_)
-        | IndirectIndexedRMW(_) => 1,
+        | IndirectIndexedRMW(_)
+        | IndirectIndexedWriteSHA => 1,
         AbsoluteRead(..)
         | AbsoluteIndexRead(..)
         | JSR(_)
@@ -1192,6 +1189,7 @@ pub enum OpType {
     IndirectIndexedRead(Target, MicroOpCallback),
     IndirectIndexedRMW(MicroOpCallback),
     IndirectIndexedWrite(Source, MicroOpCallback),
+    IndirectIndexedWriteSHA,
     IndexedIndirectRead(Target, MicroOpCallback),
     IndexedIndirectRMW(MicroOpCallback),
     IndexedIndirectWrite(Source, MicroOpCallback),

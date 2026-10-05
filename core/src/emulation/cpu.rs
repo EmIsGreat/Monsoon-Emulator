@@ -441,6 +441,44 @@ impl Cpu {
             OpType::IndirectIndexedRMW(callback) => {
                 self.get_indirect_indexed_rmw_instructions(callback);
             }
+            OpType::IndirectIndexedWriteSHA => {
+                self.op_queue
+                    .push_back(MicroOp::FetchOperandLo(MicroOpCallback::None));
+                self.op_queue
+                    .push_back(MicroOp::ReadWithOffsetFromZPAndAddSomethingU8(
+                        AddressSource::LO,
+                        Source::Constant(0),
+                        Target::DataBus,
+                        Source::None,
+                        Source::None,
+                        Target::None,
+                        false,
+                        MicroOpCallback::None,
+                    ));
+                self.op_queue
+                    .push_back(MicroOp::ReadWithOffsetFromZPAndAddSomethingU8(
+                        AddressSource::LO,
+                        Source::Constant(1),
+                        Target::HI,
+                        Source::DataBus,
+                        Source::Y,
+                        Target::LO,
+                        false,
+                        MicroOpCallback::None,
+                    ));
+                self.op_queue.push_back(MicroOp::ReadPageCrossCorrupting(
+                    AddressSource::AddressLatch,
+                    Source::Y,
+                    Source::A,
+                    Source::X,
+                ));
+                self.op_queue.push_back(MicroOp::Write(
+                    Target::AddressLatch,
+                    Source::DataBus,
+                    true,
+                    MicroOpCallback::SHA,
+                ));
+            }
         }
     }
 
@@ -657,7 +695,7 @@ impl Cpu {
                 Source::Constant(0),
                 Target::HI,
                 Source::LO,
-                offset,
+                offset.clone(),
                 Target::LO,
                 true,
                 MicroOpCallback::None,
@@ -682,7 +720,7 @@ impl Cpu {
                 Source::Constant(0),
                 Target::HI,
                 Source::LO,
-                offset,
+                offset.clone(),
                 Target::LO,
                 true,
                 MicroOpCallback::None,
@@ -1093,7 +1131,7 @@ impl Cpu {
                 Source::Constant(0),
                 Target::HI,
                 Source::LO,
-                index,
+                index.clone(),
                 Target::LO,
                 true,
                 MicroOpCallback::None,
@@ -1288,7 +1326,7 @@ impl Cpu {
             };
         }
 
-        let op = self.current_op;
+        let op = self.current_op.clone();
 
         if !matches!(op, MicroOp::BranchIncrement(..))
             && !self.irq_state.is_in_irq
@@ -1391,6 +1429,20 @@ impl Cpu {
                     target,
                     schedule_read,
                     callback,
+                );
+            }
+            MicroOp::ReadPageCrossCorrupting(
+                source,
+                offset,
+                corruption_source_a,
+                corruption_source_b,
+            ) => {
+                self.micro_page_cross_corrupted(
+                    bus,
+                    source,
+                    offset,
+                    corruption_source_a,
+                    corruption_source_b,
                 );
             }
             MicroOp::DummyReadAddOffsetWriteToTarget(source, offset, target, callback) => {
@@ -1584,6 +1636,29 @@ impl Cpu {
         }
 
         self.run_op(callback, bus);
+    }
+
+    fn micro_page_cross_corrupted(
+        &mut self,
+        bus: &mut impl CpuBus,
+        address_source: AddressSource,
+        offset: Source,
+        corruption_source_a: Source,
+        corruption_source_b: Source,
+    ) {
+        let mut page_cross = false;
+        let offset = self.get_src_value(offset);
+
+        if let Some(offset) = offset
+            && self.lo.overflowing_sub(offset).1
+        {
+            page_cross = true;
+        }
+
+        if page_cross {
+            self.hi &= self.get_src_value(corruption_source_a).unwrap_or(0)
+                & self.get_src_value(corruption_source_b).unwrap_or(0);
+        }
     }
 
     fn micro_read_page_cross_aware(
@@ -1957,6 +2032,7 @@ pub enum MicroOp {
     /// offsetting by Source, if an overflow occurred in its obtaining,
     /// increment hi to fix address latch
     ReadPageCrossAware(AddressSource, Source, Target, bool, MicroOpCallback),
+    ReadPageCrossCorrupting(AddressSource, Source, Source, Source),
     DummyReadAddOffsetWriteToTarget(AddressSource, Source, Target, MicroOpCallback),
     DummyRead(MicroOpCallback),
     ReadWithOffsetFromZPAndAddSomethingU8(

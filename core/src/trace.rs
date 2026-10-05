@@ -182,7 +182,8 @@ pub fn get_opcode_descriptor(opcode: OpCode, cpu: &CpuTraceState, bus: &impl Cpu
         }
         OpType::IndirectIndexedRead(..)
         | OpType::IndirectIndexedRMW(_)
-        | OpType::IndirectIndexedWrite(..) => {
+        | OpType::IndirectIndexedWrite(..)
+        | OpType::IndirectIndexedWriteSHA => {
             let address = bus.read_debug(cpu.program_counter);
 
             let effective_addr = (u16::from(bus.read_debug(u16::from(address.wrapping_add(1))))
