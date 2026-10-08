@@ -24,7 +24,7 @@
 
 pub mod apu;
 pub(crate) mod board;
-pub(crate) mod cpu;
+pub mod cpu;
 pub mod debug_tools;
 pub(crate) mod mapper;
 pub(crate) mod mem;

@@ -3,9 +3,13 @@
 //! This module contains common widget patterns that are used across
 //! multiple UI components to reduce code duplication.
 
+use std::fmt::Debug;
+use std::ops::RangeInclusive;
+
 use crossbeam_channel::Sender;
-use egui::{AsIdSalt, Response, StrokeKind, Ui, Widget, vec2};
+use egui::{AsIdSalt, FontId, Response, StrokeKind, TextEdit, Ui, Widget, vec2};
 use monsoon_core::emulation::palette_util::RgbColor;
+use num_traits::{PrimInt, Unsigned};
 
 use crate::frontend::egui::config::AppConfig;
 use crate::frontend::egui::keybindings::{HotkeyBinding, OnKeyAction};
@@ -312,4 +316,59 @@ pub fn wrapping_label(ui: &mut Ui, text: &str, max_rows: usize) -> Response {
     job.wrap.max_width = ui.available_width();
 
     ui.add(egui::Label::new(job).wrap())
+}
+
+pub struct HexInput<'a, T: PrimInt + Unsigned, const R: u32> {
+    value: &'a mut T,
+    bounds: RangeInclusive<T>,
+    input_state: &'a mut String,
+}
+
+impl<'a, T: PrimInt + Unsigned, const R: u32> HexInput<'a, T, R> {
+    pub fn new(value: &'a mut T, string: &'a mut String) -> Self {
+        Self {
+            value,
+            bounds: T::min_value()..=T::max_value(),
+            input_state: string,
+        }
+    }
+
+    #[allow(unused)]
+    pub fn bounds(mut self, bounds: RangeInclusive<T>) -> Self {
+        self.bounds = bounds;
+        self
+    }
+}
+
+impl<T: PrimInt + Unsigned + Debug, const R: u32> Widget for HexInput<'_, T, R> {
+    fn ui(self, ui: &mut Ui) -> Response {
+        let old = self.input_state.clone();
+        let text_field = TextEdit::singleline(self.input_state)
+            .char_limit(size_of::<T>() * 2)
+            .cursor_at_end(true)
+            .desired_rows(1)
+            .prefix("$")
+            .font(FontId::monospace(14.0));
+
+        let resp = text_field.ui(ui);
+
+        if resp.lost_focus() {
+            *self.input_state = self.input_state.to_ascii_uppercase();
+            if self.input_state.len() < 2 {
+                *self.input_state = "0".repeat(2 - self.input_state.len()) + self.input_state;
+            }
+
+            let parsed = T::from_str_radix(self.input_state, R);
+
+            if let Ok(parsed) = parsed
+                && self.bounds.contains(&parsed)
+            {
+                *self.value = parsed;
+            } else {
+                *self.input_state = old;
+            }
+        }
+
+        resp
+    }
 }

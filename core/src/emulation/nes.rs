@@ -4,10 +4,11 @@ use std::hint::unlikely;
 use std::ops::RangeInclusive;
 use std::sync::Arc;
 
+use num_enum::{FromPrimitive, IntoPrimitive};
 use serde::{Deserialize, Serialize};
 
 use crate::emulation::board::{Board, CpuBus, CpuBusView, PpuBus, PpuBusView};
-use crate::emulation::cpu::Cpu;
+use crate::emulation::cpu::{Cpu, SHAMode};
 use crate::emulation::debug_tools::{StopCondition, StopReason};
 use crate::emulation::mapper::MapperLike;
 use crate::emulation::peripherals::Peripheral;
@@ -25,7 +26,30 @@ use crate::{cpu_bus_view, ppu_bus_view};
 /// the PPU divides it by 4, so one master cycle is the finest timing
 /// granularity.
 pub const MASTER_CYCLES_PER_FRAME: u32 = 357_366;
-type ClockingFunction = fn(&mut Nes, last_cycle: u64) -> ExecutionResult;
+type ClockingFunction = fn(&mut Nes, last_cycle: u64, config: NesConfig) -> ExecutionResult;
+
+#[derive(
+    FromPrimitive,
+    IntoPrimitive,
+    Deserialize,
+    Serialize,
+    Clone,
+    Debug,
+    Eq,
+    PartialEq,
+    Default,
+    Hash,
+    Copy,
+)]
+#[repr(u8)]
+pub enum CpuAlignment {
+    Offset0 = 0,
+    Offset1 = 1,
+    #[default]
+    Offset2 = 2,
+    Offset3 = 3,
+}
+
 /// The top-level NES emulator.
 ///
 /// `Nes` orchestrates the CPU, PPU, and memory subsystems to provide
@@ -199,7 +223,7 @@ impl Nes {
     /// Panics if an internal emulation error occurs during execution.
     pub fn run_until(&mut self, last_cycle: u64, run_option: RunOptions) -> ExecutionResult {
         loop {
-            let res = self.step_internal(last_cycle);
+            let res = self.step_internal(last_cycle, self.config);
 
             if run_option.stop_at_scanline && res.scanline_done {
                 return res;
@@ -306,18 +330,12 @@ impl Nes {
     }
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, Default)]
 pub struct NesConfig {
     // Cpu-ppu cycle offset: 0-3
-    pub alignment: u8,
-}
-
-impl Default for NesConfig {
-    fn default() -> Self {
-        NesConfig {
-            alignment: 2,
-        }
-    }
+    pub alignment: CpuAlignment,
+    pub sha_mode: SHAMode,
+    pub sha_magic: u8,
 }
 
 impl Nes {
@@ -338,7 +356,7 @@ impl Nes {
             ppu_cycle_counter: 4,
             config,
             stop_conditions: None,
-            clocking_function: Self::step_internal,
+            clocking_function: Self::step_fast,
             rom_db: Arc::new(RomDb::default()),
             is_powered: false,
             is_tracing: false,
@@ -422,7 +440,7 @@ impl Nes {
     ///
     /// For most use cases, prefer [`step_frame()`](Nes::step_frame).
     #[inline]
-    pub fn step(&mut self) -> ExecutionResult { self.step_internal(u64::MAX) }
+    pub fn step(&mut self) -> ExecutionResult { self.step_internal(u64::MAX, self.config) }
 
     #[cold]
     pub fn check_stop_conditions(
@@ -440,7 +458,7 @@ impl Nes {
 
     #[allow(unused)]
     #[cold]
-    fn step_debug(&mut self, last_cycle: u64) -> ExecutionResult {
+    fn step_debug(&mut self, last_cycle: u64, config: NesConfig) -> ExecutionResult {
         if let Some(conditions) = &self.stop_conditions
             && let Some(reason) = self.check_stop_conditions(&conditions.clone())
         {
@@ -456,11 +474,17 @@ impl Nes {
             };
         }
 
-        self.step_internal(last_cycle)
+        let res = self.step_fast(last_cycle, config);
+        self.write_trace_log();
+        res
+    }
+
+    fn step_internal(&mut self, last_cycle: u64, config: NesConfig) -> ExecutionResult {
+        (self.clocking_function)(self, last_cycle, config)
     }
 
     #[inline(always)]
-    fn step_internal(&mut self, last_cycle: u64) -> ExecutionResult {
+    fn step_fast(&mut self, last_cycle: u64, config: NesConfig) -> ExecutionResult {
         let grayscale = self.board.ppu.get_grayscale_enabled();
 
         let ppu = &mut self.board.ppu;
@@ -475,7 +499,8 @@ impl Nes {
         self.cpu_cycle_counter -= 1;
         self.ppu_cycle_counter -= 1;
 
-        let cpu_step = self.cpu_cycle_counter == self.config.alignment;
+        let cpu_step =
+            self.cpu_cycle_counter == <CpuAlignment as Into<u8>>::into(self.config.alignment);
 
         if self.ppu_cycle_counter != 0 && !cpu_step {
             return ExecutionResult::default();
@@ -506,7 +531,7 @@ impl Nes {
         if cpu_step {
             self.apu_counter -= 1;
 
-            let cpu_res = cpu.step(&mut cpu_bus_view!(self));
+            let cpu_res = cpu.step(&mut cpu_bus_view!(self), config);
 
             self.board.apu.clock_frame_counter(self.apu_counter == 2);
 
@@ -540,7 +565,7 @@ impl Nes {
     /// captured entries. Tracing can later be resumed with
     /// [`enable_trace`](Self::enable_trace).
     pub fn disable_trace(&mut self) {
-        self.clocking_function = Self::step_internal;
+        self.clocking_function = Self::step_fast;
         self.is_tracing = false;
     }
 

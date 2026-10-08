@@ -1,11 +1,12 @@
 //! Options pane rendering
 
-use std::cmp::PartialEq;
-
 use crossbeam_channel::Sender;
+use monsoon_core::emulation::cpu::SHAMode;
+use monsoon_core::emulation::nes::CpuAlignment;
 use monsoon_core::emulation::screen_renderer::ScreenRenderer;
 
-use crate::frontend::egui::config::{AlignmentEnum, AppConfig, AppSpeed, DebugSpeed};
+use crate::frontend::egui::config::{AppConfig, AppSpeed, DebugSpeed};
+use crate::frontend::egui::ui::widgets::HexInput;
 use crate::frontend::messages::AsyncFrontendMessage;
 use crate::get_all_renderers;
 
@@ -157,28 +158,84 @@ fn render_debug_overlay_settings(ui: &mut egui::Ui, config: &mut AppConfig) {
     });
 }
 
-impl PartialEq<AlignmentEnum> for u8 {
-    fn eq(&self, other: &AlignmentEnum) -> bool {
-        *self == <AlignmentEnum as Into<u8>>::into(other.clone())
-    }
-}
-
 fn render_emulation_config_settings(
     ui: &mut egui::Ui,
     config: &mut AppConfig,
     sender: &Sender<AsyncFrontendMessage>,
 ) {
     ui.collapsing("Emulation Settings", |ui| {
-        let prev = config.console_config.nes_config.alignment.clone();
-        let mut enum_val = AlignmentEnum::from(prev);
+        ui.label("CPU-PPU Alignment");
+        let prev_align = config.console_config.nes_config.alignment;
 
-        ui.radio_value(&mut enum_val, AlignmentEnum::Offset0, "0");
-        ui.radio_value(&mut enum_val, AlignmentEnum::Offset1, "1");
-        ui.radio_value(&mut enum_val, AlignmentEnum::Offset2, "2");
-        ui.radio_value(&mut enum_val, AlignmentEnum::Offset3, "3");
+        ui.horizontal(|ui| {
+            ui.radio_value(
+                &mut config.console_config.nes_config.alignment,
+                CpuAlignment::Offset0,
+                "0",
+            );
+            ui.radio_value(
+                &mut config.console_config.nes_config.alignment,
+                CpuAlignment::Offset1,
+                "1",
+            );
+            ui.radio_value(
+                &mut config.console_config.nes_config.alignment,
+                CpuAlignment::Offset2,
+                "2",
+            );
+            ui.radio_value(
+                &mut config.console_config.nes_config.alignment,
+                CpuAlignment::Offset3,
+                "3",
+            );
+        });
 
-        if prev != enum_val {
-            let _ = sender.send(AsyncFrontendMessage::ChangeAlignment(enum_val.clone()));
+        if prev_align != config.console_config.nes_config.alignment {
+            let _ = sender.send(AsyncFrontendMessage::ConfigChanged);
+        }
+
+        ui.separator();
+        ui.label("SHA Mode");
+
+        let prev_mode = config.console_config.nes_config.sha_mode;
+
+        ui.horizontal(|ui| {
+            ui.radio_value(
+                &mut config.console_config.nes_config.sha_mode,
+                SHAMode::Mode1,
+                "1",
+            );
+            ui.radio_value(
+                &mut config.console_config.nes_config.sha_mode,
+                SHAMode::Mode2,
+                "2",
+            );
+            ui.radio_value(
+                &mut config.console_config.nes_config.sha_mode,
+                SHAMode::Mode3,
+                "3",
+            );
+            ui.radio_value(
+                &mut config.console_config.nes_config.sha_mode,
+                SHAMode::Mode4,
+                "4",
+            );
+        });
+
+        if prev_mode != config.console_config.nes_config.sha_mode {
+            let _ = sender.send(AsyncFrontendMessage::ConfigChanged);
+        }
+
+        ui.label("SHA Magic Byte");
+        let prev_magic = config.console_config.nes_config.sha_magic;
+
+        ui.add(HexInput::<_, 16>::new(
+            &mut config.console_config.nes_config.sha_magic,
+            &mut config.input_states.sha_magic_input_string,
+        ));
+
+        if prev_magic != config.console_config.nes_config.sha_magic {
+            let _ = sender.send(AsyncFrontendMessage::ConfigChanged);
         }
     });
 }

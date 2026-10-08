@@ -310,9 +310,7 @@ impl EguiApp {
                     context,
                 });
             }
-            AsyncFrontendMessage::ChangeAlignment(new) => {
-                self.config.console_config.nes_config.alignment = new.into();
-                
+            AsyncFrontendMessage::ConfigChanged => {
                 let _ = self.to_emulator.send(FrontendMessage::UpdateConfig(
                     self.config.console_config.nes_config,
                 ));

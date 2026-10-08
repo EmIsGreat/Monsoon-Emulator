@@ -24,7 +24,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::frontend::egui::config::{
     AppConfig, AppSpeed, AutoPauseState, ConsoleConfig, DebugOverlayConfig, DebugSpeed,
-    KeybindingsConfig, PendingDialogs, SpeedConfig, UserConfig, ViewConfig,
+    InputFieldStates, KeybindingsConfig, PendingDialogs, SpeedConfig, UserConfig, ViewConfig,
 };
 use crate::frontend::storage;
 use crate::frontend::storage::{Storage, StorageKey};
@@ -311,6 +311,7 @@ pub struct PersistentConfig {
     pub console_config: PersistentConsoleConfig,
     #[serde(default)]
     pub keybindings: KeybindingsConfig,
+    pub input_field_states: InputFieldStates,
 }
 
 impl From<&AppConfig> for PersistentConfig {
@@ -321,6 +322,7 @@ impl From<&AppConfig> for PersistentConfig {
             speed_config: (&value.speed_config).into(),
             console_config: (&value.console_config).into(),
             keybindings: value.keybindings.clone(),
+            input_field_states: value.input_states.clone(),
         }
     }
 }
@@ -335,6 +337,7 @@ impl From<&PersistentConfig> for AppConfig {
             console_config: (&value.console_config).into(),
             pending_dialogs: PendingDialogs::default(),
             keybindings: value.keybindings.clone(),
+            input_states: value.input_field_states.clone(),
         }
     }
 }

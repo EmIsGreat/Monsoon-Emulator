@@ -5,7 +5,6 @@ use monsoon_core::emulation::palette_util::RgbPalette;
 use monsoon_core::emulation::savestate::SaveState;
 use monsoon_core::rom_db::RomDb;
 use serde::{Deserialize, Serialize};
-use crate::frontend::egui::config::AlignmentEnum;
 use crate::frontend::savestates::SaveEntry;
 use crate::frontend::storage::StorageKey;
 use crate::frontend::util::{FileType, SavestateLoadError};
@@ -158,7 +157,7 @@ pub enum AsyncFrontendMessage {
     OpenRegistersViewer,
     OpenTraceLogViewer,
     Speedup,
-    ChangeAlignment(AlignmentEnum)
+    ConfigChanged
 }
 
 /// Context for the multistep savestate loading process

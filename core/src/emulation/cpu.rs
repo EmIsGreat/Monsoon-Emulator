@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_big_array::BigArray;
 
 use crate::emulation::board::CpuBus;
-use crate::emulation::nes::ExecutionResult;
+use crate::emulation::nes::{ExecutionResult, NesConfig};
 use crate::emulation::opcode;
 use crate::emulation::opcode::{OPCODES_TABLE, OpCode, OpType, get_opcode};
 use crate::util;
@@ -94,15 +94,32 @@ pub struct Cpu {
     pub dma_state: DmaState,
     pub nmi_state: NMIState,
     pub irq_state: IRQState,
+    pub sha_state: SHAState,
+    pub rdy: bool,
     /// Last memory access for watchpoint debugging (address, `was_read`, value)
     pub last_memory_access: Option<(u16, bool, u8)>,
     pub cycle: u64,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Default, Hash, Deserialize, Serialize)]
+pub enum SHAMode {
+    #[default]
+    Mode1,
+    Mode2,
+    Mode3,
+    Mode4,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub struct SHAState {
+    mode: SHAMode,
+    magic: u8,
+    rdy_low: bool,
+}
+
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct DmaState {
     read_cycle: bool,
-    triggered: bool,
     page: u8,
 }
 
@@ -140,7 +157,6 @@ impl Default for DmaState {
     fn default() -> Self {
         Self {
             read_cycle: true,
-            triggered: false,
             page: 0,
         }
     }
@@ -172,10 +188,12 @@ impl Cpu {
             ane_constant: 0xEE,
             is_halted: false,
             irq_state: IRQState::default(),
+            sha_state: SHAState::default(),
             nmi_state: NMIState::default(),
             dma_state: DmaState::default(),
             last_memory_access: None,
             cycle: 0,
+            rdy: false,
         }
     }
 
@@ -193,7 +211,7 @@ impl Cpu {
         self.last_memory_access = Some((addr, false, data));
 
         if addr == DMA_ADDRESS {
-            self.dma_state.triggered = true;
+            self.rdy = true;
             self.dma_state.page = data;
             return;
         }
@@ -464,7 +482,7 @@ impl Cpu {
                         Source::Y,
                         Target::LO,
                         false,
-                        MicroOpCallback::None,
+                        MicroOpCallback::ShaRdyCheck,
                     ));
                 self.op_queue.push_back(MicroOp::ReadPageCrossCorrupting(
                     AddressSource::AddressLatch,
@@ -476,7 +494,7 @@ impl Cpu {
                     Target::AddressLatch,
                     Source::DataBus,
                     true,
-                    MicroOpCallback::SHA,
+                    MicroOpCallback::None,
                 ));
             }
         }
@@ -695,7 +713,7 @@ impl Cpu {
                 Source::Constant(0),
                 Target::HI,
                 Source::LO,
-                offset.clone(),
+                offset,
                 Target::LO,
                 true,
                 MicroOpCallback::None,
@@ -720,7 +738,7 @@ impl Cpu {
                 Source::Constant(0),
                 Target::HI,
                 Source::LO,
-                offset.clone(),
+                offset,
                 Target::LO,
                 true,
                 MicroOpCallback::None,
@@ -1131,7 +1149,7 @@ impl Cpu {
                 Source::Constant(0),
                 Target::HI,
                 Source::LO,
-                index.clone(),
+                index,
                 Target::LO,
                 true,
                 MicroOpCallback::None,
@@ -1304,8 +1322,10 @@ impl Cpu {
     }
 
     #[inline(always)]
-    pub fn step(&mut self, bus: &mut impl CpuBus) -> ExecutionResult {
+    pub fn step(&mut self, bus: &mut impl CpuBus, config: NesConfig) -> ExecutionResult {
         self.cycle += 1;
+        self.sha_state.magic = config.sha_magic;
+        self.sha_state.mode = config.sha_mode;
 
         if self.is_halted {
             return ExecutionResult {
@@ -1326,12 +1346,9 @@ impl Cpu {
             };
         }
 
-        let op = self.current_op.clone();
+        let op = self.current_op;
 
-        if !matches!(op, MicroOp::BranchIncrement(..))
-            && !self.irq_state.is_in_irq
-            && !self.dma_state.triggered
-        {
+        if !matches!(op, MicroOp::BranchIncrement(..)) && !self.irq_state.is_in_irq && !self.rdy {
             if self.nmi_state.detected {
                 self.nmi_state.pending = true;
                 self.nmi_state.detected = false;
@@ -1342,8 +1359,8 @@ impl Cpu {
 
         self.execute_micro_op(op, bus);
 
-        if self.dma_state.triggered && self.dma_state.read_cycle {
-            self.trigger_oam_dma();
+        if self.rdy && self.dma_state.read_cycle {
+            self.execute_oam_dma();
         }
 
         // NMI Things
@@ -1646,19 +1663,44 @@ impl Cpu {
         corruption_source_a: Source,
         corruption_source_b: Source,
     ) {
-        let mut page_cross = false;
+        #[allow(clippy::expect_used)]
+        let _ = self.mem_read(
+            self.get_u16_address(address_source)
+                .expect("Needs a not-none source"),
+            bus,
+        );
+
         let offset = self.get_src_value(offset);
 
-        if let Some(offset) = offset
+        let overflow = if let Some(offset) = offset
             && self.lo.overflowing_sub(offset).1
         {
-            page_cross = true;
+            true
+        } else {
+            false
+        };
+
+        let mut addr_hi = if overflow { self.hi + 1 } else { self.hi };
+
+        let value_reg = self.get_src_value(corruption_source_a).unwrap_or(0xFF)
+            & (self.get_src_value(corruption_source_b).unwrap_or(0xFF) | self.sha_state.magic);
+
+        let addr_reg = self.get_src_value(corruption_source_a).unwrap_or(0xFF)
+            & self.get_src_value(corruption_source_b).unwrap_or(0xFF);
+
+        if overflow {
+            addr_hi &= addr_reg;
         }
 
-        if page_cross {
-            self.hi &= self.get_src_value(corruption_source_a).unwrap_or(0)
-                & self.get_src_value(corruption_source_b).unwrap_or(0);
+        if self.sha_state.rdy_low {
+            self.data_bus = value_reg;
+            self.sha_state.rdy_low = false;
+        } else {
+            self.data_bus = value_reg & self.hi.wrapping_add(1);
+            self.sha_state.rdy_low = false;
         }
+
+        self.hi = addr_hi;
     }
 
     fn micro_read_page_cross_aware(
@@ -1867,6 +1909,9 @@ impl Cpu {
                 self.irq_state.locked_irq_vec = self.irq_state.current_irq_vec;
             }
             MicroOpCallback::ExitIrq => self.irq_state.is_in_irq = false,
+            MicroOpCallback::ShaRdyCheck => {
+                self.sha_state.rdy_low = self.rdy;
+            }
         }
     }
 
@@ -1954,8 +1999,8 @@ impl Cpu {
         }
     }
 
-    pub fn trigger_oam_dma(&mut self) {
-        self.dma_state.triggered = false;
+    pub fn execute_oam_dma(&mut self) {
+        self.rdy = false;
         self.irq_state.is_in_irq = true;
         self.remaining_dma_cycles = 514;
     }
@@ -2168,6 +2213,7 @@ pub enum MicroOpCallback {
     LockIrqVec,
     SEIandLockIrqVec,
     ExitIrq,
+    ShaRdyCheck,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Hash)]
