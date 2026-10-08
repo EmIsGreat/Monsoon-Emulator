@@ -336,6 +336,7 @@ pub struct NesConfig {
     pub alignment: CpuAlignment,
     pub sha_mode: SHAMode,
     pub sha_magic: u8,
+    pub sha_mode3_address_magic: u8,
 }
 
 impl Nes {

@@ -11,8 +11,11 @@ use std::fmt::Write;
 use std::path::Path;
 use std::time::Instant;
 
+use monsoon_core::emulation::cpu::SHAMode;
 use monsoon_core::emulation::debug_tools::StopReason;
-use monsoon_core::emulation::nes::{ExecutionResult, MASTER_CYCLES_PER_FRAME, Nes, NesConfig};
+use monsoon_core::emulation::nes::{
+    CpuAlignment, ExecutionResult, MASTER_CYCLES_PER_FRAME, Nes, NesConfig,
+};
 use monsoon_core::emulation::palette_util::RgbColor;
 use monsoon_core::emulation::ppu_util::{TOTAL_OUTPUT_HEIGHT, TOTAL_OUTPUT_WIDTH};
 use monsoon_core::emulation::rom::RomFile;
@@ -89,7 +92,10 @@ pub fn run_headless(args: &CliArgs) -> Result<(), String> {
     let exec_config = ExecutionConfig::from_cli_args(args);
     let savestate_config = SavestateConfig::from_cli_args(args);
     let nes_config: NesConfig = NesConfig {
-        alignment: args.console.alignment,
+        alignment: CpuAlignment::Offset2,
+        sha_mode: SHAMode::default(),
+        sha_magic: 0,
+        sha_mode3_address_magic: 0,
     };
 
     // Create and configure the execution engine

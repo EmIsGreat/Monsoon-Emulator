@@ -48,6 +48,7 @@ impl<const N: usize> OpQueue<N> {
     }
 
     #[inline(always)]
+    #[allow(clippy::missing_panics_doc)]
     pub fn push_back(&mut self, value: MicroOp) {
         assert!(self.len < N);
         assert!(N.is_power_of_two());
@@ -58,6 +59,7 @@ impl<const N: usize> OpQueue<N> {
     }
 
     #[inline(always)]
+    #[allow(clippy::missing_panics_doc)]
     pub fn pop_front(&mut self) -> Option<MicroOp> {
         if self.len == 0 {
             return None;
@@ -94,8 +96,9 @@ pub struct Cpu {
     pub dma_state: DmaState,
     pub nmi_state: NMIState,
     pub irq_state: IRQState,
-    pub sha_state: SHAState,
+    pub sha_config: SHAConfig,
     pub rdy: bool,
+    pub sha_rdy_low: bool,
     /// Last memory access for watchpoint debugging (address, `was_read`, value)
     pub last_memory_access: Option<(u16, bool, u8)>,
     pub cycle: u64,
@@ -111,10 +114,10 @@ pub enum SHAMode {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
-pub struct SHAState {
+pub struct SHAConfig {
     mode: SHAMode,
     magic: u8,
-    rdy_low: bool,
+    mode3_address_magic: u8,
 }
 
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, PartialEq, Eq, Serialize, Deserialize, Hash)]
@@ -188,9 +191,10 @@ impl Cpu {
             ane_constant: 0xEE,
             is_halted: false,
             irq_state: IRQState::default(),
-            sha_state: SHAState::default(),
+            sha_config: SHAConfig::default(),
             nmi_state: NMIState::default(),
             dma_state: DmaState::default(),
+            sha_rdy_low: false,
             last_memory_access: None,
             cycle: 0,
             rdy: false,
@@ -310,20 +314,28 @@ impl Cpu {
 
     fn clear_decimal_flag(&mut self) { self.processor_status &= !DECIMAL_BIT; }
 
+    #[must_use]
     pub fn get_zero_flag(&self) -> bool { (self.processor_status & ZERO_BIT) != 0 }
 
+    #[must_use]
     pub fn get_negative_flag(&self) -> bool { (self.processor_status & NEGATIVE_BIT) != 0 }
 
+    #[must_use]
     pub fn get_carry_flag(&self) -> bool { (self.processor_status & CARRY_BIT) != 0 }
 
+    #[must_use]
     pub fn get_overflow_flag(&self) -> bool { (self.processor_status & OVERFLOW_BIT) != 0 }
 
+    #[must_use]
     pub fn get_decimal_flag(&self) -> bool { (self.processor_status & DECIMAL_BIT) != 0 }
 
+    #[must_use]
     pub fn get_interrupt_disable_flag(&self) -> bool { (self.processor_status & IRQ_BIT) != 0 }
 
+    #[must_use]
     pub fn get_break_flag(&self) -> bool { (self.processor_status & BREAK_BIT) != 0 }
 
+    #[must_use]
     pub fn get_unused_flag(&self) -> bool { (self.processor_status & UNUSED_BIT) != 0 }
 
     fn shift_left(&mut self, data: u8) -> u8 {
@@ -493,7 +505,7 @@ impl Cpu {
                 self.op_queue.push_back(MicroOp::Write(
                     Target::AddressLatch,
                     Source::DataBus,
-                    true,
+                    false,
                     MicroOpCallback::None,
                 ));
             }
@@ -1324,8 +1336,9 @@ impl Cpu {
     #[inline(always)]
     pub fn step(&mut self, bus: &mut impl CpuBus, config: NesConfig) -> ExecutionResult {
         self.cycle += 1;
-        self.sha_state.magic = config.sha_magic;
-        self.sha_state.mode = config.sha_mode;
+        self.sha_config.magic = config.sha_magic;
+        self.sha_config.mode3_address_magic = config.sha_mode3_address_magic;
+        self.sha_config.mode = config.sha_mode;
 
         if self.is_halted {
             return ExecutionResult {
@@ -1683,21 +1696,34 @@ impl Cpu {
         let mut addr_hi = if overflow { self.hi + 1 } else { self.hi };
 
         let value_reg = self.get_src_value(corruption_source_a).unwrap_or(0xFF)
-            & (self.get_src_value(corruption_source_b).unwrap_or(0xFF) | self.sha_state.magic);
+            & (self.get_src_value(corruption_source_b).unwrap_or(0xFF) | self.sha_config.magic);
 
-        let addr_reg = self.get_src_value(corruption_source_a).unwrap_or(0xFF)
-            & self.get_src_value(corruption_source_b).unwrap_or(0xFF);
+        let addr_reg = match self.sha_config.mode {
+            SHAMode::Mode1 => {
+                self.get_src_value(corruption_source_a).unwrap_or(0xFF)
+                    & self.get_src_value(corruption_source_b).unwrap_or(0xFF)
+            }
+            SHAMode::Mode2 => self.get_src_value(corruption_source_b).unwrap_or(0xFF),
+            SHAMode::Mode3 => {
+                self.get_src_value(corruption_source_a).unwrap_or(0xFF)
+                    & self.sha_config.mode3_address_magic
+            }
+            SHAMode::Mode4 => {
+                self.get_src_value(corruption_source_a).unwrap_or(0xFF)
+                    | self.get_src_value(corruption_source_b).unwrap_or(0xFF)
+            }
+        };
 
         if overflow {
             addr_hi &= addr_reg;
         }
 
-        if self.sha_state.rdy_low {
+        if self.sha_rdy_low {
             self.data_bus = value_reg;
-            self.sha_state.rdy_low = false;
+            self.sha_rdy_low = false;
         } else {
             self.data_bus = value_reg & self.hi.wrapping_add(1);
-            self.sha_state.rdy_low = false;
+            self.sha_rdy_low = false;
         }
 
         self.hi = addr_hi;
@@ -1910,7 +1936,7 @@ impl Cpu {
             }
             MicroOpCallback::ExitIrq => self.irq_state.is_in_irq = false,
             MicroOpCallback::ShaRdyCheck => {
-                self.sha_state.rdy_low = self.rdy;
+                self.sha_rdy_low = self.rdy;
             }
         }
     }

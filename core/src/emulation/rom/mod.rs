@@ -1269,8 +1269,9 @@ impl Display for RomMapper {
             RomMapper::BootlegGremlins2 => "Gremlins 2: 新種誕生 Bootleg Mapper",
             RomMapper::RCMCartridgeStory => "RCM Group Cartridge Story Mapper",
             RomMapper::BMCPC2P312701 => "BMC-PC2-P3127-01",
-            RomMapper::JingtaiASIC281 => "晶太 (Jīngtài) ASIC (variant)",
-            RomMapper::JingtaiASIC282 => "晶太 (Jīngtài) ASIC (variant)",
+            RomMapper::JingtaiASIC281 | RomMapper::JingtaiASIC282 => {
+                "晶太 (Jīngtài) ASIC (variant)"
+            }
             RomMapper::BlockFamily => "Block Family Multicart Mapper",
             RomMapper::Drip => "Drip Mapper",
             RomMapper::A65AS => "A65AS and JY-066 Multicart Mapper",

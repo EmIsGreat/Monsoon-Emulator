@@ -6,7 +6,7 @@ use monsoon_core::emulation::nes::CpuAlignment;
 use monsoon_core::emulation::screen_renderer::ScreenRenderer;
 
 use crate::frontend::egui::config::{AppConfig, AppSpeed, DebugSpeed};
-use crate::frontend::egui::ui::widgets::HexInput;
+use crate::frontend::egui::ui::widgets::NumInput;
 use crate::frontend::messages::AsyncFrontendMessage;
 use crate::get_all_renderers;
 
@@ -226,13 +226,37 @@ fn render_emulation_config_settings(
             let _ = sender.send(AsyncFrontendMessage::ConfigChanged);
         }
 
+        if config.console_config.nes_config.sha_mode == SHAMode::Mode3 {
+            ui.label("SHA Address Magic Byte");
+            let prev_address_magic = config.console_config.nes_config.sha_mode3_address_magic;
+
+            let input = NumInput::new(
+                ui,
+                "sha_mode3_address_magic_byte_input",
+                &mut config.console_config.nes_config.sha_mode3_address_magic,
+            )
+            .prefix("$".to_string())
+            .radix(16);
+
+            ui.add(input);
+
+            if prev_address_magic != config.console_config.nes_config.sha_mode3_address_magic {
+                let _ = sender.send(AsyncFrontendMessage::ConfigChanged);
+            }
+        }
+
         ui.label("SHA Magic Byte");
         let prev_magic = config.console_config.nes_config.sha_magic;
 
-        ui.add(HexInput::<_, 16>::new(
+        let input = NumInput::new(
+            ui,
+            "sha_magic_byte_input",
             &mut config.console_config.nes_config.sha_magic,
-            &mut config.input_states.sha_magic_input_string,
-        ));
+        )
+        .prefix("$".to_string())
+        .radix(16);
+
+        ui.add(input);
 
         if prev_magic != config.console_config.nes_config.sha_magic {
             let _ = sender.send(AsyncFrontendMessage::ConfigChanged);

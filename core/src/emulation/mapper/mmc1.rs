@@ -151,17 +151,17 @@ impl<V: MMC1Variant, S: MMC1Submapper> MapperLike for MMC1Common<V, S> {
     fn ppu_read_debug(&self, addr: u16, open_bus: &OpenBus) -> PpuReadResult {
         match addr {
             0..=0x1FFF =>
-                {
-                    #[allow(clippy::cast_possible_truncation)]
-                    if let Some(mem) = &self.chr_mem {
-                        PpuReadResult::Handled(
-                            mem.read(self.get_chr_mem_address(addr), open_bus),
-                            false,
-                        )
-                    } else {
-                        PpuReadResult::Handled(addr as u8, false)
-                    }
+            {
+                #[allow(clippy::cast_possible_truncation)]
+                if let Some(mem) = &self.chr_mem {
+                    PpuReadResult::Handled(
+                        mem.read(self.get_chr_mem_address(addr), open_bus),
+                        false,
+                    )
+                } else {
+                    PpuReadResult::Handled(addr as u8, false)
                 }
+            }
             0x2000..=0x3EFF => {
                 PpuReadResult::Nametable(self.nametable_arrangement.resolve_address(addr))
             }
@@ -323,15 +323,15 @@ impl<V: MMC1Variant, S: MMC1Submapper> MapperLike for MMC1Common<V, S> {
     fn get_name(&self) -> &'static str {
         match V::NAME {
             "A" => "MMC1A",
-            "B" => {
-                match S::NUMBER {
-                    0 => { "MMC1" }
-                    5 => "SEROM/SHROM/SH1ROM with 32KB unbanked PRG-ROM",
-                    6 => "2ME",
-                    7 => "KS-7058",
-                    _ => { unreachable!() }
+            "B" => match S::NUMBER {
+                0 => "MMC1",
+                5 => "SEROM/SHROM/SH1ROM with 32KB unbanked PRG-ROM",
+                6 => "2ME",
+                7 => "KS-7058",
+                _ => {
+                    unreachable!()
                 }
-            }
+            },
             _ => {
                 unreachable!()
             }

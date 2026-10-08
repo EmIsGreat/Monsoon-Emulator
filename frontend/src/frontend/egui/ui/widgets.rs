@@ -3,7 +3,6 @@
 //! This module contains common widget patterns that are used across
 //! multiple UI components to reduce code duplication.
 
-use std::fmt::Debug;
 use std::ops::RangeInclusive;
 
 use crossbeam_channel::Sender;
@@ -318,18 +317,24 @@ pub fn wrapping_label(ui: &mut Ui, text: &str, max_rows: usize) -> Response {
     ui.add(egui::Label::new(job).wrap())
 }
 
-pub struct HexInput<'a, T: PrimInt + Unsigned, const R: u32> {
+pub struct NumInput<'a, T: PrimInt + Unsigned> {
     value: &'a mut T,
     bounds: RangeInclusive<T>,
-    input_state: &'a mut String,
+    prefix: String,
+    id: egui::Id,
+    radix: u32,
 }
 
-impl<'a, T: PrimInt + Unsigned, const R: u32> HexInput<'a, T, R> {
-    pub fn new(value: &'a mut T, string: &'a mut String) -> Self {
+impl<'a, T: PrimInt + Unsigned + Copy> NumInput<'a, T> {
+    pub fn new<S: AsIdSalt>(ui: &mut Ui, id: S, value: &'a mut T) -> Self {
+        let id = ui.make_persistent_id(&id);
+
         Self {
             value,
             bounds: T::min_value()..=T::max_value(),
-            input_state: string,
+            prefix: String::default(),
+            radix: 10,
+            id,
         }
     }
 
@@ -338,37 +343,115 @@ impl<'a, T: PrimInt + Unsigned, const R: u32> HexInput<'a, T, R> {
         self.bounds = bounds;
         self
     }
+
+    pub fn prefix(mut self, prefix: String) -> Self {
+        self.prefix = prefix;
+        self
+    }
+
+    pub fn radix(mut self, radix: u32) -> Self {
+        self.radix = radix;
+        self
+    }
 }
 
-impl<T: PrimInt + Unsigned + Debug, const R: u32> Widget for HexInput<'_, T, R> {
+impl<T: PrimInt + Unsigned> Widget for NumInput<'_, T> {
     fn ui(self, ui: &mut Ui) -> Response {
-        let old = self.input_state.clone();
-        let text_field = TextEdit::singleline(self.input_state)
-            .char_limit(size_of::<T>() * 2)
+        let max_digits = Self::digit_count(*self.bounds.end(), self.radix);
+
+        let mut text = ui.memory_mut(|memory| {
+            memory
+                .data
+                .get_temp_mut_or_insert_with(self.id, || {
+                    Self::int_to_radix(*self.value, self.radix, max_digits)
+                })
+                .clone()
+        });
+
+        let text_field = TextEdit::singleline(&mut text)
+            .char_limit(max_digits)
             .cursor_at_end(true)
             .desired_rows(1)
-            .prefix("$")
+            .prefix(self.prefix)
             .font(FontId::monospace(14.0));
 
         let resp = text_field.ui(ui);
 
         if resp.lost_focus() {
-            *self.input_state = self.input_state.to_ascii_uppercase();
-            if self.input_state.len() < 2 {
-                *self.input_state = "0".repeat(2 - self.input_state.len()) + self.input_state;
-            }
-
-            let parsed = T::from_str_radix(self.input_state, R);
+            let parsed = T::from_str_radix(&text, self.radix);
 
             if let Ok(parsed) = parsed
                 && self.bounds.contains(&parsed)
             {
                 *self.value = parsed;
-            } else {
-                *self.input_state = old;
             }
+
+            if text.is_empty() {
+                *self.value = T::zero();
+            }
+
+            text = Self::int_to_radix(*self.value, self.radix, max_digits);
         }
 
+        let text = text.to_ascii_uppercase();
+
+        ui.memory_mut(|memory| {
+            memory.data.insert_temp(self.id, text);
+        });
+
         resp
+    }
+}
+
+impl<T: PrimInt + Unsigned> NumInput<'_, T> {
+    fn int_to_radix(mut value: T, radix: u32, digits: usize) -> String {
+        assert!((2..=36).contains(&radix));
+
+        if value == T::zero() {
+            return "0".repeat(digits);
+        }
+
+        #[allow(clippy::unwrap_used)]
+        let radix = T::from(radix).unwrap();
+        let mut result = String::new();
+
+        while value != T::zero() {
+            #[allow(clippy::unwrap_used)]
+            let digit = (value % radix).to_u8().unwrap();
+
+            result.push(match digit {
+                0..=9 => b'0' + digit,
+                10..=35 => b'A' + (digit - 10),
+                _ => unreachable!(),
+            } as char);
+
+            value = value / radix;
+        }
+
+        result.extend(std::iter::repeat_n(
+            '0',
+            digits.saturating_sub(result.len()),
+        ));
+
+        result.chars().rev().collect()
+    }
+
+    fn digit_count(mut value: T, radix: u32) -> usize
+    where
+        T: PrimInt + Unsigned,
+    {
+        assert!(radix >= 2);
+
+        #[allow(clippy::unwrap_used)]
+        let radix = T::from(radix).unwrap();
+
+        let mut digits = 1usize;
+
+        while value >= radix {
+            value = value / radix;
+            digits += 1;
+        }
+
+        digits
     }
 }

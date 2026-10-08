@@ -7,6 +7,7 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 #![forbid(unsafe_code)]
 #![allow(clippy::missing_errors_doc)]
+extern crate core;
 
 use monsoon_core::declare_renderers;
 use monsoon_core::emulation::screen_renderer::{
