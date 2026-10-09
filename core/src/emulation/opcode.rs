@@ -973,7 +973,7 @@ pub fn init() -> [OpCode; 256] {
         OpCode::new(
             0x9F,
             "*SHA",
-            AbsoluteIndexWrite(Source::DataBus, Source::Y, MicroOpCallback::SHA),
+            AbsoluteIndexWrite(Source::DataBus, Source::Y, MicroOpCallback::None),
         ),
         OpCode::new(0x93, "*SHA", IndirectIndexedWriteSHA),
         OpCode::new(

@@ -3,7 +3,7 @@ use std::ops::{Deref, DerefMut, RangeInclusive};
 use crate::emulation::board::CpuBus;
 use crate::emulation::cpu::Cpu as CoreCpu;
 use crate::emulation::mem::{Memory, OpenBus};
-use crate::emulation::nes::ExecutionResult;
+use crate::emulation::nes::{ExecutionResult, NesConfig};
 
 struct TestBus {
     memory: [u8; 0x10000],
@@ -83,33 +83,33 @@ impl Cpu {
     }
 
     #[inline(always)]
-    fn with_bus<T>(&mut self, f: impl FnOnce(&mut CoreCpu, &mut TestBus) -> T) -> T {
-        f(&mut self.cpu, &mut self.bus)
+    fn with_bus<T>(&mut self, f: impl FnOnce(&mut CoreCpu, &mut TestBus, NesConfig) -> T) -> T {
+        f(&mut self.cpu, &mut self.bus, NesConfig::default())
     }
 
     #[inline]
     pub(crate) fn mem_read(&mut self, addr: u16) -> u8 {
-        self.with_bus(|cpu, bus| cpu.mem_read(addr, bus))
+        self.with_bus(|cpu, bus, _| cpu.mem_read(addr, bus))
     }
 
     #[inline]
     pub(crate) fn mem_write(&mut self, addr: u16, data: u8) {
-        self.with_bus(|cpu, bus| cpu.mem_write(addr, data, bus));
+        self.with_bus(|cpu, bus, _| cpu.mem_write(addr, data, bus));
     }
 
     #[inline]
     pub(crate) fn mem_read_u16(&mut self, addr: u16) -> u16 {
-        self.with_bus(|cpu, bus| cpu.mem_read_u16(addr, bus))
+        self.with_bus(|cpu, bus, _| cpu.mem_read_u16(addr, bus))
     }
 
     #[inline(always)]
     pub(crate) fn mem_write_u16(&mut self, addr: u16, data: u16) {
-        self.with_bus(|cpu, bus| cpu.mem_write_u16(addr, data, bus));
+        self.with_bus(|cpu, bus, _| cpu.mem_write_u16(addr, data, bus));
     }
 
     #[inline(always)]
     pub(crate) fn stack_push(&mut self, data: Option<u8>) {
-        self.with_bus(|cpu, bus| cpu.stack_push(data, bus));
+        self.with_bus(|cpu, bus, _| cpu.stack_push(data, bus));
     }
 
     #[inline]

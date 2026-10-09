@@ -1693,30 +1693,47 @@ impl Cpu {
             false
         };
 
-        let mut addr_hi = if overflow { self.hi + 1 } else { self.hi };
+        let addr_hi = if overflow { self.hi + 1 } else { self.hi };
 
-        let value_reg = self.get_src_value(corruption_source_a).unwrap_or(0xFF)
-            & (self.get_src_value(corruption_source_b).unwrap_or(0xFF) | self.sha_config.magic);
+        let value_reg = match self.sha_config.mode {
+            SHAMode::Mode1 | SHAMode::Mode2 | SHAMode::Mode3 => {
+                self.get_src_value(corruption_source_a).unwrap_or(0xFF)
+                    & (self.get_src_value(corruption_source_b).unwrap_or(0) | self.sha_config.magic)
+            }
+            SHAMode::Mode4 => self.get_src_value(corruption_source_a).unwrap_or(0xFF),
+        };
 
         let addr_reg = match self.sha_config.mode {
             SHAMode::Mode1 => {
                 self.get_src_value(corruption_source_a).unwrap_or(0xFF)
                     & self.get_src_value(corruption_source_b).unwrap_or(0xFF)
+                    & addr_hi
             }
-            SHAMode::Mode2 => self.get_src_value(corruption_source_b).unwrap_or(0xFF),
+            SHAMode::Mode2 => self.get_src_value(corruption_source_b).unwrap_or(0xFF) & addr_hi,
             SHAMode::Mode3 => {
-                self.get_src_value(corruption_source_a).unwrap_or(0xFF)
-                    & self.sha_config.mode3_address_magic
+                println!(
+                    "X:  {:02X}",
+                    self.get_src_value(corruption_source_b).unwrap()
+                );
+                println!("Magic:  {:02X}", self.sha_config.mode3_address_magic);
+                println!(
+                    "(X | Magic): {:02X}",
+                    self.get_src_value(corruption_source_b).unwrap()
+                        | self.sha_config.mode3_address_magic
+                );
+                println!("Addr_hi: {:02X}", addr_hi);
+                println!("Overflow: {}", overflow);
+
+                (self.get_src_value(corruption_source_b).unwrap_or(0)
+                    | self.sha_config.mode3_address_magic)
+                    & self.hi
             }
             SHAMode::Mode4 => {
-                self.get_src_value(corruption_source_a).unwrap_or(0xFF)
-                    | self.get_src_value(corruption_source_b).unwrap_or(0xFF)
+                (self.get_src_value(corruption_source_a).unwrap_or(0)
+                    | self.get_src_value(corruption_source_b).unwrap_or(0))
+                    & addr_hi
             }
         };
-
-        if overflow {
-            addr_hi &= addr_reg;
-        }
 
         if self.sha_rdy_low {
             self.data_bus = value_reg;
@@ -1726,7 +1743,16 @@ impl Cpu {
             self.sha_rdy_low = false;
         }
 
-        self.hi = addr_hi;
+        if self.sha_config.mode == SHAMode::Mode3 {
+            println!("Prev Hi: {:02X}", self.hi);
+            println!("Hi: {:02X}", addr_reg);
+            println!("Val: {:02X}", self.data_bus);
+            println!();
+        }
+
+        if overflow {
+            self.hi = addr_reg;
+        }
     }
 
     fn micro_read_page_cross_aware(
@@ -1919,7 +1945,6 @@ impl Cpu {
             MicroOpCallback::RRA => rra(self),
             MicroOpCallback::SAX => sax(self),
             MicroOpCallback::SBX => sbx(self),
-            MicroOpCallback::SHA => sha(self),
             MicroOpCallback::SHX => shx(self),
             MicroOpCallback::SHY => shy(self),
             MicroOpCallback::SLO => slo(self),
@@ -2228,7 +2253,6 @@ pub enum MicroOpCallback {
     RRA,
     SAX,
     SBX,
-    SHA,
     SHX,
     SHY,
     SLO,
@@ -2729,9 +2753,6 @@ fn sbx(cpu: &mut Cpu) {
         cpu.clear_negative_flag();
     }
 }
-
-#[cold]
-fn sha(cpu: &mut Cpu) { cpu.data_bus = cpu.accumulator & cpu.x_register & cpu.hi.wrapping_add(1); }
 
 #[cold]
 fn shx(cpu: &mut Cpu) {

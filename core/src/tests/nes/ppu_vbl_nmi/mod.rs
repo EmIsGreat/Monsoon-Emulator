@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use crate::emulation::nes::{Nes, NesConfig, RunOptions};
+use crate::emulation::nes::{CpuAlignment, Nes, NesConfig, RunOptions};
 
 #[cfg(test)]
 mod even_odd_frames_09;
@@ -26,7 +26,10 @@ mod vbl_set_time_02;
 #[test]
 fn test_ppu_vbl_nmi() {
     let mut emu = Nes::with_config(NesConfig {
-        alignment: 1,
+        alignment: CpuAlignment::Offset2,
+        sha_mode: Default::default(),
+        sha_magic: 0,
+        sha_mode3_address_magic: 0,
     });
     emu.load_rom((
         Path::new("./tests/nes-test-roms/ppu_vbl_nmi/ppu_vbl_nmi.nes"),
