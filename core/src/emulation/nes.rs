@@ -337,6 +337,9 @@ pub struct NesConfig {
     pub sha_mode: SHAMode,
     pub sha_magic: u8,
     pub sha_mode3_address_magic: u8,
+    pub tas_mode: SHAMode,
+    pub tas_magic: u8,
+    pub tas_mode3_address_magic: u8,
 }
 
 impl Nes {

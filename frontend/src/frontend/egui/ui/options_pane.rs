@@ -261,5 +261,73 @@ fn render_emulation_config_settings(
         if prev_magic != config.console_config.nes_config.sha_magic {
             let _ = sender.send(AsyncFrontendMessage::ConfigChanged);
         }
+
+        ui.separator();
+        ui.label("SHS Mode");
+
+        let prev_mode = config.console_config.nes_config.tas_mode;
+
+        ui.horizontal(|ui| {
+            ui.radio_value(
+                &mut config.console_config.nes_config.tas_mode,
+                SHAMode::Mode1,
+                "1",
+            );
+            ui.radio_value(
+                &mut config.console_config.nes_config.tas_mode,
+                SHAMode::Mode2,
+                "2",
+            );
+            ui.radio_value(
+                &mut config.console_config.nes_config.tas_mode,
+                SHAMode::Mode3,
+                "3",
+            );
+            ui.radio_value(
+                &mut config.console_config.nes_config.tas_mode,
+                SHAMode::Mode4,
+                "4",
+            );
+        });
+
+        if prev_mode != config.console_config.nes_config.tas_mode {
+            let _ = sender.send(AsyncFrontendMessage::ConfigChanged);
+        }
+
+        if config.console_config.nes_config.tas_mode == SHAMode::Mode3 {
+            ui.label("SHA Address Magic Byte");
+            let prev_address_magic = config.console_config.nes_config.tas_mode3_address_magic;
+
+            let input = NumInput::new(
+                ui,
+                "sha_mode3_address_magic_byte_input",
+                &mut config.console_config.nes_config.tas_mode3_address_magic,
+            )
+            .prefix("$".to_string())
+            .radix(16);
+
+            ui.add(input);
+
+            if prev_address_magic != config.console_config.nes_config.tas_mode3_address_magic {
+                let _ = sender.send(AsyncFrontendMessage::ConfigChanged);
+            }
+        }
+
+        ui.label("SHA Magic Byte");
+        let prev_magic = config.console_config.nes_config.tas_magic;
+
+        let input = NumInput::new(
+            ui,
+            "sha_magic_byte_input",
+            &mut config.console_config.nes_config.tas_magic,
+        )
+        .prefix("$".to_string())
+        .radix(16);
+
+        ui.add(input);
+
+        if prev_magic != config.console_config.nes_config.tas_magic {
+            let _ = sender.send(AsyncFrontendMessage::ConfigChanged);
+        }
     });
 }

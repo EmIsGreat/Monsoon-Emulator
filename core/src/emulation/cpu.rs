@@ -96,7 +96,8 @@ pub struct Cpu {
     pub dma_state: DmaState,
     pub nmi_state: NMIState,
     pub irq_state: IRQState,
-    pub sha_config: SHAConfig,
+    pub sha_config: CorruptionConfig,
+    pub tas_config: CorruptionConfig,
     pub rdy: bool,
     pub sha_rdy_low: bool,
     /// Last memory access for watchpoint debugging (address, `was_read`, value)
@@ -114,7 +115,7 @@ pub enum SHAMode {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
-pub struct SHAConfig {
+pub struct CorruptionConfig {
     mode: SHAMode,
     magic: u8,
     mode3_address_magic: u8,
@@ -191,7 +192,8 @@ impl Cpu {
             ane_constant: 0xEE,
             is_halted: false,
             irq_state: IRQState::default(),
-            sha_config: SHAConfig::default(),
+            sha_config: CorruptionConfig::default(),
+            tas_config: CorruptionConfig::default(),
             nmi_state: NMIState::default(),
             dma_state: DmaState::default(),
             sha_rdy_low: false,
@@ -496,12 +498,8 @@ impl Cpu {
                         false,
                         MicroOpCallback::ShaRdyCheck,
                     ));
-                self.op_queue.push_back(MicroOp::ReadPageCrossCorrupting(
-                    AddressSource::AddressLatch,
-                    Source::Y,
-                    Source::A,
-                    Source::X,
-                ));
+                self.op_queue
+                    .push_back(MicroOp::ReadPageCrossCorrupting(false));
                 self.op_queue.push_back(MicroOp::Write(
                     Target::AddressLatch,
                     Source::DataBus,
@@ -509,7 +507,7 @@ impl Cpu {
                     MicroOpCallback::None,
                 ));
             }
-            OpType::AbsoluteIndexWriteSHA => {
+            OpType::AbsoluteIndexCorruptingWrite(update_sp) => {
                 self.op_queue
                     .push_back(MicroOp::FetchOperandLo(MicroOpCallback::None));
                 self.op_queue
@@ -523,12 +521,8 @@ impl Cpu {
                         true,
                         MicroOpCallback::ShaRdyCheck,
                     ));
-                self.op_queue.push_back(MicroOp::ReadPageCrossCorrupting(
-                    AddressSource::AddressLatch,
-                    Source::Y,
-                    Source::A,
-                    Source::X
-                ));
+                self.op_queue
+                    .push_back(MicroOp::ReadPageCrossCorrupting(update_sp));
                 self.op_queue.push_back(MicroOp::Write(
                     Target::AddressLatch,
                     Source::DataBus,
@@ -1363,10 +1357,15 @@ impl Cpu {
     #[inline(always)]
     pub fn step(&mut self, bus: &mut impl CpuBus, config: NesConfig) -> ExecutionResult {
         self.cycle += 1;
+        
         self.sha_config.magic = config.sha_magic;
         self.sha_config.mode3_address_magic = config.sha_mode3_address_magic;
         self.sha_config.mode = config.sha_mode;
-
+        
+        self.tas_config.magic = config.tas_magic;
+        self.tas_config.mode3_address_magic = config.tas_mode3_address_magic;
+        self.tas_config.mode = config.tas_mode;
+        
         if self.is_halted {
             return ExecutionResult {
                 hlt_reached: true,
@@ -1488,19 +1487,8 @@ impl Cpu {
                     callback,
                 );
             }
-            MicroOp::ReadPageCrossCorrupting(
-                source,
-                offset,
-                corruption_source_a,
-                corruption_source_b,
-            ) => {
-                self.micro_page_cross_corrupted(
-                    bus,
-                    source,
-                    offset,
-                    corruption_source_a,
-                    corruption_source_b,
-                );
+            MicroOp::ReadPageCrossCorrupting(update_sp) => {
+                self.micro_page_cross_corrupted(bus, update_sp);
             }
             MicroOp::DummyReadAddOffsetWriteToTarget(source, offset, target, callback) => {
                 self.micro_dummy_read_add_offset_write_to_target(
@@ -1695,22 +1683,15 @@ impl Cpu {
         self.run_op(callback, bus);
     }
 
-    fn micro_page_cross_corrupted(
-        &mut self,
-        bus: &mut impl CpuBus,
-        address_source: AddressSource,
-        offset: Source,
-        corruption_source_a: Source,
-        corruption_source_b: Source,
-    ) {
+    fn micro_page_cross_corrupted(&mut self, bus: &mut impl CpuBus, update_sp: bool) {
         #[allow(clippy::expect_used)]
         let _ = self.mem_read(
-            self.get_u16_address(address_source)
+            self.get_u16_address(AddressSource::AddressLatch)
                 .expect("Needs a not-none source"),
             bus,
         );
 
-        let offset = self.get_src_value(offset);
+        let offset = self.get_src_value(Source::Y);
 
         let overflow = if let Some(offset) = offset
             && self.lo.overflowing_sub(offset).1
@@ -1722,31 +1703,24 @@ impl Cpu {
 
         let addr_hi = if overflow { self.hi + 1 } else { self.hi };
 
-        let value_reg = match self.sha_config.mode {
-            SHAMode::Mode1 | SHAMode::Mode2 | SHAMode::Mode3 => {
-                self.get_src_value(corruption_source_a).unwrap_or(0xFF)
-                    & (self.get_src_value(corruption_source_b).unwrap_or(0) | self.sha_config.magic)
-            }
-            SHAMode::Mode4 => self.get_src_value(corruption_source_a).unwrap_or(0xFF),
+        let sha_config = if update_sp {
+            &self.tas_config
+        } else {
+            &self.sha_config
         };
 
-        let addr_reg = match self.sha_config.mode {
-            SHAMode::Mode1 => {
-                self.get_src_value(corruption_source_a).unwrap_or(0xFF)
-                    & self.get_src_value(corruption_source_b).unwrap_or(0xFF)
-                    & addr_hi
+        let value_reg = match sha_config.mode {
+            SHAMode::Mode1 | SHAMode::Mode2 | SHAMode::Mode3 => {
+                self.accumulator & (self.x_register | sha_config.magic)
             }
-            SHAMode::Mode2 => self.get_src_value(corruption_source_b).unwrap_or(0xFF) & addr_hi,
-            SHAMode::Mode3 => {
-                (self.get_src_value(corruption_source_b).unwrap_or(0)
-                    | self.sha_config.mode3_address_magic)
-                    & self.hi
-            }
-            SHAMode::Mode4 => {
-                (self.get_src_value(corruption_source_a).unwrap_or(0)
-                    | self.get_src_value(corruption_source_b).unwrap_or(0))
-                    & addr_hi
-            }
+            SHAMode::Mode4 => self.accumulator,
+        };
+
+        let addr_reg = match sha_config.mode {
+            SHAMode::Mode1 => self.accumulator & self.x_register & addr_hi,
+            SHAMode::Mode2 => self.x_register & addr_hi,
+            SHAMode::Mode3 => (self.x_register | sha_config.mode3_address_magic) & self.hi,
+            SHAMode::Mode4 => (self.accumulator | self.x_register) & addr_hi,
         };
 
         if self.sha_rdy_low {
@@ -1755,6 +1729,10 @@ impl Cpu {
         } else {
             self.data_bus = value_reg & self.hi.wrapping_add(1);
             self.sha_rdy_low = false;
+        }
+
+        if update_sp {
+            self.stack_pointer = self.accumulator & self.x_register;
         }
 
         if overflow {
@@ -1956,7 +1934,6 @@ impl Cpu {
             MicroOpCallback::SHY => shy(self),
             MicroOpCallback::SLO => slo(self),
             MicroOpCallback::SRE => sre(self),
-            MicroOpCallback::TAS => tas(self),
             MicroOpCallback::JAM => jam(self),
             MicroOpCallback::COPY(source, target) => copy(self, source, target),
             MicroOpCallback::LockIrqVec => {
@@ -2135,7 +2112,7 @@ pub enum MicroOp {
     /// offsetting by Source, if an overflow occurred in its obtaining,
     /// increment hi to fix address latch
     ReadPageCrossAware(AddressSource, Source, Target, bool, MicroOpCallback),
-    ReadPageCrossCorrupting(AddressSource, Source, Source, Source),
+    ReadPageCrossCorrupting(bool),
     DummyReadAddOffsetWriteToTarget(AddressSource, Source, Target, MicroOpCallback),
     DummyRead(MicroOpCallback),
     ReadWithOffsetFromZPAndAddSomethingU8(
@@ -2265,7 +2242,6 @@ pub enum MicroOpCallback {
     SLO,
     SRE,
     JAM,
-    TAS,
     COPY(AddressSource, Target),
     LockIrqVec,
     SEIandLockIrqVec,
@@ -2698,6 +2674,8 @@ fn las(cpu: &mut Cpu) {
     cpu.accumulator = res;
     cpu.x_register = res;
     cpu.stack_pointer = res;
+
+    cpu.update_negative_and_zero_flags(cpu.accumulator);
 }
 
 #[cold]
@@ -2802,12 +2780,6 @@ fn sre(cpu: &mut Cpu) {
 
     cpu.accumulator ^= res;
     cpu.update_negative_and_zero_flags(cpu.accumulator);
-}
-
-#[cold]
-fn tas(cpu: &mut Cpu) {
-    cpu.stack_pointer = cpu.accumulator & cpu.x_register;
-    cpu.data_bus = cpu.accumulator & cpu.x_register & cpu.hi.wrapping_add(1);
 }
 
 #[cold]

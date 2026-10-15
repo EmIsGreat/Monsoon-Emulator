@@ -16,7 +16,7 @@ use static_assertions::assert_impl_all;
 
 use crate::emulation::apu::{Apu, FrameCounter};
 use crate::emulation::board::Board;
-use crate::emulation::cpu::{Cpu, DmaState, IRQState, MicroOp, NMIState, OpQueue, SHAConfig};
+use crate::emulation::cpu::{Cpu, DmaState, IRQState, MicroOp, NMIState, OpQueue, CorruptionConfig};
 use crate::emulation::mapper::{Mapper, MapperLike};
 use crate::emulation::mem::palette_ram::PaletteRam;
 use crate::emulation::mem::{Memory, OpenBus};
@@ -79,7 +79,8 @@ pub struct CpuState {
     pub remaining_dma_cycles: u16,
     pub rdy: bool,
     pub sha_rdy_low: bool,
-    pub sha_config: SHAConfig,
+    pub sha_config: CorruptionConfig,
+    pub tas_config: CorruptionConfig,
 }
 
 impl From<&Cpu> for CpuState {
@@ -107,6 +108,7 @@ impl From<&Cpu> for CpuState {
             rdy: cpu.rdy,
             sha_rdy_low: cpu.sha_rdy_low,
             sha_config: cpu.sha_config,
+            tas_config: cpu.tas_config,
         }
     }
 }
@@ -138,6 +140,7 @@ impl From<&CpuState> for Cpu {
             cycle: state.cycle,
             rdy: state.rdy,
             sha_config: state.sha_config,
+            tas_config: state.tas_config,
             sha_rdy_low: state.sha_rdy_low,
         }
     }

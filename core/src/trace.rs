@@ -135,7 +135,7 @@ pub fn get_opcode_descriptor(opcode: OpCode, cpu: &CpuTraceState, bus: &impl Cpu
                 bus.read_debug(effective_address)
             )
         }
-        OpType::AbsoluteIndexWriteSHA => {
+        OpType::AbsoluteIndexCorruptingWrite(_) => {
             let address = u16::from(bus.read_debug(cpu.program_counter.wrapping_add(1))) << 8
                 | u16::from(bus.read_debug(cpu.program_counter));
 
