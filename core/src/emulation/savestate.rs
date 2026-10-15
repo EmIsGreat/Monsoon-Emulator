@@ -16,7 +16,9 @@ use static_assertions::assert_impl_all;
 
 use crate::emulation::apu::{Apu, FrameCounter};
 use crate::emulation::board::Board;
-use crate::emulation::cpu::{Cpu, DmaState, IRQState, MicroOp, NMIState, OpQueue, CorruptionConfig};
+use crate::emulation::cpu::{
+    CorruptionConfig, Cpu, DmaState, IRQState, MicroOp, NMIState, OpQueue,
+};
 use crate::emulation::mapper::{Mapper, MapperLike};
 use crate::emulation::mem::palette_ram::PaletteRam;
 use crate::emulation::mem::{Memory, OpenBus};

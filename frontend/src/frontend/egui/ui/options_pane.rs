@@ -1,7 +1,7 @@
 //! Options pane rendering
 
 use crossbeam_channel::Sender;
-use monsoon_core::emulation::cpu::SHAMode;
+use monsoon_core::emulation::cpu::{CorruptionConfig, SHAMode};
 use monsoon_core::emulation::nes::CpuAlignment;
 use monsoon_core::emulation::screen_renderer::ScreenRenderer;
 
@@ -195,139 +195,74 @@ fn render_emulation_config_settings(
         }
 
         ui.separator();
-        ui.label("SHA Mode");
 
-        let prev_mode = config.console_config.nes_config.sha_mode;
-
-        ui.horizontal(|ui| {
-            ui.radio_value(
-                &mut config.console_config.nes_config.sha_mode,
-                SHAMode::Mode1,
-                "1",
-            );
-            ui.radio_value(
-                &mut config.console_config.nes_config.sha_mode,
-                SHAMode::Mode2,
-                "2",
-            );
-            ui.radio_value(
-                &mut config.console_config.nes_config.sha_mode,
-                SHAMode::Mode3,
-                "3",
-            );
-            ui.radio_value(
-                &mut config.console_config.nes_config.sha_mode,
-                SHAMode::Mode4,
-                "4",
-            );
-        });
-
-        if prev_mode != config.console_config.nes_config.sha_mode {
-            let _ = sender.send(AsyncFrontendMessage::ConfigChanged);
-        }
-
-        if config.console_config.nes_config.sha_mode == SHAMode::Mode3 {
-            ui.label("SHA Address Magic Byte");
-            let prev_address_magic = config.console_config.nes_config.sha_mode3_address_magic;
-
-            let input = NumInput::new(
-                ui,
-                "sha_mode3_address_magic_byte_input",
-                &mut config.console_config.nes_config.sha_mode3_address_magic,
-            )
-            .prefix("$".to_string())
-            .radix(16);
-
-            ui.add(input);
-
-            if prev_address_magic != config.console_config.nes_config.sha_mode3_address_magic {
-                let _ = sender.send(AsyncFrontendMessage::ConfigChanged);
-            }
-        }
-
-        ui.label("SHA Magic Byte");
-        let prev_magic = config.console_config.nes_config.sha_magic;
-
-        let input = NumInput::new(
+        render_sha_options(
             ui,
-            "sha_magic_byte_input",
-            &mut config.console_config.nes_config.sha_magic,
-        )
-        .prefix("$".to_string())
-        .radix(16);
-
-        ui.add(input);
-
-        if prev_magic != config.console_config.nes_config.sha_magic {
-            let _ = sender.send(AsyncFrontendMessage::ConfigChanged);
-        }
+            &mut config.console_config.nes_config.sha_config,
+            sender,
+            "SHA",
+        );
 
         ui.separator();
-        ui.label("SHS Mode");
 
-        let prev_mode = config.console_config.nes_config.tas_mode;
+        render_sha_options(
+            ui,
+            &mut config.console_config.nes_config.tas_config,
+            sender,
+            "SHS",
+        );
+    });
+}
 
-        ui.horizontal(|ui| {
-            ui.radio_value(
-                &mut config.console_config.nes_config.tas_mode,
-                SHAMode::Mode1,
-                "1",
-            );
-            ui.radio_value(
-                &mut config.console_config.nes_config.tas_mode,
-                SHAMode::Mode2,
-                "2",
-            );
-            ui.radio_value(
-                &mut config.console_config.nes_config.tas_mode,
-                SHAMode::Mode3,
-                "3",
-            );
-            ui.radio_value(
-                &mut config.console_config.nes_config.tas_mode,
-                SHAMode::Mode4,
-                "4",
-            );
-        });
+fn render_sha_options(
+    ui: &mut egui::Ui,
+    config: &mut CorruptionConfig,
+    sender: &Sender<AsyncFrontendMessage>,
+    name: &'static str,
+) {
+    ui.label(name.to_owned() + " Mode");
+    let prev_mode = config.mode;
 
-        if prev_mode != config.console_config.nes_config.tas_mode {
-            let _ = sender.send(AsyncFrontendMessage::ConfigChanged);
-        }
+    ui.horizontal(|ui| {
+        ui.radio_value(&mut config.mode, SHAMode::Mode1, "1");
+        ui.radio_value(&mut config.mode, SHAMode::Mode2, "2");
+        ui.radio_value(&mut config.mode, SHAMode::Mode3, "3");
+        ui.radio_value(&mut config.mode, SHAMode::Mode4, "4");
+    });
 
-        if config.console_config.nes_config.tas_mode == SHAMode::Mode3 {
-            ui.label("SHA Address Magic Byte");
-            let prev_address_magic = config.console_config.nes_config.tas_mode3_address_magic;
+    if prev_mode != config.mode {
+        let _ = sender.send(AsyncFrontendMessage::ConfigChanged);
+    }
 
-            let input = NumInput::new(
-                ui,
-                "sha_mode3_address_magic_byte_input",
-                &mut config.console_config.nes_config.tas_mode3_address_magic,
-            )
-            .prefix("$".to_string())
-            .radix(16);
-
-            ui.add(input);
-
-            if prev_address_magic != config.console_config.nes_config.tas_mode3_address_magic {
-                let _ = sender.send(AsyncFrontendMessage::ConfigChanged);
-            }
-        }
-
-        ui.label("SHA Magic Byte");
-        let prev_magic = config.console_config.nes_config.tas_magic;
+    if config.mode == SHAMode::Mode3 {
+        ui.label(name.to_owned() + " Address Magic Byte");
+        let prev_address_magic = config.mode3_address_magic;
 
         let input = NumInput::new(
             ui,
-            "sha_magic_byte_input",
-            &mut config.console_config.nes_config.tas_magic,
+            name.to_owned() + "mode3_address_magic_byte_input",
+            &mut config.mode3_address_magic,
         )
         .prefix("$".to_string())
         .radix(16);
 
         ui.add(input);
 
-        if prev_magic != config.console_config.nes_config.tas_magic {
+        if prev_address_magic != config.mode3_address_magic {
             let _ = sender.send(AsyncFrontendMessage::ConfigChanged);
         }
-    });
+    }
+
+    ui.label(name.to_owned() + " Magic Byte");
+    let prev_magic = config.magic;
+
+    let input = NumInput::new(ui, name.to_owned() + "magic_byte_input", &mut config.magic)
+        .prefix("$".to_string())
+        .radix(16);
+
+    ui.add(input);
+
+    if prev_magic != config.magic {
+        let _ = sender.send(AsyncFrontendMessage::ConfigChanged);
+    }
 }

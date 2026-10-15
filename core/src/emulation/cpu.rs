@@ -116,9 +116,9 @@ pub enum SHAMode {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub struct CorruptionConfig {
-    mode: SHAMode,
-    magic: u8,
-    mode3_address_magic: u8,
+    pub mode: SHAMode,
+    pub magic: u8,
+    pub mode3_address_magic: u8,
 }
 
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, PartialEq, Eq, Serialize, Deserialize, Hash)]
@@ -1357,15 +1357,15 @@ impl Cpu {
     #[inline(always)]
     pub fn step(&mut self, bus: &mut impl CpuBus, config: NesConfig) -> ExecutionResult {
         self.cycle += 1;
-        
-        self.sha_config.magic = config.sha_magic;
-        self.sha_config.mode3_address_magic = config.sha_mode3_address_magic;
-        self.sha_config.mode = config.sha_mode;
-        
-        self.tas_config.magic = config.tas_magic;
-        self.tas_config.mode3_address_magic = config.tas_mode3_address_magic;
-        self.tas_config.mode = config.tas_mode;
-        
+
+        self.sha_config.magic = config.sha_config.magic;
+        self.sha_config.mode3_address_magic = config.sha_config.mode3_address_magic;
+        self.sha_config.mode = config.sha_config.mode;
+
+        self.tas_config.magic = config.tas_config.magic;
+        self.tas_config.mode3_address_magic = config.tas_config.mode3_address_magic;
+        self.tas_config.mode = config.tas_config.mode;
+
         if self.is_halted {
             return ExecutionResult {
                 hlt_reached: true,

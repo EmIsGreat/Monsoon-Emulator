@@ -11,7 +11,7 @@ use std::fmt::Write;
 use std::path::Path;
 use std::time::Instant;
 
-use monsoon_core::emulation::cpu::SHAMode;
+use monsoon_core::emulation::cpu::CorruptionConfig;
 use monsoon_core::emulation::debug_tools::StopReason;
 use monsoon_core::emulation::nes::{
     CpuAlignment, ExecutionResult, MASTER_CYCLES_PER_FRAME, Nes, NesConfig,
@@ -93,9 +93,8 @@ pub fn run_headless(args: &CliArgs) -> Result<(), String> {
     let savestate_config = SavestateConfig::from_cli_args(args);
     let nes_config: NesConfig = NesConfig {
         alignment: CpuAlignment::Offset2,
-        sha_mode: SHAMode::default(),
-        sha_magic: 0,
-        sha_mode3_address_magic: 0,
+        sha_config: CorruptionConfig::default(),
+        tas_config: CorruptionConfig::default(),
     };
 
     // Create and configure the execution engine

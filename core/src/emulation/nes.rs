@@ -8,7 +8,7 @@ use num_enum::{FromPrimitive, IntoPrimitive};
 use serde::{Deserialize, Serialize};
 
 use crate::emulation::board::{Board, CpuBus, CpuBusView, PpuBus, PpuBusView};
-use crate::emulation::cpu::{Cpu, SHAMode};
+use crate::emulation::cpu::{CorruptionConfig, Cpu};
 use crate::emulation::debug_tools::{StopCondition, StopReason};
 use crate::emulation::mapper::MapperLike;
 use crate::emulation::peripherals::Peripheral;
@@ -334,12 +334,8 @@ impl Nes {
 pub struct NesConfig {
     // Cpu-ppu cycle offset: 0-3
     pub alignment: CpuAlignment,
-    pub sha_mode: SHAMode,
-    pub sha_magic: u8,
-    pub sha_mode3_address_magic: u8,
-    pub tas_mode: SHAMode,
-    pub tas_magic: u8,
-    pub tas_mode3_address_magic: u8,
+    pub sha_config: CorruptionConfig,
+    pub tas_config: CorruptionConfig,
 }
 
 impl Nes {
