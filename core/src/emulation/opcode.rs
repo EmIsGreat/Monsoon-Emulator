@@ -3,14 +3,7 @@ use std::sync::OnceLock;
 use serde::{Deserialize, Serialize};
 
 use crate::emulation::cpu::{Condition, MicroOpCallback, Source, Target};
-use crate::emulation::opcode::OpType::{
-    AbsoluteIndexRMW, AbsoluteIndexRead, AbsoluteIndexWrite, AbsoluteRMW, AbsoluteRead,
-    AbsoluteWrite, AccumulatorOrImplied, BRK, ImmediateAddressing, IndexedIndirectRMW,
-    IndexedIndirectRead, IndexedIndirectWrite, IndirectIndexedRMW, IndirectIndexedRead,
-    IndirectIndexedWrite, IndirectIndexedWriteSHA, JSR, JmpAbsolute, JmpIndirect, PH, PL, RTI, RTS,
-    Relative, ZeroPageIndexRMW, ZeroPageIndexRead, ZeroPageIndexWrite, ZeroPageRMW, ZeroPageRead,
-    ZeroPageWrite,
-};
+use crate::emulation::opcode::OpType::{AbsoluteIndexRMW, AbsoluteIndexRead, AbsoluteIndexWrite, AbsoluteIndexWriteSHA, AbsoluteRMW, AbsoluteRead, AbsoluteWrite, AccumulatorOrImplied, ImmediateAddressing, IndexedIndirectRMW, IndexedIndirectRead, IndexedIndirectWrite, IndirectIndexedRMW, IndirectIndexedRead, IndirectIndexedWrite, IndirectIndexedWriteSHA, JmpAbsolute, JmpIndirect, Relative, ZeroPageIndexRMW, ZeroPageIndexRead, ZeroPageIndexWrite, ZeroPageRMW, ZeroPageRead, ZeroPageWrite, BRK, JSR, PH, PL, RTI, RTS};
 /// Direct lookup table for opcodes - O(1) array access vs `HashMap`
 pub static OPCODES_TABLE: OnceLock<[OpCode; 256]> = OnceLock::new();
 
@@ -973,7 +966,7 @@ pub fn init() -> [OpCode; 256] {
         OpCode::new(
             0x9F,
             "*SHA",
-            AbsoluteIndexWrite(Source::DataBus, Source::Y, MicroOpCallback::None),
+            AbsoluteIndexWriteSHA,
         ),
         OpCode::new(0x93, "*SHA", IndirectIndexedWriteSHA),
         OpCode::new(
@@ -1157,6 +1150,7 @@ pub fn get_bytes_for_opcode(op: OpCode) -> u8 {
         | AbsoluteWrite(..)
         | AbsoluteIndexRMW(..)
         | AbsoluteIndexWrite(..)
+        | AbsoluteIndexWriteSHA
         | JmpIndirect(_) => 2,
     }
 }
@@ -1180,6 +1174,7 @@ pub enum OpType {
     AbsoluteIndexRead(Source, Target, MicroOpCallback),
     AbsoluteIndexRMW(Source, MicroOpCallback),
     AbsoluteIndexWrite(Source, Source, MicroOpCallback),
+    AbsoluteIndexWriteSHA,
     ZeroPageRead(Target, MicroOpCallback),
     ZeroPageRMW(Target, MicroOpCallback),
     ZeroPageWrite(Source, MicroOpCallback),

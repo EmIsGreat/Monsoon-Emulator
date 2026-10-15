@@ -509,6 +509,33 @@ impl Cpu {
                     MicroOpCallback::None,
                 ));
             }
+            OpType::AbsoluteIndexWriteSHA => {
+                self.op_queue
+                    .push_back(MicroOp::FetchOperandLo(MicroOpCallback::None));
+                self.op_queue
+                    .push_back(MicroOp::ReadWithOffsetFromU16AndAddSomething(
+                        AddressSource::PC,
+                        Source::Constant(0),
+                        Target::HI,
+                        Source::LO,
+                        Source::Y,
+                        Target::LO,
+                        true,
+                        MicroOpCallback::ShaRdyCheck,
+                    ));
+                self.op_queue.push_back(MicroOp::ReadPageCrossCorrupting(
+                    AddressSource::AddressLatch,
+                    Source::Y,
+                    Source::A,
+                    Source::X
+                ));
+                self.op_queue.push_back(MicroOp::Write(
+                    Target::AddressLatch,
+                    Source::DataBus,
+                    false,
+                    MicroOpCallback::None,
+                ));
+            }
         }
     }
 
@@ -1711,19 +1738,6 @@ impl Cpu {
             }
             SHAMode::Mode2 => self.get_src_value(corruption_source_b).unwrap_or(0xFF) & addr_hi,
             SHAMode::Mode3 => {
-                println!(
-                    "X:  {:02X}",
-                    self.get_src_value(corruption_source_b).unwrap()
-                );
-                println!("Magic:  {:02X}", self.sha_config.mode3_address_magic);
-                println!(
-                    "(X | Magic): {:02X}",
-                    self.get_src_value(corruption_source_b).unwrap()
-                        | self.sha_config.mode3_address_magic
-                );
-                println!("Addr_hi: {:02X}", addr_hi);
-                println!("Overflow: {}", overflow);
-
                 (self.get_src_value(corruption_source_b).unwrap_or(0)
                     | self.sha_config.mode3_address_magic)
                     & self.hi
@@ -1741,13 +1755,6 @@ impl Cpu {
         } else {
             self.data_bus = value_reg & self.hi.wrapping_add(1);
             self.sha_rdy_low = false;
-        }
-
-        if self.sha_config.mode == SHAMode::Mode3 {
-            println!("Prev Hi: {:02X}", self.hi);
-            println!("Hi: {:02X}", addr_reg);
-            println!("Val: {:02X}", self.data_bus);
-            println!();
         }
 
         if overflow {
@@ -2280,6 +2287,7 @@ pub enum Condition {
 
 #[cfg(test)]
 impl Cpu {
+    #[must_use]
     pub fn test_instance() -> Self {
         let mut inst = Cpu::new();
 

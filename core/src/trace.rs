@@ -135,6 +135,24 @@ pub fn get_opcode_descriptor(opcode: OpCode, cpu: &CpuTraceState, bus: &impl Cpu
                 bus.read_debug(effective_address)
             )
         }
+        OpType::AbsoluteIndexWriteSHA => {
+            let address = u16::from(bus.read_debug(cpu.program_counter.wrapping_add(1))) << 8
+                | u16::from(bus.read_debug(cpu.program_counter));
+
+            let reg_string = get_str_for_src(Source::Y);
+
+            let val = cpu.y_register;
+
+            let effective_address = address.wrapping_add(u16::from(val));
+
+            format!(
+                "${:04X},{} @ {:04X} = {:02X}",
+                address,
+                reg_string,
+                effective_address,
+                bus.read_debug(effective_address)
+            )
+        }
         OpType::ZeroPageRead(..) | OpType::ZeroPageRMW(..) | OpType::ZeroPageWrite(..) => {
             let address = bus.read_debug(cpu.program_counter);
             format!(
