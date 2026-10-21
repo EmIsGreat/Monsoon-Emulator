@@ -7,7 +7,6 @@ use std::str::FromStr;
 
 use monsoon_core::emulation::rom::{RomFile, RomMapper};
 use monsoon_core::rom_db::RomDb;
-use strum::IntoEnumIterator;
 use walkdir::WalkDir;
 
 pub fn search_for_mapper(mapper: u16, use_local: bool) {
@@ -65,7 +64,10 @@ pub fn search_for_submapper_mapper(mapper: u16, sub: u8, use_local: bool) {
     );
 }
 
-type RomTransformer = dyn Fn(&RomFile) -> String;
+pub type RomTransformer = dyn Fn(&RomFile) -> String;
+pub fn get_transformer(f: impl Fn(&RomFile) -> String + 'static) -> Box<RomTransformer> {
+    Box::new(f)
+}
 
 /// # Panics
 /// When Rom is missing name
@@ -95,10 +97,10 @@ where
 
 pub fn print_stats<X, G>(getter: G, use_local: bool)
 where
-    X: IntoEnumIterator + Eq + Hash + Display + Ord,
+    X: Eq + Hash + Display + Ord,
     G: Fn(&RomFile) -> Option<X>,
 {
-    let counts: HashMap<X, usize> = X::iter().map(|v| (v, 0)).collect();
+    let counts: HashMap<X, usize> = HashMap::new();
 
     let mut vec = get_with_predicate(|_| true, use_local)
         .iter()

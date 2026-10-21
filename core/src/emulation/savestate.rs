@@ -454,7 +454,7 @@ impl From<&BoardState> for Board {
 /// # Serialization
 ///
 /// ```rust,no_run
-/// use monsoon_core::util::ToBytes;
+/// use monsoon_core::util::{SerializationFormat, ToBytes};
 /// # use monsoon_core::emulation::savestate::SaveState;
 ///
 /// # fn example(state: SaveState) {
@@ -462,7 +462,7 @@ impl From<&BoardState> for Board {
 /// let bytes = state.to_bytes(None);
 ///
 /// // JSON format (human-readable, larger)
-/// let json_bytes = state.to_bytes(Some("json".to_string()));
+/// let json_bytes = state.to_bytes(SerializationFormat::Json));
 /// # }
 /// ```
 #[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, Hash)]
