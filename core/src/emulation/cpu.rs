@@ -1222,7 +1222,7 @@ impl Cpu {
         self.op_queue.push_back(MicroOp::DummyRead(callback));
     }
 
-    fn get_instructions_for_irq() -> OpQueue<8> {
+    fn get_instructions_for_irq(address: u16) -> OpQueue<8> {
         let mut instructions = OpQueue::new();
 
         instructions.push_back(MicroOp::ReadWithOffsetFromU16AndAddSomething(
@@ -1252,12 +1252,12 @@ impl Cpu {
             MicroOpCallback::LockIrqVec,
         ));
         instructions.push_back(MicroOp::Read(
-            AddressSource::IrqVec,
+            AddressSource::Address(address),
             Target::PCL,
             MicroOpCallback::SEI,
         ));
         instructions.push_back(MicroOp::ReadWithOffsetFromU16AndAddSomething(
-            AddressSource::IrqVec,
+            AddressSource::Address(address),
             Source::Constant(1),
             Target::PCH,
             Source::None,
@@ -1311,7 +1311,7 @@ impl Cpu {
     }
 
     pub fn trigger_nmi(&mut self) {
-        let mut seq = Cpu::get_instructions_for_irq();
+        let mut seq = Cpu::get_instructions_for_irq(NMI_HANDLER_ADDR);
         self.nmi_state.pending = false;
 
         self.irq_state.is_in_irq = true;
@@ -1323,7 +1323,7 @@ impl Cpu {
     }
 
     pub fn trigger_irq(&mut self) {
-        let mut seq = Cpu::get_instructions_for_irq();
+        let mut seq = Cpu::get_instructions_for_irq(IRQ_VECTOR_ADDR);
 
         self.irq_state.is_in_irq = true;
 

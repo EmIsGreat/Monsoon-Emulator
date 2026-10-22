@@ -87,15 +87,17 @@ impl Apu {
             }
         }
 
-        let sample = self.mix();
+        if is_proper {
+            let sample = self.mix();
 
-        if let Some(producer) = &mut self.sample_producer {
-            self.sample_phase += SAMPLE_RATE;
+            if let Some(producer) = &mut self.sample_producer {
+                self.sample_phase += SAMPLE_RATE;
 
-            if self.sample_phase >= APU_FREQUENCY {
-                self.sample_phase -= APU_FREQUENCY;
+                if self.sample_phase >= APU_FREQUENCY {
+                    self.sample_phase -= APU_FREQUENCY;
 
-                let _ = producer.push(sample);
+                    let _ = producer.push(sample);
+                }
             }
         }
     }
@@ -466,23 +468,12 @@ impl EnvelopeUnit {
     }
 }
 
-#[derive(Debug, Clone, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, Hash, PartialEq, Serialize, Deserialize, Default)]
 pub struct FrameCounter {
     pub external_sync: bool,
     pub frame_interrupt: bool,
     pub interrupt_inhibit: bool,
     pub apu_cycle_counter: u16,
-}
-
-impl Default for FrameCounter {
-    fn default() -> Self {
-        Self {
-            external_sync: false,
-            frame_interrupt: false,
-            interrupt_inhibit: true,
-            apu_cycle_counter: 0,
-        }
-    }
 }
 
 impl FrameCounter {
