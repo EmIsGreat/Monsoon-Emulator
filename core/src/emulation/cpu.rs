@@ -206,7 +206,6 @@ impl Cpu {
     #[inline(always)]
     pub fn mem_read(&mut self, addr: u16, bus: &mut impl CpuBus) -> u8 {
         let res = bus.read(addr);
-
         self.last_memory_access = Some((addr, true, res));
 
         res
@@ -1939,10 +1938,6 @@ impl Cpu {
             MicroOpCallback::LockIrqVec => {
                 self.irq_state.locked_irq_vec = self.irq_state.current_irq_vec;
             }
-            MicroOpCallback::SEIandLockIrqVec => {
-                sei(self);
-                self.irq_state.locked_irq_vec = self.irq_state.current_irq_vec;
-            }
             MicroOpCallback::ExitIrq => self.irq_state.is_in_irq = false,
             MicroOpCallback::ShaRdyCheck => {
                 self.sha_rdy_low = self.rdy;
@@ -2244,7 +2239,6 @@ pub enum MicroOpCallback {
     JAM,
     COPY(AddressSource, Target),
     LockIrqVec,
-    SEIandLockIrqVec,
     ExitIrq,
     ShaRdyCheck,
 }

@@ -9,7 +9,6 @@ const FRAME_COUNTER_STEP_3: u16 = 11185;
 const FRAME_COUNTER_STEP_4: u16 = 14914;
 const FRAME_COUNTER_STEP_5: u16 = 18640;
 const ONE_OVER_8227: f32 = 1.0 / 8227.0;
-const ONE_OVER_8128: f32 = 1.0 / 8128.0;
 const ONE_OVER_12241: f32 = 1.0 / 12241.0;
 const ONE_OVER_22638: f32 = 1.0 / 22638.0;
 const LENGTH_COUNTER_TABLE: [u8; 0x20] = [
@@ -138,23 +137,30 @@ impl Apu {
         let pulse_2 = self.pulse_2.clock();
 
         let pulse_sum = f32::from(pulse_1 + pulse_2);
-        let pulse_div = (pulse_sum * ONE_OVER_8128) + 100.0;
-        let pulse_out = 95.88 / pulse_div;
+        let pulse_out = if pulse_sum == 0.0 {
+            0.0
+        } else {
+            let pulse_div = (8128.0 / pulse_sum) + 100.0;
+            95.88 / pulse_div
+        };
 
         let triangle = self.triangle_generator.clock();
         let noise = self.noise_generator.clock();
         let dmc = self.dmc_unit.clock();
 
-        let triangle_div = f32::from(triangle) / ONE_OVER_8227;
-        let noise_div = f32::from(noise) / ONE_OVER_12241;
-        let dmc_div = f32::from(dmc) / ONE_OVER_22638;
+        let triangle_div = f32::from(triangle) * ONE_OVER_8227;
+        let noise_div = f32::from(noise) * ONE_OVER_12241;
+        let dmc_div = f32::from(dmc) * ONE_OVER_22638;
 
         let tnc_sum = triangle_div + noise_div + dmc_div;
 
-        let tnc_div = if tnc_sum == 0.0 { 0.0 } else { 1.0 / tnc_sum };
-        let tnc_added = tnc_div + 100.0;
-
-        let tnc_out = 159.79 / tnc_added;
+        let tnc_out = if tnc_sum == 0.0 {
+            0.0
+        } else {
+            let tnc_div = 1.0 / tnc_sum;
+            let tnc_added = tnc_div + 100.0;
+            159.79 / tnc_added
+        };
 
         tnc_out + pulse_out
     }
@@ -299,6 +305,7 @@ pub struct LinearCounter {
 impl LinearCounter {
     pub fn clock(&mut self) {
         if self.reload_flag {
+            println!("{}", self.reload_value);
             self.counter = self.reload_value;
         } else if self.counter != 0 {
             self.counter -= 1;
@@ -395,7 +402,7 @@ impl FrameCounter {
     #[inline]
     pub fn clock(&mut self, is_proper: bool) -> Option<FrameCounterClockResult> {
         if is_proper {
-            self.apu_cycle_counter += 1;
+            self.apu_cycle_counter = self.apu_cycle_counter.wrapping_add(1);
 
             match self.apu_cycle_counter {
                 FRAME_COUNTER_STEP_1 | FRAME_COUNTER_STEP_3 => {

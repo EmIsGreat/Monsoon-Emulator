@@ -55,7 +55,6 @@ impl CpalAudio {
                 for frame in output.chunks_mut(channel_count as usize) {
                     let sample = consumer.pop().unwrap_or(0.0);
 
-
                     for channel in frame {
                         *channel = sample;
                     }

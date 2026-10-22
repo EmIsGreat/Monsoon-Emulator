@@ -15,7 +15,6 @@
 use std::cell::RefCell;
 use std::clone::Clone;
 use std::collections::VecDeque;
-use std::error::Error;
 use std::fmt::{Debug, Formatter};
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -34,10 +33,8 @@ use monsoon_core::emulation::savestate::SaveState;
 use monsoon_core::rom_db::RomDb;
 use monsoon_core::util::{SerializationFormat, ToBytes};
 use monsoon_db::db_provider::DbProvider;
-use rtrb::Producer;
 use web_time::{Duration, Instant};
 
-use crate::audio::CpalAudio;
 use crate::channel_emu::ChannelEmulator;
 use crate::frontend::egui::config::{AppConfig, AppSpeed};
 use crate::frontend::egui::fps_counter::FpsCounter;

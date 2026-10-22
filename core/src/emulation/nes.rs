@@ -8,7 +8,7 @@ use num_enum::{FromPrimitive, IntoPrimitive};
 use serde::{Deserialize, Serialize};
 
 use crate::emulation::board::{Board, CpuBus, CpuBusView, PpuBus, PpuBusView};
-use crate::emulation::cpu::{CorruptionConfig, Cpu};
+use crate::emulation::cpu::{CorruptionConfig, Cpu, MicroOp};
 use crate::emulation::debug_tools::{StopCondition, StopReason};
 use crate::emulation::mapper::MapperLike;
 use crate::emulation::peripherals::Peripheral;
@@ -477,7 +477,11 @@ impl Nes {
         }
 
         let res = self.step_fast(last_cycle, config);
-        self.write_trace_log();
+        if self.board.cpu.current_op == MicroOp::FetchOpcode
+            && self.cpu_cycle_counter == <CpuAlignment as Into<u8>>::into(self.config.alignment)
+        {
+            self.write_trace_log();
+        }
         res
     }
 
@@ -531,11 +535,10 @@ impl Nes {
         // Check if CPU should step (every 12th master cycle, offset by 2)
         // cpu_cycle_counter + 2 == 12  means cpu_cycle_counter == 10
         if cpu_step {
-            self.apu_counter -= 1;
-
             let cpu_res = cpu.step(&mut cpu_bus_view!(self), config);
-
             self.board.apu.clock_frame_counter(self.apu_counter == 2);
+
+            self.apu_counter -= 1;
 
             if self.apu_counter == 0 {
                 self.apu_counter = 2;
@@ -636,9 +639,7 @@ impl Nes {
     #[must_use]
     pub fn get_rom_db(&self) -> Arc<RomDb> { self.rom_db.clone() }
 
-    pub fn produce_sample(&mut self) -> f32 {
-        self.board.apu.mix()
-    }
+    pub fn produce_sample(&mut self) -> f32 { self.board.apu.mix() }
 }
 
 impl Default for Nes {
