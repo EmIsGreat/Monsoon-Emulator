@@ -152,6 +152,7 @@ pub struct SweepUnit {
 }
 
 impl SweepUnit {
+    #[must_use]
     pub fn sweep(&self, period: u16) -> u16 {
         let change = period >> self.shift_bits;
         let change = if self.negate {
@@ -161,9 +162,9 @@ impl SweepUnit {
         };
 
         let target = if self.ones_complement {
-            period as i32 + change as i32 - 1
+            i32::from(period) + i32::from(change) - 1
         } else {
-            period as i32 + change as i32
+            i32::from(period) + i32::from(change)
         };
 
         if target < 0 { 0 } else { target as u16 }
@@ -226,7 +227,7 @@ impl LengthCounter {
 
     pub fn load(&mut self, index: u8) {
         if self.enabled {
-            self.length_counter = LENGTH_COUNTER_TABLE[index as usize]
+            self.length_counter = LENGTH_COUNTER_TABLE[index as usize];
         } else {
             self.length_counter = 0;
         }
@@ -240,6 +241,7 @@ impl LengthCounter {
         }
     }
 
+    #[must_use]
     pub fn get_counter(&self) -> u8 { self.length_counter }
 }
 
@@ -272,6 +274,7 @@ impl EnvelopeUnit {
         }
     }
 
+    #[must_use]
     pub fn get_output(&self) -> u8 {
         if self.const_volume {
             self.divider_reload

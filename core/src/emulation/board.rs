@@ -418,17 +418,10 @@ impl<'a> CpuBusView<'a> {
     fn read_apu_io(&mut self, addr: u16) -> ReadResult {
         match addr {
             0x4015 => {
-                let frame_interrupt = if self.apu.frame_counter.get_frame_interrupt_for_register() {
-                    1u8
-                } else {
-                    0
-                };
+                let frame_interrupt =
+                    u8::from(self.apu.frame_counter.get_frame_interrupt_for_register());
 
-                let dmc_interrupt = if self.apu.dmc_unit.irq_asserted {
-                    1u8
-                } else {
-                    0
-                };
+                let dmc_interrupt = u8::from(self.apu.dmc_unit.irq_asserted);
 
                 let p1_halt_status = get_len_halt_status_bit(&self.apu.pulse_1.length_counter);
                 let p2_halt_status = get_len_halt_status_bit(&self.apu.pulse_2.length_counter);
@@ -437,11 +430,7 @@ impl<'a> CpuBusView<'a> {
                 let noise_halt_status =
                     get_len_halt_status_bit(&self.apu.noise_generator.length_counter);
 
-                let dmc_bytes_remaining = if self.apu.dmc_unit.bytes_remaining != 0 {
-                    1
-                } else {
-                    0
-                };
+                let dmc_bytes_remaining = u8::from(self.apu.dmc_unit.bytes_remaining != 0);
 
                 ReadResult::from(
                     dmc_interrupt << 7
@@ -517,6 +506,7 @@ impl<'a> CpuBusView<'a> {
     }
 
     #[inline]
+    #[allow(clippy::too_many_lines)]
     fn write_apu_io(&mut self, addr: u16, data: u8) {
         match addr {
             0x4000 => {
@@ -529,14 +519,14 @@ impl<'a> CpuBusView<'a> {
                 reload_sweep(&mut self.apu.pulse_1.sweep_unit, data);
             }
             0x4002 => {
-                self.apu.pulse_1.period = (self.apu.pulse_1.period & 0xFF) | data as u16;
+                self.apu.pulse_1.period = (self.apu.pulse_1.period & 0xFF) | u16::from(data);
             }
             0x4003 => {
                 load_length_counter(&mut self.apu.pulse_1.length_counter, data);
                 restart_envelope(&mut self.apu.pulse_1.envelope);
                 self.apu.pulse_1.phase = 0;
                 self.apu.pulse_1.period =
-                    (self.apu.pulse_1.period & 0xFF00) | (((data & 0b1110_0000) as u16) << 3)
+                    (self.apu.pulse_1.period & 0xFF00) | (u16::from(data & 0b1110_0000) << 3);
             }
             0x4004 => {
                 reload_envelope(&mut self.apu.pulse_2.envelope, data);
@@ -548,14 +538,14 @@ impl<'a> CpuBusView<'a> {
                 reload_sweep(&mut self.apu.pulse_2.sweep_unit, data);
             }
             0x4006 => {
-                self.apu.pulse_1.period = (self.apu.pulse_1.period & 0xFF) | u16::from(data);
+                self.apu.pulse_2.period = (self.apu.pulse_2.period & 0xFF) | u16::from(data);
             }
             0x4007 => {
                 load_length_counter(&mut self.apu.pulse_2.length_counter, data);
                 restart_envelope(&mut self.apu.pulse_2.envelope);
                 self.apu.pulse_2.phase = 0;
                 self.apu.pulse_1.period =
-                    (self.apu.pulse_2.period & 0xFF00) | (((data & 0b1110_0000) as u16) << 3);
+                    (self.apu.pulse_2.period & 0xFF00) | (u16::from(data & 0b1110_0000) << 3);
             }
             0x4008 => {
                 let control = (data >> 7) == 1;
@@ -567,13 +557,13 @@ impl<'a> CpuBusView<'a> {
             }
             0x400A => {
                 self.apu.triangle_generator.period =
-                    (self.apu.triangle_generator.period & 0xFF) | data as u16;
+                    (self.apu.triangle_generator.period & 0xFF) | u16::from(data);
             }
             0x400B => {
                 load_length_counter(&mut self.apu.triangle_generator.length_counter, data);
                 self.apu.triangle_generator.linear_counter.reload_flag = true;
                 self.apu.triangle_generator.period = (self.apu.triangle_generator.period & 0xFF00)
-                    | (((data & 0b1110_0000) as u16) << 3);
+                    | (u16::from(data & 0b1110_0000) << 3);
             }
             0x400C => {
                 reload_envelope(&mut self.apu.noise_generator.envelope, data);
