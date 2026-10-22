@@ -541,7 +541,7 @@ impl EguiApp {
             let is_uncapped = self.config.speed_config.app_speed == AppSpeed::Uncapped
                 || ctx.memory(|mem| {
                     mem.data
-                        .get_temp(Id::new(AsyncFrontendMessage::Speedup))
+                        .get_temp(Id::unique(AsyncFrontendMessage::Speedup))
                         .unwrap_or(false)
                 });
 
@@ -695,7 +695,7 @@ impl App for EguiApp {
     fn logic(&mut self, ctx: &Context, _: &mut Frame) {
         ctx.memory_mut(|mem| {
             mem.data
-                .insert_temp::<bool>(Id::new(AsyncFrontendMessage::Speedup), false);
+                .insert_temp::<bool>(Id::unique(AsyncFrontendMessage::Speedup), false);
         });
 
         // Handle keyboard input

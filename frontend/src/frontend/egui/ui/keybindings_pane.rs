@@ -64,7 +64,7 @@ struct SharedLabelWidthCache {
 fn get_shared_label_column_width(ui: &mut egui::Ui) -> f32 {
     const PIXELS_PER_POINT_CACHE_TOLERANCE: f32 = 0.01;
 
-    let cache_id = egui::Id::new("keybindings_shared_label_column_width");
+    let cache_id = egui::Id::unique("keybindings_shared_label_column_width");
     let pixels_per_point = ui.ctx().pixels_per_point();
     let key_count = STANDARD_CONTROLLER_ACTIONS.len()
         + DEBUG_ACTIONS.len()
@@ -189,7 +189,9 @@ fn render_standard_controller_bindings(
                             [label_column_width, ui.spacing().interact_size.y],
                             egui::Label::new(action.get_display_name()),
                         );
-                        changed |= ui.add(Hotkey::with_id(binding, action)).changed();
+                        changed |= ui
+                            .add(Hotkey::with_id(binding, action.get_display_name()))
+                            .changed();
                         ui.end_row();
                     }
                 });
@@ -243,7 +245,9 @@ fn render_action_binding_group(
                         [label_column_width, ui.spacing().interact_size.y],
                         egui::Label::new(action.get_display_name()),
                     );
-                    changed |= ui.add(Hotkey::with_id(binding, action)).changed();
+                    changed |= ui
+                        .add(Hotkey::with_id(binding, action.get_display_name()))
+                        .changed();
                     ui.end_row();
                 }
             });

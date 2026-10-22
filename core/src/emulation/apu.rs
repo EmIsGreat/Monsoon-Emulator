@@ -25,6 +25,13 @@ const TRIANGLE_TABLE: [u8; 32] = [
     13, 14, 15,
 ];
 
+const PULSE_DUTY_TABLE: [[u8; 8]; 4] = [
+    [0, 1, 0, 0, 0, 0, 0, 0],
+    [0, 1, 1, 0, 0, 0, 0, 0],
+    [0, 1, 1, 1, 1, 0, 0, 0],
+    [1, 0, 0, 1, 1, 1, 1, 1],
+];
+
 #[derive(Debug)]
 pub struct Apu {
     pub frame_counter: FrameCounter,
@@ -103,7 +110,7 @@ impl Apu {
 
         match self.pulse_1.sweep_unit.clock(self.pulse_1.period) {
             Ok(p) => {
-                self.pulse_1.period = p;
+                self.pulse_1.set_period(p);
             }
             Err(m) => {
                 self.pulse_1.muted = m;
@@ -112,7 +119,7 @@ impl Apu {
 
         match self.pulse_2.sweep_unit.clock(self.pulse_2.period) {
             Ok(p) => {
-                self.pulse_2.period = p;
+                self.pulse_2.set_period(p);
             }
             Err(m) => {
                 self.pulse_2.muted = m;
@@ -188,18 +195,56 @@ impl DMCUnit {
     pub fn clock(&mut self) -> u8 { 0 }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct NoiseGenerator {
     pub envelope: EnvelopeUnit,
     pub length_counter: LengthCounter,
     noise_period: u16,
-    pub noise_mode: bool,
+    pub periodic_noise_mode: bool,
+    pub lfsr: u16,
+    pub counter: u16,
+}
+
+impl Default for NoiseGenerator {
+    fn default() -> Self {
+        Self {
+            envelope: EnvelopeUnit::default(),
+            length_counter: LengthCounter::default(),
+            noise_period: 0,
+            periodic_noise_mode: false,
+            lfsr: 1,
+            counter: 0,
+        }
+    }
 }
 
 impl NoiseGenerator {
     pub fn set_period(&mut self, index: u8) { self.noise_period = NOISE_TABLE[index as usize]; }
 
-    pub fn clock(&mut self) -> u8 { 0 }
+    pub fn clock(&mut self) -> u8 {
+        if self.counter == 0 {
+            self.counter = self.noise_period;
+        }
+
+        self.counter = self.counter.saturating_sub(1);
+
+        let first_bit = self.lfsr & 1;
+        let second_bit = if self.periodic_noise_mode {
+            (self.lfsr & 0b100_0000) >> 6
+        } else {
+            (self.lfsr & 0b10) >> 1
+        };
+
+        let feedback = first_bit ^ second_bit;
+        self.lfsr >>= 1;
+        self.lfsr = (self.lfsr & 0b100_0000_0000_0000) | (feedback << 14);
+
+        if (self.lfsr & 1) != 0 && self.length_counter.counter != 0 {
+            self.envelope.get_output()
+        } else {
+            0
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash, Default)]
@@ -207,14 +252,42 @@ pub struct PulseGenerator {
     pub envelope: EnvelopeUnit,
     pub length_counter: LengthCounter,
     pub sweep_unit: SweepUnit,
-    pub period: u16,
+    period: u16,
     pub muted: bool,
     pub duty_ratio: u8,
     pub phase: u8,
+    pub counter: u16,
 }
 
 impl PulseGenerator {
-    pub fn clock(&mut self) -> u8 { 0 }
+    pub fn clock(&mut self) -> u8 {
+        if self.counter == 0 {
+            self.counter = self.period;
+            self.phase += 1;
+
+            if self.phase == 8 {
+                self.phase = 0;
+            }
+        }
+
+        self.counter = self.counter.saturating_sub(1);
+
+        let duty = PULSE_DUTY_TABLE[self.duty_ratio as usize][self.phase as usize];
+
+        if duty != 0 && !self.muted && self.length_counter.counter != 0 {
+            self.envelope.get_output()
+        } else {
+            0
+        }
+    }
+
+    pub fn set_period(&mut self, period: u16) {
+        self.muted = period < 8;
+        self.period = period;
+    }
+
+    #[must_use]
+    pub fn get_period(&self) -> u16 { self.period }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash, Default)]
@@ -235,6 +308,10 @@ impl TriangleGenerator {
         {
             self.counter = self.period;
             self.waveform_sequence_index += 1;
+
+            if self.waveform_sequence_index == 32 {
+                self.waveform_sequence_index = 0;
+            }
         }
 
         TRIANGLE_TABLE[self.waveform_sequence_index as usize]
@@ -277,6 +354,11 @@ impl SweepUnit {
     #[allow(clippy::missing_errors_doc)]
     pub fn clock(&mut self, period: u16) -> Result<u16, bool> {
         let target_period = self.sweep(period);
+
+        if target_period > 0x7FFF {
+            return Err(true);
+        }
+
         if self.counter == 0 && self.enable && self.shift_bits != 0 {
             if target_period > 0x7FF {
                 Err(true)
@@ -305,7 +387,6 @@ pub struct LinearCounter {
 impl LinearCounter {
     pub fn clock(&mut self) {
         if self.reload_flag {
-            println!("{}", self.reload_value);
             self.counter = self.reload_value;
         } else if self.counter != 0 {
             self.counter -= 1;
@@ -390,12 +471,23 @@ impl EnvelopeUnit {
     }
 }
 
-#[derive(Debug, Clone, Eq, Hash, PartialEq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Eq, Hash, PartialEq, Serialize, Deserialize)]
 pub struct FrameCounter {
     pub external_sync: bool,
     pub frame_interrupt: bool,
     pub interrupt_inhibit: bool,
     pub apu_cycle_counter: u16,
+}
+
+impl Default for FrameCounter {
+    fn default() -> Self {
+        Self {
+            external_sync: false,
+            frame_interrupt: false,
+            interrupt_inhibit: true,
+            apu_cycle_counter: 0,
+        }
+    }
 }
 
 impl FrameCounter {

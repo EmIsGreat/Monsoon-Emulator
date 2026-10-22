@@ -302,7 +302,7 @@ impl EguiApp {
             AsyncFrontendMessage::Speedup => {
                 ctx.memory_mut(|mem| {
                     mem.data
-                        .insert_temp::<bool>(Id::new(AsyncFrontendMessage::Speedup), true)
+                        .insert_temp::<bool>(Id::unique(AsyncFrontendMessage::Speedup), true)
                 });
             }
             AsyncFrontendMessage::ShowSelectRomDialog(context) => {

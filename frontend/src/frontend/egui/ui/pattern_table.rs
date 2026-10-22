@@ -34,7 +34,7 @@ pub fn draw_pattern_table(
 
         let painter = ui.ctx().layer_painter(egui::LayerId::new(
             egui::Order::Foreground,
-            egui::Id::new("popup_painter"),
+            egui::Id::unique("popup_painter"),
         ));
 
         egui::Popup::context_menu(&response)
@@ -88,7 +88,7 @@ pub fn draw_pattern_table(
                     let pixel_rect = pixel_grid.cell_rect(pixel_parent.min, index);
                     let response = ui.interact(
                         pixel_rect,
-                        ui.id().with(("pixel", index)),
+                        ui.scope_id().with(("pixel", index)),
                         egui::Sense::click_and_drag(),
                     );
 
