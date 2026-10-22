@@ -35,7 +35,7 @@ strum = { version = "0.28.0", features = ["derive"] }
 dhat = { version = "0.3.3", optional = true }
 thiserror = "2.0.21"
 regex = "1.13.1"
-num_enum = "0.7.6"
+rtrb = "0.4.0"
 num-traits = "0.2.19"
 
 monsoon-core = { workspace = true }
@@ -47,6 +47,7 @@ dhat-heap = ["dhat"]
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { version = "1.53", features = ["rt-multi-thread", "macros"] }
+cpal = { version = "0.18.2" }
 
 # Web-only dependencies
 [target.'cfg(target_arch = "wasm32")'.dependencies]
@@ -57,3 +58,4 @@ wasm-bindgen-futures = "0.4"
 rexie = "0.6"
 js-sys = "0.3"
 console_error_panic_hook = { version = "0.1.7" }
+cpal = { version = "0.18.2", features = ["wasm-bindgen"] }

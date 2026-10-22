@@ -10,6 +10,7 @@ use monsoon_core::emulation::ppu_util::{
 use monsoon_core::emulation::rom::{ParseError, RomFile};
 use monsoon_core::util::Hashable;
 
+use crate::audio::CpalAudio;
 use crate::messages::{EmulatorMessage, FrontendMessage};
 
 /// Channel-based emulator wrapper for clean frontend/emulator separation.
@@ -62,6 +63,7 @@ pub struct ChannelEmulator {
     last_palette_data: Option<PaletteData>,
     /// Cached hash of pattern table data for efficient change detection
     last_pattern_table_hash: Option<u64>,
+    pub audio_buffer: Option<CpalAudio>,
 }
 
 pub static FETCH_DEPS: OnceLock<HashMap<EmulatorFetchable, Vec<EmulatorFetchable>>> =
@@ -93,8 +95,15 @@ impl ChannelEmulator {
     }
 
     #[must_use]
-    pub fn new(nes: Nes) -> (Self, Sender<FrontendMessage>, Receiver<EmulatorMessage>) {
+    pub fn new(mut nes: Nes) -> (Self, Sender<FrontendMessage>, Receiver<EmulatorMessage>) {
         Self::setup_fetch_deps();
+
+        let (audio, producer) = match CpalAudio::new() {
+            Ok((audio, producer)) => (Some(audio), Some(producer)),
+            Err(_) => (None, None),
+        };
+
+        nes.board.apu.sample_producer = producer;
 
         let (tx_to_emu, rx_from_frontend) = crossbeam_channel::unbounded();
         let (tx_from_emu, rx_to_frontend) = crossbeam_channel::unbounded();
@@ -109,6 +118,7 @@ impl ChannelEmulator {
             ],
             last_palette_data: None,
             last_pattern_table_hash: None,
+            audio_buffer: audio,
         };
 
         (emu, tx_to_emu, rx_to_frontend)

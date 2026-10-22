@@ -28,6 +28,7 @@ enum_delegate = "0.2.0"
 static_assertions = "1.1.0"
 strum = { version = "0.28.0", features = ["derive"] }
 thiserror = "2.0.21"
+rtrb = "0.4.0"
 
 monsoon-macro = { workspace = true }
 

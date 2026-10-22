@@ -18,5 +18,6 @@ use monsoon_default_renderers::LookupPaletteRenderer;
 pub mod channel_emu;
 pub mod frontend;
 pub mod messages;
+mod audio;
 
 declare_renderers!(LookupPaletteRenderer, NoneRenderer);

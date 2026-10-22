@@ -370,6 +370,8 @@ impl From<&ApuState> for Apu {
             noise_generator: state.noise_generator.clone(),
             triangle_generator: state.triangle_generator.clone(),
             dmc_unit: state.dmc_unit.clone(),
+            sample_producer: None,
+            sample_phase: 0,
         }
     }
 }

@@ -4,7 +4,7 @@ use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
 
 use egui::{Key, Modifiers};
-use monsoon_core::emulation::nes::NesConfig;
+use monsoon_core::emulation::nes::{NesConfig, FRAME_RATE};
 use monsoon_core::emulation::palette_util::RgbPalette;
 use monsoon_core::emulation::ppu_util::EmulatorFetchable;
 use monsoon_core::emulation::rom::RomFile;
@@ -235,9 +235,9 @@ pub enum AppSpeed {
 impl AppSpeed {
     pub fn get_fps(self, speed_config: SpeedConfig) -> f32 {
         match self {
-            AppSpeed::DefaultSpeed => 60.0988,
+            AppSpeed::DefaultSpeed => FRAME_RATE,
             AppSpeed::Uncapped => f32::MAX,
-            AppSpeed::Custom => 60.0988 * (f32::from(speed_config.custom_speed) / 100.0),
+            AppSpeed::Custom => FRAME_RATE * (f32::from(speed_config.custom_speed) / 100.0),
         }
     }
 }

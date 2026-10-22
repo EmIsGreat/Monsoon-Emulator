@@ -1,10 +1,17 @@
+use rtrb::Producer;
 use serde::{Deserialize, Serialize};
 
+pub const APU_FREQUENCY: u32 = 894_886;
+pub const SAMPLE_RATE: u32 = 48_000;
 const FRAME_COUNTER_STEP_1: u16 = 3728;
 const FRAME_COUNTER_STEP_2: u16 = 7456;
 const FRAME_COUNTER_STEP_3: u16 = 11185;
 const FRAME_COUNTER_STEP_4: u16 = 14914;
 const FRAME_COUNTER_STEP_5: u16 = 18640;
+const ONE_OVER_8227: f32 = 1.0 / 8227.0;
+const ONE_OVER_8128: f32 = 1.0 / 8128.0;
+const ONE_OVER_12241: f32 = 1.0 / 12241.0;
+const ONE_OVER_22638: f32 = 1.0 / 22638.0;
 const LENGTH_COUNTER_TABLE: [u8; 0x20] = [
     10, 254, 20, 2, 40, 4, 80, 6, 160, 8, 60, 10, 14, 12, 26, 14, 12, 16, 24, 18, 48, 20, 96, 22,
     192, 24, 72, 26, 16, 28, 32, 30,
@@ -14,7 +21,12 @@ const NOISE_TABLE: [u16; 0x10] = [
     2, 4, 8, 16, 32, 48, 64, 80, 101, 127, 190, 254, 391, 508, 1017, 2034,
 ];
 
-#[derive(Debug, Clone)]
+const TRIANGLE_TABLE: [u8; 32] = [
+    15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+    13, 14, 15,
+];
+
+#[derive(Debug)]
 pub struct Apu {
     pub frame_counter: FrameCounter,
     pub pulse_1: PulseGenerator,
@@ -22,6 +34,23 @@ pub struct Apu {
     pub noise_generator: NoiseGenerator,
     pub triangle_generator: TriangleGenerator,
     pub dmc_unit: DMCUnit,
+    pub sample_producer: Option<Producer<f32>>,
+    pub sample_phase: u32,
+}
+
+impl Clone for Apu {
+    fn clone(&self) -> Self {
+        Self {
+            frame_counter: self.frame_counter.clone(),
+            pulse_1: self.pulse_1.clone(),
+            pulse_2: self.pulse_2.clone(),
+            noise_generator: self.noise_generator.clone(),
+            triangle_generator: self.triangle_generator.clone(),
+            dmc_unit: self.dmc_unit.clone(),
+            sample_producer: None,
+            sample_phase: 0,
+        }
+    }
 }
 
 impl Default for Apu {
@@ -36,6 +65,8 @@ impl Default for Apu {
             noise_generator: NoiseGenerator::default(),
             triangle_generator: TriangleGenerator::default(),
             dmc_unit: DMCUnit::default(),
+            sample_producer: None,
+            sample_phase: 0,
         }
     }
 }
@@ -47,6 +78,18 @@ impl Apu {
             match res {
                 FrameCounterClockResult::HalfFrame => self.clock_half_frame(),
                 FrameCounterClockResult::QuarterFrame => self.clock_quarter_frame(),
+            }
+        }
+
+        let sample = self.mix();
+
+        if let Some(producer) = &mut self.sample_producer {
+            self.sample_phase += SAMPLE_RATE;
+
+            if self.sample_phase >= APU_FREQUENCY {
+                self.sample_phase -= APU_FREQUENCY;
+
+                let _ = producer.push(sample);
             }
         }
     }
@@ -89,6 +132,32 @@ impl Apu {
     #[inline(always)]
     #[must_use]
     pub fn poll_irq(&self) -> bool { self.frame_counter.frame_interrupt }
+
+    pub fn mix(&mut self) -> f32 {
+        let pulse_1 = self.pulse_1.clock();
+        let pulse_2 = self.pulse_2.clock();
+
+        let pulse_sum = f32::from(pulse_1 + pulse_2);
+        let pulse_div = (pulse_sum * ONE_OVER_8128) + 100.0;
+        let pulse_out = 95.88 / pulse_div;
+
+        let triangle = self.triangle_generator.clock();
+        let noise = self.noise_generator.clock();
+        let dmc = self.dmc_unit.clock();
+
+        let triangle_div = f32::from(triangle) / ONE_OVER_8227;
+        let noise_div = f32::from(noise) / ONE_OVER_12241;
+        let dmc_div = f32::from(dmc) / ONE_OVER_22638;
+
+        let tnc_sum = triangle_div + noise_div + dmc_div;
+
+        let tnc_div = if tnc_sum == 0.0 { 0.0 } else { 1.0 / tnc_sum };
+        let tnc_added = tnc_div + 100.0;
+
+        let tnc_out = 159.79 / tnc_added;
+
+        tnc_out + pulse_out
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash, Default)]
@@ -109,6 +178,8 @@ impl DMCUnit {
     pub fn restart_sample_playback(&mut self) {
         // TODO
     }
+
+    pub fn clock(&mut self) -> u8 { 0 }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash, Default)]
@@ -121,6 +192,8 @@ pub struct NoiseGenerator {
 
 impl NoiseGenerator {
     pub fn set_period(&mut self, index: u8) { self.noise_period = NOISE_TABLE[index as usize]; }
+
+    pub fn clock(&mut self) -> u8 { 0 }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash, Default)]
@@ -134,11 +207,32 @@ pub struct PulseGenerator {
     pub phase: u8,
 }
 
+impl PulseGenerator {
+    pub fn clock(&mut self) -> u8 { 0 }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash, Default)]
 pub struct TriangleGenerator {
     pub length_counter: LengthCounter,
     pub linear_counter: LinearCounter,
     pub period: u16,
+    pub counter: u16,
+    pub waveform_sequence_index: u8,
+}
+
+impl TriangleGenerator {
+    pub fn clock(&mut self) -> u8 {
+        let counter = self.counter.saturating_sub(2);
+        self.counter = counter;
+
+        if self.counter == 0 && self.linear_counter.counter != 0 && self.length_counter.counter != 0
+        {
+            self.counter = self.period;
+            self.waveform_sequence_index += 1;
+        }
+
+        TRIANGLE_TABLE[self.waveform_sequence_index as usize]
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash, Default)]

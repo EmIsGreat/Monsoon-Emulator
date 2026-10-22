@@ -26,6 +26,7 @@ use crate::{cpu_bus_view, ppu_bus_view};
 /// the PPU divides it by 4, so one master cycle is the finest timing
 /// granularity.
 pub const MASTER_CYCLES_PER_FRAME: u32 = 357_366;
+pub const FRAME_RATE: f32 = 39_375_000.0 / 655_171.0;
 type ClockingFunction = fn(&mut Nes, last_cycle: u64, config: NesConfig) -> ExecutionResult;
 
 #[derive(
@@ -634,6 +635,10 @@ impl Nes {
 
     #[must_use]
     pub fn get_rom_db(&self) -> Arc<RomDb> { self.rom_db.clone() }
+
+    pub fn produce_sample(&mut self) -> f32 {
+        self.board.apu.mix()
+    }
 }
 
 impl Default for Nes {
