@@ -332,23 +332,18 @@ pub struct SweepUnit {
 
 impl SweepUnit {
     #[must_use]
+    #[allow(clippy::cast_sign_loss)]
+    #[allow(clippy::cast_possible_truncation)]
     pub fn sweep(&self, period: u16) -> u16 {
-        let change = period >> self.shift_bits;
-        let change = if self.negate {
-            change.cast_signed()
+        let change = i32::from(period >> self.shift_bits);
+
+        let target = if self.negate {
+            i32::from(period) + change
         } else {
-            0 - change.cast_signed()
+            i32::from(period) - change - i32::from(self.ones_complement)
         };
 
-        let target = if self.ones_complement {
-            i32::from(period) + i32::from(change) - 1
-        } else {
-            i32::from(period) + i32::from(change)
-        };
-
-        #[allow(clippy::cast_sign_loss)]
-        #[allow(clippy::cast_possible_truncation)]
-        if target < 0 { 0 } else { target as u16 }
+        target.clamp(0, i32::from(u16::MAX)) as u16
     }
 
     #[allow(clippy::missing_errors_doc)]
