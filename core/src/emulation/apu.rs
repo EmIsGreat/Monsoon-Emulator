@@ -21,7 +21,7 @@ pub struct Apu {
     pub pulse_2: PulseGenerator,
     pub noise_generator: NoiseGenerator,
     pub triangle_generator: TriangleGenerator,
-    pub dmc_unit: DMCUnit
+    pub dmc_unit: DMCUnit,
 }
 
 impl Default for Apu {
@@ -35,6 +35,7 @@ impl Default for Apu {
             pulse_2: Default::default(),
             noise_generator: Default::default(),
             triangle_generator: Default::default(),
+            dmc_unit: Default::default(),
         }
     }
 }
@@ -90,8 +91,10 @@ impl Apu {
     pub fn poll_irq(&self) -> bool { self.frame_counter.frame_interrupt }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash, Default)]
 pub struct DMCUnit {
+    pub irq_asserted: bool,
+    pub irq_pending: bool,
     pub sample_end_irq_enable: bool,
     pub does_loop: bool,
     pub sample_rate: u8,
@@ -101,7 +104,13 @@ pub struct DMCUnit {
     pub bytes_remaining: u8,
 }
 
-#[derive(Debug, Clone, Default)]
+impl DMCUnit {
+    pub fn restart_sample_playback(&mut self) {
+        // TODO
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash, Default)]
 pub struct NoiseGenerator {
     pub envelope: EnvelopeUnit,
     pub length_counter: LengthCounter,
@@ -113,7 +122,7 @@ impl NoiseGenerator {
     pub fn set_period(&mut self, index: u8) { self.noise_period = NOISE_TABLE[index as usize]; }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash, Default)]
 pub struct PulseGenerator {
     pub envelope: EnvelopeUnit,
     pub length_counter: LengthCounter,
@@ -124,14 +133,14 @@ pub struct PulseGenerator {
     pub phase: u8,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash, Default)]
 pub struct TriangleGenerator {
     pub length_counter: LengthCounter,
     pub linear_counter: LinearCounter,
     pub period: u16,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash, Default)]
 pub struct SweepUnit {
     pub shift_bits: u8,
     pub negate: bool,
@@ -179,7 +188,7 @@ impl SweepUnit {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash, Default)]
 pub struct LinearCounter {
     pub reload_flag: bool,
     pub control_flag: bool,
@@ -201,7 +210,7 @@ impl LinearCounter {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash, Default)]
 pub struct LengthCounter {
     pub halt: bool,
     enabled: bool,
@@ -234,7 +243,7 @@ impl LengthCounter {
     pub fn get_counter(&self) -> u8 { self.length_counter }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash, Default)]
 pub struct EnvelopeUnit {
     pub start: bool,
     pub divider: u8,

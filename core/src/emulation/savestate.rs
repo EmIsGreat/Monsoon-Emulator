@@ -14,7 +14,9 @@
 use serde::{Deserialize, Serialize};
 use static_assertions::assert_impl_all;
 
-use crate::emulation::apu::{Apu, FrameCounter};
+use crate::emulation::apu::{
+    Apu, DMCUnit, FrameCounter, NoiseGenerator, PulseGenerator, TriangleGenerator,
+};
 use crate::emulation::board::Board;
 use crate::emulation::cpu::{
     CorruptionConfig, Cpu, DmaState, IRQState, MicroOp, NMIState, OpQueue,
@@ -339,12 +341,22 @@ impl From<&PpuState> for Ppu {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ApuState {
     frame_counter: FrameCounter,
+    pulse_1: PulseGenerator,
+    pulse_2: PulseGenerator,
+    noise_generator: NoiseGenerator,
+    triangle_generator: TriangleGenerator,
+    dmc_unit: DMCUnit,
 }
 
 impl From<&Apu> for ApuState {
     fn from(apu: &Apu) -> Self {
         Self {
             frame_counter: apu.frame_counter.clone(),
+            pulse_1: apu.pulse_1.clone(),
+            pulse_2: apu.pulse_2.clone(),
+            noise_generator: apu.noise_generator.clone(),
+            triangle_generator: apu.triangle_generator.clone(),
+            dmc_unit: apu.dmc_unit.clone(),
         }
     }
 }
@@ -353,6 +365,11 @@ impl From<&ApuState> for Apu {
     fn from(state: &ApuState) -> Self {
         Self {
             frame_counter: state.frame_counter.clone(),
+            pulse_1: state.pulse_1.clone(),
+            pulse_2: state.pulse_2.clone(),
+            noise_generator: state.noise_generator.clone(),
+            triangle_generator: state.triangle_generator.clone(),
+            dmc_unit: state.dmc_unit.clone(),
         }
     }
 }

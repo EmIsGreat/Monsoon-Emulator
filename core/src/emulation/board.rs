@@ -424,6 +424,12 @@ impl<'a> CpuBusView<'a> {
                     0
                 };
 
+                let dmc_interrupt = if self.apu.dmc_unit.irq_asserted {
+                    1u8
+                } else {
+                    0
+                };
+
                 let p1_halt_status = get_len_halt_status_bit(&self.apu.pulse_1.length_counter);
                 let p2_halt_status = get_len_halt_status_bit(&self.apu.pulse_2.length_counter);
                 let triangle_halt_status =
@@ -431,13 +437,21 @@ impl<'a> CpuBusView<'a> {
                 let noise_halt_status =
                     get_len_halt_status_bit(&self.apu.noise_generator.length_counter);
 
+                let dmc_bytes_remaining = if self.apu.dmc_unit.bytes_remaining != 0 {
+                    1
+                } else {
+                    0
+                };
+
                 ReadResult::from(
-                    frame_interrupt
+                    dmc_interrupt << 7
+                        | frame_interrupt << 6
                         | (self.cpu_open_bus.read() & 0b0010_0000)
-                        | p1_halt_status
+                        | dmc_bytes_remaining << 4
+                        | noise_halt_status << 3
+                        | triangle_halt_status << 2
                         | p2_halt_status << 1
-                        | triangle_halt_status << 3
-                        | noise_halt_status << 4,
+                        | p1_halt_status,
                 )
                 .to_false()
             }
@@ -534,14 +548,14 @@ impl<'a> CpuBusView<'a> {
                 reload_sweep(&mut self.apu.pulse_2.sweep_unit, data);
             }
             0x4006 => {
-                self.apu.pulse_1.period = (self.apu.pulse_1.period & 0xFF) | data as u16;
+                self.apu.pulse_1.period = (self.apu.pulse_1.period & 0xFF) | u16::from(data);
             }
             0x4007 => {
                 load_length_counter(&mut self.apu.pulse_2.length_counter, data);
                 restart_envelope(&mut self.apu.pulse_2.envelope);
                 self.apu.pulse_2.phase = 0;
                 self.apu.pulse_1.period =
-                    (self.apu.pulse_2.period & 0xFF00) | (((data & 0b1110_0000) as u16) << 3)
+                    (self.apu.pulse_2.period & 0xFF00) | (((data & 0b1110_0000) as u16) << 3);
             }
             0x4008 => {
                 let control = (data >> 7) == 1;
@@ -559,7 +573,7 @@ impl<'a> CpuBusView<'a> {
                 load_length_counter(&mut self.apu.triangle_generator.length_counter, data);
                 self.apu.triangle_generator.linear_counter.reload_flag = true;
                 self.apu.triangle_generator.period = (self.apu.triangle_generator.period & 0xFF00)
-                    | (((data & 0b1110_0000) as u16) << 3)
+                    | (((data & 0b1110_0000) as u16) << 3);
             }
             0x400C => {
                 reload_envelope(&mut self.apu.noise_generator.envelope, data);
@@ -597,10 +611,10 @@ impl<'a> CpuBusView<'a> {
                 self.apu.dmc_unit.sample_length = data;
             }
             0x4015 => {
-                let p1_enable = (data & 0b1) == 1;
-                let p2_enable = (data & 0b10) == 1;
-                let triangle_enable = (data & 0b100) == 1;
-                let noise_enable = (data & 0b1000) == 1;
+                let p1_enable = (data & 0b1) == 0b1;
+                let p2_enable = (data & 0b10) == 0b10;
+                let triangle_enable = (data & 0b100) == 0b100;
+                let noise_enable = (data & 0b1000) == 0b1000;
 
                 self.apu.pulse_1.length_counter.set_enabled(p1_enable);
                 self.apu.pulse_2.length_counter.set_enabled(p2_enable);
@@ -616,8 +630,11 @@ impl<'a> CpuBusView<'a> {
                 let dmc_bit = (data >> 4) == 1;
                 if dmc_bit {
                     self.apu.dmc_unit.bytes_remaining = 0;
-                } else {
+                } else if self.apu.dmc_unit.bytes_remaining == 0 {
+                    self.apu.dmc_unit.restart_sample_playback();
                 }
+
+                self.apu.dmc_unit.irq_pending = false;
             }
             0x4016 => {
                 *self.strobe_data = data & 1;
@@ -646,7 +663,7 @@ fn reload_envelope(env: &mut EnvelopeUnit, data: u8) {
 fn reload_sweep(sweep: &mut SweepUnit, data: u8) {
     let shift_count = data & 0b111;
     let negate = ((data >> 3) & 1) == 1;
-    let counter_reload = ((data >> 4) & 0b111);
+    let counter_reload = (data >> 4) & 0b111;
     let sweep_enable = ((data >> 7) & 1) == 1;
 
     sweep.shift_bits = shift_count;
@@ -656,21 +673,15 @@ fn reload_sweep(sweep: &mut SweepUnit, data: u8) {
     sweep.reload = true;
 }
 
-fn restart_envelope(env: &mut EnvelopeUnit) {
-    // TODO
-}
+fn restart_envelope(env: &mut EnvelopeUnit) { env.start = true; }
 
 fn load_length_counter(counter: &mut LengthCounter, data: u8) {
     let index = (data & (!0b111)) >> 3;
-    counter.load(index)
+    counter.load(index);
 }
 
 fn get_len_halt_status_bit(len: &LengthCounter) -> u8 {
-    if !len.halt && len.get_counter() != 0 {
-        1u8
-    } else {
-        0
-    }
+    u8::from(!len.halt && len.get_counter() != 0)
 }
 
 pub struct PpuBusView<'a> {
