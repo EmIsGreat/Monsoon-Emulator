@@ -35,7 +35,7 @@ pub fn color_cell_rgb(
     sense: egui::Sense,
     id_source: impl AsIdSalt,
 ) -> Response {
-    let response = ui.interact(rect, ui.id().with(id_source), sense);
+    let response = ui.interact(rect, ui.scope_id().with(id_source), sense);
     let painter = ui.painter();
 
     painter.rect_filled(
@@ -89,7 +89,7 @@ pub fn image_cell_flipped(
     sense: egui::Sense,
     id_source: impl AsIdSalt,
 ) -> Response {
-    let response = ui.interact(rect, ui.id().with(id_source), sense);
+    let response = ui.interact(rect, ui.scope_id().with(id_source), sense);
     let painter = ui.painter();
 
     let uv = flip_uv(h_flip, v_flip);
@@ -123,7 +123,7 @@ pub fn image_cell_dual_vert_flipped(
     sense: egui::Sense,
     id_source: impl AsIdSalt,
 ) -> Response {
-    let response = ui.interact(rect, ui.id().with(id_source), sense);
+    let response = ui.interact(rect, ui.scope_id().with(id_source), sense);
     let painter = ui.painter();
     let middle = rect.min.y + (rect.max.y - rect.min.y) / 2.0;
 

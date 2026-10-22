@@ -519,14 +519,17 @@ impl<'a> CpuBusView<'a> {
                 reload_sweep(&mut self.apu.pulse_1.sweep_unit, data);
             }
             0x4002 => {
-                self.apu.pulse_1.period = (self.apu.pulse_1.period & 0xFF) | u16::from(data);
+                self.apu
+                    .pulse_1
+                    .set_period((self.apu.pulse_1.get_period() & 0xFF) | u16::from(data));
             }
             0x4003 => {
                 load_length_counter(&mut self.apu.pulse_1.length_counter, data);
                 restart_envelope(&mut self.apu.pulse_1.envelope);
                 self.apu.pulse_1.phase = 0;
-                self.apu.pulse_1.period =
-                    (self.apu.pulse_1.period & 0xFF00) | (u16::from(data & 0b1110_0000) << 3);
+                self.apu.pulse_1.set_period(
+                    (self.apu.pulse_1.get_period() & 0xFF00) | (u16::from(data & 0b1110_0000) << 3),
+                );
             }
             0x4004 => {
                 reload_envelope(&mut self.apu.pulse_2.envelope, data);
@@ -538,14 +541,17 @@ impl<'a> CpuBusView<'a> {
                 reload_sweep(&mut self.apu.pulse_2.sweep_unit, data);
             }
             0x4006 => {
-                self.apu.pulse_2.period = (self.apu.pulse_2.period & 0xFF) | u16::from(data);
+                self.apu
+                    .pulse_2
+                    .set_period((self.apu.pulse_2.get_period() & 0xFF) | u16::from(data));
             }
             0x4007 => {
                 load_length_counter(&mut self.apu.pulse_2.length_counter, data);
                 restart_envelope(&mut self.apu.pulse_2.envelope);
                 self.apu.pulse_2.phase = 0;
-                self.apu.pulse_1.period =
-                    (self.apu.pulse_2.period & 0xFF00) | (u16::from(data & 0b1110_0000) << 3);
+                self.apu.pulse_1.set_period(
+                    (self.apu.pulse_2.get_period() & 0xFF00) | (u16::from(data & 0b1110_0000) << 3),
+                );
             }
             0x4008 => {
                 let control = (data >> 7) == 1;
@@ -575,7 +581,7 @@ impl<'a> CpuBusView<'a> {
                 let noise_mode = (data >> 7) == 1;
                 let noise_period = data & 0b1111;
 
-                self.apu.noise_generator.noise_mode = noise_mode;
+                self.apu.noise_generator.periodic_noise_mode = noise_mode;
                 self.apu.noise_generator.set_period(noise_period);
             }
             0x400F => {
@@ -631,9 +637,19 @@ impl<'a> CpuBusView<'a> {
                 Board::update_controllers(self.controller1, self.controller2, *self.strobe_data);
             }
             0x4017 => {
-                self.apu.frame_counter.external_sync = data & 0x80 != 0;
-                self.apu.frame_counter.interrupt_inhibit = data & 0x40 != 0;
-                self.apu.frame_counter.frame_interrupt = !self.apu.frame_counter.interrupt_inhibit;
+                let bit_7 = data & 0x80 != 0;
+                let bit_6 = data & 0x40 != 0;
+
+                self.apu.frame_counter.external_sync = bit_7;
+
+                // TODO: Make this delayed See frame counter wiki page.
+                self.apu.frame_counter.apu_cycle_counter = 0;
+                if bit_7 {
+                    self.apu.clock_half_frame();
+                }
+
+                self.apu.frame_counter.interrupt_inhibit = bit_6;
+                self.apu.frame_counter.frame_interrupt = !bit_6;
             }
             _ => {}
         }

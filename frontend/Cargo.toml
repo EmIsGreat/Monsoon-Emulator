@@ -18,16 +18,16 @@ name = "frontend"
 path = "src/bin/main.rs"
 
 [dependencies]
-eframe = { version = "0.36", features = ["wgpu", "persistence"] }
-egui = { version = "0.36", features = ["persistence", "rayon"] }
-egui_tiles = { version = "0.17", features = ["serde"] }
+eframe = { version = "0.37", features = ["wgpu", "persistence"] }
+egui = { version = "0.37", features = ["persistence", "rayon"] }
+egui_tiles = { version = "0.18", features = ["serde"] }
 clap = { version = "4.6", features = ["derive", "cargo", "env", "string", "unicode", "wrap_help"] }
 crossbeam-channel = { version = "0.5" }
 rfd = { version = "0.17" }
 directories = { version = "6.0" }
 web-time = { version = "1.1" }
 chrono = { version = "0.4", features = ["now"] }
-sha2 = { version = "0.11.0" }
+sha2 = { version = "0.11.1" }
 serde = { version = "1.0", features = ["derive", "alloc", "rc"] }
 toml = { version = "1.1", features = ["fast_hash"] }
 async-trait = { version = "0.1" }
@@ -46,7 +46,7 @@ monsoon-default-renderers = { workspace = true }
 dhat-heap = ["dhat"]
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-tokio = { version = "1.53", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1.54", features = ["rt-multi-thread", "macros"] }
 cpal = { version = "0.18.2" }
 
 # Web-only dependencies

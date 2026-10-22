@@ -15,9 +15,9 @@ use monsoon_core::emulation::screen_renderer::{
 };
 use monsoon_default_renderers::LookupPaletteRenderer;
 
+mod audio;
 pub mod channel_emu;
 pub mod frontend;
 pub mod messages;
-mod audio;
 
 declare_renderers!(LookupPaletteRenderer, NoneRenderer);

@@ -13,7 +13,7 @@ use std::hash::Hash;
 
 use crossbeam_channel::Sender;
 use egui::{
-    AsId, Event, Id, InputState, Key, Modifiers, PointerButton, Response, Sense, Ui, Widget, vec2,
+    Event, Id, InputState, Key, Modifiers, PointerButton, Response, Sense, Ui, Widget, vec2,
 };
 use serde::{Deserialize, Serialize};
 use strum::EnumIter;
@@ -25,9 +25,9 @@ use crate::frontend::messages::AsyncFrontendMessage;
 ///
 /// The input handler checks this state so it can skip normal key handling while
 /// the keybinding UI is active.
-fn hotkey_active_id() -> Id { Id::new("hotkey_active_widget_id") }
-fn hotkey_just_set_this_frame_id() -> Id { Id::new("hotkey_just_set_this_frame") }
-fn hotkey_suppressed_binding_id() -> Id { Id::new("hotkey_suppressed_binding_until_release") }
+fn hotkey_active_id() -> Id { Id::unique("hotkey_active_widget_id") }
+fn hotkey_just_set_this_frame_id() -> Id { Id::unique("hotkey_just_set_this_frame") }
+fn hotkey_suppressed_binding_id() -> Id { Id::unique("hotkey_suppressed_binding_until_release") }
 
 #[derive(Clone, Copy)]
 pub(crate) struct SuppressedBinding {
@@ -691,10 +691,10 @@ where
     B: HotkeyBinding,
 {
     /// Changes the default id for this widget.
-    pub fn with_id(binding: &'a mut B, id_source: impl AsId) -> Self {
+    pub fn with_id(binding: &'a mut B, id_source: &'static str) -> Self {
         Self {
             binding,
-            id: Id::new(id_source),
+            id: Id::unique(id_source),
             tooltip: None,
             accept_modifier_keys: true,
         }
@@ -894,19 +894,19 @@ fn set_expecting(ui: &Ui, id: Id, new: bool) {
 /// us detect up→down edge transitions: a modifier that was held before
 /// clicking can be released and re-pressed and will still be captured.
 fn set_prev_modifiers(ui: &Ui, id: Id, mods: Modifiers) {
-    let storage_id = Id::new("hotkey_prev_mods").with(ui.make_persistent_id(id));
+    let storage_id = Id::unique("hotkey_prev_mods").with(ui.make_persistent_id(id));
     ui.ctx()
         .memory_mut(|memory| memory.data.insert_temp(storage_id, mods));
 }
 
 fn get_prev_modifiers(ui: &Ui, id: Id) -> Modifiers {
-    let storage_id = Id::new("hotkey_prev_mods").with(ui.make_persistent_id(id));
+    let storage_id = Id::unique("hotkey_prev_mods").with(ui.make_persistent_id(id));
     ui.ctx()
         .memory_mut(|memory| memory.data.get_temp(storage_id).unwrap_or(Modifiers::NONE))
 }
 
 fn set_pending_modifier(ui: &Ui, id: Id, modifier: Option<ModifierKey>) {
-    let storage_id = Id::new("hotkey_pending_modifier").with(ui.make_persistent_id(id));
+    let storage_id = Id::unique("hotkey_pending_modifier").with(ui.make_persistent_id(id));
     ui.ctx().memory_mut(|memory| {
         if let Some(modifier) = modifier {
             memory.data.insert_temp(storage_id, modifier);
@@ -917,7 +917,7 @@ fn set_pending_modifier(ui: &Ui, id: Id, modifier: Option<ModifierKey>) {
 }
 
 fn get_pending_modifier(ui: &Ui, id: Id) -> Option<ModifierKey> {
-    let storage_id = Id::new("hotkey_pending_modifier").with(ui.make_persistent_id(id));
+    let storage_id = Id::unique("hotkey_pending_modifier").with(ui.make_persistent_id(id));
     ui.ctx()
         .memory_mut(|memory| memory.data.get_temp(storage_id))
 }

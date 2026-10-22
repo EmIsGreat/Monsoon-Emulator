@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 use crossbeam_channel::Sender;
-use egui::WidgetText;
+use egui::{Id, WidgetText};
 use egui_tiles::{Behavior, SimplificationOptions, TileId, Tiles, UiResponse};
 use monsoon_core::emulation::ppu_util::EmulatorFetchable;
 use serde::{Deserialize, Serialize};
@@ -187,7 +187,7 @@ pub fn create_tree() -> egui_tiles::Tree<Pane> {
         linear.shares.set_share(options, 1.0);
     }
 
-    egui_tiles::Tree::new("emulator_tiles", root, tiles)
+    egui_tiles::Tree::new(Id::unique("emulator_tiles"), root, tiles)
 }
 
 /// Find a pane in the tree by its type

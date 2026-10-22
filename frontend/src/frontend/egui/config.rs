@@ -4,7 +4,7 @@ use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
 
 use egui::{Key, Modifiers};
-use monsoon_core::emulation::nes::{NesConfig, FRAME_RATE};
+use monsoon_core::emulation::nes::{FRAME_RATE, NesConfig};
 use monsoon_core::emulation::palette_util::RgbPalette;
 use monsoon_core::emulation::ppu_util::EmulatorFetchable;
 use monsoon_core::emulation::rom::RomFile;
