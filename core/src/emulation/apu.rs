@@ -30,12 +30,12 @@ impl Default for Apu {
         pulse_1.sweep_unit.ones_complement = true;
 
         Self {
-            frame_counter: Default::default(),
+            frame_counter: FrameCounter::default(),
             pulse_1,
-            pulse_2: Default::default(),
-            noise_generator: Default::default(),
-            triangle_generator: Default::default(),
-            dmc_unit: Default::default(),
+            pulse_2: PulseGenerator::default(),
+            noise_generator: NoiseGenerator::default(),
+            triangle_generator: TriangleGenerator::default(),
+            dmc_unit: DMCUnit::default(),
         }
     }
 }
@@ -92,6 +92,7 @@ impl Apu {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash, Default)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct DMCUnit {
     pub irq_asserted: bool,
     pub irq_pending: bool,
@@ -141,6 +142,7 @@ pub struct TriangleGenerator {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash, Default)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct SweepUnit {
     pub shift_bits: u8,
     pub negate: bool,
@@ -156,9 +158,9 @@ impl SweepUnit {
     pub fn sweep(&self, period: u16) -> u16 {
         let change = period >> self.shift_bits;
         let change = if self.negate {
-            change as i16
+            change.cast_signed()
         } else {
-            0 - change as i16
+            0 - change.cast_signed()
         };
 
         let target = if self.ones_complement {
@@ -167,9 +169,12 @@ impl SweepUnit {
             i32::from(period) + i32::from(change)
         };
 
+        #[allow(clippy::cast_sign_loss)]
+        #[allow(clippy::cast_possible_truncation)]
         if target < 0 { 0 } else { target as u16 }
     }
 
+    #[allow(clippy::missing_errors_doc)]
     pub fn clock(&mut self, period: u16) -> Result<u16, bool> {
         let target_period = self.sweep(period);
         if self.counter == 0 && self.enable && self.shift_bits != 0 {
@@ -215,21 +220,21 @@ impl LinearCounter {
 pub struct LengthCounter {
     pub halt: bool,
     enabled: bool,
-    length_counter: u8,
+    counter: u8,
 }
 
 impl LengthCounter {
     pub fn clock(&mut self) {
-        if self.length_counter != 0 && !self.halt {
-            self.length_counter -= 1;
+        if self.counter != 0 && !self.halt {
+            self.counter -= 1;
         }
     }
 
     pub fn load(&mut self, index: u8) {
         if self.enabled {
-            self.length_counter = LENGTH_COUNTER_TABLE[index as usize];
+            self.counter = LENGTH_COUNTER_TABLE[index as usize];
         } else {
-            self.length_counter = 0;
+            self.counter = 0;
         }
     }
 
@@ -237,12 +242,12 @@ impl LengthCounter {
         self.enabled = enabled;
 
         if self.enabled {
-            self.length_counter = 0;
+            self.counter = 0;
         }
     }
 
     #[must_use]
-    pub fn get_counter(&self) -> u8 { self.length_counter }
+    pub fn get_counter(&self) -> u8 { self.counter }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash, Default)]
