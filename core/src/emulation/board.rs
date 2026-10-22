@@ -1,7 +1,7 @@
 use std::convert::Into;
 use std::ops::RangeInclusive;
 
-use crate::emulation::apu::Apu;
+use crate::emulation::apu::{Apu, EnvelopeUnit, LengthCounter, SweepUnit};
 use crate::emulation::cpu::{Cpu, INTERNAL_RAM_SIZE};
 use crate::emulation::mapper::{
     CpuReadResult, CpuWriteResult, Mapper, MapperLike, NoMapper, PpuReadResult, PpuWriteResult,
@@ -419,13 +419,27 @@ impl<'a> CpuBusView<'a> {
         match addr {
             0x4015 => {
                 let frame_interrupt = if self.apu.frame_counter.get_frame_interrupt_for_register() {
-                    0b0100_0000
+                    1u8
                 } else {
                     0
                 };
 
-                ReadResult::from(frame_interrupt | (self.cpu_open_bus.read() & 0b0010_0000))
-                    .to_false()
+                let p1_halt_status = get_len_halt_status_bit(&self.apu.pulse_1.length_counter);
+                let p2_halt_status = get_len_halt_status_bit(&self.apu.pulse_2.length_counter);
+                let triangle_halt_status =
+                    get_len_halt_status_bit(&self.apu.triangle_generator.length_counter);
+                let noise_halt_status =
+                    get_len_halt_status_bit(&self.apu.noise_generator.length_counter);
+
+                ReadResult::from(
+                    frame_interrupt
+                        | (self.cpu_open_bus.read() & 0b0010_0000)
+                        | p1_halt_status
+                        | p2_halt_status << 1
+                        | triangle_halt_status << 3
+                        | noise_halt_status << 4,
+                )
+                .to_false()
             }
             0x4016 => match self.controller1 {
                 Some(controller) => ReadResult::from(controller.read()).with_mask(!0b1110_0000),
@@ -490,19 +504,172 @@ impl<'a> CpuBusView<'a> {
 
     #[inline]
     fn write_apu_io(&mut self, addr: u16, data: u8) {
-        #[allow(clippy::single_match)]
         match addr {
+            0x4000 => {
+                reload_envelope(&mut self.apu.pulse_1.envelope, data);
+                let halt = (data & 0b10_0000) >> 5 == 1;
+                self.apu.pulse_1.length_counter.halt = halt;
+                self.apu.pulse_1.duty_ratio = data >> 6;
+            }
+            0x4001 => {
+                reload_sweep(&mut self.apu.pulse_1.sweep_unit, data);
+            }
+            0x4002 => {
+                self.apu.pulse_1.period = (self.apu.pulse_1.period & 0xFF) | data as u16;
+            }
+            0x4003 => {
+                load_length_counter(&mut self.apu.pulse_1.length_counter, data);
+                restart_envelope(&mut self.apu.pulse_1.envelope);
+                self.apu.pulse_1.phase = 0;
+                self.apu.pulse_1.period =
+                    (self.apu.pulse_1.period & 0xFF00) | (((data & 0b1110_0000) as u16) << 3)
+            }
+            0x4004 => {
+                reload_envelope(&mut self.apu.pulse_2.envelope, data);
+                let halt = (data & 0b10_0000) >> 5 == 1;
+                self.apu.pulse_2.length_counter.halt = halt;
+                self.apu.pulse_2.duty_ratio = data >> 6;
+            }
+            0x4005 => {
+                reload_sweep(&mut self.apu.pulse_2.sweep_unit, data);
+            }
+            0x4006 => {
+                self.apu.pulse_1.period = (self.apu.pulse_1.period & 0xFF) | data as u16;
+            }
+            0x4007 => {
+                load_length_counter(&mut self.apu.pulse_2.length_counter, data);
+                restart_envelope(&mut self.apu.pulse_2.envelope);
+                self.apu.pulse_2.phase = 0;
+                self.apu.pulse_1.period =
+                    (self.apu.pulse_2.period & 0xFF00) | (((data & 0b1110_0000) as u16) << 3)
+            }
+            0x4008 => {
+                let control = (data >> 7) == 1;
+                let reload = data & !0x80;
+
+                self.apu.triangle_generator.length_counter.halt = control;
+                self.apu.triangle_generator.linear_counter.control_flag = control;
+                self.apu.triangle_generator.linear_counter.reload_value = reload;
+            }
+            0x400A => {
+                self.apu.triangle_generator.period =
+                    (self.apu.triangle_generator.period & 0xFF) | data as u16;
+            }
+            0x400B => {
+                load_length_counter(&mut self.apu.triangle_generator.length_counter, data);
+                self.apu.triangle_generator.linear_counter.reload_flag = true;
+                self.apu.triangle_generator.period = (self.apu.triangle_generator.period & 0xFF00)
+                    | (((data & 0b1110_0000) as u16) << 3)
+            }
+            0x400C => {
+                reload_envelope(&mut self.apu.noise_generator.envelope, data);
+                restart_envelope(&mut self.apu.noise_generator.envelope);
+                let halt = (data & 0b10_0000) >> 5 == 1;
+                self.apu.noise_generator.length_counter.halt = halt;
+            }
+            0x400E => {
+                let noise_mode = (data >> 7) == 1;
+                let noise_period = data & 0b1111;
+
+                self.apu.noise_generator.noise_mode = noise_mode;
+                self.apu.noise_generator.set_period(noise_period);
+            }
+            0x400F => {
+                load_length_counter(&mut self.apu.noise_generator.length_counter, data);
+            }
+            0x4010 => {
+                let irq_enable = (data >> 7) == 1;
+                let does_loop = (data >> 6) == 1;
+                let sample_rate = data & 0b1111;
+
+                self.apu.dmc_unit.sample_end_irq_enable = irq_enable;
+                self.apu.dmc_unit.does_loop = does_loop;
+                self.apu.dmc_unit.sample_rate = sample_rate;
+            }
+            0x4011 => {
+                let load_counter = data & (!0x80);
+                self.apu.dmc_unit.load_counter = load_counter;
+            }
+            0x4012 => {
+                self.apu.dmc_unit.sample_address = data;
+            }
+            0x4013 => {
+                self.apu.dmc_unit.sample_length = data;
+            }
+            0x4015 => {
+                let p1_enable = (data & 0b1) == 1;
+                let p2_enable = (data & 0b10) == 1;
+                let triangle_enable = (data & 0b100) == 1;
+                let noise_enable = (data & 0b1000) == 1;
+
+                self.apu.pulse_1.length_counter.set_enabled(p1_enable);
+                self.apu.pulse_2.length_counter.set_enabled(p2_enable);
+                self.apu
+                    .triangle_generator
+                    .length_counter
+                    .set_enabled(triangle_enable);
+                self.apu
+                    .noise_generator
+                    .length_counter
+                    .set_enabled(noise_enable);
+
+                let dmc_bit = (data >> 4) == 1;
+                if dmc_bit {
+                    self.apu.dmc_unit.bytes_remaining = 0;
+                } else {
+                }
+            }
             0x4016 => {
                 *self.strobe_data = data & 1;
                 Board::update_controllers(self.controller1, self.controller2, *self.strobe_data);
             }
             0x4017 => {
-                self.apu.frame_counter.five_step = data & 0x80 != 0;
+                self.apu.frame_counter.external_sync = data & 0x80 != 0;
                 self.apu.frame_counter.interrupt_inhibit = data & 0x40 != 0;
                 self.apu.frame_counter.frame_interrupt = !self.apu.frame_counter.interrupt_inhibit;
             }
             _ => {}
         }
+    }
+}
+
+fn reload_envelope(env: &mut EnvelopeUnit, data: u8) {
+    let reload_val = data & 0b1111;
+    let const_vol = ((data & 0b1_0000) >> 4) == 1;
+    let does_loop = ((data & 0b10_0000) >> 5) == 1;
+    env.divider_reload = reload_val;
+    env.const_volume = const_vol;
+    env.does_loop = does_loop;
+    env.start = true;
+}
+
+fn reload_sweep(sweep: &mut SweepUnit, data: u8) {
+    let shift_count = data & 0b111;
+    let negate = ((data >> 3) & 1) == 1;
+    let counter_reload = ((data >> 4) & 0b111);
+    let sweep_enable = ((data >> 7) & 1) == 1;
+
+    sweep.shift_bits = shift_count;
+    sweep.negate = negate;
+    sweep.counter_reload = counter_reload;
+    sweep.enable = sweep_enable;
+    sweep.reload = true;
+}
+
+fn restart_envelope(env: &mut EnvelopeUnit) {
+    // TODO
+}
+
+fn load_length_counter(counter: &mut LengthCounter, data: u8) {
+    let index = (data & (!0b111)) >> 3;
+    counter.load(index)
+}
+
+fn get_len_halt_status_bit(len: &LengthCounter) -> u8 {
+    if !len.halt && len.get_counter() != 0 {
+        1u8
+    } else {
+        0
     }
 }
 

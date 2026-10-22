@@ -162,6 +162,7 @@ impl Nes {
         if !self.is_powered {
             self.is_powered = true;
             self.board.cpu.reset();
+            self.cpu_mem_write(0x4015, 0);
         }
     }
 
