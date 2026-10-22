@@ -476,13 +476,7 @@ impl Nes {
             };
         }
 
-        let res = self.step_fast(last_cycle, config);
-        if self.board.cpu.current_op == MicroOp::FetchOpcode
-            && self.cpu_cycle_counter == <CpuAlignment as Into<u8>>::into(self.config.alignment)
-        {
-            self.write_trace_log();
-        }
-        res
+        self.step_fast(last_cycle, config)
     }
 
     fn step_internal(&mut self, last_cycle: u64, config: NesConfig) -> ExecutionResult {
@@ -535,6 +529,7 @@ impl Nes {
         // Check if CPU should step (every 12th master cycle, offset by 2)
         // cpu_cycle_counter + 2 == 12  means cpu_cycle_counter == 10
         if cpu_step {
+            let should_trace = self.is_tracing && cpu.current_op == MicroOp::FetchOpcode;
             let cpu_res = cpu.step(&mut cpu_bus_view!(self), config);
             self.board.apu.clock_frame_counter(self.apu_counter == 2);
 
@@ -546,6 +541,10 @@ impl Nes {
 
             res = res.merge(cpu_res);
             res.cpu_cycle_completed = true;
+
+            if should_trace {
+                self.write_trace_log();
+            }
         }
 
         res
@@ -616,7 +615,7 @@ impl Nes {
                 &mut self.board.port2,
                 &mut self.board.joystick_strobe_data,
             );
-            trace.trace(cpu, &bus, self.total_cycles);
+            trace.trace(cpu, &bus, self.total_cycles.saturating_sub(12));
         }
     }
 
