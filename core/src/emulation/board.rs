@@ -537,14 +537,15 @@ impl<'a> CpuBusView<'a> {
             0x4002 => {
                 self.apu
                     .pulse_1
-                    .set_period((self.apu.pulse_1.get_period() & 0xFF) | u16::from(data));
+                    .set_period((self.apu.pulse_1.get_period() & 0xFF00) | u16::from(data));
             }
             0x4003 => {
                 load_length_counter(&mut self.apu.pulse_1.length_counter, data);
                 restart_envelope(&mut self.apu.pulse_1.envelope);
                 self.apu.pulse_1.phase = 0;
                 self.apu.pulse_1.set_period(
-                    (self.apu.pulse_1.get_period() & 0xFF00) | (u16::from(data & 0b1110_0000) << 3),
+                    (self.apu.pulse_1.get_period() & 0x00FF) | (u16::from(data & 0b111) <<
+                        8),
                 );
             }
             0x4004 => {
@@ -559,14 +560,14 @@ impl<'a> CpuBusView<'a> {
             0x4006 => {
                 self.apu
                     .pulse_2
-                    .set_period((self.apu.pulse_2.get_period() & 0xFF) | u16::from(data));
+                    .set_period((self.apu.pulse_2.get_period() & 0xFF00) | u16::from(data));
             }
             0x4007 => {
                 load_length_counter(&mut self.apu.pulse_2.length_counter, data);
                 restart_envelope(&mut self.apu.pulse_2.envelope);
                 self.apu.pulse_2.phase = 0;
                 self.apu.pulse_1.set_period(
-                    (self.apu.pulse_2.get_period() & 0xFF00) | (u16::from(data & 0b1110_0000) << 3),
+                    (self.apu.pulse_2.get_period() & 0x00FF) | (u16::from(data & 0b111) << 8),
                 );
             }
             0x4008 => {
@@ -579,13 +580,13 @@ impl<'a> CpuBusView<'a> {
             }
             0x400A => {
                 self.apu.triangle_generator.period =
-                    (self.apu.triangle_generator.period & 0xFF) | u16::from(data);
+                    (self.apu.triangle_generator.period & 0xFF00) | u16::from(data);
             }
             0x400B => {
                 load_length_counter(&mut self.apu.triangle_generator.length_counter, data);
                 self.apu.triangle_generator.linear_counter.reload_flag = true;
-                self.apu.triangle_generator.period = (self.apu.triangle_generator.period & 0xFF00)
-                    | (u16::from(data & 0b1110_0000) << 3);
+                self.apu.triangle_generator.period = (self.apu.triangle_generator.period & 0x00FF)
+                    | (u16::from(data & 0b111) << 8);
             }
             0x400C => {
                 reload_envelope(&mut self.apu.noise_generator.envelope, data);
