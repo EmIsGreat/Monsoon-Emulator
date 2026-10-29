@@ -388,13 +388,28 @@ impl<'a> CpuBusView<'a> {
     fn snapshot_apu_io(&self, addr: u16, open_bus: &OpenBus) -> u8 {
         match addr {
             0x4015 => {
-                let frame_interrupt = if self.apu.frame_counter.frame_interrupt {
-                    0b0100_0000
-                } else {
-                    0
-                };
+                let frame_interrupt = u8::from(self.apu.frame_counter.frame_interrupt);
 
-                frame_interrupt | (self.cpu_open_bus.read() & 0b0010_0000)
+                // Todo
+                let dmc_interrupt = 0;
+
+                let p1_halt_status = get_len_halt_status_bit(&self.apu.pulse_1.length_counter);
+                let p2_halt_status = get_len_halt_status_bit(&self.apu.pulse_2.length_counter);
+                let triangle_halt_status =
+                    get_len_halt_status_bit(&self.apu.triangle_generator.length_counter);
+                let noise_halt_status =
+                    get_len_halt_status_bit(&self.apu.noise_generator.length_counter);
+
+                let dmc_bytes_remaining = u8::from(self.apu.dmc_unit.bytes_remaining != 0);
+
+                dmc_interrupt << 7
+                        | frame_interrupt << 6
+                        // | (self.cpu_open_bus.read() & 0b0010_0000)
+                        | dmc_bytes_remaining << 4
+                        | noise_halt_status << 3
+                        | triangle_halt_status << 2
+                        | p2_halt_status << 1
+                        | p1_halt_status
             }
             0x4016 => {
                 if let Some(controller) = &self.controller1 {
@@ -421,7 +436,8 @@ impl<'a> CpuBusView<'a> {
                 let frame_interrupt =
                     u8::from(self.apu.frame_counter.get_frame_interrupt_for_register());
 
-                let dmc_interrupt = u8::from(self.apu.dmc_unit.irq_asserted);
+                // Todo
+                let dmc_interrupt = 0;
 
                 let p1_halt_status = get_len_halt_status_bit(&self.apu.pulse_1.length_counter);
                 let p2_halt_status = get_len_halt_status_bit(&self.apu.pulse_2.length_counter);
@@ -435,7 +451,7 @@ impl<'a> CpuBusView<'a> {
                 ReadResult::from(
                     dmc_interrupt << 7
                         | frame_interrupt << 6
-                        | (self.cpu_open_bus.read() & 0b0010_0000)
+                        // | (self.cpu_open_bus.read() & 0b0010_0000)
                         | dmc_bytes_remaining << 4
                         | noise_halt_status << 3
                         | triangle_halt_status << 2
@@ -642,14 +658,16 @@ impl<'a> CpuBusView<'a> {
 
                 self.apu.frame_counter.external_sync = bit_7;
 
-                // TODO: Make this delayed See frame counter wiki page.
-                self.apu.frame_counter.apu_cycle_counter = 0;
+                self.apu.frame_counter.reset_at = Some(self.apu.frame_counter.cpu_cycle_counter + 3);
                 if bit_7 {
                     self.apu.clock_half_frame();
                 }
 
                 self.apu.frame_counter.interrupt_inhibit = bit_6;
-                self.apu.frame_counter.frame_interrupt = !bit_6;
+
+                if bit_6 {
+                    self.apu.frame_counter.frame_interrupt = false;
+                }
             }
             _ => {}
         }

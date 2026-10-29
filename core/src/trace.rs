@@ -62,10 +62,12 @@ impl TraceLog {
         }
 
         let descriptor_string = get_opcode_descriptor(current_opcode, &cpu, bus);
+        let apu_4015 = bus.read_debug(0x4015);
 
         let _ = writeln!(
             &mut self.log,
-            "{:04X}  {:<8} {:>4} {:<27} A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{}",
+            "{:04X}  {:<8} {:>4} {:<27} A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{} \
+            $4015: {apu_4015:08b}",
             instruction_start,
             mem_formatted,
             current_opcode.name,

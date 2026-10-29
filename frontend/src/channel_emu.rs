@@ -136,6 +136,11 @@ impl ChannelEmulator {
             match msg {
                 FrontendMessage::Quit => {
                     let _ = self.to_frontend.send(EmulatorMessage::Stopped);
+
+                    if let Some(exporter) = self.nes.board.apu.exporter.take() {
+                        // exporter.finalize().unwrap();
+                    }
+
                     return Err("Quit requested".to_string());
                 }
                 FrontendMessage::Reset => {

@@ -15,7 +15,7 @@ impl CpalAudio {
             .default_output_device()
             .ok_or("No audio output device available")?;
 
-        let (producer, consumer) = RingBuffer::new(2400);
+        let (producer, consumer) = RingBuffer::new(4800);
 
         let supported_config = device
             .supported_output_configs()?

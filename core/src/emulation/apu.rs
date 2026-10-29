@@ -1,4 +1,6 @@
 use rtrb::Producer;
+use rubato::Resampler;
+use rubato::audioadapter_buffers::direct::SequentialSlice;
 use serde::{Deserialize, Serialize};
 
 pub const APU_FREQUENCY: u32 = 894_886;
@@ -42,6 +44,9 @@ pub struct Apu {
     pub dmc_unit: DMCUnit,
     pub sample_producer: Option<Producer<f32>>,
     pub sample_phase: u32,
+    pub sampler: Async<f32>,
+    pub samples: Vec<f32>,
+    pub exporter: Option<StreamingWavExporter>,
 }
 
 impl Clone for Apu {
@@ -55,8 +60,28 @@ impl Clone for Apu {
             dmc_unit: self.dmc_unit.clone(),
             sample_producer: None,
             sample_phase: 0,
+            sampler: get_sampler(),
+            samples: Vec::with_capacity((APU_FREQUENCY / 10) as usize),
+            exporter: StreamingWavExporter::create("apu-raw.wav", APU_FREQUENCY).ok(),
         }
     }
+}
+
+use rubato::{Async, FixedAsync, SincInterpolationParameters};
+
+#[allow(clippy::expect_used)]
+#[allow(clippy::missing_panics_doc)]
+#[must_use]
+pub fn get_sampler() -> Async<f32> {
+    Async::<f32>::new_sinc(
+        48_000.0 / f64::from(APU_FREQUENCY),
+        1.0,
+        &SincInterpolationParameters::default(),
+        1024,
+        1,
+        FixedAsync::Input,
+    )
+    .expect("Error creating resampler")
 }
 
 impl Default for Apu {
@@ -73,12 +98,16 @@ impl Default for Apu {
             dmc_unit: DMCUnit::default(),
             sample_producer: None,
             sample_phase: 0,
+            sampler: get_sampler(),
+            samples: Vec::with_capacity((APU_FREQUENCY / 10) as usize),
+            exporter: StreamingWavExporter::create("apu-raw.wav", APU_FREQUENCY).ok(),
         }
     }
 }
 
 impl Apu {
     #[inline(always)]
+    #[allow(clippy::missing_panics_doc)]
     pub fn clock_frame_counter(&mut self, is_proper: bool) {
         if let Some(res) = self.frame_counter.clock(is_proper) {
             match res {
@@ -88,15 +117,37 @@ impl Apu {
         }
 
         if is_proper {
+            const INPUT_CHUNK_SIZE: usize = 1024;
+
             let sample = self.mix();
+            self.samples.push(sample);
+            if let Some(exporter) = &mut self.exporter {
+                exporter.push(sample).unwrap();
+            }
 
             if let Some(producer) = &mut self.sample_producer {
-                self.sample_phase += SAMPLE_RATE;
+                #[allow(clippy::expect_used)]
+                while self.samples.len() >= INPUT_CHUNK_SIZE {
+                    let input_adapter = SequentialSlice::new(&self.samples, 1, INPUT_CHUNK_SIZE)
+                        .expect("Input buffer must contain a complete chunk");
 
-                if self.sample_phase >= APU_FREQUENCY {
-                    self.sample_phase -= APU_FREQUENCY;
+                    match self.sampler.process(&input_adapter, None) {
+                        Ok(resampled) => {
+                            let output = resampled.take_data();
 
-                    let _ = producer.push(sample);
+                            if let Err(remaining) = producer.push_entire_slice(&output) {
+                                eprintln!(
+                                    "Audio buffer full; {remaining} samples were not written"
+                                );
+                            }
+
+                            self.samples.drain(..INPUT_CHUNK_SIZE);
+                        }
+                        Err(error) => {
+                            eprintln!("Audio resampling failed: {error}");
+                            break;
+                        }
+                    }
                 }
             }
         }
@@ -474,11 +525,23 @@ pub struct FrameCounter {
     pub frame_interrupt: bool,
     pub interrupt_inhibit: bool,
     pub apu_cycle_counter: u16,
+    pub cpu_cycle_counter: u16,
+    pub reset_at: Option<u16>,
 }
 
 impl FrameCounter {
     #[inline]
     pub fn clock(&mut self, is_proper: bool) -> Option<FrameCounterClockResult> {
+        self.cpu_cycle_counter = self.cpu_cycle_counter.wrapping_add(1);
+
+        if let Some(reset_at) = self.reset_at
+            && reset_at == self.cpu_cycle_counter
+        {
+            self.apu_cycle_counter = 0;
+            self.cpu_cycle_counter = 0;
+            self.reset_at = None;
+        }
+
         if is_proper {
             self.apu_cycle_counter = self.apu_cycle_counter.wrapping_add(1);
 
@@ -499,19 +562,24 @@ impl FrameCounter {
                 _ => None,
             }
         } else {
-            if !self.external_sync && !self.interrupt_inhibit {
-                if self.apu_cycle_counter == FRAME_COUNTER_STEP_4 - 1
+            if !self.external_sync
+                && !self.interrupt_inhibit
+                && (self.apu_cycle_counter == FRAME_COUNTER_STEP_4 - 1
                     || self.apu_cycle_counter == FRAME_COUNTER_STEP_4
-                    || self.apu_cycle_counter == FRAME_COUNTER_STEP_4 + 1
-                {
-                    self.frame_interrupt = true;
+                    || self.apu_cycle_counter == FRAME_COUNTER_STEP_4 + 1)
+            {
+                self.frame_interrupt = true;
+            }
 
-                    if self.apu_cycle_counter == FRAME_COUNTER_STEP_4 {
-                        self.apu_cycle_counter = 0;
-                    }
+            if (self.external_sync && (self.apu_cycle_counter == FRAME_COUNTER_STEP_5 + 1))
+                || (!self.external_sync && (self.apu_cycle_counter == FRAME_COUNTER_STEP_4 + 1))
+            {
+                if let Some(reset_at) = self.reset_at {
+                    self.reset_at = Some(reset_at - self.cpu_cycle_counter)
                 }
-            } else if self.apu_cycle_counter == FRAME_COUNTER_STEP_5 {
+
                 self.apu_cycle_counter = 0;
+                self.cpu_cycle_counter = 0;
             }
 
             None
@@ -530,4 +598,62 @@ impl FrameCounter {
 pub enum FrameCounterClockResult {
     HalfFrame,
     QuarterFrame,
+}
+
+use std::fmt::{Debug, Formatter};
+use std::path::Path;
+
+use hound::{SampleFormat, WavSpec, WavWriter};
+
+pub struct StreamingWavExporter {
+    writer: WavWriter<std::io::BufWriter<std::fs::File>>,
+    buffer: Vec<f32>,
+}
+
+impl Debug for StreamingWavExporter {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result { f.write_str("Exporter") }
+}
+
+impl StreamingWavExporter {
+    pub fn create(path: impl AsRef<Path>, sample_rate: u32) -> Result<Self, hound::Error> {
+        let writer = WavWriter::create(
+            path,
+            WavSpec {
+                channels: 1,
+                sample_rate,
+                bits_per_sample: 32,
+                sample_format: SampleFormat::Float,
+            },
+        )?;
+
+        Ok(Self {
+            writer,
+            buffer: Vec::with_capacity(1024),
+        })
+    }
+
+    pub fn push(&mut self, sample: f32) -> Result<(), hound::Error> {
+        self.buffer.push(sample);
+
+        if self.buffer.len() >= 1024 {
+            self.flush_buffer()?;
+        }
+
+        Ok(())
+    }
+
+    fn flush_buffer(&mut self) -> Result<(), hound::Error> {
+        for &sample in &self.buffer {
+            self.writer.write_sample(sample)?;
+        }
+
+        self.buffer.clear();
+        Ok(())
+    }
+
+    pub fn finalize(mut self) -> Result<(), hound::Error> {
+        // Write any remaining samples, even if fewer than 1024.
+        self.flush_buffer()?;
+        self.writer.finalize()
+    }
 }
