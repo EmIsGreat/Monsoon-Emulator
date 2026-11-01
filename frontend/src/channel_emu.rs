@@ -125,6 +125,7 @@ impl ChannelEmulator {
     }
 
     /// Run one frame of emulation and handle messages
+    #[allow(clippy::missing_panics_doc)]
     pub fn process_messages(&mut self) -> Result<(), String> {
         // Controller input is provided by frontend each UI update for bindings
         // currently held. Reset the bitfield once per update so held inputs
@@ -137,6 +138,7 @@ impl ChannelEmulator {
                 FrontendMessage::Quit => {
                     let _ = self.to_frontend.send(EmulatorMessage::Stopped);
 
+                    #[allow(clippy::unwrap_used)]
                     if let Some(exporter) = self.nes.board.apu.exporter.take() {
                         exporter.finalize().unwrap();
                     }

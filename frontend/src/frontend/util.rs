@@ -196,7 +196,8 @@ pub fn spawn_palette_picker(sender: &Sender<AsyncFrontendMessage>, dir: Option<&
             let name = handle.file_name();
             let file = get_file_path(&handle, palette_cache_dir());
 
-            // Cache palette file in storage for later access (ROM matching, etc.)
+            // Cache palette file in storage for later access (ROM matching,
+            // etc.)
             let cache_key = palette_cache_key(name);
             let _ = get_storage().set(&cache_key, data.clone()).await;
 

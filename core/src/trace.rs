@@ -67,7 +67,7 @@ impl TraceLog {
         let _ = writeln!(
             &mut self.log,
             "{:04X}  {:<8} {:>4} {:<27} A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{} \
-            $4015: {apu_4015:08b}",
+             $4015: {apu_4015:08b}",
             instruction_start,
             mem_formatted,
             current_opcode.name,

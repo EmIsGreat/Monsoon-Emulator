@@ -10,16 +10,14 @@ const FRAME_COUNTER_STEP_2: u16 = 7456;
 const FRAME_COUNTER_STEP_3: u16 = 11185;
 const FRAME_COUNTER_STEP_4: u16 = 14914;
 const FRAME_COUNTER_STEP_5: u16 = 18640;
-const ONE_OVER_8227: f32 = 1.0 / 8227.0;
-const ONE_OVER_12241: f32 = 1.0 / 12241.0;
-const ONE_OVER_22638: f32 = 1.0 / 22638.0;
+
 const LENGTH_COUNTER_TABLE: [u8; 0x20] = [
     10, 254, 20, 2, 40, 4, 80, 6, 160, 8, 60, 10, 14, 12, 26, 14, 12, 16, 24, 18, 48, 20, 96, 22,
     192, 24, 72, 26, 16, 28, 32, 30,
 ];
 
 const NOISE_TABLE: [u16; 0x10] = [
-    2, 4, 8, 16, 32, 48, 64, 80, 101, 127, 190, 254, 391, 508, 1017, 2034,
+    2, 4, 8, 16, 32, 48, 64, 80, 101, 127, 190, 254, 381, 508, 1017, 2034,
 ];
 
 const TRIANGLE_TABLE: [u8; 32] = [
@@ -108,7 +106,7 @@ impl Default for Apu {
 impl Apu {
     #[inline(always)]
     #[allow(clippy::missing_panics_doc)]
-    pub fn clock_frame_counter(&mut self, is_proper: bool) {
+    pub fn clock_frame_counter(&mut self, is_proper: bool, config: &NesConfig) {
         if let Some(res) = self.frame_counter.clock(is_proper) {
             match res {
                 FrameCounterClockResult::HalfFrame => self.clock_half_frame(),
@@ -119,8 +117,11 @@ impl Apu {
         if is_proper {
             const INPUT_CHUNK_SIZE: usize = 1024;
 
-            let sample = self.mix();
+            let sample = self.mix(config);
             self.samples.push(sample);
+
+            #[cfg(debug_assertions)]
+            #[allow(clippy::unwrap_used)]
             if let Some(exporter) = &mut self.exporter {
                 exporter.push(sample).unwrap();
             }
@@ -166,7 +167,7 @@ impl Apu {
                 self.pulse_1.set_period(p);
             }
             Err(m) => {
-                self.pulse_1.muted = m;
+                self.pulse_1.sweep_muted = m;
             }
         }
 
@@ -175,7 +176,7 @@ impl Apu {
                 self.pulse_2.set_period(p);
             }
             Err(m) => {
-                self.pulse_2.muted = m;
+                self.pulse_2.sweep_muted = m;
             }
         }
     }
@@ -192,9 +193,20 @@ impl Apu {
     #[must_use]
     pub fn poll_irq(&self) -> bool { self.frame_counter.frame_interrupt }
 
-    pub fn mix(&mut self) -> f32 {
-        let pulse_1 = self.pulse_1.clock();
-        let pulse_2 = self.pulse_2.clock();
+    pub fn mix(&mut self, config: &NesConfig) -> f32 {
+        let pulse_1 = if config.is_pulse1_muted {
+            self.pulse_1.clock();
+            0
+        } else {
+            self.pulse_1.clock()
+        };
+
+        let pulse_2 = if config.is_pulse2_muted {
+            self.pulse_2.clock();
+            0
+        } else {
+            self.pulse_2.clock()
+        };
 
         let pulse_sum = f32::from(pulse_1 + pulse_2);
         let pulse_out = if pulse_sum == 0.0 {
@@ -204,13 +216,30 @@ impl Apu {
             95.88 / pulse_div
         };
 
-        let triangle = self.triangle_generator.clock();
-        let noise = self.noise_generator.clock();
-        let dmc = self.dmc_unit.clock();
+        let triangle = if config.is_triangle_muted {
+            self.triangle_generator.clock();
+            0
+        } else {
+            self.triangle_generator.clock()
+        };
 
-        let triangle_div = f32::from(triangle) * ONE_OVER_8227;
-        let noise_div = f32::from(noise) * ONE_OVER_12241;
-        let dmc_div = f32::from(dmc) * ONE_OVER_22638;
+        let noise = if config.is_noise_muted {
+            self.noise_generator.clock();
+            0
+        } else {
+            self.noise_generator.clock()
+        };
+
+        let dmc = if config.is_dmc_muted {
+            self.dmc_unit.clock();
+            0
+        } else {
+            self.dmc_unit.clock()
+        };
+
+        let triangle_div = f32::from(triangle) / 8227.0;
+        let noise_div = f32::from(noise) / 12241.0;
+        let dmc_div = f32::from(dmc) * 22638.0;
 
         let tnc_sum = triangle_div + noise_div + dmc_div;
 
@@ -277,20 +306,19 @@ impl NoiseGenerator {
     pub fn clock(&mut self) -> u8 {
         if self.counter == 0 {
             self.counter = self.noise_period;
+            let first_bit = self.lfsr & 1;
+            let second_bit = if self.periodic_noise_mode {
+                (self.lfsr & 0b100_0000) >> 6
+            } else {
+                (self.lfsr & 0b10) >> 1
+            };
+
+            let feedback = first_bit ^ second_bit;
+            self.lfsr >>= 1;
+            self.lfsr = (self.lfsr & !0b100_0000_0000_0000) | (feedback << 14);
         }
 
         self.counter = self.counter.saturating_sub(1);
-
-        let first_bit = self.lfsr & 1;
-        let second_bit = if self.periodic_noise_mode {
-            (self.lfsr & 0b100_0000) >> 6
-        } else {
-            (self.lfsr & 0b10) >> 1
-        };
-
-        let feedback = first_bit ^ second_bit;
-        self.lfsr >>= 1;
-        self.lfsr = (self.lfsr & 0b100_0000_0000_0000) | (feedback << 14);
 
         if (self.lfsr & 1) != 0 && self.length_counter.counter != 0 {
             self.envelope.get_output()
@@ -306,7 +334,8 @@ pub struct PulseGenerator {
     pub length_counter: LengthCounter,
     pub sweep_unit: SweepUnit,
     period: u16,
-    pub muted: bool,
+    pub sweep_muted: bool,
+    pub period_muted: bool,
     pub duty_ratio: u8,
     pub phase: u8,
     pub counter: u16,
@@ -327,7 +356,8 @@ impl PulseGenerator {
 
         let duty = PULSE_DUTY_TABLE[self.duty_ratio as usize][self.phase as usize];
 
-        if duty != 0 && !self.muted && self.length_counter.counter != 0 {
+        if duty != 0 && !self.period_muted && !self.sweep_muted && self.length_counter.counter != 0
+        {
             self.envelope.get_output()
         } else {
             0
@@ -335,7 +365,7 @@ impl PulseGenerator {
     }
 
     pub fn set_period(&mut self, period: u16) {
-        self.muted = period < 8;
+        self.period_muted = period < 8;
         self.period = period;
     }
 
@@ -354,16 +384,20 @@ pub struct TriangleGenerator {
 
 impl TriangleGenerator {
     pub fn clock(&mut self) -> u8 {
-        let counter = self.counter.saturating_sub(2);
-        self.counter = counter;
+        for _ in 0..2 {
+            let (new_val, overflow) = self.counter.overflowing_sub(1);
 
-        if self.counter == 0 && self.linear_counter.counter != 0 && self.length_counter.counter != 0
-        {
-            self.counter = self.period;
-            self.waveform_sequence_index += 1;
+            self.counter = if overflow { self.period } else { new_val };
 
-            if self.waveform_sequence_index == 32 {
-                self.waveform_sequence_index = 0;
+            if self.counter == self.period
+                && self.linear_counter.counter != 0
+                && self.length_counter.counter != 0
+            {
+                self.waveform_sequence_index += 1;
+
+                if self.waveform_sequence_index == 32 {
+                    self.waveform_sequence_index = 0;
+                }
             }
         }
 
@@ -403,16 +437,12 @@ impl SweepUnit {
     pub fn clock(&mut self, period: u16) -> Result<u16, bool> {
         let target_period = self.sweep(period);
 
-        if target_period > 0x7FFF {
+        if target_period > 0x7FF {
             return Err(true);
         }
 
         if self.counter == 0 && self.enable && self.shift_bits != 0 {
-            if target_period > 0x7FF {
-                Err(true)
-            } else {
-                Ok(target_period)
-            }
+            Ok(target_period)
         } else if self.counter == 0 || self.reload {
             self.counter = self.counter_reload;
             self.reload = false;
@@ -471,7 +501,7 @@ impl LengthCounter {
     pub fn set_enabled(&mut self, enabled: bool) {
         self.enabled = enabled;
 
-        if self.enabled {
+        if !self.enabled {
             self.counter = 0;
         }
     }
@@ -575,7 +605,7 @@ impl FrameCounter {
                 || (!self.external_sync && (self.apu_cycle_counter == FRAME_COUNTER_STEP_4 + 1))
             {
                 if let Some(reset_at) = self.reset_at {
-                    self.reset_at = Some(reset_at - self.cpu_cycle_counter)
+                    self.reset_at = Some(reset_at - self.cpu_cycle_counter);
                 }
 
                 self.apu_cycle_counter = 0;
@@ -605,6 +635,8 @@ use std::path::Path;
 
 use hound::{SampleFormat, WavSpec, WavWriter};
 
+use crate::emulation::nes::NesConfig;
+
 pub struct StreamingWavExporter {
     writer: WavWriter<std::io::BufWriter<std::fs::File>>,
     buffer: Vec<f32>,
@@ -615,6 +647,7 @@ impl Debug for StreamingWavExporter {
 }
 
 impl StreamingWavExporter {
+    #[allow(clippy::missing_errors_doc)]
     pub fn create(path: impl AsRef<Path>, sample_rate: u32) -> Result<Self, hound::Error> {
         let writer = WavWriter::create(
             path,
@@ -632,6 +665,7 @@ impl StreamingWavExporter {
         })
     }
 
+    #[allow(clippy::missing_errors_doc)]
     pub fn push(&mut self, sample: f32) -> Result<(), hound::Error> {
         self.buffer.push(sample);
 
@@ -642,6 +676,7 @@ impl StreamingWavExporter {
         Ok(())
     }
 
+    #[allow(clippy::missing_errors_doc)]
     fn flush_buffer(&mut self) -> Result<(), hound::Error> {
         for &sample in &self.buffer {
             self.writer.write_sample(sample)?;
@@ -651,6 +686,7 @@ impl StreamingWavExporter {
         Ok(())
     }
 
+    #[allow(clippy::missing_errors_doc)]
     pub fn finalize(mut self) -> Result<(), hound::Error> {
         // Write any remaining samples, even if fewer than 1024.
         self.flush_buffer()?;

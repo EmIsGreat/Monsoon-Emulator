@@ -544,14 +544,14 @@ impl<'a> CpuBusView<'a> {
                 restart_envelope(&mut self.apu.pulse_1.envelope);
                 self.apu.pulse_1.phase = 0;
                 self.apu.pulse_1.set_period(
-                    (self.apu.pulse_1.get_period() & 0x00FF) | (u16::from(data & 0b111) <<
-                        8),
+                    (self.apu.pulse_1.get_period() & 0x00FF) | (u16::from(data & 0b111) << 8),
                 );
             }
             0x4004 => {
                 reload_envelope(&mut self.apu.pulse_2.envelope, data);
                 let halt = (data & 0b10_0000) >> 5 == 1;
                 self.apu.pulse_2.length_counter.halt = halt;
+
                 self.apu.pulse_2.duty_ratio = data >> 6;
             }
             0x4005 => {
@@ -566,7 +566,7 @@ impl<'a> CpuBusView<'a> {
                 load_length_counter(&mut self.apu.pulse_2.length_counter, data);
                 restart_envelope(&mut self.apu.pulse_2.envelope);
                 self.apu.pulse_2.phase = 0;
-                self.apu.pulse_1.set_period(
+                self.apu.pulse_2.set_period(
                     (self.apu.pulse_2.get_period() & 0x00FF) | (u16::from(data & 0b111) << 8),
                 );
             }
@@ -585,13 +585,13 @@ impl<'a> CpuBusView<'a> {
             0x400B => {
                 load_length_counter(&mut self.apu.triangle_generator.length_counter, data);
                 self.apu.triangle_generator.linear_counter.reload_flag = true;
-                self.apu.triangle_generator.period = (self.apu.triangle_generator.period & 0x00FF)
-                    | (u16::from(data & 0b111) << 8);
+                self.apu.triangle_generator.period =
+                    (self.apu.triangle_generator.period & 0x00FF) | (u16::from(data & 0b111) << 8);
             }
             0x400C => {
                 reload_envelope(&mut self.apu.noise_generator.envelope, data);
                 restart_envelope(&mut self.apu.noise_generator.envelope);
-                let halt = (data & 0b10_0000) >> 5 == 1;
+                let halt = (data & 0b10_0000) != 0;
                 self.apu.noise_generator.length_counter.halt = halt;
             }
             0x400E => {
@@ -659,7 +659,8 @@ impl<'a> CpuBusView<'a> {
 
                 self.apu.frame_counter.external_sync = bit_7;
 
-                self.apu.frame_counter.reset_at = Some(self.apu.frame_counter.cpu_cycle_counter + 3);
+                self.apu.frame_counter.reset_at =
+                    Some(self.apu.frame_counter.cpu_cycle_counter + 3);
                 if bit_7 {
                     self.apu.clock_half_frame();
                 }
@@ -677,8 +678,8 @@ impl<'a> CpuBusView<'a> {
 
 fn reload_envelope(env: &mut EnvelopeUnit, data: u8) {
     let reload_val = data & 0b1111;
-    let const_vol = ((data & 0b1_0000) >> 4) == 1;
-    let does_loop = ((data & 0b10_0000) >> 5) == 1;
+    let const_vol = (data & 0b1_0000) != 0;
+    let does_loop = (data & 0b10_0000) != 0;
     env.divider_reload = reload_val;
     env.const_volume = const_vol;
     env.does_loop = does_loop;
@@ -689,7 +690,7 @@ fn reload_sweep(sweep: &mut SweepUnit, data: u8) {
     let shift_count = data & 0b111;
     let negate = ((data >> 3) & 1) == 1;
     let counter_reload = (data >> 4) & 0b111;
-    let sweep_enable = ((data >> 7) & 1) == 1;
+    let sweep_enable = (data >> 7) != 0;
 
     sweep.shift_bits = shift_count;
     sweep.negate = negate;
@@ -701,7 +702,7 @@ fn reload_sweep(sweep: &mut SweepUnit, data: u8) {
 fn restart_envelope(env: &mut EnvelopeUnit) { env.start = true; }
 
 fn load_length_counter(counter: &mut LengthCounter, data: u8) {
-    let index = (data & (!0b111)) >> 3;
+    let index = (data & 0b1111_1000) >> 3;
     counter.load(index);
 }
 

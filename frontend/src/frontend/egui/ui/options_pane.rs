@@ -22,6 +22,7 @@ pub fn render_options(
         render_debug_overlay_settings(ui, config);
         render_rom_loading_settings(ui, config);
         render_emulation_config_settings(ui, config, sender);
+        render_audio_settings(ui, config, sender);
     });
 }
 
@@ -263,6 +264,67 @@ fn render_sha_options(
     ui.add(input);
 
     if prev_magic != config.magic {
+        let _ = sender.send(AsyncFrontendMessage::ConfigChanged);
+    }
+}
+
+fn render_audio_settings(
+    ui: &mut egui::Ui,
+    config: &mut AppConfig,
+    sender: &Sender<AsyncFrontendMessage>,
+) {
+    ui.collapsing("Audio Settings", |ui| {
+        ui.collapsing("Channel Settings", |ui| {
+            render_channel_options(
+                ui,
+                &mut config.console_config.nes_config.is_pulse1_muted,
+                sender,
+                "Pulse 1",
+            );
+
+            render_channel_options(
+                ui,
+                &mut config.console_config.nes_config.is_pulse2_muted,
+                sender,
+                "Pulse 2",
+            );
+
+            render_channel_options(
+                ui,
+                &mut config.console_config.nes_config.is_triangle_muted,
+                sender,
+                "Triangle",
+            );
+
+            render_channel_options(
+                ui,
+                &mut config.console_config.nes_config.is_noise_muted,
+                sender,
+                "Noise",
+            );
+
+            render_channel_options(
+                ui,
+                &mut config.console_config.nes_config.is_dmc_muted,
+                sender,
+                "DMC",
+            );
+        });
+    });
+}
+
+fn render_channel_options(
+    ui: &mut egui::Ui,
+    config: &mut bool,
+    sender: &Sender<AsyncFrontendMessage>,
+    name: &'static str,
+) {
+    ui.label(name);
+
+    let prev = *config;
+    ui.checkbox(config, "Mute: ");
+
+    if prev != *config {
         let _ = sender.send(AsyncFrontendMessage::ConfigChanged);
     }
 }

@@ -101,11 +101,6 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 }
 ";
 
-/// All persistent wgpu resources needed to render the NES frame.
-///
-/// One instance lives inside `egui_wgpu::CallbackResources` for the lifetime
-/// of the egui renderer. It is inserted on startup via
-/// `render_state.renderer.write().callback_resources.insert(...)`.
 pub struct NesWgpuRenderer {
     pipeline: wgpu::RenderPipeline,
     index_texture: wgpu::Texture,
@@ -306,10 +301,10 @@ impl NesWgpuRenderer {
     /// `index = color_bits | (emphasis_bits << 6)` → `[R, G, B, 255]`.
     pub fn update_palette(&self, queue: &wgpu::Queue, palette: &RgbPalette) {
         let mut data = [0u8; PALETTE_LUT_SIZE as usize * 4];
-        for emph in 0..8usize {
-            for color in 0..64usize {
+        for (emph, item) in palette.colors.iter().enumerate() {
+            for (color, item) in item.iter().enumerate() {
                 let idx = color | (emph << 6);
-                let rgb = palette.colors[emph][color];
+                let rgb = item;
                 data[idx * 4] = rgb.r;
                 data[idx * 4 + 1] = rgb.g;
                 data[idx * 4 + 2] = rgb.b;

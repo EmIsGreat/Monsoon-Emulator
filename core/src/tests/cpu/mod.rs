@@ -83,8 +83,8 @@ impl Cpu {
     }
 
     #[inline(always)]
-    fn with_bus<T>(&mut self, f: impl FnOnce(&mut CoreCpu, &mut TestBus, NesConfig) -> T) -> T {
-        f(&mut self.cpu, &mut self.bus, NesConfig::default())
+    fn with_bus<T>(&mut self, f: impl FnOnce(&mut CoreCpu, &mut TestBus, &NesConfig) -> T) -> T {
+        f(&mut self.cpu, &mut self.bus, &NesConfig::default())
     }
 
     #[inline]

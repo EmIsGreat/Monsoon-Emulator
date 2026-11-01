@@ -333,11 +333,17 @@ impl Nes {
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, Default)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct NesConfig {
     // Cpu-ppu cycle offset: 0-3
     pub alignment: CpuAlignment,
     pub sha_config: CorruptionConfig,
     pub tas_config: CorruptionConfig,
+    pub is_pulse1_muted: bool,
+    pub is_pulse2_muted: bool,
+    pub is_triangle_muted: bool,
+    pub is_noise_muted: bool,
+    pub is_dmc_muted: bool,
 }
 
 impl Nes {
@@ -530,8 +536,10 @@ impl Nes {
         // cpu_cycle_counter + 2 == 12  means cpu_cycle_counter == 10
         if cpu_step {
             let should_trace = self.is_tracing && cpu.current_op == MicroOp::FetchOpcode;
-            let cpu_res = cpu.step(&mut cpu_bus_view!(self), config);
-            self.board.apu.clock_frame_counter(self.apu_counter == 2);
+            let cpu_res = cpu.step(&mut cpu_bus_view!(self), &config);
+            self.board
+                .apu
+                .clock_frame_counter(self.apu_counter == 2, &config);
 
             self.apu_counter -= 1;
 
@@ -637,8 +645,6 @@ impl Nes {
 
     #[must_use]
     pub fn get_rom_db(&self) -> Arc<RomDb> { self.rom_db.clone() }
-
-    pub fn produce_sample(&mut self) -> f32 { self.board.apu.mix() }
 }
 
 impl Default for Nes {

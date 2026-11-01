@@ -1354,7 +1354,7 @@ impl Cpu {
     }
 
     #[inline(always)]
-    pub fn step(&mut self, bus: &mut impl CpuBus, config: NesConfig) -> ExecutionResult {
+    pub fn step(&mut self, bus: &mut impl CpuBus, config: &NesConfig) -> ExecutionResult {
         self.cycle += 1;
 
         self.sha_config.magic = config.sha_config.magic;
@@ -1462,10 +1462,11 @@ impl Cpu {
             MicroOp::Read(source, target, callback) => {
                 self.micro_read(bus, source, target, callback);
             }
-            // pre_callback denotes whether to call the callback before or after the write. In the
-            // case of a dummy write we write with false so that the value from before the callback
-            // gets written, and in the case of a single write we need to execute the callback
-            // beforehand so that we write the updated value
+            // pre_callback denotes whether to call the callback before or after
+            // the write. In the case of a dummy write we write with false so
+            // that the value from before the callback gets written, and in the
+            // case of a single write we need to execute the callback beforehand
+            // so that we write the updated value
             MicroOp::Write(target, src, pre_callback, callback) => {
                 self.micro_write(bus, target, src, pre_callback, callback);
             }

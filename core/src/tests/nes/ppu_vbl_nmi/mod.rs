@@ -30,6 +30,11 @@ fn test_ppu_vbl_nmi() {
         alignment: CpuAlignment::Offset2,
         sha_config: CorruptionConfig::default(),
         tas_config: CorruptionConfig::default(),
+        is_pulse1_muted: false,
+        is_pulse2_muted: false,
+        is_triangle_muted: false,
+        is_noise_muted: false,
+        is_dmc_muted: false,
     });
     emu.load_rom((
         Path::new("./tests/nes-test-roms/ppu_vbl_nmi/ppu_vbl_nmi.nes"),

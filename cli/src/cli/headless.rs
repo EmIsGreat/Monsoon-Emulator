@@ -95,6 +95,11 @@ pub fn run_headless(args: &CliArgs) -> Result<(), String> {
         alignment: CpuAlignment::Offset2,
         sha_config: CorruptionConfig::default(),
         tas_config: CorruptionConfig::default(),
+        is_pulse1_muted: false,
+        is_pulse2_muted: false,
+        is_triangle_muted: false,
+        is_noise_muted: false,
+        is_dmc_muted: false,
     };
 
     // Create and configure the execution engine

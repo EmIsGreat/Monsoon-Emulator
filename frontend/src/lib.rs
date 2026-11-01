@@ -7,6 +7,7 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 #![forbid(unsafe_code)]
 #![allow(clippy::missing_errors_doc)]
+#![recursion_limit = "512"]
 extern crate core;
 
 use monsoon_core::declare_renderers;
