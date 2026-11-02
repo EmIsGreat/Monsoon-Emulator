@@ -16,13 +16,17 @@ const LENGTH_COUNTER_TABLE: [u8; 0x20] = [
     192, 24, 72, 26, 16, 28, 32, 30,
 ];
 
-const NOISE_TABLE: [u16; 0x10] = [
+const NOISE_TABLE: [u16; 16] = [
     2, 4, 8, 16, 32, 48, 64, 80, 101, 127, 190, 254, 381, 508, 1017, 2034,
 ];
 
 const TRIANGLE_TABLE: [u8; 32] = [
     15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
     13, 14, 15,
+];
+
+const DMC_RATE_TABLE: [u16; 16] = [
+    428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106, 84, 72, 54,
 ];
 
 const PULSE_DUTY_TABLE: [[u8; 8]; 4] = [
@@ -260,11 +264,11 @@ impl Apu {
 pub struct DMCUnit {
     pub irq_asserted: bool,
     pub irq_pending: bool,
-    pub sample_end_irq_enable: bool,
+    pub dmc_irq_enable: bool,
     pub does_loop: bool,
-    pub sample_rate: u8,
+    sample_period: u16,
     pub load_counter: u8,
-    pub sample_address: u8,
+    pub sample_address: u16,
     pub sample_length: u8,
     pub bytes_remaining: u8,
 }
@@ -275,6 +279,10 @@ impl DMCUnit {
     }
 
     pub fn clock(&mut self) -> u8 { 0 }
+
+    pub fn set_sample_rate(&mut self, index: u8) {
+        self.sample_period = DMC_RATE_TABLE[index as usize];
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash)]

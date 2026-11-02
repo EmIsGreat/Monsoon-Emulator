@@ -606,28 +606,28 @@ impl<'a> CpuBusView<'a> {
             }
             0x4010 => {
                 let irq_enable = (data >> 7) == 1;
-                let does_loop = (data >> 6) == 1;
-                let sample_rate = data & 0b1111;
+                let does_loop = ((data >> 6) & 1) == 1;
+                let index = data & 0b1111;
 
-                self.apu.dmc_unit.sample_end_irq_enable = irq_enable;
+                self.apu.dmc_unit.dmc_irq_enable = irq_enable;
                 self.apu.dmc_unit.does_loop = does_loop;
-                self.apu.dmc_unit.sample_rate = sample_rate;
+                self.apu.dmc_unit.set_sample_rate(index);
             }
             0x4011 => {
                 let load_counter = data & (!0x80);
                 self.apu.dmc_unit.load_counter = load_counter;
             }
             0x4012 => {
-                self.apu.dmc_unit.sample_address = data;
+                self.apu.dmc_unit.sample_address = u16::from(data) * 64 + 0xC000;
             }
             0x4013 => {
-                self.apu.dmc_unit.sample_length = data;
+                self.apu.dmc_unit.sample_length = data * 16 + 1;
             }
             0x4015 => {
-                let p1_enable = (data & 0b1) == 0b1;
-                let p2_enable = (data & 0b10) == 0b10;
-                let triangle_enable = (data & 0b100) == 0b100;
-                let noise_enable = (data & 0b1000) == 0b1000;
+                let p1_enable = (data & 0b1) != 0;
+                let p2_enable = (data & 0b10) != 0;
+                let triangle_enable = (data & 0b100) != 0;
+                let noise_enable = (data & 0b1000) != 0;
 
                 self.apu.pulse_1.length_counter.set_enabled(p1_enable);
                 self.apu.pulse_2.length_counter.set_enabled(p2_enable);
@@ -640,8 +640,9 @@ impl<'a> CpuBusView<'a> {
                     .length_counter
                     .set_enabled(noise_enable);
 
-                let dmc_bit = (data >> 4) == 1;
-                if dmc_bit {
+                let dmc_bit = ((data >> 4) & 1) != 0;
+
+                if !dmc_bit {
                     self.apu.dmc_unit.bytes_remaining = 0;
                 } else if self.apu.dmc_unit.bytes_remaining == 0 {
                     self.apu.dmc_unit.restart_sample_playback();
