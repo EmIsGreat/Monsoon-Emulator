@@ -168,6 +168,7 @@ impl Default for DmaState {
             page: 0,
             is_oam_dma: false,
             sample_address: 0,
+            is_load: false,
         }
     }
 }

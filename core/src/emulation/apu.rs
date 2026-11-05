@@ -162,7 +162,7 @@ impl Apu {
                 }
             }
         }
-        
+
         self.dmc_unit.scheduled_dmc
     }
 
@@ -282,6 +282,7 @@ pub struct DMCUnit {
     sample_period: u16,
     sample_address: u16,
     current_byte_progress: u8,
+    sample_wait: u8,
     sample_length_input: u8,
     sample_address_input: u8,
 }
@@ -316,29 +317,34 @@ impl DMCUnit {
 
     pub fn clock(&mut self) -> u8 {
         if self.timer == 0 {
-            if self.current_byte_progress % 8 == 0
-                && let Some(buffer) = self.sample_buffer.take()
-            {
-                self.current_byte_progress = 0;
-                self.output_shift = buffer;
-                self.fetch_next_sample_byte(false);
-            }
-
-            if self.current_byte_progress < 8 {
-                self.timer = self.sample_period;
-
-                let count_up = (self.output_shift & 1) != 0;
-
-                if !count_up && self.load_counter > 1 {
-                    self.load_counter -= 2;
-                } else if count_up && self.load_counter < 126 {
-                    self.load_counter += 2;
+            if self.sample_wait == 0 {
+                if self.current_byte_progress == 8 {
+                    if let Some(buffer) = self.sample_buffer.take() {
+                        self.current_byte_progress = 0;
+                        self.output_shift = buffer;
+                        self.fetch_next_sample_byte(false);
+                    } else {
+                        self.sample_wait = 8;
+                    }
                 }
 
-                self.output_shift >>= 1;
-            }
+                if self.current_byte_progress < 8 {
+                    self.timer = self.sample_period;
 
-            self.current_byte_progress += 1;
+                    let count_up = (self.output_shift & 1) != 0;
+
+                    if !count_up && self.load_counter > 1 {
+                        self.load_counter -= 2;
+                    } else if count_up && self.load_counter < 126 {
+                        self.load_counter += 2;
+                    }
+
+                    self.output_shift >>= 1;
+                    self.current_byte_progress += 1;
+                }
+            } else {
+                self.sample_wait -= 1;
+            }
         }
 
         self.timer = self.timer.saturating_sub(1);
