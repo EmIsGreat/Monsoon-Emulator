@@ -537,9 +537,14 @@ impl Nes {
         if cpu_step {
             let should_trace = self.is_tracing && cpu.current_op == MicroOp::FetchOpcode;
             let cpu_res = cpu.step(&mut cpu_bus_view!(self), &config);
-            self.board
+
+            if let Some(is_load) = self
+                .board
                 .apu
-                .clock_frame_counter(self.apu_counter == 2, &config);
+                .clock_frame_counter(self.apu_counter == 2, &config)
+            {
+
+            }
 
             self.apu_counter -= 1;
 

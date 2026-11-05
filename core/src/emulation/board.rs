@@ -609,7 +609,12 @@ impl<'a> CpuBusView<'a> {
                 let does_loop = ((data >> 6) & 1) == 1;
                 let index = data & 0b1111;
 
-                self.apu.dmc_unit.dmc_irq_enable = irq_enable;
+                self.apu.dmc_unit.dmc_irq_enable = irq_enable && !does_loop;
+
+                if !irq_enable {
+                    self.apu.dmc_unit.irq_pending = false;
+                }
+
                 self.apu.dmc_unit.does_loop = does_loop;
                 self.apu.dmc_unit.set_sample_rate(index);
             }
@@ -618,10 +623,10 @@ impl<'a> CpuBusView<'a> {
                 self.apu.dmc_unit.load_counter = load_counter;
             }
             0x4012 => {
-                self.apu.dmc_unit.sample_address = u16::from(data) * 64 + 0xC000;
+                self.apu.dmc_unit.set_sample_address(data);
             }
             0x4013 => {
-                self.apu.dmc_unit.sample_length = data * 16 + 1;
+                self.apu.dmc_unit.set_sample_length(data);
             }
             0x4015 => {
                 let p1_enable = (data & 0b1) != 0;

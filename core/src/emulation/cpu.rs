@@ -88,7 +88,6 @@ pub struct Cpu {
     pub hi: u8,
     pub current_op: MicroOp,
     pub op_queue: OpQueue<RING_BUFFER_SIZE>,
-    pub remaining_dma_cycles: u16,
     pub current_opcode: OpCode,
     pub data_bus: u8,
     pub ane_constant: u8,
@@ -123,8 +122,12 @@ pub struct CorruptionConfig {
 
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, PartialEq, Eq, Serialize, Deserialize, Hash)]
 pub struct DmaState {
+    pub remaining_dma_cycles: u16,
+    pub is_oam_dma: bool,
     read_cycle: bool,
     page: u8,
+    sample_address: u16,
+    is_load: bool
 }
 
 #[derive(
@@ -161,7 +164,10 @@ impl Default for DmaState {
     fn default() -> Self {
         Self {
             read_cycle: true,
+            remaining_dma_cycles: 0,
             page: 0,
+            is_oam_dma: false,
+            sample_address: 0,
         }
     }
 }
@@ -186,7 +192,6 @@ impl Cpu {
             hi: 0,
             current_op: MicroOp::FetchOpcode,
             op_queue: OpQueue::new(),
-            remaining_dma_cycles: 0,
             current_opcode: get_opcode(0),
             data_bus: 0,
             ane_constant: 0xEE,
@@ -215,13 +220,14 @@ impl Cpu {
     pub fn mem_write(&mut self, addr: u16, data: u8, bus: &mut impl CpuBus) {
         self.last_memory_access = Some((addr, false, data));
 
+        bus.write(addr, data, self.cycle);
+
         if addr == DMA_ADDRESS {
             self.rdy = true;
             self.dma_state.page = data;
+            self.dma_state.is_oam_dma = true;
             return;
         }
-
-        bus.write(addr, data, self.cycle);
     }
 
     pub fn mem_read_u16(&mut self, addr: u16, bus: &mut impl CpuBus) -> u16 {
@@ -1374,9 +1380,13 @@ impl Cpu {
 
         self.dma_state.read_cycle = !self.dma_state.read_cycle;
 
-        if self.remaining_dma_cycles > 0 {
-            self.process_dma(bus);
-            self.remaining_dma_cycles -= 1;
+        if self.dma_state.remaining_dma_cycles > 0 {
+            if self.dma_state.is_oam_dma {
+                self.process_oam_dma(bus);
+            } else {
+                self.process_dmc_dma(bus)
+            }
+            self.dma_state.remaining_dma_cycles -= 1;
 
             return ExecutionResult {
                 cycle_completed: true,
@@ -1397,8 +1407,12 @@ impl Cpu {
 
         self.execute_micro_op(op, bus);
 
-        if self.rdy && self.dma_state.read_cycle {
+        if self.rdy {
             self.execute_oam_dma();
+        }
+
+        if self.rdy && self.dma_state.is_load {
+
         }
 
         // NMI Things
@@ -2033,15 +2047,31 @@ impl Cpu {
     pub fn execute_oam_dma(&mut self) {
         self.rdy = false;
         self.irq_state.is_in_irq = true;
-        self.remaining_dma_cycles = 514;
+        self.dma_state.remaining_dma_cycles = 514;
     }
 
-    pub fn process_dma(&mut self, bus: &mut impl CpuBus) {
-        if self.remaining_dma_cycles == 514 {
+    pub fn process_dmc_dma(&mut self, bus: &mut impl CpuBus) {
+        if self.dma_state.is_load {
+
+        } else {
+
+        }
+    }
+
+    pub fn process_oam_dma(&mut self, bus: &mut impl CpuBus) {
+        if self.dma_state.remaining_dma_cycles == 514 {
+            self.execute_micro_op(
+                MicroOp::Read(
+                    AddressSource::AddressLatch,
+                    Target::None,
+                    MicroOpCallback::None,
+                ),
+                bus,
+            );
             return;
         }
 
-        if self.remaining_dma_cycles == 513 {
+        if self.dma_state.remaining_dma_cycles == 513 {
             if !self.dma_state.read_cycle {
                 self.execute_micro_op(
                     MicroOp::Read(
@@ -2053,12 +2083,12 @@ impl Cpu {
                 );
                 return;
             }
-            self.remaining_dma_cycles -= 1;
+            self.dma_state.remaining_dma_cycles -= 1;
         }
 
-        if self.remaining_dma_cycles <= 512 && self.remaining_dma_cycles > 1 {
-            let address = 0x100 - self.remaining_dma_cycles.div_ceil(2);
-            if self.remaining_dma_cycles & 1 == 0 {
+        if self.dma_state.remaining_dma_cycles <= 512 && self.dma_state.remaining_dma_cycles > 1 {
+            let address = 0x100 - self.dma_state.remaining_dma_cycles.div_ceil(2);
+            if self.dma_state.remaining_dma_cycles & 1 == 0 {
                 self.execute_micro_op(
                     MicroOp::Read(
                         AddressSource::Address(u16::from(self.dma_state.page) << 8 | address),
@@ -2081,7 +2111,7 @@ impl Cpu {
             return;
         }
 
-        if self.remaining_dma_cycles == 1 {
+        if self.dma_state.remaining_dma_cycles == 1 {
             self.execute_micro_op(
                 MicroOp::Write(
                     Target::OamWrite,

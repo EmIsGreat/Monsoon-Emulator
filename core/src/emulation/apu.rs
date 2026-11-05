@@ -1,3 +1,5 @@
+use std::f32::consts::PI;
+
 use rtrb::Producer;
 use rubato::Resampler;
 use rubato::audioadapter_buffers::direct::SequentialSlice;
@@ -49,6 +51,7 @@ pub struct Apu {
     pub sampler: Async<f32>,
     pub samples: Vec<f32>,
     pub exporter: Option<StreamingWavExporter>,
+    pub filter: AudioFilter,
 }
 
 impl Clone for Apu {
@@ -65,6 +68,7 @@ impl Clone for Apu {
             sampler: get_sampler(),
             samples: Vec::with_capacity((APU_FREQUENCY / 10) as usize),
             exporter: StreamingWavExporter::create("apu-raw.wav", APU_FREQUENCY).ok(),
+            filter: AudioFilter::default(),
         }
     }
 }
@@ -103,6 +107,7 @@ impl Default for Apu {
             sampler: get_sampler(),
             samples: Vec::with_capacity((APU_FREQUENCY / 10) as usize),
             exporter: StreamingWavExporter::create("apu-raw.wav", APU_FREQUENCY).ok(),
+            filter: AudioFilter::default(),
         }
     }
 }
@@ -110,7 +115,7 @@ impl Default for Apu {
 impl Apu {
     #[inline(always)]
     #[allow(clippy::missing_panics_doc)]
-    pub fn clock_frame_counter(&mut self, is_proper: bool, config: &NesConfig) {
+    pub fn clock_frame_counter(&mut self, is_proper: bool, config: &NesConfig) -> Option<bool> {
         if let Some(res) = self.frame_counter.clock(is_proper) {
             match res {
                 FrameCounterClockResult::HalfFrame => self.clock_half_frame(),
@@ -122,6 +127,7 @@ impl Apu {
             const INPUT_CHUNK_SIZE: usize = 1024;
 
             let sample = self.mix(config);
+            self.filter.process(sample);
             self.samples.push(sample);
 
             #[cfg(debug_assertions)]
@@ -156,6 +162,8 @@ impl Apu {
                 }
             }
         }
+        
+        self.dmc_unit.scheduled_dmc
     }
 
     #[inline]
@@ -262,26 +270,94 @@ impl Apu {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash, Default)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct DMCUnit {
-    pub irq_asserted: bool,
     pub irq_pending: bool,
     pub dmc_irq_enable: bool,
     pub does_loop: bool,
-    sample_period: u16,
     pub load_counter: u8,
-    pub sample_address: u16,
-    pub sample_length: u8,
-    pub bytes_remaining: u8,
+    pub bytes_remaining: u16,
+    pub output_shift: u8,
+    pub sample_buffer: Option<u8>,
+    pub scheduled_dmc: Option<bool>,
+    timer: u16,
+    sample_period: u16,
+    sample_address: u16,
+    current_byte_progress: u8,
+    sample_length_input: u8,
+    sample_address_input: u8,
 }
 
 impl DMCUnit {
     pub fn restart_sample_playback(&mut self) {
-        // TODO
+        self.set_sample_address(self.sample_address_input);
+        self.set_sample_length(self.sample_length_input);
     }
 
-    pub fn clock(&mut self) -> u8 { 0 }
+    pub fn fetch_next_sample_byte(&mut self, is_load: bool) {
+        if self.bytes_remaining != 0 {
+            self.scheduled_dmc = Some(is_load);
+
+            let (inc, overflow) = self.sample_address.overflowing_add(1);
+
+            if overflow {
+                self.sample_address = 0x8000;
+            } else {
+                self.sample_address = inc;
+            }
+
+            self.bytes_remaining = self.bytes_remaining.saturating_sub(1);
+
+            if self.bytes_remaining == 0 && self.does_loop {
+                self.restart_sample_playback();
+            } else if self.bytes_remaining == 0 && self.dmc_irq_enable {
+                self.irq_pending = true;
+            }
+        }
+    }
+
+    pub fn clock(&mut self) -> u8 {
+        if self.timer == 0 {
+            if self.current_byte_progress % 8 == 0
+                && let Some(buffer) = self.sample_buffer.take()
+            {
+                self.current_byte_progress = 0;
+                self.output_shift = buffer;
+                self.fetch_next_sample_byte(false);
+            }
+
+            if self.current_byte_progress < 8 {
+                self.timer = self.sample_period;
+
+                let count_up = (self.output_shift & 1) != 0;
+
+                if !count_up && self.load_counter > 1 {
+                    self.load_counter -= 2;
+                } else if count_up && self.load_counter < 126 {
+                    self.load_counter += 2;
+                }
+
+                self.output_shift >>= 1;
+            }
+
+            self.current_byte_progress += 1;
+        }
+
+        self.timer = self.timer.saturating_sub(1);
+
+        self.load_counter
+    }
 
     pub fn set_sample_rate(&mut self, index: u8) {
         self.sample_period = DMC_RATE_TABLE[index as usize];
+    }
+
+    pub fn set_sample_address(&mut self, data: u8) {
+        self.sample_address_input = data;
+        self.sample_address = 0xC000 + (64 * (data as u16));
+    }
+
+    pub fn set_sample_length(&mut self, data: u8) {
+        self.sample_length_input = data;
+        self.bytes_remaining = ((data as u16) * 16) + 1;
     }
 }
 
@@ -639,6 +715,7 @@ pub enum FrameCounterClockResult {
 }
 
 use std::fmt::{Debug, Formatter};
+use std::hash::Hash;
 use std::path::Path;
 
 use hound::{SampleFormat, WavSpec, WavWriter};
@@ -699,5 +776,58 @@ impl StreamingWavExporter {
         // Write any remaining samples, even if fewer than 1024.
         self.flush_buffer()?;
         self.writer.finalize()
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct AudioFilter {
+    hp_alpha: f32,
+    hp_prev_input: f32,
+    hp_prev_output: f32,
+
+    lp_alpha: f32,
+    lp_prev_output: f32,
+}
+
+impl Default for AudioFilter {
+    #[allow(clippy::cast_precision_loss)]
+    fn default() -> Self { AudioFilter::new(SAMPLE_RATE as f32) }
+}
+
+impl AudioFilter {
+    #[must_use]
+    pub fn new(sample_rate: f32) -> Self {
+        let hp_alpha = (-2.0 * PI * 90.0 / sample_rate).exp();
+        let lp_alpha = (-2.0 * PI * 14_000.0 / sample_rate).exp();
+
+        Self {
+            hp_alpha,
+            hp_prev_input: 0.0,
+            hp_prev_output: 0.0,
+
+            lp_alpha,
+            lp_prev_output: 0.0,
+        }
+    }
+
+    pub fn process(&mut self, input: f32) -> f32 {
+        // First-order high-pass filter
+        let hp_output = self.hp_alpha * (self.hp_prev_output + input - self.hp_prev_input);
+
+        self.hp_prev_input = input;
+        self.hp_prev_output = hp_output;
+
+        // First-order low-pass filter
+        let lp_output = self.lp_prev_output + self.lp_alpha * (hp_output - self.lp_prev_output);
+
+        self.lp_prev_output = lp_output;
+
+        lp_output
+    }
+
+    pub fn reset(&mut self) {
+        self.hp_prev_input = 0.0;
+        self.hp_prev_output = 0.0;
+        self.lp_prev_output = 0.0;
     }
 }

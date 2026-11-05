@@ -14,10 +14,7 @@
 use serde::{Deserialize, Serialize};
 use static_assertions::assert_impl_all;
 
-use crate::emulation::apu::{
-    APU_FREQUENCY, Apu, DMCUnit, FrameCounter, NoiseGenerator, PulseGenerator,
-    StreamingWavExporter, TriangleGenerator, get_sampler,
-};
+use crate::emulation::apu::{get_sampler, Apu, AudioFilter, DMCUnit, FrameCounter, NoiseGenerator, PulseGenerator, StreamingWavExporter, TriangleGenerator, APU_FREQUENCY};
 use crate::emulation::board::Board;
 use crate::emulation::cpu::{
     CorruptionConfig, Cpu, DmaState, IRQState, MicroOp, NMIState, OpQueue,
@@ -376,6 +373,7 @@ impl From<&ApuState> for Apu {
             sampler: get_sampler(),
             samples: vec![],
             exporter: StreamingWavExporter::create("apu-raw.wav", APU_FREQUENCY).ok(),
+            filter: AudioFilter::default(),
         }
     }
 }
